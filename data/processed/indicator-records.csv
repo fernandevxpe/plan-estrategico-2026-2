@@ -1,0 +1,50 @@
+month;metric;metricLabel;value;previousBest;previousBestMonth
+2025-01;cohortConversionPct;Conversão da coorte do mês;16.666666666666664;;
+2025-01;wonDeals;Negócios fechados;3;;
+2025-01;createdDeals;Novos negócios criados;24;;
+2025-01;openBaseValueEndOfMonth;Pipeline aberto (valor);879730.98;;
+2025-01;wonRevenue;Receita ganha no mês;18400;;
+2025-01;averageWonTicket;Ticket médio dos ganhos;6133.333333333333;;
+2025-01;averageTicket;Ticket médio mensal;6133.333333333333;;
+2025-01;createdValue;Valor de propostas criadas;103500;;
+2025-02;createdDeals;Novos negócios criados;110;24;2025-01
+2025-02;openBaseValueEndOfMonth;Pipeline aberto (valor);953030.98;879730.98;2025-01
+2025-02;wonRevenue;Receita ganha no mês;37500;18400;2025-01
+2025-02;averageWonTicket;Ticket médio dos ganhos;12500;6133.333333333333;2025-01
+2025-02;averageTicket;Ticket médio mensal;12500;6133.333333333333;2025-01
+2025-02;createdValue;Valor de propostas criadas;110300;103500;2025-01
+2025-03;openBaseValueEndOfMonth;Pipeline aberto (valor);1008730.98;953030.98;2025-02
+2025-04;cohortConversionPct;Conversão da coorte do mês;31.03448275862069;16.666666666666664;2025-01
+2025-04;wonDeals;Negócios fechados;6;3;2025-01
+2025-04;openBaseValueEndOfMonth;Pipeline aberto (valor);1143640.98;1008730.98;2025-03
+2025-04;wonRevenue;Receita ganha no mês;75800;37500;2025-02
+2025-04;averageWonTicket;Ticket médio dos ganhos;12633.333333333334;12500;2025-02
+2025-04;averageTicket;Ticket médio mensal;12633.333333333334;12500;2025-02
+2025-04;createdValue;Valor de propostas criadas;236410;110300;2025-02
+2025-05;wonDeals;Negócios fechados;7;6;2025-04
+2025-05;openBaseValueEndOfMonth;Pipeline aberto (valor);1164705.98;1143640.98;2025-04
+2025-06;cohortConversionPct;Conversão da coorte do mês;40.909090909090914;31.03448275862069;2025-04
+2025-06;wonDeals;Negócios fechados;11;7;2025-05
+2025-07;openBaseValueEndOfMonth;Pipeline aberto (valor);1295927.98;1164705.98;2025-05
+2025-07;createdValue;Valor de propostas criadas;298040;236410;2025-04
+2025-08;wonDeals;Negócios fechados;14;11;2025-06
+2025-08;openBaseValueEndOfMonth;Pipeline aberto (valor);1451491.96;1295927.98;2025-07
+2025-08;wonRevenue;Receita ganha no mês;105200;75800;2025-04
+2025-08;createdValue;Valor de propostas criadas;330713.98;298040;2025-07
+2025-09;openBaseValueEndOfMonth;Pipeline aberto (valor);1653897.98;1451491.96;2025-08
+2025-10;openBaseValueEndOfMonth;Pipeline aberto (valor);1731462.27;1653897.98;2025-09
+2025-10;wonRevenue;Receita ganha no mês;112150;105200;2025-08
+2025-11;openBaseValueEndOfMonth;Pipeline aberto (valor);1881512.27;1731462.27;2025-10
+2025-12;openBaseValueEndOfMonth;Pipeline aberto (valor);1895607.66;1881512.27;2025-11
+2025-12;wonRevenue;Receita ganha no mês;138289.29;112150;2025-10
+2026-01;openBaseValueEndOfMonth;Pipeline aberto (valor);2305245.3800000004;1895607.66;2025-12
+2026-01;createdValue;Valor de propostas criadas;795637.72;330713.98;2025-08
+2026-02;wonDeals;Negócios fechados;17;14;2025-08
+2026-02;openBaseValueEndOfMonth;Pipeline aberto (valor);2405608.66;2305245.3800000004;2026-01
+2026-02;wonRevenue;Receita ganha no mês;248696.72;138289.29;2025-12
+2026-02;averageWonTicket;Ticket médio dos ganhos;14629.218823529412;12633.333333333334;2025-04
+2026-02;averageTicket;Ticket médio mensal;14629.218823529412;12633.333333333334;2025-04
+2026-04;openBaseValueEndOfMonth;Pipeline aberto (valor);2773498.66;2405608.66;2026-02
+2026-05;openBaseValueEndOfMonth;Pipeline aberto (valor);3248603.66;2773498.66;2026-04
+2026-05;createdValue;Valor de propostas criadas;805705;795637.72;2026-01
+2026-06;openBaseValueEndOfMonth;Pipeline aberto (valor);3509083.66;3248603.66;2026-05

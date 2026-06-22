@@ -1,0 +1,32 @@
+{
+  "name": "plan-estrategico-2026-2",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build:app": "next build",
+    "start": "next start",
+    "sync": "node scripts/sync-data.mjs",
+    "sync:pipedrive": "SYNC_SCOPE=pipedrive node scripts/sync-data.mjs",
+    "sync:clickup": "SYNC_SCOPE=clickup node scripts/sync-data.mjs",
+    "analyze": "node scripts/analyze.mjs",
+    "build": "npm run sync && npm run analyze"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "next": "^16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -213,6 +213,8 @@ export type Analysis = {
   };
   planningSummary: PlanningSummary;
   indicatorHighlights: IndicatorHighlights;
+  deepAnalysis: DeepAnalysis;
+  growthGuides: GrowthGuides;
   businessTypeMonthly: BusinessTypeMonthly[];
   cnpjCoverage: {
     organizations: number;
@@ -359,4 +361,256 @@ export type IndicatorHighlights = {
     bestCreatedMonth: string | null;
     bestCreatedValue: number | null;
   };
+};
+
+export type TimeToCloseMonth = {
+  month: string;
+  wonDeals: number;
+  averageDays: number;
+  medianDays: number | null;
+  revenue: number;
+};
+
+export type RevenueOriginMonth = {
+  month: string;
+  totalRevenue: number;
+  newRevenue: number;
+  repeatRevenue: number;
+  newDeals: number;
+  repeatDeals: number;
+  newSharePct: number | null;
+  repeatSharePct: number | null;
+};
+
+export type StageFunnelRow = {
+  pipelineId: number | null;
+  pipeline: string;
+  stageId: number | null;
+  stage: string;
+  stageOrder: number;
+  deals: number;
+  value: number;
+  averageValue: number;
+};
+
+export type PerformanceAlert = {
+  month: string;
+  severity: "high" | "medium";
+  declineCount: number;
+  metrics: Array<{
+    metric: string;
+    metricLabel: string;
+    currentValue: number;
+    previousValue: number;
+    changePct: number;
+  }>;
+  message: string;
+};
+
+export type DeepAnalysis = {
+  timeToClose: {
+    byMonth: TimeToCloseMonth[];
+    overallAverageDays: number | null;
+    fastestMonth: TimeToCloseMonth | null;
+    slowestMonth: TimeToCloseMonth | null;
+    peakRevenueMonth: string | null;
+    peakRevenueCycleDays: number | null;
+  };
+  revenueOrigin: {
+    byMonth: RevenueOriginMonth[];
+    totals: {
+      newRevenue: number;
+      repeatRevenue: number;
+      newSharePct: number | null;
+    };
+  };
+  funnelByStage: {
+    open: StageFunnelRow[];
+    lost: StageFunnelRow[];
+    won: StageFunnelRow[];
+    summary: {
+      openDeals: number;
+      openValue: number;
+      lostDeals: number;
+      lostValue: number;
+      topOpenStage: StageFunnelRow | null;
+      topLostStage: StageFunnelRow | null;
+    };
+  };
+  peakMix: {
+    peaks: Array<{
+      month: string;
+      revenue: number;
+      types: Array<{ type: string; revenue: number; wonDeals: number; sharePct: number }>;
+      dominantType: string | null;
+    }>;
+    patterns: Array<{ month: string; headline: string; topTypes: string[]; insight: string }>;
+    benchmarkTypes: Array<{ type: string; averageRevenue: number; monthsActive: number }>;
+  };
+  performanceAlerts: PerformanceAlert[];
+  investigationNotes: IndicatorRecommendation[];
+};
+
+export type GrowthGuideAction = {
+  priority: "critical" | "high" | "medium";
+  title: string;
+  detail: string;
+  metric?: string;
+  target?: string;
+};
+
+export type GrowthGuidePillar = {
+  id: string;
+  title: string;
+  subtitle: string;
+  actions: GrowthGuideAction[];
+};
+
+export type GrowthGuideMonthTarget = {
+  month: string;
+  label: string;
+  revenueTarget: number;
+  wonDealsTarget: number;
+  averageTicketTarget: number;
+  createdDealsTarget: number;
+  conversionTargetPct: number;
+  baseline2025Revenue: number;
+  baseProjectionRevenue: number;
+  gapVsBase: number;
+  cumulativeRevenue: number;
+  adSpend: number;
+  costPerClosing: number | null;
+  perCommercial: {
+    closings: number;
+    revenue: number;
+    newDeals: number;
+  };
+  perProjectista: {
+    activeProjects: number;
+  };
+  workloadByType: Array<{
+    type: string;
+    projects: number;
+    revenue: number;
+  }>;
+};
+
+export type GrowthGuideTrafficMonth = {
+  month: string;
+  label: string;
+  adSpend: number;
+  wonDealsTarget: number;
+  costPerClosing: number | null;
+  semester: "H1" | "H2";
+};
+
+export type GrowthGuideOperationalCapacity = {
+  commercialTeam: {
+    currentHeadcount: number;
+    recommendedHeadcount: number;
+    hireTrigger: string;
+    perPersonH1: {
+      monthlyClosings: number;
+      monthlyRevenue: number;
+      monthlyNewDeals: number;
+    };
+    perPersonH2: {
+      monthlyClosings: number;
+      monthlyRevenue: number;
+      monthlyNewDeals: number;
+    };
+  };
+  deliveryTeam: {
+    projectistasHistorical: number;
+    projectistasCurrent: number;
+    automationNote: string;
+    historicalProjectsPerPerson: number;
+    h2ProjectsPerPerson: number;
+    capacityStatus: "ok" | "attention" | "critical";
+    capacityNote: string;
+  };
+};
+
+export type GrowthGuide = {
+  id: "2x" | "3x";
+  name: string;
+  tagline: string;
+  premise: string;
+  annualTarget: number;
+  h1Target: number;
+  h2Target: number;
+  annualGapVsBase: number;
+  h1GapVsProjected: number;
+  h2GapVsBase: number;
+  h2MultiplierVs2025: number;
+  recurrenceNote: string;
+  baseline: {
+    h1Projected: number;
+    h2Base: number;
+    annualBase: number;
+    h2Revenue2025: number;
+    h2WonDeals2025: number;
+  };
+  monthlyTargets: GrowthGuideMonthTarget[];
+  h1MonthlyTargets: GrowthGuideMonthTarget[];
+  fullYearPlan: GrowthGuideMonthTarget[];
+  kpis: {
+    h2AverageMonthlyRevenue: number;
+    h2AverageWonDeals: number;
+    h2AverageTicket: number;
+    h2AverageCreatedDeals: number;
+    h2AverageConversionPct: number;
+    currentH1: {
+      averageRevenue: number;
+      averageWonDeals: number;
+      averageTicket: number;
+      averageCreatedDeals: number;
+      averageConversionPct: number;
+    };
+    uplift: {
+      revenuePct: number;
+      wonDealsPct: number;
+      ticketPct: number;
+      createdDealsPct: number;
+      conversionPts: number;
+    };
+  };
+  typeMix: Array<{
+    type: string;
+    revenueSharePct: number;
+    revenueTarget: number;
+    wonDealsTarget: number;
+    averageTicket: number;
+    annualProjects: number;
+  }>;
+  typeMixAnnual: Array<{
+    type: string;
+    revenueSharePct: number;
+    revenueTarget: number;
+    wonDealsTarget: number;
+    averageTicket: number;
+  }>;
+  operationalCapacity: GrowthGuideOperationalCapacity;
+  trafficInvestment: {
+    h1Total: number;
+    h2Total: number;
+    annualTotal: number;
+    h1ScheduleNote: string;
+    monthly: GrowthGuideTrafficMonth[];
+    averageCostPerClosing: number | null;
+    note: string;
+  };
+  pillars: GrowthGuidePillar[];
+  milestones: Array<{
+    month: string;
+    label: string;
+    cumulativeTarget: number;
+    checkpoint: string;
+  }>;
+  risks: Array<{ title: string; mitigation: string }>;
+};
+
+export type GrowthGuides = {
+  projection2x: GrowthGuide;
+  projection3x: GrowthGuide;
 };

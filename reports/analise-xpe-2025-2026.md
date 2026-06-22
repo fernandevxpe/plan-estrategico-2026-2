@@ -1,6 +1,6 @@
 # Analise comercial e projetos - XPE Consultoria
 
-Gerado em: 22/06/2026, 19:43:03
+Gerado em: 22/06/2026, 20:20:55
 
 ## Resumo executivo
 
@@ -16,7 +16,7 @@ Gerado em: 22/06/2026, 19:43:03
 
 ## Funil comercial mensal
 
-| Mes | Novos negocios | Valor criado | Ganhos no mes | Receita ganha | Perdidos no mes | Conversao da coorte | Base aberta fim do mes | Valor em aberto |
+| Mes | Novos negocios | Valor criado | Ganhos no mes | Receita ganha | Perdidos no mes | Conversao novos neg. | Base aberta fim do mes | Valor em aberto |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 2026-01 | 59 | R$ 795.638 | 12 | R$ 129.600 | 20 | +28,8% | 519 | R$ 2.305.245 |
 | 2026-02 | 59 | R$ 486.790 | 17 | R$ 248.697 | 17 | +27,1% | 544 | R$ 2.405.609 |

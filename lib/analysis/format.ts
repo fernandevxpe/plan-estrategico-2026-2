@@ -1,3 +1,8 @@
+export const NEW_DEALS_CONVERSION_LABEL = "Conversão dos novos negócios";
+export const NEW_DEALS_CONVERSION_SHORT = "Conv. novos neg.";
+export const NEW_DEALS_CONVERSION_HINT =
+  "Dos negócios criados no mês, quantos % foram ganhos (em qualquer data).";
+
 export const brl = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",

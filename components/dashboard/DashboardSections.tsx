@@ -24,7 +24,16 @@ import {
   filterFunnel,
   filterWonDeals
 } from "@/lib/analysis/metrics";
-import { brl, formatGrowth, monthLabel, number, serviceClass } from "@/lib/analysis/format";
+import {
+  brl,
+  formatGrowth,
+  monthLabel,
+  NEW_DEALS_CONVERSION_HINT,
+  NEW_DEALS_CONVERSION_LABEL,
+  NEW_DEALS_CONVERSION_SHORT,
+  number,
+  serviceClass
+} from "@/lib/analysis/format";
 
 type Props = {
   analysis: Analysis;
@@ -118,7 +127,7 @@ export function DashboardSections({ analysis, filters, kpis }: Props) {
       <section className="section-title" id="funil">
         <div>
           <h2>Funil comercial mensal</h2>
-          <p>Novos negócios, conversão da coorte, ganhos e base aberta.</p>
+          <p>Novos negócios, {NEW_DEALS_CONVERSION_LABEL.toLowerCase()}, ganhos e base aberta.</p>
         </div>
         <span className="pill green">{funnelRows.at(-1)?.openBaseDealsEndOfMonth ?? 0} negócios abertos</span>
       </section>
@@ -130,7 +139,7 @@ export function DashboardSections({ analysis, filters, kpis }: Props) {
               <th>Mês</th>
               <th className="right">Novos</th>
               <th className="right">Valor criado</th>
-              <th className="right">Conv. coorte</th>
+                <th className="right" title={NEW_DEALS_CONVERSION_HINT}>{NEW_DEALS_CONVERSION_SHORT}</th>
               <th className="right">Ganhos</th>
               <th className="right">Receita ganha</th>
               <th className="right">Perdidos</th>

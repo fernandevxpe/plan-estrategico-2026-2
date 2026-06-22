@@ -40,6 +40,9 @@ function pct(value) {
   return `${value >= 0 ? '+' : ''}${value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 }
 
+const NEW_DEALS_CONVERSION_LABEL = 'Conversão dos novos negócios';
+const NEW_DEALS_CONVERSION_SHORT = 'Conv. novos neg.';
+
 function csvEscape(value) {
   const text = String(value ?? '');
   if (/[",\n;]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
@@ -224,7 +227,10 @@ const deals = dealsRaw.map((deal) => {
     lostMonth: monthKey(deal.lost_time),
     closedMonth: monthKey(deal.close_time),
     pipeline: pipeline?.name ?? null,
+    pipelineId: deal.pipeline_id ?? null,
     stage: stage?.name ?? null,
+    stageId: deal.stage_id ?? null,
+    stageOrder: stage?.order_nr ?? 999,
     organizationId: orgId ?? null,
     organization: orgName,
     accountKey: cnpj ? `cnpj:${cnpj}` : `org:${normalizeAccountName(orgName || deal.title)}`,
@@ -554,6 +560,40 @@ const projection2026H2 = {
   months: projectionMonths
 };
 
+function daysBetween(start, end) {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null;
+  return Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function median(values) {
+  const sorted = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function aggregateStageRows(items, stageMeta) {
+  const grouped = groupBy(items, (deal) => `${deal.pipelineId ?? 'na'}|||${deal.stageId ?? 'na'}`);
+  return grouped
+    .map(([key, rows]) => {
+      const [pipelineId, stageId] = key.split('|||');
+      const meta = stageMeta.get(Number(stageId)) ?? {};
+      return {
+        pipelineId: Number(pipelineId) || null,
+        pipeline: rows[0]?.pipeline ?? meta.pipeline ?? 'Sem funil',
+        stageId: Number(stageId) || null,
+        stage: rows[0]?.stage ?? meta.name ?? 'Sem etapa',
+        stageOrder: meta.order ?? 999,
+        deals: rows.length,
+        value: sum(rows, (deal) => deal.value),
+        averageValue: rows.length ? sum(rows, (deal) => deal.value) / rows.length : 0
+      };
+    })
+    .sort((a, b) => a.pipeline.localeCompare(b.pipeline) || a.stageOrder - b.stageOrder);
+}
+
 function aggregatePeriod(rows, predicate) {
   const filtered = rows.filter(predicate);
   return {
@@ -768,7 +808,7 @@ const recordMetrics = [
   { id: 'createdValue', label: 'Valor de propostas criadas', unit: 'currency', get: (row) => row.createdValue },
   {
     id: 'cohortConversionPct',
-    label: 'Conversão da coorte do mês',
+    label: NEW_DEALS_CONVERSION_LABEL,
     unit: 'percent',
     get: (row) => (row.createdDeals >= 3 ? row.cohortConversionPct : null)
   },
@@ -868,8 +908,8 @@ const conversionRecord = metricRecords.find((item) => item.metric === 'cohortCon
 if (conversionRecord?.recordMonth) {
   indicatorRecommendations.push({
     kind: 'repeat',
-    title: 'Replicar conversão da coorte',
-    body: `Melhor conversão da coorte: ${pct(conversionRecord.recordValue)} em ${conversionRecord.recordMonth}. Analisar qualidade das propostas criadas nesse mês.`
+    title: 'Replicar conversão dos novos negócios',
+    body: `Melhor conversão dos novos negócios: ${pct(conversionRecord.recordValue)} em ${conversionRecord.recordMonth}. Analisar qualidade das propostas criadas nesse mês.`
   });
 }
 
@@ -920,6 +960,824 @@ const indicatorHighlights = {
   }
 };
 
+const stageMeta = new Map(
+  stagesRaw.map((stage) => [
+    stage.id,
+    { name: stage.name, order: stage.order_nr, pipeline: stage.pipeline_name ?? pipelineById[stage.pipeline_id]?.name }
+  ])
+);
+
+for (const deal of wonDeals) {
+  deal.salesCycleDays = daysBetween(deal.addTime, deal.wonTime);
+}
+
+const timeToCloseByMonth = groupBy(
+  wonDeals.filter((deal) => deal.salesCycleDays != null && deal.salesCycleDays >= 0),
+  (deal) => deal.wonMonth
+)
+  .map(([month, rows]) => {
+    const cycles = rows.map((deal) => deal.salesCycleDays);
+    return {
+      month,
+      wonDeals: rows.length,
+      averageDays: cycles.reduce((total, value) => total + value, 0) / cycles.length,
+      medianDays: median(cycles),
+      revenue: sum(rows, (deal) => deal.value)
+    };
+  })
+  .sort((a, b) => a.month.localeCompare(b.month));
+
+const fastestCloseMonth = [...timeToCloseByMonth]
+  .filter((row) => row.wonDeals >= 3)
+  .sort((a, b) => a.averageDays - b.averageDays)[0] ?? null;
+const slowestCloseMonth = [...timeToCloseByMonth]
+  .filter((row) => row.wonDeals >= 3)
+  .sort((a, b) => b.averageDays - a.averageDays)[0] ?? null;
+
+const revenueOriginByMonth = groupBy(wonDeals, (deal) => deal.wonMonth)
+  .map(([month, rows]) => {
+    const repeatRows = rows.filter((deal) => deal.isPostSaleByAccount);
+    const newRows = rows.filter((deal) => !deal.isPostSaleByAccount);
+    const totalRevenue = sum(rows, (deal) => deal.value);
+    const repeatRevenue = sum(repeatRows, (deal) => deal.value);
+    const newRevenue = sum(newRows, (deal) => deal.value);
+    return {
+      month,
+      totalRevenue,
+      newRevenue,
+      repeatRevenue,
+      newDeals: newRows.length,
+      repeatDeals: repeatRows.length,
+      newSharePct: totalRevenue ? (newRevenue / totalRevenue) * 100 : null,
+      repeatSharePct: totalRevenue ? (repeatRevenue / totalRevenue) * 100 : null
+    };
+  })
+  .sort((a, b) => a.month.localeCompare(b.month));
+
+const openDeals = analysisDeals.filter((deal) => deal.status === 'open');
+const lostDeals = analysisDeals.filter((deal) => deal.status === 'lost');
+const funnelByStage = {
+  open: aggregateStageRows(openDeals, stageMeta),
+  lost: aggregateStageRows(lostDeals, stageMeta),
+  won: aggregateStageRows(wonDeals, stageMeta).slice(0, 12),
+  summary: {
+    openDeals: openDeals.length,
+    openValue: sum(openDeals, (deal) => deal.value),
+    lostDeals: lostDeals.length,
+    lostValue: sum(lostDeals, (deal) => deal.value),
+    topOpenStage: [...aggregateStageRows(openDeals, stageMeta)].sort((a, b) => b.deals - a.deals)[0] ?? null,
+    topLostStage: [...aggregateStageRows(lostDeals, stageMeta)].sort((a, b) => b.deals - a.deals)[0] ?? null
+  }
+};
+
+const peakMonthsForMix = topMonthsByRevenue.slice(0, 3);
+const peakMix = peakMonthsForMix.map((peak) => {
+  const rows = businessTypeTrend.filter((row) => row.month === peak.month);
+  const totalRevenue = sum(rows, (row) => row.revenue);
+  return {
+    month: peak.month,
+    revenue: peak.revenue,
+    types: rows
+      .sort((a, b) => b.revenue - a.revenue)
+      .map((row) => ({
+        type: row.type,
+        revenue: row.revenue,
+        wonDeals: row.wonDeals,
+        sharePct: totalRevenue ? (row.revenue / totalRevenue) * 100 : 0
+      })),
+    dominantType: rows.sort((a, b) => b.revenue - a.revenue)[0]?.type ?? null
+  };
+});
+
+const averageTypeShares = groupBy(businessTypeTrend, (row) => row.type)
+  .map(([type, rows]) => ({
+    type,
+    averageRevenue: sum(rows, (row) => row.revenue) / Math.max(1, rows.length),
+    monthsActive: rows.length
+  }))
+  .sort((a, b) => b.averageRevenue - a.averageRevenue);
+
+const peakMixPatterns = peakMix.map((peak) => {
+  const topTypes = peak.types.slice(0, 3).map((item) => item.type);
+  return {
+    month: peak.month,
+    headline: `${topTypes.slice(0, 2).join(' + ') || peak.dominantType || 'Mix diverso'}`,
+    topTypes,
+    insight: peak.dominantType
+      ? `${peak.dominantType} concentrou ${pct(peak.types[0]?.sharePct ?? 0).replace('+', '')} da receita do mês.`
+      : 'Mix equilibrado entre tipos comerciais.'
+  };
+});
+
+const alertMetrics = [
+  { key: 'wonRevenue', label: 'Receita ganha', get: (row) => row.wonRevenue },
+  { key: 'wonDeals', label: 'Fechamentos', get: (row) => row.wonDeals },
+  { key: 'createdDeals', label: 'Novos negócios', get: (row) => row.createdDeals },
+  { key: 'averageTicket', label: 'Ticket médio', get: (row) => row.averageTicket },
+  {
+    key: 'newDealsConversionPct',
+    label: NEW_DEALS_CONVERSION_LABEL,
+    get: (row) => row.cohortConversionPct
+  }
+];
+
+const performanceAlerts = [];
+for (let index = 1; index < enrichedMonthly.length; index += 1) {
+  const current = enrichedMonthly[index];
+  const previous = enrichedMonthly[index - 1];
+  const declines = alertMetrics
+    .map((metric) => {
+      const currentValue = metric.get(current);
+      const previousValue = metric.get(previous);
+      if (currentValue == null || previousValue == null || previousValue === 0) return null;
+      const changePct = ((currentValue - previousValue) / previousValue) * 100;
+      if (changePct >= 0) return null;
+      return {
+        metric: metric.key,
+        metricLabel: metric.label,
+        currentValue,
+        previousValue,
+        changePct
+      };
+    })
+    .filter(Boolean);
+
+  if (declines.length >= 2) {
+    performanceAlerts.push({
+      month: current.month,
+      severity: declines.length >= 3 ? 'high' : 'medium',
+      declineCount: declines.length,
+      metrics: declines,
+      message:
+        declines.length >= 3
+          ? `${declines.length} indicadores caíram vs ${previous.month}. Revisar follow-up, propostas e conversão.`
+          : `${declines.length} indicadores recuaram vs ${previous.month}.`
+    });
+  }
+}
+
+const deepAnalysis = {
+  timeToClose: {
+    byMonth: timeToCloseByMonth,
+    overallAverageDays:
+      timeToCloseByMonth.length
+        ? sum(timeToCloseByMonth, (row) => row.averageDays * row.wonDeals) /
+          Math.max(1, sum(timeToCloseByMonth, (row) => row.wonDeals))
+        : null,
+    fastestMonth: fastestCloseMonth,
+    slowestMonth: slowestCloseMonth,
+    peakRevenueMonth: febRecord?.recordMonth ?? null,
+    peakRevenueCycleDays:
+      timeToCloseByMonth.find((row) => row.month === febRecord?.recordMonth)?.averageDays ?? null
+  },
+  revenueOrigin: {
+    byMonth: revenueOriginByMonth,
+    totals: {
+      newRevenue: sum(revenueOriginByMonth, (row) => row.newRevenue),
+      repeatRevenue: sum(revenueOriginByMonth, (row) => row.repeatRevenue),
+      newSharePct: (() => {
+        const total = sum(revenueOriginByMonth, (row) => row.totalRevenue);
+        return total ? (sum(revenueOriginByMonth, (row) => row.newRevenue) / total) * 100 : null;
+      })()
+    }
+  },
+  funnelByStage,
+  peakMix: {
+    peaks: peakMix,
+    patterns: peakMixPatterns,
+    benchmarkTypes: averageTypeShares.slice(0, 8)
+  },
+  performanceAlerts,
+  investigationNotes: [
+    fastestCloseMonth
+      ? {
+          kind: 'speed',
+          title: 'Fechamento mais rápido',
+          body: `${fastestCloseMonth.month} fechou em média ${Math.round(fastestCloseMonth.averageDays)} dias.`
+        }
+      : null,
+    revenueOriginByMonth.find((row) => row.month.startsWith('2026') && (row.repeatSharePct ?? 0) > 35)
+      ? {
+          kind: 'origin',
+          title: 'Recorrência puxando receita',
+          body: 'Meses com alta participação de clientes repetidos indicam base madura para pós-venda.'
+        }
+      : null,
+    funnelByStage.summary.topOpenStage
+      ? {
+          kind: 'funnel',
+          title: 'Gargalo atual do funil',
+          body: `Maior volume aberto em "${funnelByStage.summary.topOpenStage.stage}" (${funnelByStage.summary.topOpenStage.deals} negócios).`
+        }
+      : null
+  ].filter(Boolean)
+};
+
+function fmtNum(value) {
+  return Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+}
+
+function monthLabel(month) {
+  const [year, rawMonth] = month.split('-');
+  const label = monthNames[Number(rawMonth) - 1] ?? rawMonth;
+  return `${label}/${year.slice(2)}`;
+}
+
+function pctChange(next, base) {
+  if (!base) return next ? 100 : 0;
+  return ((next - base) / base) * 100;
+}
+
+const OPERATIONS = {
+  commercialHeadcount: 2,
+  projectistasHistorical: 3,
+  projectistasCurrent: 5,
+  h1RevenueTarget: 1_000_000,
+  commercialClosingsPerPersonComfort: 8,
+  trafficQ1Monthly: 2_000,
+  trafficQ2Monthly: 2_500,
+  automationNote:
+    'Equipe ampliada de 3 para 5 projetistas com automação — absorve mais laudos sem crescer na mesma proporção.'
+};
+
+function adSpendForMonth(month, h2Scale = 1) {
+  const monthNumber = Number(month.split('-')[1]);
+  if (monthNumber <= 3) return OPERATIONS.trafficQ1Monthly;
+  if (monthNumber <= 6) return OPERATIONS.trafficQ2Monthly;
+  return Math.round(OPERATIONS.trafficQ2Monthly * h2Scale);
+}
+
+function distributeTypeWorkload(wonDealsTarget, revenueTarget, typeShares) {
+  return typeShares.map((row) => ({
+    type: row.type,
+    projects: Math.max(0, wonDealsTarget * (row.share / 100)),
+    revenue: revenueTarget * (row.share / 100)
+  }));
+}
+
+function buildMonthTargetRow(config) {
+  const {
+    month,
+    label,
+    revenueTarget,
+    wonDealsTarget,
+    createdDealsTarget,
+    conversionTargetPct,
+    baseline2025Revenue,
+    baseProjectionRevenue,
+    cumulativeRevenue,
+    typeShares,
+    h2Scale
+  } = config;
+
+  const averageTicketTarget = wonDealsTarget ? revenueTarget / wonDealsTarget : 0;
+  const adSpend = adSpendForMonth(month, h2Scale);
+  const commercialHeadcount = OPERATIONS.commercialHeadcount;
+
+  return {
+    month,
+    label,
+    revenueTarget,
+    wonDealsTarget,
+    averageTicketTarget,
+    createdDealsTarget,
+    conversionTargetPct,
+    baseline2025Revenue: baseline2025Revenue ?? 0,
+    baseProjectionRevenue: baseProjectionRevenue ?? 0,
+    gapVsBase: revenueTarget - (baseProjectionRevenue ?? 0),
+    cumulativeRevenue,
+    adSpend,
+    costPerClosing: wonDealsTarget ? adSpend / wonDealsTarget : null,
+    perCommercial: {
+      closings: wonDealsTarget / commercialHeadcount,
+      revenue: revenueTarget / commercialHeadcount,
+      newDeals: createdDealsTarget / commercialHeadcount
+    },
+    perProjectista: {
+      activeProjects: wonDealsTarget / OPERATIONS.projectistasCurrent
+    },
+    workloadByType: distributeTypeWorkload(wonDealsTarget, revenueTarget, typeShares)
+  };
+}
+
+function buildGrowthGuide(config) {
+  const {
+    id,
+    name,
+    tagline,
+    premise,
+    annualFloor,
+    h2Floor,
+    h2ScaleMode
+  } = config;
+
+  const h1Projected = h1ProjectedTotal;
+  const h2Base = baseScenario?.revenue ?? realisticRevenue;
+  const annualBase = h1Projected + h2Base;
+  const h1Target = OPERATIONS.h1RevenueTarget;
+  const h1GapVsProjected = h1Target - h1Projected;
+
+  let h2Target;
+  if (h2ScaleMode === 'historical') {
+    h2Target = h2Floor;
+  } else {
+    h2Target = Math.max(h2Floor, h2Revenue2025 * 2, h2Base);
+  }
+
+  const annualTarget = Math.max(annualFloor, h1Target + h2Target);
+  const h2GapVsBase = h2Target - h2Base;
+  const annualGapVsBase = annualTarget - annualBase;
+  const h2Scale = h2Base ? h2Target / h2Base : 1;
+
+  const h1Funnel = commercialFunnel.filter((row) => row.month >= '2026-01' && row.month <= '2026-05');
+  const h1ConversionValues = h1Funnel.map((row) => row.cohortConversionPct).filter((value) => value != null);
+  const h1AverageConversion = h1ConversionValues.length
+    ? h1ConversionValues.reduce((sum, value) => sum + value, 0) / h1ConversionValues.length
+    : 15;
+  const h1AverageCreated = completed2026Months.length
+    ? sum(completed2026Months, (row) => row.createdDeals) / completed2026Months.length
+    : 0;
+  const h1AverageWon = h1WonAverage2026;
+  const h1AverageTicket = h1AverageWon ? h1Average2026 / h1AverageWon : 9866;
+
+  const h2AverageMonthlyRevenue = h2Target / 6;
+  const h2AverageWonDeals = h1AverageTicket ? h2AverageMonthlyRevenue / h1AverageTicket : h1AverageWon * h2Scale;
+  const h2AverageCreatedDeals = h1AverageConversion
+    ? h2AverageWonDeals / (h1AverageConversion / 100)
+    : h1AverageCreated * h2Scale;
+  const h2AverageTicket = h2AverageWonDeals ? h2AverageMonthlyRevenue / h2AverageWonDeals : h1AverageTicket;
+  const h2AverageConversionPct = h2AverageCreatedDeals
+    ? (h2AverageWonDeals / h2AverageCreatedDeals) * 100
+    : h1AverageConversion;
+
+  const topTypes2026 = businessTypeTrend
+    .filter((row) => row.month.startsWith('2026') && row.month <= '2026-05')
+    .reduce((acc, row) => {
+      acc[row.type] = (acc[row.type] ?? 0) + row.revenue;
+      return acc;
+    }, {});
+  const typeEntries = Object.entries(topTypes2026).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const typeTotal = typeEntries.reduce((sum, [, revenue]) => sum + revenue, 0) || 1;
+  const typeShares = typeEntries.map(([type, revenue]) => ({
+    type,
+    share: (revenue / typeTotal) * 100,
+    averageTicket: (() => {
+      const deals = businessTypeTrend
+        .filter((row) => row.type === type && row.month.startsWith('2026') && row.month <= '2026-05')
+        .reduce((sum, row) => sum + row.wonDeals, 0);
+      return deals ? revenue / deals : h1AverageTicket;
+    })()
+  }));
+
+  const typeMix = typeShares.map((row) => {
+    const revenueTarget = h2Target * (row.share / 100);
+    return {
+      type: row.type,
+      revenueSharePct: row.share,
+      revenueTarget,
+      wonDealsTarget: row.averageTicket ? revenueTarget / row.averageTicket : 0,
+      averageTicket: row.averageTicket,
+      annualProjects: 0
+    };
+  });
+
+  const h1Timeline = timeline2026.filter((row) => row.month <= '2026-06');
+  const h1BaseRevenue = h1Timeline.reduce(
+    (sum, row) => sum + (row.kind === 'partial' ? row.projectedRevenue ?? row.revenue : row.revenue),
+    0
+  );
+  const h1Scale = h1BaseRevenue ? h1Target / h1BaseRevenue : 1;
+
+  let h1Cumulative = 0;
+  const h1MonthlyTargets = h1Timeline.map((row) => {
+    const baseRevenue =
+      row.kind === 'partial' ? row.projectedRevenue ?? row.revenue : row.revenue;
+    const revenueTarget = baseRevenue * h1Scale;
+    const wonDealsTarget = h1AverageTicket ? revenueTarget / h1AverageTicket : row.wonDeals * h1Scale;
+    const createdDealsTarget = h1AverageConversion
+      ? wonDealsTarget / (h1AverageConversion / 100)
+      : (row.createdDeals || h1AverageCreated) * h1Scale;
+    h1Cumulative += revenueTarget;
+    const funnel = commercialFunnel.find((item) => item.month === row.month);
+    return buildMonthTargetRow({
+      month: row.month,
+      label: row.label,
+      revenueTarget,
+      wonDealsTarget,
+      createdDealsTarget,
+      conversionTargetPct: funnel?.cohortConversionPct ?? h1AverageConversion,
+      baseline2025Revenue: monthsByKey[row.month.replace('2026', '2025')]?.wonRevenue ?? 0,
+      baseProjectionRevenue: baseRevenue,
+      cumulativeRevenue: h1Cumulative,
+      typeShares,
+      h2Scale: 1
+    });
+  });
+
+  let cumulative = 0;
+  const monthlyTargets = projectionMonths.map((row) => {
+    const share = h2Revenue2025 ? row.baselineRevenue2025 / h2Revenue2025 : 1 / 6;
+    const revenueTarget = h2ScaleMode === 'historical'
+      ? row.projectedRevenue * h2Scale
+      : h2Target * share;
+    const wonDealsTarget = h1AverageTicket
+      ? revenueTarget / h1AverageTicket
+      : row.projectedWonDeals * h2Scale;
+    const createdDealsTarget = h2AverageConversionPct
+      ? wonDealsTarget / (h2AverageConversionPct / 100)
+      : h2AverageCreatedDeals * share * 6;
+    cumulative += revenueTarget;
+    return buildMonthTargetRow({
+      month: row.month,
+      label: row.label,
+      revenueTarget,
+      wonDealsTarget,
+      createdDealsTarget,
+      conversionTargetPct: h2AverageConversionPct,
+      baseline2025Revenue: row.baselineRevenue2025,
+      baseProjectionRevenue: row.projectedRevenue,
+      cumulativeRevenue: cumulative,
+      typeShares,
+      h2Scale
+    });
+  });
+
+  const fullYearPlan = [...h1MonthlyTargets, ...monthlyTargets].map((row, index, rows) => ({
+    ...row,
+    cumulativeRevenue: rows.slice(0, index + 1).reduce((sum, item) => sum + item.revenueTarget, 0)
+  }));
+
+  const annualRevenueTarget = annualTarget;
+  const typeMixAnnual = typeShares.map((row) => {
+    const revenueTarget = annualRevenueTarget * (row.share / 100);
+    return {
+      type: row.type,
+      revenueSharePct: row.share,
+      revenueTarget,
+      wonDealsTarget: row.averageTicket ? revenueTarget / row.averageTicket : 0,
+      averageTicket: row.averageTicket
+    };
+  });
+
+  typeMix.forEach((row) => {
+    const annual = typeMixAnnual.find((item) => item.type === row.type);
+    row.annualProjects = annual ? Math.ceil(annual.wonDealsTarget) : Math.ceil(row.wonDealsTarget);
+  });
+
+  const h1WonTotal = h1MonthlyTargets.reduce((sum, row) => sum + row.wonDealsTarget, 0);
+  const h2WonTotal = monthlyTargets.reduce((sum, row) => sum + row.wonDealsTarget, 0);
+  const h1AdTotal = h1MonthlyTargets.reduce((sum, row) => sum + row.adSpend, 0);
+  const h2AdTotal = monthlyTargets.reduce((sum, row) => sum + row.adSpend, 0);
+  const annualAdTotal = h1AdTotal + h2AdTotal;
+  const annualWonTotal = h1WonTotal + h2WonTotal;
+
+  const perPersonH2Closings = h2AverageWonDeals / OPERATIONS.commercialHeadcount;
+  const recommendedCommercial = Math.max(
+    OPERATIONS.commercialHeadcount,
+    Math.ceil(h2AverageWonDeals / OPERATIONS.commercialClosingsPerPersonComfort)
+  );
+  const hireTrigger =
+    recommendedCommercial > OPERATIONS.commercialHeadcount
+      ? `Contratar ${recommendedCommercial - OPERATIONS.commercialHeadcount}º comercial quando fechamentos sustentarem acima de ${OPERATIONS.commercialClosingsPerPersonComfort}/pessoa por 2 meses seguidos.`
+      : '2 comerciais sustentam o cenário — priorizar conversão e automação antes de contratar.';
+
+  const h2ProjectsPerPerson = h2AverageWonDeals / OPERATIONS.projectistasCurrent;
+  const historicalProjectsPerPerson = h1AverageWon / OPERATIONS.projectistasHistorical;
+  let capacityStatus = 'ok';
+  let capacityNote = `Com 5 projetistas e automação, ${fmtNum(h2ProjectsPerPerson)} projetos/pessoa/mês é absorvível (histórico com 3: ${fmtNum(historicalProjectsPerPerson)}/pessoa).`;
+  if (h2ProjectsPerPerson > historicalProjectsPerPerson * 1.35) {
+    capacityStatus = 'attention';
+    capacityNote = `Volume H2 (${fmtNum(h2ProjectsPerPerson)}/projetista/mês) exige priorizar laudos padronizados e fila de automação.`;
+  }
+  if (h2ProjectsPerPerson > historicalProjectsPerPerson * 1.7) {
+    capacityStatus = 'critical';
+    capacityNote = 'Operação no limite — considerar 6º projetista ou parceiro para obras.';
+  }
+
+  const topOpenStage = funnelByStage.summary.topOpenStage;
+  const openPipelineValue = funnelByStage.summary.openValue;
+  const peakMonth = deepAnalysis.peakMix.patterns[0];
+  const avgCycleDays = deepAnalysis.timeToClose.overallAverageDays ?? 30;
+  const targetCycleDays = Math.max(14, Math.round(avgCycleDays * 0.75));
+
+  const revenueUplift = pctChange(h2AverageMonthlyRevenue, h1Average2026);
+  const wonUplift = pctChange(h2AverageWonDeals, h1AverageWon);
+  const ticketUplift = pctChange(h2AverageTicket, h1AverageTicket);
+  const createdUplift = pctChange(h2AverageCreatedDeals, h1AverageCreated);
+  const conversionUplift = h2AverageConversionPct - h1AverageConversion;
+
+  const extraWonDeals = Math.ceil(Math.max(0, h2AverageWonDeals - h1AverageWon));
+  const extraCreated = Math.ceil(Math.max(0, h2AverageCreatedDeals - h1AverageCreated));
+  const recurrenceNote =
+    'Recorrência e novas fontes de receita serão acompanhadas à parte — não entram nesta meta de contratos fechados.';
+
+  const trafficNote =
+    id === '3x'
+      ? `Tráfego H2 escalado ${fmtNum((h2Scale - 1) * 100)}% acima do Q2 para sustentar ${Math.round(h2WonTotal)} fechamentos no semestre.`
+      : 'Tráfego H2 mantém R$ 2.500/mês (ritmo Q2) alinhado ao cenário base.';
+
+  const pillars = [
+    {
+      id: 'comercial',
+      title: 'Comercial (2 pessoas)',
+      subtitle: 'Resultado por vendedor e gatilho de contratação',
+      actions: [
+        {
+          priority: recommendedCommercial > 2 ? 'critical' : 'high',
+          title: 'Meta por comercial no H2',
+          detail: `${Math.round(h2AverageWonDeals)} fechamentos/mês na equipe → ${fmtNum(perPersonH2Closings)}/pessoa (${money(h2AverageMonthlyRevenue / OPERATIONS.commercialHeadcount)}/pessoa).`,
+          metric: 'Fechamentos/pessoa',
+          target: `${fmtNum(perPersonH2Closings)}/mês`
+        },
+        {
+          priority: recommendedCommercial > 2 ? 'critical' : 'medium',
+          title: hireTrigger.split('.')[0],
+          detail: hireTrigger,
+          metric: 'Equipe comercial',
+          target: `${OPERATIONS.commercialHeadcount} hoje → ${recommendedCommercial} recomendado`
+        },
+        {
+          priority: conversionUplift > 3 ? 'critical' : 'high',
+          title: 'Recuperar conversão dos novos negócios',
+          detail: `${NEW_DEALS_CONVERSION_LABEL} em maio/2026: 6,5%. Meta H2: ${fmtNum(h2AverageConversionPct)}%.`,
+          metric: NEW_DEALS_CONVERSION_SHORT,
+          target: `${fmtNum(h2AverageConversionPct)}%`
+        },
+        {
+          priority: 'high',
+          title: 'Desbloquear pipeline em negociação',
+          detail: topOpenStage
+            ? `${topOpenStage.deals} negócios em "${topOpenStage.stage}" (${money(topOpenStage.value)}).`
+            : 'Revisar etapas com maior valor parado.',
+          metric: 'Pipeline aberto',
+          target: money(Math.min(openPipelineValue, h2Target * 0.35))
+        }
+      ]
+    },
+    {
+      id: 'aquisicao',
+      title: 'Tráfego e aquisição',
+      subtitle: 'Investimento alinhado ao funil',
+      actions: [
+        {
+          priority: 'high',
+          title: 'Manter ritmo Q1/Q2 em tráfego',
+          detail: `Jan–mar: ${money(OPERATIONS.trafficQ1Monthly)}/mês · Abr–jun: ${money(OPERATIONS.trafficQ2Monthly)}/mês · Total H1: ${money(h1AdTotal)}.`,
+          metric: 'Investimento H1',
+          target: money(h1AdTotal)
+        },
+        {
+          priority: id === '3x' ? 'critical' : 'high',
+          title: 'Orçamento de tráfego no H2',
+          detail: trafficNote,
+          metric: 'Investimento H2',
+          target: money(h2AdTotal)
+        },
+        {
+          priority: 'high',
+          title: 'Custo por fechamento via tráfego',
+          detail: `Investimento anual ${money(annualAdTotal)} para ~${Math.round(annualWonTotal)} contratos.`,
+          metric: 'CPA médio',
+          target: annualWonTotal ? money(annualAdTotal / annualWonTotal) : 'n/a'
+        },
+        {
+          priority: createdUplift > 15 ? 'critical' : 'high',
+          title: 'Novos negócios qualificados',
+          detail: `${Math.round(h2AverageCreatedDeals)} novos/mês (${fmtNum(h2AverageCreatedDeals / OPERATIONS.commercialHeadcount)}/comercial).`,
+          metric: 'Novos negócios/mês',
+          target: `${Math.round(h2AverageCreatedDeals)}${extraCreated > 0 ? ` (+${extraCreated})` : ''}`
+        }
+      ]
+    },
+    {
+      id: 'operacao',
+      title: 'Operação (5 projetistas)',
+      subtitle: 'Volume de trabalhos e tipos de projeto',
+      actions: [
+        {
+          priority: capacityStatus === 'critical' ? 'critical' : 'high',
+          title: 'Capacidade de entrega no H2',
+          detail: capacityNote,
+          metric: 'Projetos/projetista',
+          target: `${fmtNum(h2ProjectsPerPerson)}/mês`
+        },
+        {
+          priority: 'high',
+          title: 'Histórico vs capacidade atual',
+          detail: `${OPERATIONS.automationNote} Histórico: ${fmtNum(historicalProjectsPerPerson)} proj./pessoa/mês com 3.`,
+          metric: 'Projetistas',
+          target: `${OPERATIONS.projectistasHistorical} → ${OPERATIONS.projectistasCurrent}`
+        },
+        ...typeMix.slice(0, 3).map((row, index) => ({
+          priority: index === 0 ? 'critical' : 'high',
+          title: `Fila de ${row.type.split(' - ')[0] ?? row.type}`,
+          detail: `H2: ${Math.ceil(row.wonDealsTarget)} trabalhos · Ano: ${row.annualProjects} contratos · ${money(row.revenueTarget)}.`,
+          metric: 'Contratos no semestre',
+          target: `${Math.ceil(row.wonDealsTarget)} fechamentos`
+        }))
+      ]
+    },
+    {
+      id: 'mix',
+      title: 'Mix proporcional (histórico real)',
+      subtitle: id === '3x' ? 'Escala do cenário Realista mantendo sazonalidade 2025' : 'Mix jan–mai/2026',
+      actions: typeMix.slice(0, 4).map((row, index) => ({
+        priority: index === 0 ? 'critical' : index === 1 ? 'high' : 'medium',
+        title: `${row.type.split(' - ')[0] ?? row.type}`,
+        detail: `Share histórico ${fmtNum(row.revenueSharePct)}% · H2 ${money(row.revenueTarget)} · ticket ${money(row.averageTicket)}.`,
+        metric: 'Receita H2',
+        target: `${Math.ceil(row.wonDealsTarget)} contratos`
+      }))
+    },
+    {
+      id: 'gestao',
+      title: 'Gestão e ritmo',
+      subtitle: 'H1 em R$ 1M + checkpoints H2',
+      actions: [
+        {
+          priority: 'critical',
+          title: 'Meta H1: R$ 1 milhão',
+          detail: `Distribuição ajustada: ${money(h1Target)} no semestre (gap ${h1GapVsProjected >= 0 ? '+' : ''}${money(h1GapVsProjected)} vs projeção automática).`,
+          metric: 'Receita H1',
+          target: money(h1Target)
+        },
+        {
+          priority: 'critical',
+          title: 'Ritual semanal de pipeline',
+          detail: 'Segunda: negócios parados >15 dias, propostas sem retorno, CPA do tráfego vs meta.',
+          metric: 'Cadência',
+          target: 'Semanal'
+        },
+        {
+          priority: id === '3x' ? 'critical' : 'medium',
+          title: 'Recorrência à parte',
+          detail: recurrenceNote,
+          metric: 'Nova receita',
+          target: 'Contabilizar separado'
+        }
+      ]
+    }
+  ];
+
+  const milestones = monthlyTargets.map((row, index) => ({
+    month: row.month,
+    label: row.label,
+    cumulativeTarget: h1Target + row.cumulativeRevenue,
+    checkpoint:
+      index === 0
+        ? 'Primeiro mês H2 — validar CPA e fechamentos/pessoa'
+        : index === 2
+          ? 'Meio do H2 — revisar capacidade dos 5 projetistas'
+          : index === 5
+            ? 'Fechamento do ano'
+            : `Acumulado H2: ${money(row.cumulativeRevenue)}`
+  }));
+
+  const risks = [
+    {
+      title: 'H1 abaixo de R$ 1M se junho não recuperar',
+      mitigation: `Foco em ${money(h1MonthlyTargets.find((row) => row.month === '2026-06')?.revenueTarget ?? 0)} em jun/2026 e pipeline quente em jul.`
+    },
+    {
+      title: 'Queda de conversão após fevereiro',
+      mitigation: `Manter ${NEW_DEALS_CONVERSION_SHORT} acima de ${fmtNum(Math.max(h1AverageConversion, 18))}%.`
+    },
+    perPersonH2Closings > OPERATIONS.commercialClosingsPerPersonComfort
+      ? {
+          title: '2 comerciais no limite de capacidade',
+          mitigation: hireTrigger
+        }
+      : null,
+    capacityStatus !== 'ok'
+      ? {
+          title: 'Operação pode saturar no H2',
+          mitigation: capacityNote
+        }
+      : null,
+    {
+      title: 'Recorrência ainda em construção',
+      mitigation: 'Não contar com recorrência nesta meta — tratar upsell como receita adicional.'
+    }
+  ].filter(Boolean);
+
+  return {
+    id,
+    name,
+    tagline,
+    premise,
+    annualTarget,
+    h1Target,
+    h2Target,
+    annualGapVsBase,
+    h1GapVsProjected,
+    h2GapVsBase,
+    h2MultiplierVs2025: h2Revenue2025 ? h2Target / h2Revenue2025 : 1,
+    recurrenceNote,
+    baseline: {
+      h1Projected,
+      h2Base,
+      annualBase,
+      h2Revenue2025,
+      h2WonDeals2025
+    },
+    monthlyTargets,
+    h1MonthlyTargets,
+    fullYearPlan,
+    kpis: {
+      h2AverageMonthlyRevenue,
+      h2AverageWonDeals,
+      h2AverageTicket,
+      h2AverageCreatedDeals,
+      h2AverageConversionPct,
+      currentH1: {
+        averageRevenue: h1Average2026,
+        averageWonDeals: h1AverageWon,
+        averageTicket: h1AverageTicket,
+        averageCreatedDeals: h1AverageCreated,
+        averageConversionPct: h1AverageConversion
+      },
+      uplift: {
+        revenuePct: revenueUplift,
+        wonDealsPct: wonUplift,
+        ticketPct: ticketUplift,
+        createdDealsPct: createdUplift,
+        conversionPts: conversionUplift
+      }
+    },
+    typeMix,
+    typeMixAnnual,
+    operationalCapacity: {
+      commercialTeam: {
+        currentHeadcount: OPERATIONS.commercialHeadcount,
+        recommendedHeadcount: recommendedCommercial,
+        hireTrigger,
+        perPersonH1: {
+          monthlyClosings: h1AverageWon / OPERATIONS.commercialHeadcount,
+          monthlyRevenue: h1Average2026 / OPERATIONS.commercialHeadcount,
+          monthlyNewDeals: h1AverageCreated / OPERATIONS.commercialHeadcount
+        },
+        perPersonH2: {
+          monthlyClosings: perPersonH2Closings,
+          monthlyRevenue: h2AverageMonthlyRevenue / OPERATIONS.commercialHeadcount,
+          monthlyNewDeals: h2AverageCreatedDeals / OPERATIONS.commercialHeadcount
+        }
+      },
+      deliveryTeam: {
+        projectistasHistorical: OPERATIONS.projectistasHistorical,
+        projectistasCurrent: OPERATIONS.projectistasCurrent,
+        automationNote: OPERATIONS.automationNote,
+        historicalProjectsPerPerson,
+        h2ProjectsPerPerson,
+        capacityStatus,
+        capacityNote
+      }
+    },
+    trafficInvestment: {
+      h1Total: h1AdTotal,
+      h2Total: h2AdTotal,
+      annualTotal: annualAdTotal,
+      h1ScheduleNote:
+        'Jan, fev e mar: R$ 2.000/mês · Abr, mai e jun: R$ 2.500/mês (valores mensais investidos).',
+      monthly: fullYearPlan.map((row) => ({
+        month: row.month,
+        label: row.label,
+        adSpend: row.adSpend,
+        wonDealsTarget: row.wonDealsTarget,
+        costPerClosing: row.costPerClosing,
+        semester: row.month <= '2026-06' ? 'H1' : 'H2'
+      })),
+      averageCostPerClosing: annualWonTotal ? annualAdTotal / annualWonTotal : null,
+      note: trafficNote
+    },
+    pillars,
+    milestones,
+    risks
+  };
+}
+
+const growthGuides = {
+  projection2x: buildGrowthGuide({
+    id: '2x',
+    name: 'Projeção 2x',
+    tagline: 'R$ 1M no H1 · 2× H2/2025 · superar R$ 2M no ano',
+    premise:
+      'Executar cenário Realista com H1 ajustado para R$ 1M, 2 comerciais e 5 projetistas — recorrência contabilizada à parte.',
+    annualFloor: 2_000_000,
+    h2Floor: Math.max(h2Revenue2025 * 2, baseScenario?.revenue ?? 0),
+    h2ScaleMode: 'base'
+  }),
+  projection3x: buildGrowthGuide({
+    id: '3x',
+    name: 'Projeção 3x',
+    tagline: 'R$ 1M no H1 · R$ 2M no H2 · superar R$ 3M no ano',
+    premise:
+      'Escala proporcional ao cenário Realista histórico (sazonalidade 2025 + mix real) — operação ajustada para absorver o volume.',
+    annualFloor: 3_000_000,
+    h2Floor: 2_000_000,
+    h2ScaleMode: 'historical'
+  })
+};
+
 const report = {
   generatedAt: new Date().toISOString(),
   scope: 'Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus',
@@ -936,6 +1794,8 @@ const report = {
   projection2026H2,
   planningSummary,
   indicatorHighlights,
+  deepAnalysis,
+  growthGuides,
   businessTypeMonthly: businessTypeTrend,
   businessTypeDeals: businessTypeMonthly,
   cnpjCoverage,
@@ -1025,7 +1885,7 @@ Gerado em: ${new Date().toLocaleString('pt-BR')}
 
 ## Funil comercial mensal
 
-| Mes | Novos negocios | Valor criado | Ganhos no mes | Receita ganha | Perdidos no mes | Conversao da coorte | Base aberta fim do mes | Valor em aberto |
+| Mes | Novos negocios | Valor criado | Ganhos no mes | Receita ganha | Perdidos no mes | Conversao novos neg. | Base aberta fim do mes | Valor em aberto |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 ${commercialFunnel.filter((row) => row.month >= '2026-01' && row.month <= '2026-06').map((row) => `| ${row.month} | ${row.createdDeals} | ${money(row.createdValue)} | ${row.wonDeals} | ${money(row.wonValue)} | ${row.lostDeals} | ${pct(row.cohortConversionPct)} | ${row.openBaseDealsEndOfMonth} | ${money(row.openBaseValueEndOfMonth)} |`).join('\n')}
 

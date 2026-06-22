@@ -2,7 +2,13 @@
 
 import { Award, Lightbulb, Repeat2, TrendingUp, Trophy } from "lucide-react";
 import type { Analysis } from "@/lib/analysis/types";
-import { brl, formatGrowth, formatIndicatorValue, monthLabel } from "@/lib/analysis/format";
+import {
+  brl,
+  formatGrowth,
+  formatIndicatorValue,
+  monthLabel,
+  NEW_DEALS_CONVERSION_SHORT
+} from "@/lib/analysis/format";
 import {
   Bar,
   BarChart,
@@ -30,7 +36,7 @@ export function IndicatorAnalysisSection({ analysis }: Props) {
     }));
 
   return (
-    <section className="indicator-analysis" id="recordes">
+    <section className="indicator-analysis">
       <div className="section-title">
         <div>
           <h2>Análise detalhada de indicadores</h2>
@@ -113,7 +119,7 @@ export function IndicatorAnalysisSection({ analysis }: Props) {
                   <strong>{brl.format(item.averageTicket)}</strong>
                 </div>
                 <div className="mini">
-                  <span className="metric-label">Conv. coorte</span>
+                  <span className="metric-label">{NEW_DEALS_CONVERSION_SHORT}</span>
                   <strong>{formatGrowth(item.cohortConversionPct)}</strong>
                 </div>
               </div>

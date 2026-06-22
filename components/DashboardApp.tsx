@@ -21,6 +21,9 @@ import {
 } from "@/components/planning/planning-charts";
 import { DashboardSections } from "@/components/dashboard/DashboardSections";
 import { IndicatorAnalysisSection } from "@/components/dashboard/IndicatorAnalysisSection";
+import { PerformanceAlerts } from "@/components/dashboard/PerformanceAlerts";
+import { DeepAnalysisSection } from "@/components/dashboard/DeepAnalysisSection";
+import { GrowthGuidesSection } from "@/components/guides/GrowthGuidesSection";
 
 type Props = {
   analysis: Analysis;
@@ -65,71 +68,81 @@ export function DashboardApp({ analysis, generatedAt }: Props) {
 
       <ExecutiveSummary kpis={kpis} />
 
-      <section className="section-title" id="indicadores">
-        <div>
-          <h2>Planejamento e projeção</h2>
-          <p>Visão executiva anual, trimestral e linha do tempo 2026 com cenário selecionado.</p>
-        </div>
-        <span className="pill green scenario-pill">{scenario}</span>
-      </section>
+      <PerformanceAlerts alerts={analysis.deepAnalysis.performanceAlerts} />
 
-      <section className="dashboard-grid planning-charts-grid">
-        <div className="card chart-card">
-          <div className="card-title">
-            <div>
-              <h2>Ponte anual</h2>
-              <span>2025 → YTD 2026 → restante projetado → total</span>
+      <section className="page-zone" id="planejamento">
+        <div className="section-title">
+          <div>
+            <h2>Planejamento e projeção</h2>
+            <p>Cenários, visão anual e linha do tempo 2026 com base no ritmo real e sazonalidade.</p>
+          </div>
+          <span className="pill green scenario-pill">{scenario}</span>
+        </div>
+
+        <section className="dashboard-grid planning-charts-grid">
+          <div className="card chart-card">
+            <div className="card-title">
+              <div>
+                <h2>Ponte anual</h2>
+                <span>2025 → YTD 2026 → restante projetado → total</span>
+              </div>
+            </div>
+            <div className="chart-box">
+              <AnnualBridgeChart data={bridgeData} />
             </div>
           </div>
-          <div className="chart-box">
-            <AnnualBridgeChart data={bridgeData} />
-          </div>
-        </div>
 
-        <div className="card chart-card">
-          <div className="card-title">
-            <div>
-              <h2>Trimestres 2025 x 2026</h2>
-              <span>Realizado e projeção por trimestre</span>
+          <div className="card chart-card">
+            <div className="card-title">
+              <div>
+                <h2>Trimestres 2025 x 2026</h2>
+                <span>Realizado e projeção por trimestre</span>
+              </div>
+            </div>
+            <div className="chart-box">
+              <QuarterlyChart data={quarterlyData} />
             </div>
           </div>
-          <div className="chart-box">
-            <QuarterlyChart data={quarterlyData} />
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="dashboard-grid">
-        <div className="card chart-card span-2">
-          <div className="card-title">
-            <div>
-              <h2>Linha do tempo 2026</h2>
-              <span>Realizado, parcial e projetado (jul–dez) — cenário {scenario}</span>
+        <section className="dashboard-grid">
+          <div className="card chart-card span-2">
+            <div className="card-title">
+              <div>
+                <h2>Linha do tempo 2026</h2>
+                <span>Realizado, parcial e projetado (jul–dez)</span>
+              </div>
+            </div>
+            <div className="chart-box chart-box-tall">
+              <Timeline2026Chart data={timelineData} />
             </div>
           </div>
-          <div className="chart-box chart-box-tall">
-            <Timeline2026Chart data={timelineData} />
+        </section>
+
+        <div className="section-title subsection-title">
+          <div>
+            <h3>Análise mês a mês</h3>
+            <p>Clique em um mês para drill-down por tipo e fechamentos.</p>
           </div>
         </div>
-      </section>
 
-      <section className="section-title">
-        <div>
-          <h2>Análise mês a mês</h2>
-          <p>Clique em um mês para abrir drill-down por tipo de negócio e fechamentos.</p>
+        <div className={`planning-table-layout ${monthDetail ? "with-drilldown" : ""}`}>
+          <MonthlyMasterTable
+            rows={tableRows}
+            selectedMonth={selectedMonth}
+            onSelectMonth={setSelectedMonth}
+          />
+          {monthDetail ? <MonthDrillDown detail={monthDetail} onClose={() => setSelectedMonth(null)} /> : null}
         </div>
       </section>
 
-      <div className={`planning-table-layout ${monthDetail ? "with-drilldown" : ""}`}>
-        <MonthlyMasterTable
-          rows={tableRows}
-          selectedMonth={selectedMonth}
-          onSelectMonth={setSelectedMonth}
-        />
-        {monthDetail ? <MonthDrillDown detail={monthDetail} onClose={() => setSelectedMonth(null)} /> : null}
-      </div>
+      <GrowthGuidesSection guides={analysis.growthGuides} />
 
-      <IndicatorAnalysisSection analysis={analysis} />
+      <DeepAnalysisSection analysis={analysis} />
+
+      <section className="page-zone" id="recordes">
+        <IndicatorAnalysisSection analysis={analysis} />
+      </section>
 
       <DashboardSections analysis={analysis} filters={filters} kpis={kpis} />
     </>

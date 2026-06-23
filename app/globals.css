@@ -358,6 +358,118 @@ a {
   background: var(--green);
 }
 
+.mix-workbench {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.mix-control-panel {
+  grid-row: span 2;
+}
+
+.mix-filter-group {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.mix-type-chips,
+.mix-month-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.mix-chip,
+.mix-month-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fbfcfc;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.mix-chip span {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.mix-chip.active,
+.mix-month-chips button.active {
+  border-color: #b8e6d4;
+  background: #f3fbf7;
+  color: var(--ink);
+  box-shadow: 0 0 0 1px rgba(33, 166, 122, 0.12);
+}
+
+.mix-kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.mix-chart-card {
+  min-height: 430px;
+}
+
+.mix-chart-box {
+  height: 340px;
+}
+
+.mix-month-panel {
+  min-height: 430px;
+}
+
+.mix-service-list {
+  display: grid;
+  gap: 14px;
+}
+
+.mix-service-row {
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mix-service-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.mix-service-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.mix-service-head strong {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.mix-service-head span {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.mix-share-bar {
+  height: 11px;
+}
+
 .mini-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1302,8 +1414,13 @@ tr:last-child td {
   .hero-band,
   .dashboard-grid,
   .executive-brief,
-  .insights {
+  .insights,
+  .mix-workbench {
     grid-template-columns: 1fr;
+  }
+
+  .mix-control-panel {
+    grid-row: auto;
   }
 
   .kpi-grid {
@@ -1351,6 +1468,15 @@ tr:last-child td {
   .mini-grid,
   .scenario {
     grid-template-columns: 1fr;
+  }
+
+  .mix-chart-card,
+  .mix-month-panel {
+    min-height: 0;
+  }
+
+  .mix-chart-box {
+    height: 300px;
   }
 
   .scenario-values {

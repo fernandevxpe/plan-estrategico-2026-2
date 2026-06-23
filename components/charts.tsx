@@ -50,6 +50,18 @@ type ProjectionMonthItem = {
   projectedRevenue: number;
 };
 
+type MixChartItem = {
+  month: string;
+  label: string;
+  totalRevenue: number;
+  [key: string]: string | number;
+};
+
+type MixTypeMeta = {
+  type: string;
+  color: string;
+};
+
 const brl = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -57,6 +69,21 @@ const brl = new Intl.NumberFormat("pt-BR", {
 });
 
 const colors = ["#21a67a", "#2368a0", "#b67818", "#0f766e"];
+
+const mixColors = [
+  "#21a67a",
+  "#2368a0",
+  "#b67818",
+  "#0f766e",
+  "#7c5cbe",
+  "#c8553d",
+  "#5b8c5a",
+  "#7a6a3a",
+  "#3f7cac",
+  "#9b5de5",
+  "#c47f2c",
+  "#4b5563"
+];
 
 export function RevenueChart({ data }: { data: MonthlyChartItem[] }) {
   return (
@@ -167,3 +194,97 @@ export function ProjectionChart({ data }: { data: ProjectionMonthItem[] }) {
     </ResponsiveContainer>
   );
 }
+
+export function StackedRevenueMixChart({
+  data,
+  types,
+  selectedMonth,
+  onSelectMonth
+}: {
+  data: MixChartItem[];
+  types: MixTypeMeta[];
+  selectedMonth: string | null;
+  onSelectMonth?: (month: string) => void;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart
+        data={data}
+        margin={{ top: 12, right: 18, left: 4, bottom: 0 }}
+        onClick={(event) => {
+          const month = event?.activePayload?.[0]?.payload?.month;
+          if (month) onSelectMonth?.(month);
+        }}
+      >
+        <CartesianGrid stroke="#dce5e8" vertical={false} />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} />
+        <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
+        <Tooltip
+          formatter={(value, name) => [brl.format(Number(value)), name]}
+          labelFormatter={(label) => `Mês: ${label}`}
+        />
+        <Legend />
+        {types.map((item) => (
+          <Bar
+            key={item.type}
+            dataKey={item.type}
+            name={item.type}
+            stackId="revenue"
+            fill={item.color}
+            stroke={selectedMonth ? "rgba(23,33,38,0.18)" : undefined}
+            strokeWidth={selectedMonth ? 1 : 0}
+            radius={[3, 3, 0, 0]}
+          />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function RevenueShareMixChart({
+  data,
+  types,
+  onSelectMonth
+}: {
+  data: MixChartItem[];
+  types: MixTypeMeta[];
+  onSelectMonth?: (month: string) => void;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart
+        data={data}
+        margin={{ top: 12, right: 18, left: 4, bottom: 0 }}
+        stackOffset="expand"
+        onClick={(event) => {
+          const month = event?.activePayload?.[0]?.payload?.month;
+          if (month) onSelectMonth?.(month);
+        }}
+      >
+        <CartesianGrid stroke="#dce5e8" vertical={false} />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} />
+        <YAxis
+          tickFormatter={(value) => `${Math.round(Number(value) * 100)}%`}
+          tickLine={false}
+          axisLine={false}
+          width={42}
+        />
+        <Tooltip
+          formatter={(value, name, payload) => {
+            const rawValue = Number(payload.payload[name as string] ?? 0);
+            const total = Number(payload.payload.totalRevenue ?? 0);
+            const share = total ? (rawValue / total) * 100 : 0;
+            return [`${share.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% · ${brl.format(rawValue)}`, name];
+          }}
+          labelFormatter={(label) => `Mês: ${label}`}
+        />
+        <Legend />
+        {types.map((item) => (
+          <Bar key={item.type} dataKey={item.type} name={item.type} stackId="share" fill={item.color} radius={[3, 3, 0, 0]} />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export { mixColors };

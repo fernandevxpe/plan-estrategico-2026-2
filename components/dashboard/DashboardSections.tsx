@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -10,7 +11,13 @@ import {
   Target,
   TrendingUp
 } from "lucide-react";
-import { RevenueChart, YearComparisonChart } from "@/components/charts";
+import {
+  mixColors,
+  RevenueChart,
+  RevenueShareMixChart,
+  StackedRevenueMixChart,
+  YearComparisonChart
+} from "@/components/charts";
 import type { Analysis, BusinessTypeMonthly, ExecutiveKpis, PlanningFilters } from "@/lib/analysis/types";
 import { filterBusinessTypes, filterFunnel, filterWonDeals } from "@/lib/analysis/metrics";
 import {
@@ -44,9 +51,34 @@ function topTypes(rows: BusinessTypeMonthly[]) {
   return [...map.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 6);
 }
 
+function typeTotals(rows: BusinessTypeMonthly[]) {
+  const map = new Map<string, { type: string; revenue: number; wonDeals: number; months: number }>();
+  for (const row of rows) {
+    const current = map.get(row.type) ?? { type: row.type, revenue: 0, wonDeals: 0, months: 0 };
+    current.revenue += row.revenue;
+    current.wonDeals += row.wonDeals;
+    current.months += row.revenue > 0 || row.wonDeals > 0 ? 1 : 0;
+    map.set(row.type, current);
+  }
+  return [...map.values()].sort((a, b) => b.revenue - a.revenue);
+}
+
+function revenueShare(revenue: number, total: number) {
+  if (!total) return "0%";
+  return `${number.format((revenue / total) * 100)}%`;
+}
+
 export function DashboardSections({ analysis, filters, kpis }: Props) {
   const funnelRows = filterFunnel(analysis, filters);
   const businessTypes = filterBusinessTypes(analysis, filters);
+  const mixRows = useMemo(() => {
+    return analysis.businessTypeMonthly.filter((row) => {
+      if (filters.year !== "all" && !row.month.startsWith(filters.year)) return false;
+      return true;
+    });
+  }, [analysis.businessTypeMonthly, filters.year]);
+  const [selectedMixMonth, setSelectedMixMonth] = useState<string | null>(filters.selectedMonth);
+  const [selectedMixTypes, setSelectedMixTypes] = useState<string[]>([]);
   const wonDealsFiltered = [...filterWonDeals(analysis, filters)].sort((a, b) => b.value - a.value);
   const topWonDeals = wonDealsFiltered.slice(0, 12);
   const latestFunnel = funnelRows.at(-1);
@@ -79,6 +111,54 @@ export function DashboardSections({ analysis, filters, kpis }: Props) {
   }));
   const typeLeaders = topTypes(businessTypes);
   const postSalesConfidence = analysis.postSalesConfidence;
+
+  useEffect(() => {
+    if (filters.selectedMonth) setSelectedMixMonth(filters.selectedMonth);
+  }, [filters.selectedMonth]);
+
+  const mixTypeTotals = useMemo(() => typeTotals(mixRows), [mixRows]);
+  const allMixTypes = mixTypeTotals.map((item) => item.type);
+  const visibleMixTypes = selectedMixTypes.length ? selectedMixTypes : allMixTypes;
+  const mixTypeMeta = visibleMixTypes.map((type) => ({
+    type,
+    color: mixColors[Math.max(0, allMixTypes.indexOf(type)) % mixColors.length]
+  }));
+  const mixMonths = [...new Set(mixRows.map((row) => row.month))].sort();
+  const selectedMonthForMix = selectedMixMonth && mixMonths.includes(selectedMixMonth)
+    ? selectedMixMonth
+    : mixMonths.at(-1) ?? null;
+  const mixChartData = mixMonths.map((month) => {
+    const rows = mixRows.filter((row) => row.month === month);
+    const item: { month: string; label: string; totalRevenue: number; [key: string]: string | number } = {
+      month,
+      label: monthLabel(month),
+      totalRevenue: 0
+    };
+    for (const type of visibleMixTypes) item[type] = 0;
+    for (const row of rows) {
+      if (!visibleMixTypes.includes(row.type)) continue;
+      item[row.type] = Number(item[row.type] ?? 0) + row.revenue;
+      item.totalRevenue += row.revenue;
+    }
+    return item;
+  });
+  const selectedMonthMixRows = mixRows
+    .filter((row) => row.month === selectedMonthForMix && visibleMixTypes.includes(row.type))
+    .sort((a, b) => b.revenue - a.revenue);
+  const selectedMonthRevenue = selectedMonthMixRows.reduce((sum, row) => sum + row.revenue, 0);
+  const selectedMonthDeals = selectedMonthMixRows.reduce((sum, row) => sum + row.wonDeals, 0);
+  const topSelectedMonthType = selectedMonthMixRows[0] ?? null;
+  const filteredMixTotals = typeTotals(mixRows.filter((row) => visibleMixTypes.includes(row.type)));
+  const mixTotalRevenue = filteredMixTotals.reduce((sum, row) => sum + row.revenue, 0);
+  const mixTotalDeals = filteredMixTotals.reduce((sum, row) => sum + row.wonDeals, 0);
+
+  function toggleMixType(type: string) {
+    setSelectedMixTypes((current) => {
+      const base = current.length ? current : allMixTypes;
+      const next = base.includes(type) ? base.filter((item) => item !== type) : [...base, type];
+      return next.length === allMixTypes.length ? [] : next;
+    });
+  }
 
   return (
     <>
@@ -192,20 +272,159 @@ export function DashboardSections({ analysis, filters, kpis }: Props) {
       <section className="section-title" id="mix">
         <div>
           <h2>Mix de vendas</h2>
-          <p>Tipo principal por negócio, sem duplicar receita quando há múltiplas etiquetas.</p>
+          <p>Tipo principal por negócio, com faturamento mensal, participação por serviço e filtros visuais.</p>
         </div>
       </section>
 
       <section className="insights mix-summary">
-        {typeLeaders.map((item) => (
+        {(selectedMonthMixRows.length ? selectedMonthMixRows.slice(0, 6) : typeLeaders).map((item) => (
           <div className="card insight" key={item.type}>
             <BarChart3 size={24} />
             <div>
               <h3>{item.type}</h3>
-              <p>{brl.format(item.revenue)} · {item.wonDeals} fechamento(s) · ticket {brl.format(item.revenue / Math.max(1, item.wonDeals))}</p>
+              <p>
+                {brl.format(item.revenue)} · {item.wonDeals} fechamento(s) ·{" "}
+                {selectedMonthForMix ? `${revenueShare(item.revenue, selectedMonthRevenue)} do mês` : `ticket ${brl.format(item.revenue / Math.max(1, item.wonDeals))}`}
+              </p>
             </div>
           </div>
         ))}
+      </section>
+
+      <section className="mix-workbench">
+        <div className="card mix-control-panel">
+          <div className="card-title">
+            <div>
+              <h2>Filtros do mix</h2>
+              <span>{selectedMixTypes.length ? `${selectedMixTypes.length} serviço(s) selecionado(s)` : "Todos os serviços"}</span>
+            </div>
+          </div>
+
+          <div className="mix-filter-group">
+            <span className="filter-label">Serviços</span>
+            <div className="mix-type-chips">
+              <button
+                type="button"
+                className={`mix-chip ${selectedMixTypes.length === 0 ? "active" : ""}`}
+                onClick={() => setSelectedMixTypes([])}
+              >
+                Todos
+              </button>
+              {mixTypeTotals.map((item, index) => {
+                const active = selectedMixTypes.length === 0 || selectedMixTypes.includes(item.type);
+                return (
+                  <button
+                    type="button"
+                    className={`mix-chip ${active ? "active" : ""}`}
+                    key={item.type}
+                    onClick={() => toggleMixType(item.type)}
+                  >
+                    <span style={{ background: mixColors[index % mixColors.length] }} />
+                    {item.type}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mix-filter-group">
+            <span className="filter-label">Mês em foco</span>
+            <div className="mix-month-chips">
+              {mixMonths.map((month) => (
+                <button
+                  type="button"
+                  className={month === selectedMonthForMix ? "active" : ""}
+                  key={month}
+                  onClick={() => setSelectedMixMonth(month)}
+                >
+                  {monthLabel(month)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mix-kpi-grid">
+            <div className="mini">
+              <span className="metric-label">Receita filtrada</span>
+              <strong>{brl.format(mixTotalRevenue)}</strong>
+              <small>{mixTotalDeals} fechamentos no período</small>
+            </div>
+            <div className="mini">
+              <span className="metric-label">Mês selecionado</span>
+              <strong>{selectedMonthForMix ? monthLabel(selectedMonthForMix) : "n/a"}</strong>
+              <small>{brl.format(selectedMonthRevenue)} · {selectedMonthDeals} fechamentos</small>
+            </div>
+            <div className="mini">
+              <span className="metric-label">Líder do mês</span>
+              <strong>{topSelectedMonthType ? revenueShare(topSelectedMonthType.revenue, selectedMonthRevenue) : "n/a"}</strong>
+              <small>{topSelectedMonthType?.type ?? "Sem fechamentos no filtro"}</small>
+            </div>
+          </div>
+        </div>
+
+        <div className="card chart-card mix-chart-card">
+          <div className="card-title">
+            <div>
+              <h2>Receita fechada por serviço</h2>
+              <span>Barras empilhadas por mês · clique no gráfico ou nos meses para focar</span>
+            </div>
+            <span className="pill green">{visibleMixTypes.length} tipos</span>
+          </div>
+          <div className="chart-box mix-chart-box">
+            <StackedRevenueMixChart
+              data={mixChartData}
+              types={mixTypeMeta}
+              selectedMonth={selectedMonthForMix}
+              onSelectMonth={setSelectedMixMonth}
+            />
+          </div>
+        </div>
+
+        <div className="card chart-card mix-chart-card">
+          <div className="card-title">
+            <div>
+              <h2>% da receita por mês</h2>
+              <span>Participação percentual dos serviços no faturamento fechado</span>
+            </div>
+          </div>
+          <div className="chart-box mix-chart-box">
+            <RevenueShareMixChart data={mixChartData} types={mixTypeMeta} onSelectMonth={setSelectedMixMonth} />
+          </div>
+        </div>
+
+        <div className="card mix-month-panel">
+          <div className="card-title">
+            <div>
+              <h2>{selectedMonthForMix ? `Fechados em ${monthLabel(selectedMonthForMix)}` : "Fechados do mês"}</h2>
+              <span>Receita, participação, quantidade e ticket por tipo</span>
+            </div>
+          </div>
+          <div className="mix-service-list">
+            {selectedMonthMixRows.map((item, index) => (
+              <div className="mix-service-row" key={`${item.month}-${item.type}`}>
+                <div className="mix-service-head">
+                  <strong>{item.type}</strong>
+                  <span>{revenueShare(item.revenue, selectedMonthRevenue)}</span>
+                </div>
+                <div className="bar mix-share-bar">
+                  <span
+                    style={{
+                      "--w": `${selectedMonthRevenue ? (item.revenue / selectedMonthRevenue) * 100 : 0}%`,
+                      background: mixColors[allMixTypes.indexOf(item.type) % mixColors.length]
+                    } as CSSProperties}
+                  />
+                </div>
+                <p className="metric-note">
+                  {brl.format(item.revenue)} · {item.wonDeals} fechamento(s) · ticket {brl.format(item.averageTicket)}
+                  {index === 0 ? " · maior fatia do mês" : ""}
+                </p>
+              </div>
+            ))}
+            {!selectedMonthMixRows.length ? (
+              <p className="metric-note">Não há fechamentos para o mês e filtro selecionados.</p>
+            ) : null}
+          </div>
+        </div>
       </section>
 
       <details className="appendix-details compact-details">

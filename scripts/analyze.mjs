@@ -278,7 +278,9 @@ const tasks = clickupTasksRaw.map((task) => ({
   list: task.list_name,
   folder: task.folder_name,
   space: task.space_name,
-  url: task.url
+  url: task.url,
+  description: task.description ?? '',
+  textContent: task.text_content ?? ''
 }));
 
 const analysisDeals = deals.filter((deal) =>
@@ -559,12 +561,156 @@ const serviceMonthly = groupBy(wonDeals, (deal) => deal.service)
       }))
   }));
 
-const projectCandidates = tasks.filter((task) => {
+const projectCandidateTasks = tasks.filter((task) => {
   const text = normalizeText([task.space, task.folder, task.list, task.name].join(' '));
   const relevant = /projeto|implantacao|cliente|operacao|execucao|delivery|contrato|obra|laudo/.test(text);
   const noise = /teste|dev|copia|cópia|feedback form|pasta teste/.test(text);
   return relevant && !noise;
 });
+const projectCandidates = projectCandidateTasks.map(({ description, textContent, ...task }) => task);
+
+const obraTypeLabels = new Set(['OBRA', 'CDM', 'Instalação de Carregador Eletrico']);
+const manualObraSubgroups = new Map([
+  [1436, { subgroup: 'Infraestrutura de carregamento veicular', confidence: 'confirmed', note: 'Confirmado: Reserva do Poço foi obra de infraestrutura de carregamento veicular.' }],
+  [1609, { subgroup: 'CDM - obra/ampliação de centro de medição', confidence: 'probable', note: 'Madalena Colonial provavelmente foi ampliação de CDM.' }],
+  [1331, { subgroup: 'ICV - inspeção de carregador veicular', confidence: 'confirmed', note: 'Confirmado: ICV é inspeção de carregador.' }],
+  [1352, { subgroup: 'CDM - obra/ampliação de centro de medição', confidence: 'confirmed', note: 'Confirmado: OBRA + Ampliação de CDM deve entrar como CDM obra/ampliação.' }],
+  [1337, { subgroup: 'CDM - obra/ampliação de centro de medição', confidence: 'high', note: 'ClickUp indica ampliação de CDM para Quinta do Algarve/Algarvia.' }],
+  [1444, { subgroup: 'Infraestrutura de carregamento veicular', confidence: 'high', note: 'ClickUp indica controle de carga para 4 carregadores.' }],
+  [1423, { subgroup: 'Obras elétricas gerais/indefinidas', confidence: 'low', note: 'Sem escopo confirmado para subgrupo de obra.' }],
+  [1365, { subgroup: 'Obras elétricas gerais/indefinidas', confidence: 'low', note: 'Sem escopo confirmado para subgrupo de obra.' }]
+]);
+
+function tokenSet(value) {
+  return new Set(
+    normalizeAccountName(value)
+      .split(' ')
+      .filter((token) => token.length > 2)
+  );
+}
+
+function taskSearchText(task) {
+  return [task.name, task.list, task.folder, task.space, task.description, task.textContent].join(' ');
+}
+
+function taskDealScore(deal, task) {
+  const dealTokens = tokenSet([deal.title, deal.organization].join(' '));
+  const taskTokens = tokenSet(taskSearchText(task));
+  let score = 0;
+  for (const token of dealTokens) if (taskTokens.has(token)) score += 1;
+  const taskName = normalizeAccountName(task.name);
+  const org = normalizeAccountName(deal.organization);
+  const title = normalizeAccountName(deal.title);
+  if (org && taskName.includes(org.slice(0, Math.min(16, org.length)))) score += 4;
+  if (title && taskName.includes(title.slice(0, Math.min(16, title.length)))) score += 3;
+  return score;
+}
+
+function taskMatchesForDeal(deal) {
+  return projectCandidateTasks
+    .map((task) => ({ task, score: taskDealScore(deal, task) }))
+    .filter((item) => item.score >= 4)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+}
+
+function isObraDeal(deal) {
+  return deal.service === 'Obras eletricas' || deal.businessTypes.some((type) => obraTypeLabels.has(type));
+}
+
+function classifyObraDeal(deal, matches) {
+  const manual = manualObraSubgroups.get(deal.id);
+  if (manual) return manual;
+
+  const text = normalizeText([
+    deal.title,
+    deal.organization,
+    deal.service,
+    deal.primaryBusinessType,
+    deal.businessTypes.join(' '),
+    ...matches.map(({ task }) => taskSearchText(task))
+  ].join(' '));
+
+  if (deal.primaryBusinessType === 'ICV - Inspeção de carregador veicular' || deal.businessTypes.includes('ICV - Inspeção de carregador veicular')) {
+    return { subgroup: 'ICV - inspeção de carregador veicular', confidence: 'high', note: 'Classificado por etiqueta ICV.' };
+  }
+  if (/ampliacao de cdm|ampliacao.*cdm|cdm.*ampliacao|atualizacao de cdm|cdms/.test(text)) {
+    return { subgroup: 'CDM - obra/ampliação de centro de medição', confidence: 'high', note: 'Sinal de ampliação/atualização de CDM no ClickUp ou etiquetas.' };
+  }
+  if (deal.businessTypes.includes('CDM')) {
+    return { subgroup: 'CDM - obra/ampliação de centro de medição', confidence: 'medium', note: 'Etiqueta CDM sem escopo suficiente; mantido como obra/ampliação provável.' };
+  }
+  if (deal.businessTypes.includes('Instalação de Carregador Eletrico') || /carregador|wallbox|controle de carga|eletroposto|infraestrutura de carregamento/.test(text)) {
+    return { subgroup: 'Infraestrutura de carregamento veicular', confidence: 'high', note: 'Sinal de carregador/controle de carga/instalação.' };
+  }
+  if (/pcdm|pcm|projeto de centro de medicao|projeto centro de medicao/.test(text)) {
+    return { subgroup: 'CDM - projeto/planejamento de centro de medição', confidence: 'medium', note: 'Sinal de PCM/PCDM em contratos/tarefas.' };
+  }
+  if (/pie|eletrocalha|eletroduto/.test(text)) {
+    return { subgroup: 'Infraestrutura/eletrocalha/PIE', confidence: 'medium', note: 'Sinal de PIE/eletrocalha/eletroduto.' };
+  }
+  if (/disjuntor|quadro|qdg|bep|aterramento|subestacao|barramento|alimentador|melhoria eletrica|correcao laudo|adequacao|retrofit/.test(text)) {
+    return { subgroup: 'Adequação/correção elétrica geral', confidence: 'medium', note: 'Sinal de adequação/correção elétrica.' };
+  }
+  return { subgroup: 'Obras elétricas gerais/indefinidas', confidence: 'low', note: 'Sem escopo suficiente para subgrupo.' };
+}
+
+const obraSubgroupDeals = wonDeals
+  .filter((deal) => deal.wonMonth?.startsWith('2026') && isObraDeal(deal))
+  .map((deal) => {
+    const matches = taskMatchesForDeal(deal);
+    const classification = classifyObraDeal(deal, matches);
+    return {
+      id: deal.id,
+      month: deal.wonMonth,
+      title: deal.title,
+      organization: deal.organization,
+      value: deal.value,
+      service: deal.service,
+      primaryBusinessType: deal.primaryBusinessType,
+      businessTypes: deal.businessTypes,
+      subgroup: classification.subgroup,
+      confidence: classification.confidence,
+      note: classification.note,
+      evidence: matches.slice(0, 3).map(({ task, score }) => ({
+        score,
+        name: task.name,
+        status: task.status,
+        space: task.space,
+        folder: task.folder,
+        list: task.list
+      }))
+    };
+  })
+  .sort((a, b) => a.month.localeCompare(b.month) || b.value - a.value);
+
+const obraSubgroupSummary = groupBy(obraSubgroupDeals, (deal) => deal.subgroup)
+  .map(([subgroup, items]) => ({
+    subgroup,
+    wonDeals: items.length,
+    revenue: sum(items, (item) => item.value),
+    averageTicket: sum(items, (item) => item.value) / items.length,
+    confidenceBreakdown: {
+      confirmed: items.filter((item) => item.confidence === 'confirmed').length,
+      high: items.filter((item) => item.confidence === 'high').length,
+      medium: items.filter((item) => item.confidence === 'medium' || item.confidence === 'probable').length,
+      low: items.filter((item) => item.confidence === 'low').length
+    }
+  }))
+  .sort((a, b) => b.revenue - a.revenue);
+
+const obraSubgroupMonthly = groupBy(obraSubgroupDeals, (deal) => `${deal.month}|||${deal.subgroup}`)
+  .map(([key, items]) => {
+    const [month, subgroup] = key.split('|||');
+    return {
+      month,
+      subgroup,
+      wonDeals: items.length,
+      revenue: sum(items, (item) => item.value),
+      averageTicket: sum(items, (item) => item.value) / items.length
+    };
+  })
+  .sort((a, b) => a.month.localeCompare(b.month) || b.revenue - a.revenue);
 
 const maybeUnmatchedWon = wonDeals
   .filter((deal) => !projectCandidates.some((task) => normalizeText(task.name).includes(normalizeText(deal.organization || deal.title).slice(0, 12))))
@@ -1924,6 +2070,11 @@ const report = {
   businessTypeMonthly: businessTypeTrend,
   businessTypeDeals,
   businessTypeMultiDeals,
+  obraSubgroups: {
+    summary: obraSubgroupSummary,
+    monthly: obraSubgroupMonthly,
+    deals: obraSubgroupDeals
+  },
   cnpjCoverage,
   postSalesByCnpj,
   repeatSalesByAccount,
@@ -1968,6 +2119,12 @@ await writeCsv(
 await writeCsv('business-type-monthly.csv', businessTypeTrend);
 await writeCsv('business-type-deals.csv', businessTypeDeals);
 await writeCsv('business-type-multi-deals.csv', businessTypeMultiDeals);
+await writeCsv('obra-subgroup-monthly.csv', obraSubgroupMonthly);
+await writeCsv('obra-subgroup-deals.csv', obraSubgroupDeals.map((deal) => ({
+  ...deal,
+  businessTypes: deal.businessTypes.join(', '),
+  evidence: deal.evidence.map((item) => `${item.name} (${item.status ?? 'sem status'})`).join(' | ')
+})));
 await writeCsv('post-sales-cnpj.csv', postSalesByCnpj.map(({ deals, ...row }) => row));
 await writeCsv('account-repeat-sales.csv', repeatSalesByAccount.map(({ deals, ...row }) => row));
 await writeCsv('account-name-repeat-sales.csv', repeatSalesByAccountName.map(({ deals, ...row }) => row));

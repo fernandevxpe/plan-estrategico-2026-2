@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T01:11:34.286Z",
+  "generatedAt": "2026-06-23T03:02:48.002Z",
   "scope": "Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus",
   "totals": {
     "pipedriveDealsAll": 1662,
@@ -12662,6 +12662,644 @@
       "value": 9200
     }
   ],
+  "obraSubgroups": {
+    "summary": [
+      {
+        "subgroup": "Infraestrutura de carregamento veicular",
+        "wonDeals": 3,
+        "revenue": 131031.72,
+        "averageTicket": 43677.24,
+        "confidenceBreakdown": {
+          "confirmed": 1,
+          "high": 2,
+          "medium": 0,
+          "low": 0
+        }
+      },
+      {
+        "subgroup": "CDM - obra/ampliação de centro de medição",
+        "wonDeals": 4,
+        "revenue": 107800,
+        "averageTicket": 26950,
+        "confidenceBreakdown": {
+          "confirmed": 1,
+          "high": 2,
+          "medium": 1,
+          "low": 0
+        }
+      },
+      {
+        "subgroup": "Obras elétricas gerais/indefinidas",
+        "wonDeals": 2,
+        "revenue": 33300,
+        "averageTicket": 16650,
+        "confidenceBreakdown": {
+          "confirmed": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 2
+        }
+      },
+      {
+        "subgroup": "Infraestrutura/eletrocalha/PIE",
+        "wonDeals": 1,
+        "revenue": 6500,
+        "averageTicket": 6500,
+        "confidenceBreakdown": {
+          "confirmed": 0,
+          "high": 0,
+          "medium": 1,
+          "low": 0
+        }
+      },
+      {
+        "subgroup": "CDM - projeto/planejamento de centro de medição",
+        "wonDeals": 1,
+        "revenue": 6250,
+        "averageTicket": 6250,
+        "confidenceBreakdown": {
+          "confirmed": 0,
+          "high": 0,
+          "medium": 1,
+          "low": 0
+        }
+      },
+      {
+        "subgroup": "ICV - inspeção de carregador veicular",
+        "wonDeals": 1,
+        "revenue": 1400,
+        "averageTicket": 1400,
+        "confidenceBreakdown": {
+          "confirmed": 1,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        }
+      },
+      {
+        "subgroup": "Adequação/correção elétrica geral",
+        "wonDeals": 1,
+        "revenue": 950,
+        "averageTicket": 950,
+        "confidenceBreakdown": {
+          "confirmed": 0,
+          "high": 0,
+          "medium": 1,
+          "low": 0
+        }
+      }
+    ],
+    "monthly": [
+      {
+        "month": "2026-01",
+        "subgroup": "CDM - obra/ampliação de centro de medição",
+        "wonDeals": 2,
+        "revenue": 45000,
+        "averageTicket": 22500
+      },
+      {
+        "month": "2026-01",
+        "subgroup": "Obras elétricas gerais/indefinidas",
+        "wonDeals": 1,
+        "revenue": 19800,
+        "averageTicket": 19800
+      },
+      {
+        "month": "2026-02",
+        "subgroup": "Infraestrutura de carregamento veicular",
+        "wonDeals": 2,
+        "revenue": 47531.72,
+        "averageTicket": 23765.86
+      },
+      {
+        "month": "2026-02",
+        "subgroup": "Obras elétricas gerais/indefinidas",
+        "wonDeals": 1,
+        "revenue": 13500,
+        "averageTicket": 13500
+      },
+      {
+        "month": "2026-02",
+        "subgroup": "CDM - projeto/planejamento de centro de medição",
+        "wonDeals": 1,
+        "revenue": 6250,
+        "averageTicket": 6250
+      },
+      {
+        "month": "2026-03",
+        "subgroup": "Infraestrutura de carregamento veicular",
+        "wonDeals": 1,
+        "revenue": 83500,
+        "averageTicket": 83500
+      },
+      {
+        "month": "2026-03",
+        "subgroup": "CDM - obra/ampliação de centro de medição",
+        "wonDeals": 1,
+        "revenue": 17800,
+        "averageTicket": 17800
+      },
+      {
+        "month": "2026-03",
+        "subgroup": "ICV - inspeção de carregador veicular",
+        "wonDeals": 1,
+        "revenue": 1400,
+        "averageTicket": 1400
+      },
+      {
+        "month": "2026-04",
+        "subgroup": "CDM - obra/ampliação de centro de medição",
+        "wonDeals": 1,
+        "revenue": 45000,
+        "averageTicket": 45000
+      },
+      {
+        "month": "2026-04",
+        "subgroup": "Infraestrutura/eletrocalha/PIE",
+        "wonDeals": 1,
+        "revenue": 6500,
+        "averageTicket": 6500
+      },
+      {
+        "month": "2026-06",
+        "subgroup": "Adequação/correção elétrica geral",
+        "wonDeals": 1,
+        "revenue": 950,
+        "averageTicket": 950
+      }
+    ],
+    "deals": [
+      {
+        "id": 1356,
+        "month": "2026-01",
+        "title": "Edf Samsara",
+        "organization": "Edf Samsara",
+        "value": 28000,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "OBRA",
+        "businessTypes": [
+          "OBRA"
+        ],
+        "subgroup": "CDM - obra/ampliação de centro de medição",
+        "confidence": "high",
+        "note": "Sinal de ampliação/atualização de CDM no ClickUp ou etiquetas.",
+        "evidence": [
+          {
+            "score": 8,
+            "name": "Condomínio do Edifício Samsara | LDC + PE",
+            "status": "finalizado",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 8,
+            "name": "Condomínio do Edifício Samsara | PIE",
+            "status": "executando",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 8,
+            "name": "Edf Samsara - PIE - 01",
+            "status": "campo",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          }
+        ]
+      },
+      {
+        "id": 1365,
+        "month": "2026-01",
+        "title": "Edf Castelo de Blois",
+        "organization": "Edf Castelo de Blois",
+        "value": 19800,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "OBRA",
+        "businessTypes": [
+          "OBRA"
+        ],
+        "subgroup": "Obras elétricas gerais/indefinidas",
+        "confidence": "low",
+        "note": "Sem escopo confirmado para subgrupo de obra.",
+        "evidence": [
+          {
+            "score": 9,
+            "name": "Condominio do Edificio Castelo de Blois | LDE",
+            "status": "assembleia",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 9,
+            "name": "Edf Castelo de Blois - LIE - 01",
+            "status": "assembleia",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          }
+        ]
+      },
+      {
+        "id": 1337,
+        "month": "2026-01",
+        "title": "Edf Quinta do Algarve",
+        "organization": "Edf Quinta do Algarve",
+        "value": 17000,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "OBRA",
+        "businessTypes": [
+          "OBRA"
+        ],
+        "subgroup": "CDM - obra/ampliação de centro de medição",
+        "confidence": "high",
+        "note": "ClickUp indica ampliação de CDM para Quinta do Algarve/Algarvia.",
+        "evidence": [
+          {
+            "score": 9,
+            "name": "Edf Quinta do Algarve Entrada",
+            "status": "pago",
+            "space": "Obras",
+            "folder": "Clientes",
+            "list": "Fluxo de caixa"
+          },
+          {
+            "score": 9,
+            "name": "Edf. quinta do algarve 1/2",
+            "status": "pago",
+            "space": "Obras",
+            "folder": "Clientes",
+            "list": "Fluxo de caixa"
+          },
+          {
+            "score": 9,
+            "name": "Edf. quinta do algarve 2/2",
+            "status": "pago",
+            "space": "Obras",
+            "folder": "Clientes",
+            "list": "Fluxo de caixa"
+          }
+        ]
+      },
+      {
+        "id": 1386,
+        "month": "2026-02",
+        "title": "Verano ADM",
+        "organization": "Verano ADM",
+        "value": 43031.72,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "OBRA",
+        "businessTypes": [
+          "OBRA",
+          "Instalação de Carregador Eletrico"
+        ],
+        "subgroup": "Infraestrutura de carregamento veicular",
+        "confidence": "high",
+        "note": "Sinal de carregador/controle de carga/instalação.",
+        "evidence": []
+      },
+      {
+        "id": 1423,
+        "month": "2026-02",
+        "title": "Cond. Melo Barbosa",
+        "organization": "Cond. Melo Barbosa",
+        "value": 13500,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "OBRA",
+        "businessTypes": [
+          "OBRA"
+        ],
+        "subgroup": "Obras elétricas gerais/indefinidas",
+        "confidence": "low",
+        "note": "Sem escopo confirmado para subgrupo de obra.",
+        "evidence": [
+          {
+            "score": 9,
+            "name": "Edf. Melo barbosa",
+            "status": "executando",
+            "space": "Obras",
+            "folder": "Clientes",
+            "list": "Obras"
+          },
+          {
+            "score": 9,
+            "name": "Melo barbosa  2/2",
+            "status": "pago",
+            "space": "Obras",
+            "folder": "Clientes",
+            "list": "Fluxo de caixa"
+          },
+          {
+            "score": 9,
+            "name": "Melo Barbosa",
+            "status": "envio de proposta",
+            "space": "Obras",
+            "folder": "Clientes",
+            "list": "Todas as Propostas"
+          }
+        ]
+      },
+      {
+        "id": 1355,
+        "month": "2026-02",
+        "title": "Edf Morada Rosarinho",
+        "organization": "Edf Morada Rosarinho",
+        "value": 6250,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "OBRA",
+        "businessTypes": [
+          "OBRA"
+        ],
+        "subgroup": "CDM - projeto/planejamento de centro de medição",
+        "confidence": "medium",
+        "note": "Sinal de PCM/PCDM em contratos/tarefas.",
+        "evidence": [
+          {
+            "score": 9,
+            "name": "Condomínio do Edifício Morada Rosarinho | PSUB",
+            "status": "executando",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 9,
+            "name": "Edf Morada Rosarinho - PCM - 02",
+            "status": "concessionária",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 9,
+            "name": "Edf. Morada Rosarinho",
+            "status": "relatorio entregue",
+            "space": "Obras",
+            "folder": "Clientes",
+            "list": "Obras"
+          }
+        ]
+      },
+      {
+        "id": 1444,
+        "month": "2026-02",
+        "title": "Edf Villa Casa Forte",
+        "organization": "Edf Villa Casa Forte",
+        "value": 4500,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "OBRA",
+        "businessTypes": [
+          "OBRA"
+        ],
+        "subgroup": "Infraestrutura de carregamento veicular",
+        "confidence": "high",
+        "note": "ClickUp indica controle de carga para 4 carregadores.",
+        "evidence": [
+          {
+            "score": 10,
+            "name": "Condominio do Edificio Villa Casa Forte | EDC+PE",
+            "status": "finalizado",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 10,
+            "name": "Villa casa forte disjuntores",
+            "status": "pago",
+            "space": "Obras",
+            "folder": "Clientes",
+            "list": "Fluxo de caixa"
+          },
+          {
+            "score": 10,
+            "name": "Villa casa forte 1/2",
+            "status": "pago",
+            "space": "Obras",
+            "folder": "Clientes",
+            "list": "Fluxo de caixa"
+          }
+        ]
+      },
+      {
+        "id": 1436,
+        "month": "2026-03",
+        "title": "Edf Reserva do Poço",
+        "organization": "Edf Reserva do Poço",
+        "value": 83500,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "OBRA",
+        "businessTypes": [
+          "OBRA"
+        ],
+        "subgroup": "Infraestrutura de carregamento veicular",
+        "confidence": "confirmed",
+        "note": "Confirmado: Reserva do Poço foi obra de infraestrutura de carregamento veicular.",
+        "evidence": [
+          {
+            "score": 9,
+            "name": "Condomínio do Edifício Reserva do Poço | LDC + PE + ICV",
+            "status": "finalizado",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 9,
+            "name": "Condominio Reserva do Poço | PCM + PIE",
+            "status": "executando",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 9,
+            "name": "Reserva do Poço - PCM - 02",
+            "status": "agendamento",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          }
+        ]
+      },
+      {
+        "id": 1352,
+        "month": "2026-03",
+        "title": "Quinta Tereza Beltrão",
+        "organization": "Edf Quinta Tereza Beltrão",
+        "value": 17800,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "OBRA",
+        "businessTypes": [
+          "OBRA",
+          "CDM"
+        ],
+        "subgroup": "CDM - obra/ampliação de centro de medição",
+        "confidence": "confirmed",
+        "note": "Confirmado: OBRA + Ampliação de CDM deve entrar como CDM obra/ampliação.",
+        "evidence": [
+          {
+            "score": 10,
+            "name": "Condomínio do Edifício Quinta Tereza Beltrão | LDC + PE",
+            "status": "assembleia",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 10,
+            "name": "Edf Quinta Tereza Beltrão - LDC - 01",
+            "status": "assembleia",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 10,
+            "name": "Edf. Quinta Tereza Beltrão - Ampliação de CDM",
+            "status": "executando",
+            "space": "Obras",
+            "folder": "Clientes",
+            "list": "Obras"
+          }
+        ]
+      },
+      {
+        "id": 1331,
+        "month": "2026-03",
+        "title": "Edf Terra Brasilis",
+        "organization": "Edf Terra Brasilis",
+        "value": 1400,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "ICV - Inspeção de carregador veicular",
+        "businessTypes": [
+          "ICV - Inspeção de carregador veicular"
+        ],
+        "subgroup": "ICV - inspeção de carregador veicular",
+        "confidence": "confirmed",
+        "note": "Confirmado: ICV é inspeção de carregador.",
+        "evidence": [
+          {
+            "score": 9,
+            "name": "Condomínio do Edifício Terra Brasilis | PrE",
+            "status": "executando",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 9,
+            "name": "Edf Terra Brasilis - PIE - 02",
+            "status": "assembleia",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 9,
+            "name": "Edf Terra Brasilis - PCM - 02",
+            "status": "concessionária",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          }
+        ]
+      },
+      {
+        "id": 1609,
+        "month": "2026-04",
+        "title": "Edf Madalena Colonial",
+        "organization": "Edf Madalena Colonial",
+        "value": 45000,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "CDM",
+        "businessTypes": [
+          "CDM"
+        ],
+        "subgroup": "CDM - obra/ampliação de centro de medição",
+        "confidence": "probable",
+        "note": "Madalena Colonial provavelmente foi ampliação de CDM.",
+        "evidence": [
+          {
+            "score": 9,
+            "name": "Condominio do Edificio Madalena Colonial | PCM",
+            "status": "aguardando pagamento",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 9,
+            "name": "Condominio do Edificio Madalena Colonial - PCM - 01",
+            "status": "aguardando pagamento",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          }
+        ]
+      },
+      {
+        "id": 1334,
+        "month": "2026-04",
+        "title": "Enseada do Mar",
+        "organization": "Enseada do Mar",
+        "value": 6500,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "Obras eletricas",
+        "businessTypes": [
+          "Obras eletricas"
+        ],
+        "subgroup": "Infraestrutura/eletrocalha/PIE",
+        "confidence": "medium",
+        "note": "Sinal de PIE/eletrocalha/eletroduto.",
+        "evidence": [
+          {
+            "score": 9,
+            "name": "Condomínio do Edificio Enseada do Mar | PIE",
+            "status": "executando",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 9,
+            "name": "Edf Enseada do Mar - PIE - 01",
+            "status": "agendamento",
+            "space": "Consultor.IA",
+            "folder": "Clientes",
+            "list": "Contratos"
+          },
+          {
+            "score": 9,
+            "name": "Edf. Enseada do Mar - Adição de eletrocalha",
+            "status": "relatorio entregue",
+            "space": "Obras",
+            "folder": "Clientes",
+            "list": "Obras"
+          }
+        ]
+      },
+      {
+        "id": 1718,
+        "month": "2026-06",
+        "title": "Rio Araguaia melhoria elétrica",
+        "organization": "Sindico Profi",
+        "value": 950,
+        "service": "Obras eletricas",
+        "primaryBusinessType": "OBRA",
+        "businessTypes": [
+          "OBRA"
+        ],
+        "subgroup": "Adequação/correção elétrica geral",
+        "confidence": "medium",
+        "note": "Sinal de adequação/correção elétrica.",
+        "evidence": []
+      }
+    ]
+  },
   "cnpjCoverage": {
     "organizations": 1595,
     "organizationsWithCnpj": 200,

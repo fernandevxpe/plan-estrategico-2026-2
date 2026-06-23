@@ -107,6 +107,49 @@ export type BusinessTypeMonthly = {
   dealsYoYPct: number | null;
 };
 
+export type ObraSubgroupSummary = {
+  subgroup: string;
+  wonDeals: number;
+  revenue: number;
+  averageTicket: number;
+  confidenceBreakdown: {
+    confirmed: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+};
+
+export type ObraSubgroupMonthly = {
+  month: string;
+  subgroup: string;
+  wonDeals: number;
+  revenue: number;
+  averageTicket: number;
+};
+
+export type ObraSubgroupDeal = {
+  id: number;
+  month: string;
+  title: string;
+  organization: string | null;
+  value: number;
+  service: string;
+  primaryBusinessType: string;
+  businessTypes: string[];
+  subgroup: string;
+  confidence: "confirmed" | "probable" | "high" | "medium" | "low";
+  note: string;
+  evidence: Array<{
+    score: number;
+    name: string;
+    status: string | null;
+    space: string | null;
+    folder: string | null;
+    list: string | null;
+  }>;
+};
+
 export type RepeatSale = {
   key: string;
   keyType: string;
@@ -242,6 +285,11 @@ export type Analysis = {
   deepAnalysis: DeepAnalysis;
   growthGuides: GrowthGuides;
   businessTypeMonthly: BusinessTypeMonthly[];
+  obraSubgroups?: {
+    summary: ObraSubgroupSummary[];
+    monthly: ObraSubgroupMonthly[];
+    deals: ObraSubgroupDeal[];
+  };
   cnpjCoverage: {
     organizations: number;
     organizationsWithCnpj: number;

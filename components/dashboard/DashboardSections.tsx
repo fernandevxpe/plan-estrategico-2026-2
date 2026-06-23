@@ -33,6 +33,7 @@ type Props = {
   analysis: Analysis;
   filters: PlanningFilters;
   kpis: ExecutiveKpis;
+  view?: "all" | "comercial" | "mix" | "pos-venda";
 };
 
 function weightedAverage(rows: { value: number; weight: number }[]) {
@@ -76,7 +77,7 @@ function confidenceLabel(value: string) {
   return "baixa";
 }
 
-export function DashboardSections({ analysis, filters, kpis }: Props) {
+export function DashboardSections({ analysis, filters, kpis, view = "all" }: Props) {
   const funnelRows = filterFunnel(analysis, filters);
   const businessTypes = filterBusinessTypes(analysis, filters);
   const mixRows = useMemo(() => {
@@ -170,8 +171,14 @@ export function DashboardSections({ analysis, filters, kpis }: Props) {
     });
   }
 
+  const showCommercial = view === "all" || view === "comercial";
+  const showMix = view === "all" || view === "mix";
+  const showPostSales = view === "all" || view === "pos-venda";
+
   return (
     <>
+      {showCommercial ? (
+        <>
       <section className="hero-band" id="comercial">
         <div className="headline">
           <p className="eyebrow">
@@ -278,7 +285,11 @@ export function DashboardSections({ analysis, filters, kpis }: Props) {
           </table>
         </div>
       </details>
+        </>
+      ) : null}
 
+      {showMix ? (
+        <>
       <section className="section-title" id="mix">
         <div>
           <h2>Mix de vendas</h2>
@@ -526,7 +537,11 @@ export function DashboardSections({ analysis, filters, kpis }: Props) {
           </table>
         </div>
       </details>
+        </>
+      ) : null}
 
+      {showPostSales ? (
+        <>
       <section className="dashboard-grid" id="pos-venda">
         <div className="card">
           <div className="card-title">
@@ -608,6 +623,8 @@ export function DashboardSections({ analysis, filters, kpis }: Props) {
           </table>
         </div>
       </details>
+        </>
+      ) : null}
     </>
   );
 }

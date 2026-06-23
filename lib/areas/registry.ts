@@ -19,7 +19,7 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     description: "Funil comercial, fechamentos, conversão e capacidade da equipe de 2 comerciais.",
     parentId: null,
     status: "executando",
-    lead: "Comercial XPE"
+    lead: "Diretor Comercial"
   },
   {
     id: "consultoria",
@@ -125,3 +125,5 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
 ];
 
 export const ROOT_AREA_IDS = AREA_DEFINITIONS.filter((area) => !area.parentId).map((area) => area.id);
+
+export const AREA_SLUGS = AREA_DEFINITIONS.map((area) => area.id);

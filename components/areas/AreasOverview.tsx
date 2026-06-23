@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { AreaDashboardItem, AreasDashboard } from "@/lib/areas/types";
 import { brl, formatGrowth, monthLabel } from "@/lib/analysis/format";
 
@@ -32,9 +33,10 @@ const priorityLabel = {
 
 type Props = {
   dashboard: AreasDashboard;
+  linkToPages?: boolean;
 };
 
-export function AreasOverview({ dashboard }: Props) {
+export function AreasOverview({ dashboard, linkToPages = false }: Props) {
   const { overview } = dashboard;
   const progressPct = overview.totalActivities
     ? Math.round((overview.activitiesDone / overview.totalActivities) * 100)
@@ -74,41 +76,60 @@ export function AreasOverview({ dashboard }: Props) {
       </div>
 
       <div className="areas-grid">
-        {flatAreas.map((area) => (
-          <article className="card area-card" key={area.id}>
-            <div className="area-card-head">
-              <div>
-                <h4>{area.name}</h4>
-                {area.parentId ? <span className="area-parent">↳ {parentName(dashboard, area.parentId)}</span> : null}
-              </div>
-              <span className={`pill ${statusClass[area.status]}`}>{statusLabel[area.status]}</span>
-            </div>
-            <p className="area-card-desc">{area.description}</p>
-            <div className="mini-grid">
-              <div className="mini">
-                <span className="metric-label">Líder</span>
-                <strong>{area.lead}</strong>
-              </div>
-              <div className="mini">
-                <span className="metric-label">Atividades</span>
-                <strong>{area.activities.length}</strong>
-              </div>
-              {area.metrics.revenue2026Ytd != null ? (
-                <div className="mini">
-                  <span className="metric-label">Receita 2026</span>
-                  <strong>{brl.format(area.metrics.revenue2026Ytd)}</strong>
+        {flatAreas.map((area) => {
+          const card = (
+            <>
+              <div className="area-card-head">
+                <div>
+                  <h4>{area.name}</h4>
+                  {area.parentId ? <span className="area-parent">↳ {parentName(dashboard, area.parentId)}</span> : null}
                 </div>
-              ) : null}
-              {area.metrics.revenueSharePct != null ? (
+                <span className={`pill ${statusClass[area.status]}`}>{statusLabel[area.status]}</span>
+              </div>
+              <p className="area-card-desc">{area.description}</p>
+              <div className="mini-grid">
                 <div className="mini">
-                  <span className="metric-label">Share</span>
-                  <strong>{formatGrowth(area.metrics.revenueSharePct)}</strong>
+                  <span className="metric-label">Líder</span>
+                  <strong>{area.lead}</strong>
                 </div>
+                <div className="mini">
+                  <span className="metric-label">Atividades</span>
+                  <strong>{area.activities.length}</strong>
+                </div>
+                {area.metrics.revenue2026Ytd != null ? (
+                  <div className="mini">
+                    <span className="metric-label">Receita 2026</span>
+                    <strong>{brl.format(area.metrics.revenue2026Ytd)}</strong>
+                  </div>
+                ) : null}
+                {area.metrics.revenueSharePct != null ? (
+                  <div className="mini">
+                    <span className="metric-label">Share</span>
+                    <strong>{formatGrowth(area.metrics.revenueSharePct)}</strong>
+                  </div>
+                ) : null}
+              </div>
+              {area.metrics.highlights[0] ? <p className="metric-note">{area.metrics.highlights[0]}</p> : null}
+              {linkToPages ? (
+                <span className="area-card-cta">Abrir página da área →</span>
               ) : null}
-            </div>
-            {area.metrics.highlights[0] ? <p className="metric-note">{area.metrics.highlights[0]}</p> : null}
-          </article>
-        ))}
+            </>
+          );
+
+          if (linkToPages) {
+            return (
+              <Link className="card area-card area-card-link" href={`/areas/${area.id}`} key={area.id}>
+                {card}
+              </Link>
+            );
+          }
+
+          return (
+            <article className="card area-card" key={area.id}>
+              {card}
+            </article>
+          );
+        })}
       </div>
 
       <section className="section-title subsection-title">
@@ -313,7 +334,7 @@ export function AreaDetailPanel({ area }: { area: AreaDashboardItem }) {
           </section>
           <div className="areas-sub-grid">
             {area.children.map((child) => (
-              <div className="card area-sub-card" key={child.id}>
+              <Link className="card area-sub-card area-card-link" href={`/areas/${child.id}`} key={child.id}>
                 <h4>{child.name}</h4>
                 <p>{child.description}</p>
                 <div className="mini-grid">
@@ -326,7 +347,8 @@ export function AreaDetailPanel({ area }: { area: AreaDashboardItem }) {
                     <strong>{child.metrics.revenue2026Ytd != null ? brl.format(child.metrics.revenue2026Ytd) : "—"}</strong>
                   </div>
                 </div>
-              </div>
+                <span className="area-card-cta">Ver plano →</span>
+              </Link>
             ))}
           </div>
         </>

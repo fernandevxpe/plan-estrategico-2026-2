@@ -4,24 +4,45 @@
     "vendas": {
       "id": "vendas",
       "strategicNotes": [
-        "Manter 2 comerciais com meta clara por pessoa — contratar 3º se fechamentos sustentarem >8/pessoa.",
-        "Recuperar conversão dos novos negócios após queda mar–mai/2026.",
-        "Ritual semanal de pipeline toda segunda-feira."
+        "GATE: nenhum plano extra antes de zerar atraso de orçamentos/propostas — clientes esperando retorno.",
+        "Prioridade #1: avançar 125 neg. em Negociação (~R$ 1,4M) — maior alavanca que lead novo.",
+        "1º vendedor (ago): entra focado na base pendente + playbook, não prospecção fria.",
+        "2º vendedor: só se ago+set ≥ R$ 280k/mês combinados E gate de propostas destravado.",
+        "Meta oficial 2026: R$ 3M — jun ainda fecha H1 de R$ 1M.",
+        "Mapear processos → app: checklist, registros, orçamento/proposta automática, PDF e slide por nicho.",
+        "Foco matador visitas: LIE, LDC + planejamento energético, LCC/EV — pós-venda com IA.",
+        "Ritos semanais a formalizar: follow-up, leads, assembleias noturnas, entregas e pós-venda."
       ],
       "objectives": [
-        { "id": "v1", "title": "Bater meta H1 de R$ 1M em receita fechada", "metric": "Receita H1", "target": "R$ 1.000.000" },
-        { "id": "v2", "title": "Manter conversão dos novos negócios acima de 15%", "metric": "Conv. novos neg.", "target": "≥ 15%" },
-        { "id": "v3", "title": "Desbloquear pipeline em negociação", "metric": "Pipeline aberto", "target": "Revisão semanal" }
+        { "id": "v0", "title": "Zerar fila de propostas atrasadas", "metric": "SLA proposta", "target": "Nenhum cliente sem retorno > 48h" },
+        { "id": "v1", "title": "Bater H1 com R$ 1M em receita fechada", "metric": "Receita H1", "target": "R$ 1.000.000" },
+        { "id": "v2", "title": "Meta anual do time comercial", "metric": "Receita 2026", "target": "R$ 3.000.000" },
+        { "id": "v3", "title": "H2 agressivo para sustentar 3M", "metric": "Receita H2", "target": "R$ 2.000.000" },
+        { "id": "v4", "title": "Recuperar conversão dos novos negócios", "metric": "Conv. novos neg.", "target": "≥ 15% (era 27% em fev)" },
+        { "id": "v5", "title": "Destravar negociação", "metric": "Pipeline Negociação", "target": "125 neg. / R$ 1,4M com próximo passo semanal" },
+        { "id": "v6", "title": "Templates automáticos LIE/LDC/LCC", "metric": "Proposta automática", "target": "PDF + slide por nicho até ago" },
+        { "id": "v7", "title": "EV como motor de volume", "metric": "Share EV + pós-venda", "target": "ICV/LCC/instalação no H2" }
       ],
       "activities": [
-        { "id": "v-a1", "title": "Ritual semanal de pipeline (segunda)", "responsible": "Comercial", "dueMonth": "2026-07", "priority": "critical", "status": "em_andamento" },
-        { "id": "v-a2", "title": "Definir gatilho formal de contratação do 3º comercial", "responsible": "Gestão", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
-        { "id": "v-a3", "title": "Padronizar follow-up em 48h pós-proposta", "responsible": "Comercial", "dueMonth": "2026-07", "priority": "high", "status": "pendente" },
-        { "id": "v-a4", "title": "Checkpoint mensal vs metas 2x/3x", "responsible": "Comercial + Gestão", "dueMonth": "2026-12", "priority": "high", "status": "em_andamento" }
+        { "id": "v-a0", "title": "Mapear processo comercial completo (visita → diagnóstico → orçamento → slide → PDF → follow-up)", "responsible": "Diretor + Comercial + Tech", "dueMonth": "2026-07", "priority": "critical", "status": "pendente", "notes": "Base para app, checklist e automação" },
+        { "id": "v-a1", "title": "Ritual semanal de pipeline (segunda) — Negociação + propostas paradas + próximo passo datado", "responsible": "Diretor Comercial", "dueMonth": "2026-07", "priority": "critical", "status": "em_andamento" },
+        { "id": "v-a2", "title": "Templates automáticos na ordem LDC → LIE → LCC (PDF + slide)", "responsible": "Diretor + Comercial + Tech", "dueMonth": "2026-07", "priority": "critical", "status": "pendente", "notes": "LDC jul; LIE jul–ago; LCC ago. Resolver clientes sem orçamento/proposta." },
+        { "id": "v-a3", "title": "App de visita: checklist, registros e montagem de orçamento a partir do diagnóstico", "responsible": "Tech + Comercial", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "v-a4", "title": "Workshop + ritual semanal (segunda, 1h–2h): dashboard diretor + pauta fixa", "responsible": "Diretor + Gestão", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "v-a4b", "title": "Dashboard operacional: visitas, propostas, apresentações, SLA 48h — sync Pipedrive", "responsible": "Tech + Diretor", "dueMonth": "2026-07", "priority": "critical", "status": "em_andamento", "notes": "Painel em /areas/vendas — revisar toda segunda" },
+        { "id": "v-a5", "title": "PSEL e contratar 1º vendedor — ramp 0/33/66/100%, foco base Negociação (ago)", "responsible": "Gestão + Diretor", "dueMonth": "2026-07", "priority": "critical", "status": "pendente", "notes": "0% jul → 33% ago → 66% set → 100% nov. Não prospecção fria no 1º mês." },
+        { "id": "v-a6", "title": "Templates pós-venda padronizados com personalização por IA", "responsible": "Comercial + Tech", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "v-a7", "title": "Automação CRM: follow-up 48h pós-proposta + etiqueta obrigatória", "responsible": "Tech + Comercial", "dueMonth": "2026-07", "priority": "high", "status": "em_andamento" },
+        { "id": "v-a8", "title": "Campanha comercial EV (ICV, LCC, instalação)", "responsible": "Diretor + Marketing", "dueMonth": "2026-08", "priority": "high", "status": "bloqueada", "notes": "BLOQUEADO até gate de propostas destravado" },
+        { "id": "v-a9", "title": "Cenário B: 2º vendedor para out/26 (gatilho ago+set ≥ R$ 280k/mês)", "responsible": "Gestão", "dueMonth": "2026-08", "priority": "high", "status": "bloqueada", "notes": "BLOQUEADO até gate + gatilho financeiro" },
+        { "id": "v-a10", "title": "Checkpoint mensal vs metas 2x/3x com metas por vendedor", "responsible": "Diretor + Gestão", "dueMonth": "2026-12", "priority": "high", "status": "em_andamento" }
       ],
       "risks": [
-        { "title": "Queda de conversão após fevereiro", "mitigation": "Follow-up 48h e revisão de etapas com maior perda." },
-        { "title": "2 comerciais no limite no cenário 3x", "mitigation": "Monitorar fechamentos/pessoa e antecipar contratação." }
+        { "title": "Clientes sem orçamento/proposta — reputação e perda de receita", "mitigation": "Gate operacional: nada escala antes de zerar fila. Ritual segunda + SLA 48h." },
+        { "title": "Novo vendedor em prospecção fria ignora R$ 1,4M parados", "mitigation": "Onboarding explícito: 1º mês só base + playbook. Diretor acompanha diário." },
+        { "title": "Proposta continua desigual entre vendedores", "mitigation": "Templates LIE/LDC/LCC automáticos + app com checklist obrigatório." },
+        { "title": "Ritos semanais não cabem na rotina (assembleias, entregas)", "mitigation": "Workshop jul para calendário realista com donos e duração fixa." },
+        { "title": "Meta 3M sem destravar Negociação", "mitigation": "Priorizar fechamento do pipeline antes de escalar tráfego ou headcount." }
       ]
     },
     "consultoria-projetos": {

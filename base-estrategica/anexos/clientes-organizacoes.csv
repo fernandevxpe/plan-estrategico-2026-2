@@ -1,0 +1,176 @@
+tipo_registro;chave;nome;cnpj;fechamentos;receita_total;receita_repetida;primeiro_ganho;ultimo_ganho;tipos
+organizacao_fechamentos;784;Edificio Le Parc;;2;115800.00;;2025-02;2026-02;"LSPDA, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;1176;Edf Reserva do Poço;11419309000137;3;105000.00;;2025-10;2026-03;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular, OBRA, PROJETOS, PIE - Projeto infra.  Eletrocalha e Emergência"
+organizacao_fechamentos;1175;Edf Madalena Colonial;10383770000114;2;53300.00;;2025-10;2026-04;"LDC - Laudo de disponibilidade de carga, CDM"
+organizacao_fechamentos;667;Cond. Montendre;;2;51249.29;;2025-04;2025-12;"LIE - Laudo de Instalações Elétricas, PROJETOS, LSPDA, OBRA"
+organizacao_fechamentos;817;Verano ADM;;2;50531.72;;2026-02;2026-02;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, Instalação de Carregador Eletrico"
+organizacao_fechamentos;687;Edf Samsara;10395888000162;3;37500.00;;2025-09;2026-01;"LDC - Laudo de disponibilidade de carga, OBRA, PIE - Projeto infra.  Eletrocalha e Emergência"
+organizacao_fechamentos;1078;Edf Terra Brasilis;04239390000108;4;37100.00;;2025-08;2026-03;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;13;Enseada do Mar;14006221000181;3;35000.00;;2025-02;2026-04;"PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA, Obras eletricas"
+organizacao_fechamentos;1126;Paraíso Eco Resort Campina Grande;;1;31350.00;;2025-10;2025-10;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;967;Edf Luar das Ubaias;11467141000135;2;30860.00;;2025-05;2025-12;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, Obras eletricas"
+organizacao_fechamentos;1135;Edf Castelo de Blois;;2;25800.00;;2025-09;2026-01;"LIE - Laudo de Instalações Elétricas, OBRA"
+organizacao_fechamentos;1252;Edf Quinta Tereza Beltrão;15066354000106;2;25360.00;;2025-11;2026-03;"LDC - Laudo de disponibilidade de carga, OBRA, CDM"
+organizacao_fechamentos;1217;Edf Cristiano;;2;24500.00;;2025-10;2025-10;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA"
+organizacao_fechamentos;1019;Edf Maria Carolina;;2;24440.00;;2025-06;2025-12;"LIE - Laudo de Instalações Elétricas, Obras eletricas"
+organizacao_fechamentos;965;Edf Morada Rosarinho;11236467000151;3;22750.00;;2025-05;2026-02;"LDC - Laudo de disponibilidade de carga, LIE - Laudo de Instalações Elétricas, PROJETOS, OBRA"
+organizacao_fechamentos;1081;Edf Quinta do Algarve;10528059000100;2;21800.00;;2025-09;2026-01;"LDC - Laudo de disponibilidade de carga, OBRA"
+organizacao_fechamentos;649;Cond. João Heráclio;11419309000137;2;21200.00;;2025-02;2026-01;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular, PIE - Projeto infra.  Eletrocalha e Emergência"
+organizacao_fechamentos;1436;EDIFICIOS MARIA JULIA E MARIA DA GRACA;10262128000187;1;19500.00;;2026-05;2026-05;"LIE - Laudo de Instalações Elétricas, LCC - Laudo Carregador Coletivo, PIE - Projeto infra.  Eletrocalha e Emergência"
+organizacao_fechamentos;1277;Edf Cid Sampaio;;1;19000.00;;2025-12;2025-12;OBRA
+organizacao_fechamentos;1336;Condomínio Jardins da Ilha;;1;18000.00;;2026-04;2026-04;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1003;Postos Pichilau - caruaru;;1;17500.00;;2025-06;2025-06;PROJETOS
+organizacao_fechamentos;738;Edf Manoella Vilaça;;1;16493.98;;2025-09;2025-09;OBRA
+organizacao_fechamentos;1398;Condomínio Carmen Costa;;2;16200.00;;2026-04;2026-06;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;957;Edf Praia de Japaratinga;;2;16040.00;;2025-06;2025-07;"LIE - Laudo de Instalações Elétricas, OBRA"
+organizacao_fechamentos;952;Edf Praia de Imbituba;08588516000100;1;16000.00;;2025-07;2025-07;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;1046;Edf Turmalina;04113342000179;2;16000.00;;2025-08;2026-04;"LDC - Laudo de disponibilidade de carga, PROJETOS"
+organizacao_fechamentos;1100;Edf Sobrado do Capibaribe;35466861000144;2;16000.00;;2025-11;2026-03;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, PROJETOS"
+organizacao_fechamentos;1241;Edf Sitio Beira Rio;;1;15000.00;;2026-03;2026-03;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;1268;Câmara de Vereadores de Recife;;1;14450.00;;2026-01;2026-01;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;935;Edf Duas Naçoes;;1;14000.00;;2025-05;2025-05;PROJETOS
+organizacao_fechamentos;1066;Edf Piedade Prince;03346750000108;1;14000.00;;2025-10;2025-10;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;1468;Jardim do Mar;;1;14000.00;;2026-05;2026-05;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;495;Cond. Solar das Palmeiras;01605246000150;1;13500.00;;2025-05;2025-05;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;1082;Edf Luis dias lins;13537008000133;2;13500.00;;2025-08;2025-09;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência"
+organizacao_fechamentos;647;Cond. Melo Barbosa;09316238000103;1;13500.00;;2026-02;2026-02;OBRA
+organizacao_fechamentos;1290;Condominio do Edificio Lucilo Maranhao;17570372000156;2;13500.00;;2026-03;2026-05;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência"
+organizacao_fechamentos;1065;Edf Morada Ilha Verde;24565913000113;2;13000.00;;2025-07;2026-03;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência"
+organizacao_fechamentos;671;Edf. Ara Pacis;;1;13000.00;;2026-01;2026-01;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;937;Edf Santorini;;1;13000.00;;2026-05;2026-05;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;668;Cond. The Plaza;03521109000162;2;12700.00;;2025-08;2026-06;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;1270;Edf Maria Leopoldina;24566176000173;1;12500.00;;2026-03;2026-03;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;1130;Edf Luar da Praia;38054355000136;1;12420.00;;2025-09;2025-09;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1099;Edf MIllennium;04107259000197;2;12000.00;;2025-07;2025-09;"LDC - Laudo de disponibilidade de carga, PROJETOS"
+organizacao_fechamentos;1448;Edf Sagarana;;1;12000.00;;2026-04;2026-04;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;416;Cond Saint Eduardo;20635205000150;2;11200.00;;2025-06;2026-04;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;1157;Edf Maria Regina;03062111000110;1;11000.00;;2025-11;2025-11;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;1208;Edf Porto dos Corais;03034724000144;2;11000.00;;2025-11;2026-02;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;679;Hilson Macedo;38285871000171;1;10600.00;;2025-09;2025-09;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;1002;Rio Ave;;1;10500.00;;2025-03;2025-03;PROJETOS
+organizacao_fechamentos;1089;Edf FICUS;41089830000114;1;10500.00;;2025-08;2025-08;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;1305;Edf Venâncio Barbosa;28515470000107;1;10500.00;;2026-02;2026-02;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1318;Edf Cidade do Recife;;2;10500.00;;2026-02;2026-05;"LDC - Laudo de disponibilidade de carga, PROJETOS"
+organizacao_fechamentos;1262;Edf.Maria Nice;;1;10350.00;;2026-01;2026-01;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;1056;Cond Casa da Montanha;18585419000118;1;10200.00;;2025-11;2025-11;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;655;Edf Carla Dias;02072321000127;2;10000.00;;2025-07;2025-12;"LDC - Laudo de disponibilidade de carga, PROJETOS"
+organizacao_fechamentos;1274;Edificio Belize;01813580000107;1;10000.00;;2026-03;2026-03;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;1335;Edf Jardim das Orquídeas;41056052000167;1;10000.00;;2026-03;2026-03;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1328;Edf. Villa Pasárgada;;1;10000.00;;2026-04;2026-04;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;1361;Edf Jardins das Acácias;;1;10000.00;;2026-04;2026-04;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1380;Edifício União;;1;10000.00;;2026-05;2026-05;PROJETOS
+organizacao_fechamentos;659;Jardins do Capibaribe;08639466000143;1;9900.00;;2025-09;2025-09;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1186;Edf Novo Jardim;18561736000102;1;9900.00;;2025-12;2025-12;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1024;condomínio Residencial Estrela;08888803000136;2;9600.00;;2025-08;2025-08;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;756;Pe no condominio;;1;9500.00;;2025-04;2025-04;PIE - Projeto infra.  Eletrocalha e Emergência
+organizacao_fechamentos;946;Edf Praia de Grauna;07246092000133;1;9500.00;;2025-05;2025-05;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;651;Edf Villa Casa Forte;;2;9500.00;;2025-12;2026-02;"Laudos e consultoria condominial, OBRA"
+organizacao_fechamentos;1004;Pichilau Vila Esperança;;2;9000.00;;2025-06;2025-06;PROJETOS
+organizacao_fechamentos;1049;Edf Walter Turton;05044739000119;2;9000.00;;2025-11;2025-12;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;737;Cond. Hilson de Azevedo Mota;;1;9000.00;;2026-03;2026-03;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1505;EMPRESARIAL. CASA FORTE;;1;9000.00;;2026-05;2026-05;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1248;Edf Portal do Parnamirim;41055427000174;1;8800.00;;2025-12;2025-12;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+organizacao_fechamentos;1311;Edf Alameda dos Flamboyants;06067213000117;1;8800.00;;2026-05;2026-05;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1367;condomínio Saint Sebastien;;1;8500.00;;2026-05;2026-05;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1523;Edf TAMARINEIRA PRINCE VANGARD;;1;8500.00;;2026-05;2026-05;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;611;Edf. Aderbal Jurema;;1;8415.00;;2026-02;2026-02;"PROJETOS, PIE - Projeto infra.  Eletrocalha e Emergência"
+organizacao_fechamentos;1025;Edf Boa Viagem;03786551000110;1;8000.00;;2025-06;2025-06;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1223;Edf Muçambê;09436429000109;1;7800.00;;2025-11;2025-11;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;867;Edf Giulia Priori;;1;7800.00;;2025-12;2025-12;Laudos e consultoria condominial
+organizacao_fechamentos;1516;Edf. Cine Torre;;1;7800.00;;2026-06;2026-06;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;796;Maison Monet;05323682000197;1;7700.00;;2025-01;2025-01;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1070;Edf Nicolau II;04518017000196;1;7700.00;;2025-10;2025-10;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1199;Edf. Cap d'Antibes;05213011000173;1;7700.00;;2025-11;2025-11;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;786;Edf Praça do Mar;15055733000109;2;7600.00;;2025-04;2025-08;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;1029;Edf Villa das Pedras;24134330000138;2;7400.00;;2025-06;2025-07;"LDC - Laudo de disponibilidade de carga, LIE - Laudo de Instalações Elétricas"
+organizacao_fechamentos;1080;Edf Sainte Daniela;21023174000140;1;7200.00;;2025-08;2025-08;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;815;Edf Quebra Mar;05919783000125;1;7000.00;;2025-05;2025-05;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1237;Edf Rio Siriji;00942145000101;1;7000.00;;2025-12;2025-12;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1244;Empresarial Praia Guarapari;;1;7000.00;;2026-02;2026-02;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1284;Edf Chanel;;1;7000.00;;2026-02;2026-02;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1337;Condominio do Edificio Costa Atlantica;07004921000171;1;7000.00;;2026-03;2026-03;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1116;Condominio do Edificio Maria Ines;08374012000198;1;7000.00;;2026-04;2026-04;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1167;edifício Morada das Palmeiras;07473307000159;1;6800.00;;2025-10;2025-10;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1340;Edf Jardins do Rosarinho;05369168000192;1;6750.00;;2026-04;2026-04;PROJETOS
+organizacao_fechamentos;956;Edf Splendid Rosarinho;22367846000105;1;6700.00;;2025-07;2025-07;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1236;Edf Ilha de Millos;;1;6700.00;;2026-04;2026-04;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1308;Edf. Augusto Lins e Silva;;1;6500.00;;2026-02;2026-02;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1307;Edf Domus Prof Mario Pessoa;;1;6500.00;;2026-04;2026-04;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1431;Edifício Lá Maison;;1;6500.00;;2026-04;2026-04;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;820;Edf Margarida Renda Colonial;08781554000185;1;6000.00;;2025-06;2025-06;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1079;Edf Praia dos Jardins;13330513000102;1;6000.00;;2025-08;2025-08;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1227;Conjunto Portinari;;1;6000.00;;2025-11;2025-11;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1150;Edf Itaqua Vilage;;1;6000.00;;2026-01;2026-01;PROJETOS
+organizacao_fechamentos;1251;Edifício Ferreira da Costa;;1;6000.00;;2026-02;2026-02;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1278;Edf Solar do Camaragybe;24417024000109;1;6000.00;;2026-02;2026-02;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1342;Edf Rita de Cássia;09436510000180;1;6000.00;;2026-03;2026-03;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência"
+organizacao_fechamentos;1415;Edf. Príncipe de Navarra;41231101000150;1;6000.00;;2026-05;2026-05;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+organizacao_fechamentos;779;Edf Solar das Acácios;04749508000148;1;5700.00;;2025-01;2025-01;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;653;Edf Tignanelo;26262769000171;1;5500.00;;2025-07;2025-07;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1132;Edf PARADOR DE GALICIA;;1;5500.00;;2025-09;2025-09;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1482;Edf Miriam Dubeux;;1;5500.00;;2026-04;2026-04;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1120;Edf Maison Monet;;1;5300.00;;2025-08;2025-08;PROJETOS
+organizacao_fechamentos;777;Ed. Rio Araguaia;;1;5000.00;;2025-01;2025-01;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;639;Ed Portal do Capibaribe;05251740000114;1;5000.00;;2025-06;2025-06;PROJETOS
+organizacao_fechamentos;1017;Edf Hockeneim;01813592000123;1;5000.00;;2025-07;2025-07;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1086;Edf Píer Mauricio de Nassau;07400407000155;1;5000.00;;2025-08;2025-08;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1071;Edf Maria Clarice;;1;5000.00;;2025-11;2025-11;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1190;Edf nao informado;;1;5000.00;;2026-01;2026-01;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1405;Edf Hilson Macedo;;1;5000.00;;2026-04;2026-04;PIE - Projeto infra.  Eletrocalha e Emergência
+organizacao_fechamentos;1433;EDF VILLA CLÁUDIA;41238072000159;1;5000.00;;2026-05;2026-05;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1526;Rotterdam;;1;5000.00;;2026-05;2026-05;PROJETOS
+organizacao_fechamentos;922;Edf Delmar;;1;4500.00;;2025-07;2025-07;PROJETOS
+organizacao_fechamentos;1035;Edf Morada dos Agapanthus;;1;4500.00;;2025-10;2025-10;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1330;Empório Muro Alto;28865747000121;1;4500.00;;2026-02;2026-02;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1356;Edf Morada Apipucos;;1;4500.00;;2026-03;2026-03;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;811;Edf Guimarães Rosa;09053515000124;1;4000.00;;2025-05;2025-05;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1016;Edf Ilha do Retiro;03786545000163;1;4000.00;;2025-06;2025-06;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1090;Edf Cristiano;05295147000170;1;4000.00;;2025-07;2025-07;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1032;Edificio Principe de Toscana;04022882000147;1;4000.00;;2025-08;2025-08;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1229;Geraldo Posto Geração;;1;4000.00;;2025-11;2025-11;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1279;Edf Lajedo;;1;4000.00;;2026-01;2026-01;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;1320;Edf Ébano;;1;4000.00;;2026-02;2026-02;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1334;Edf Nazaré;;1;4000.00;;2026-03;2026-03;"LIE - Laudo de Instalações Elétricas, LGR - Laudo de Gerenciamento de Risco"
+organizacao_fechamentos;1358;Edifício Fernando Perez;69904753000128;1;4000.00;;2026-03;2026-03;LIE - Laudo de Instalações Elétricas
+organizacao_fechamentos;689;Edf Brunello Di Montalcino;04500306000168;1;3800.00;;2025-04;2025-04;PIE - Projeto infra.  Eletrocalha e Emergência
+organizacao_fechamentos;1368;Edifício Ana Cristina;41231010000115;1;2700.00;;2026-05;2026-05;"LIE - Laudo de Instalações Elétricas, LGR - Laudo de Gerenciamento de Risco"
+organizacao_fechamentos;1179;Edf Cristiano;05295147000170;1;2600.00;;2025-09;2025-09;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1295;Edf Samsara;;1;2500.00;;2026-01;2026-01;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1201;Edf Principe de Toscana;04022882000147;1;2000.00;;2025-10;2025-10;LDC - Laudo de disponibilidade de carga
+organizacao_fechamentos;1137;Sindico Profi;;1;950.00;;2026-06;2026-06;OBRA
+conta_recorrente;cnpj:11419309000137;Cond. João Heráclio;11419309000137;5;126200.00;110000.00;2025-02;2026-03;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular, PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA"
+conta_recorrente;org:le parc;Edificio Le Parc;;2;115800.00;102000.00;2025-02;2026-02;"LSPDA, LDC - Laudo de disponibilidade de carga"
+conta_recorrente;cnpj:10383770000114;Edf Madalena Colonial;10383770000114;2;53300.00;45000.00;2025-10;2026-04;"LDC - Laudo de disponibilidade de carga, CDM"
+conta_recorrente;org:verano adm;Verano ADM;;2;50531.72;43031.72;2026-02;2026-02;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, Instalação de Carregador Eletrico"
+conta_recorrente;org:montendre;Cond. Montendre;;2;51249.29;33649.29;2025-04;2025-12;"LIE - Laudo de Instalações Elétricas, PROJETOS, LSPDA, OBRA"
+conta_recorrente;cnpj:10395888000162;Edf Samsara;10395888000162;3;37500.00;32500.00;2025-09;2026-01;"LDC - Laudo de disponibilidade de carga, OBRA, PIE - Projeto infra.  Eletrocalha e Emergência"
+conta_recorrente;cnpj:14006221000181;Enseada do Mar;14006221000181;3;35000.00;27500.00;2025-02;2026-04;"PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA, Obras eletricas"
+conta_recorrente;cnpj:04239390000108;Edf Terra Brasilis;04239390000108;4;37100.00;20100.00;2025-08;2026-03;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, ICV - Inspeção de carregador veicular"
+conta_recorrente;org:cristiano;Edf Cristiano;;2;24500.00;20000.00;2025-10;2025-10;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA"
+conta_recorrente;org:castelo blois;Edf Castelo de Blois;;2;25800.00;19800.00;2025-09;2026-01;"LIE - Laudo de Instalações Elétricas, OBRA"
+conta_recorrente;cnpj:11467141000135;Edf Luar das Ubaias;11467141000135;2;30860.00;19700.00;2025-05;2025-12;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, Obras eletricas"
+conta_recorrente;org:maria carolina;Edf Maria Carolina;;2;24440.00;19440.00;2025-06;2025-12;"LIE - Laudo de Instalações Elétricas, Obras eletricas"
+conta_recorrente;cnpj:15066354000106;Edf Quinta Tereza Beltrão;15066354000106;2;25360.00;17800.00;2025-11;2026-03;"LDC - Laudo de disponibilidade de carga, OBRA, CDM"
+conta_recorrente;cnpj:11236467000151;Edf Morada Rosarinho;11236467000151;3;22750.00;17750.00;2025-05;2026-02;"LDC - Laudo de disponibilidade de carga, LIE - Laudo de Instalações Elétricas, PROJETOS, OBRA"
+conta_recorrente;cnpj:10528059000100;Edf Quinta do Algarve;10528059000100;2;21800.00;17000.00;2025-09;2026-01;"LDC - Laudo de disponibilidade de carga, OBRA"
+conta_recorrente;org:praia japaratinga;Edf Praia de Japaratinga;;2;16040.00;10540.00;2025-06;2025-07;"LIE - Laudo de Instalações Elétricas, OBRA"
+conta_recorrente;org:carmen costa;Condomínio Carmen Costa;;2;16200.00;9200.00;2026-04;2026-06;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+conta_recorrente;cnpj:04113342000179;Edf Turmalina;04113342000179;2;16000.00;8000.00;2025-08;2026-04;"LDC - Laudo de disponibilidade de carga, PROJETOS"
+conta_recorrente;cnpj:03034724000144;Edf Porto dos Corais;03034724000144;2;11000.00;6500.00;2025-11;2026-02;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+conta_recorrente;cnpj:17570372000156;Condominio do Edificio Lucilo Maranhao;17570372000156;2;13500.00;6000.00;2026-03;2026-05;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência"
+conta_recorrente;org:pichilau vila esperanca;Pichilau Vila Esperança;;2;9000.00;5500.00;2025-06;2025-06;PROJETOS
+conta_recorrente;cnpj:02072321000127;Edf Carla Dias;02072321000127;2;10000.00;5000.00;2025-07;2025-12;"LDC - Laudo de disponibilidade de carga, PROJETOS"
+conta_recorrente;cnpj:24565913000113;Edf Morada Ilha Verde;24565913000113;2;13000.00;5000.00;2025-07;2026-03;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência"
+conta_recorrente;cnpj:04107259000197;Edf MIllennium;04107259000197;2;12000.00;5000.00;2025-07;2025-09;"LDC - Laudo de disponibilidade de carga, PROJETOS"
+conta_recorrente;cnpj:35466861000144;Edf Sobrado do Capibaribe;35466861000144;2;16000.00;5000.00;2025-11;2026-03;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, PROJETOS"
+conta_recorrente;org:cidade recife;Edf Cidade do Recife;;2;10500.00;5000.00;2026-02;2026-05;"LDC - Laudo de disponibilidade de carga, PROJETOS"
+conta_recorrente;org:villa casa forte;Edf Villa Casa Forte;;2;9500.00;4500.00;2025-12;2026-02;"Laudos e consultoria condominial, OBRA"
+conta_recorrente;cnpj:20635205000150;Cond Saint Eduardo;20635205000150;2;11200.00;4200.00;2025-06;2026-04;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+conta_recorrente;cnpj:13537008000133;Edf Luis dias lins;13537008000133;2;13500.00;4000.00;2025-08;2025-09;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência"
+conta_recorrente;cnpj:05044739000119;Edf Walter Turton;05044739000119;2;9000.00;3000.00;2025-11;2025-12;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+conta_recorrente;cnpj:03521109000162;Cond. The Plaza;03521109000162;2;12700.00;2700.00;2025-08;2026-06;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga"
+conta_recorrente;cnpj:05295147000170;Edf Cristiano;05295147000170;2;6600.00;2600.00;2025-07;2025-09;LDC - Laudo de disponibilidade de carga
+conta_recorrente;cnpj:24134330000138;Edf Villa das Pedras;24134330000138;2;7400.00;2400.00;2025-06;2025-07;"LDC - Laudo de disponibilidade de carga, LIE - Laudo de Instalações Elétricas"
+conta_recorrente;cnpj:04022882000147;Edificio Principe de Toscana;04022882000147;2;6000.00;2000.00;2025-08;2025-10;LDC - Laudo de disponibilidade de carga
+conta_recorrente;cnpj:15055733000109;Edf Praça do Mar;15055733000109;2;7600.00;1600.00;2025-04;2025-08;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+conta_recorrente;cnpj:08888803000136;condomínio Residencial Estrela;08888803000136;2;9600.00;1300.00;2025-08;2025-08;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"

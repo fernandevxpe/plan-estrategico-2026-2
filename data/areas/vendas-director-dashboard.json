@@ -1,0 +1,89 @@
+{
+  "title": "Dashboard semanal — Diretor Comercial",
+  "meeting": {
+    "cadence": "Toda segunda-feira",
+    "duration": "1h–2h",
+    "purpose": "Auditar gate de propostas, funil operacional e corrigir rota da semana. Dados atualizados a cada sync Pipedrive.",
+    "agenda": [
+      "Gate SLA 48h: alguma proposta/orçamento pendente > 48h? Quem resolve hoje?",
+      "Funil da semana: visitas, diagnósticos, propostas geradas, apresentações (tarde/noite)",
+      "Negociação: cada negócio com próximo passo e data — foco síndicos à tarde",
+      "Capacidade: vendedores com agenda para assembleias noturnas?",
+      "Ramp novos vendedores: % meta individual vs 0/33/66/100%",
+      "Bloqueios: entregas, pós-venda, leads sem dono"
+    ]
+  },
+  "salesRhythm": {
+    "title": "Ritmo real de vendas",
+    "notes": [
+      "Follow-up e ajustes de negociação com síndicos: período da tarde",
+      "Apresentações de proposta e assembleias: predominantemente à noite",
+      "Meta: toda venda acompanhada pelo vendedor responsável — aumenta capacidade com playbook + app",
+      "Novo vendedor no 1º mês absorve base em Negociação, não prospecção fria"
+    ]
+  },
+  "rampSchedule": {
+    "title": "Ramp de produtividade — novo vendedor",
+    "steps": [
+      { "monthOffset": 0, "pct": 0, "label": "Mês da contratação", "note": "Onboarding + base Negociação. Só fixo." },
+      { "monthOffset": 1, "pct": 33, "label": "1º mês operando", "note": "Foco pipeline existente + playbook" },
+      { "monthOffset": 2, "pct": 66, "label": "2º mês operando", "note": "Mix base + novas visitas" },
+      { "monthOffset": 3, "pct": 100, "label": "3º mês em diante", "note": "Meta plena individual" }
+    ],
+    "firstHire": { "hireMonth": "2026-07", "rampStartMonth": "2026-08", "fullMonth": "2026-11" },
+    "secondHire": { "hireMonth": "2026-09", "rampStartMonth": "2026-10", "fullMonth": "2027-01" }
+  },
+  "weeklyTargetsPerSeller100": {
+    "visitasDiagnosticos": 4,
+    "propostasGeradas": 3,
+    "apresentacoesProposta": 2,
+    "followupsNegociacao": 10,
+    "fechamentos": 1,
+    "slaBreachesMax": 0
+  },
+  "kpiDefinitions": [
+    {
+      "id": "sla48h",
+      "label": "Propostas atrasadas (>48h)",
+      "source": "Gate operacional — CRM ou app",
+      "gateTarget": 0,
+      "severity": "critical"
+    },
+    {
+      "id": "visitas",
+      "label": "Visitas / diagnósticos",
+      "source": "Estágio Diagnóstico + registro no app",
+      "stageKey": "diagnostico"
+    },
+    {
+      "id": "apresentacoes",
+      "label": "Apresentações agendadas",
+      "source": "Estágio Reunião Marcada + assembleias",
+      "stageKey": "reuniaoMarcada"
+    },
+    {
+      "id": "propostas",
+      "label": "Propostas em negociação",
+      "source": "Estágio Negociação",
+      "stageKey": "negociacao"
+    },
+    {
+      "id": "backlogProposta",
+      "label": "Aguardando proposta",
+      "source": "Diagnóstico sem avanço — gargalo atual",
+      "stageKey": "aguardandoProposta"
+    },
+    {
+      "id": "fechamentos7d",
+      "label": "Fechamentos (7 dias)",
+      "source": "Pipedrive — wonTime",
+      "rollingKey": "won7d"
+    },
+    {
+      "id": "novos7d",
+      "label": "Novos negócios (7 dias)",
+      "source": "Pipedrive — addTime",
+      "rollingKey": "created7d"
+    }
+  ]
+}

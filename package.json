@@ -11,7 +11,8 @@
     "sync:pipedrive": "SYNC_SCOPE=pipedrive node scripts/sync-data.mjs",
     "sync:clickup": "SYNC_SCOPE=clickup node scripts/sync-data.mjs",
     "analyze": "node scripts/analyze.mjs",
-    "build": "npm run sync && npm run analyze"
+    "export:context": "node scripts/export-chat-context.mjs",
+    "build": "npm run sync && npm run analyze && npm run export:context"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

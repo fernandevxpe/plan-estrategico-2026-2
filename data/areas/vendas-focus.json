@@ -1,0 +1,98 @@
+{
+  "operationalGate": {
+    "title": "Gate operacional — nada escala antes disso",
+    "statement": "Nenhum plano extra (tráfego, campanha EV, 2ª contratação, metas agressivas) é relevante enquanto clientes afirmam que não recebem orçamentos e propostas e estão esperando. Primeiro: zerar o atraso de propostas e destravar Negociação.",
+    "releaseCriteria": "Gate liberado quando não houver proposta pendente > 48h no CRM (SLA rígido, auditável toda segunda).",
+    "symptoms": [
+      "Clientes esperando orçamento/proposta sem retorno",
+      "125 negócios em Negociação (~R$ 1,4M) parados",
+      "Processo de proposta desigual entre vendedores",
+      "Conversão caiu após foco em visita sem fechamento"
+    ],
+    "blockedUntilCleared": [
+      "Escalar tráfego além do plano atual",
+      "Campanha comercial EV em volume",
+      "2º vendedor (Cenário B) — só após gate + gatilho financeiro",
+      "Metas 3M como pressão no time sem playbook funcionando"
+    ]
+  },
+  "pipelinePriority": {
+    "title": "Prioridade #1: avançar negócios pendentes",
+    "headline": "A maior alavanca imediata não é lead novo — é a base em Negociação e propostas atrasadas.",
+    "actions": [
+      "Ritual semanal (segunda): revisar cada negócio em Negociação com próximo passo e data",
+      "Meta: nenhuma proposta pendente > 48h sem follow-up registrado",
+      "Priorizar fechamento dos R$ 1,4M em pipeline antes de abrir novas frentes"
+    ]
+  },
+  "hiringPolicy": {
+    "title": "Política de contratação",
+    "firstSeller": {
+      "when": "PSEL em jul/2026 · operando em ago/2026",
+      "focus": "Entrada 100% focada em destravar a base: Negociação, propostas atrasadas e follow-up — não em prospecção fria.",
+      "onboarding": "Ramp 0% jul → 33% ago → 66% set → 100% nov. 1º mês útil: base Negociação + playbook."
+    },
+    "secondSeller": {
+      "when": "Somente se ago + set ≥ R$ 280.000/mês combinados (receita fechada)",
+      "then": "Abrir 2ª vaga para entrada em out/2026 (Cenário B)",
+      "note": "Contratação extra não substitui destravar propostas — só faz sentido com conversão recuperada."
+    }
+  },
+  "processAndApp": {
+    "title": "Mapeamento de processos → app comercial",
+    "statement": "Mapear o fluxo real (visita → diagnóstico → orçamento → slide → PDF → follow-up) para virar checklist, registros e organização no app — base para orçamento e proposta automáticos.",
+    "leadership": "Diretor Comercial (conteúdo e processo) + time de automação (implementação). Abordagem gradual — primeira vez profissionalizando, sem forçar demais, mas com urgência de reverter a queda.",
+    "deliverables": [
+      "Checklist de visita/diagnóstico no app",
+      "Registros padronizados por etapa (CRM + app)",
+      "Montagem automática de orçamento a partir do diagnóstico",
+      "Slide padrão + geração automática de PDF",
+      "Templates de pós-venda padronizados com personalização por IA"
+    ]
+  },
+  "killerProposals": {
+    "title": "Propostas matadoras — ordem de rollout (volume + faturamento 2026)",
+    "rolloutNote": "Template automático v1 na ordem dos que mais vendem e faturam hoje; LCC entra em seguida como aposta estratégica EV no H2.",
+    "templates": [
+      {
+        "id": "ldc",
+        "priority": 1,
+        "name": "Laudo de Disponibilidade de Carga + planejamento energético (LDC)",
+        "role": "Carro-chefe: ~R$ 416k YTD · 37 fechamentos — maior volume e faturamento",
+        "duePhase": "jul/2026"
+      },
+      {
+        "id": "lie",
+        "priority": 2,
+        "name": "Laudo de Instalações Elétricas (LIE)",
+        "role": "Entrada em condomínios: ~R$ 57k YTD · 11 fechamentos — porta de entrada",
+        "duePhase": "jul–ago/2026"
+      },
+      {
+        "id": "lcc",
+        "priority": 3,
+        "name": "Planejamento de ponto de carregamento coletivo (LCC / EV)",
+        "role": "Coração estratégico H2 — gera pós-venda (obra, instalação, laudos); rollout após LDC+LIE",
+        "duePhase": "ago/2026"
+      }
+    ],
+    "postSalesNote": "Demais pós-vendas usam propostas padronizadas que a IA personaliza por cliente e histórico."
+  },
+  "weeklyRitualsScope": {
+    "title": "Rito semanal — reunião do Diretor (1h–2h)",
+    "status": "Segunda-feira · usar dashboard acima na reunião",
+    "topics": [
+      "Auditar gate SLA 48h — propostas/orçamentos pendentes",
+      "Visitas realizadas, propostas geradas e apresentações (tarde síndicos / noite assembleias)",
+      "Cada negócio em Negociação: próximo passo + data + vendedor dono",
+      "Leads novos vs capacidade — tudo com vendedor responsável",
+      "Entregas em andamento e pós-venda ativo",
+      "Ramp 0/33/66/100% dos novos vendedores vs meta"
+    ],
+    "constraints": [
+      "Follow-up e negociação: tarde com síndicos",
+      "Apresentações e assembleias: noite — planejar agenda do vendedor",
+      "Playbook + app aumentam capacidade sem perder qualidade"
+    ]
+  }
+}

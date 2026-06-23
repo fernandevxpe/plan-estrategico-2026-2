@@ -240,6 +240,7 @@ const deals = dealsRaw.map((deal) => {
     value: Number(deal.value || 0),
     currency: deal.currency,
     addTime: deal.add_time,
+    updateTime: deal.update_time ?? deal.stage_change_time ?? null,
     wonTime: deal.won_time,
     closeTime: deal.close_time,
     createdMonth: monthKey(deal.add_time),
@@ -2049,6 +2050,52 @@ const growthGuides = {
   })
 };
 
+const MAIN_EXEC_PIPELINE = '[Exec] Laudos - Condo';
+
+function parseDealTimestamp(value) {
+  if (!value) return null;
+  const date = new Date(String(value).replace(' ', 'T'));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function countDealsInDays(dealList, timeField, days) {
+  return dealList.filter((deal) => {
+    const age = daysBetween(deal[timeField], generatedAt);
+    return age != null && age >= 0 && age <= days;
+  }).length;
+}
+
+const directorMainOpen = openDeals.filter((deal) => deal.pipeline === MAIN_EXEC_PIPELINE);
+const directorSnapshot = {
+  reuniaoMarcada: directorMainOpen.filter((deal) => deal.stage === 'Reunião Marcada').length,
+  diagnostico: directorMainOpen.filter((deal) => deal.stage === 'Diagnóstico').length,
+  negociacao: directorMainOpen.filter((deal) => deal.stage === 'Negociação').length,
+  fechamento: directorMainOpen.filter((deal) => deal.stage === 'Fechamento').length,
+  relacionamento: directorMainOpen.filter((deal) => deal.stage === 'Relacionamento').length
+};
+
+const commercialDirector = {
+  mainPipeline: MAIN_EXEC_PIPELINE,
+  snapshot: directorSnapshot,
+  sla48h: {
+    breaches: directorMainOpen.filter((deal) => {
+      if (deal.stage !== 'Diagnóstico') return false;
+      const ref = deal.updateTime ?? deal.addTime;
+      const age = daysBetween(ref, generatedAt);
+      return age != null && age > 2;
+    }).length,
+    gateTarget: 0,
+    note:
+      'Negócios em Diagnóstico sem avanço há >48h (update_time ou add_time). App registrará visita → proposta com SLA auditável.'
+  },
+  rolling: {
+    won7d: countDealsInDays(wonDeals, 'wonTime', 7),
+    won30d: countDealsInDays(wonDeals, 'wonTime', 30),
+    created7d: countDealsInDays(analysisDeals, 'addTime', 7),
+    created30d: countDealsInDays(analysisDeals, 'addTime', 30)
+  }
+};
+
 const report = {
   generatedAt: new Date().toISOString(),
   scope: 'Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus',
@@ -2066,6 +2113,7 @@ const report = {
   planningSummary,
   indicatorHighlights,
   deepAnalysis,
+  commercialDirector,
   growthGuides,
   businessTypeMonthly: businessTypeTrend,
   businessTypeDeals,
@@ -2259,3 +2307,5 @@ ${wonDeals.filter((deal) => deal.wonMonth?.startsWith('2026')).map((deal) => `| 
 
 await writeFile(new URL('analise-xpe-2025-2026.md', reportsDir), md);
 console.log('Analise gerada em reports/analise-xpe-2025-2026.md e data/processed/analysis.json');
+
+await import('./export-chat-context.mjs');

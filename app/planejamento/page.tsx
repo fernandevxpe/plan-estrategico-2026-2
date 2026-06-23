@@ -1,13 +1,13 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { PlanningPage } from "@/components/pages/PlanningPage";
 import { loadDashboardData } from "@/lib/data/load-dashboard";
-import { HomePage } from "@/components/pages/HomePage";
 
-export default async function Page() {
+export default async function PlanejamentoPage() {
   const { analysis, generatedAt } = await loadDashboardData();
 
   return (
     <AppShell>
-      <HomePage analysis={analysis} generatedAt={generatedAt} />
+      <PlanningPage analysis={analysis} generatedAt={generatedAt} />
     </AppShell>
   );
 }

@@ -251,6 +251,28 @@ export type PlanningSummary = {
   baseYearTotal2026: number;
 };
 
+export type CommercialDirectorMetrics = {
+  mainPipeline: string;
+  snapshot: {
+    reuniaoMarcada: number;
+    diagnostico: number;
+    negociacao: number;
+    fechamento: number;
+    relacionamento: number;
+  };
+  sla48h: {
+    breaches: number;
+    gateTarget: number;
+    note: string;
+  };
+  rolling: {
+    won7d: number;
+    won30d: number;
+    created7d: number;
+    created30d: number;
+  };
+};
+
 export type Analysis = {
   generatedAt: string;
   totals: {
@@ -283,6 +305,7 @@ export type Analysis = {
   planningSummary: PlanningSummary;
   indicatorHighlights: IndicatorHighlights;
   deepAnalysis: DeepAnalysis;
+  commercialDirector?: CommercialDirectorMetrics;
   growthGuides: GrowthGuides;
   businessTypeMonthly: BusinessTypeMonthly[];
   obraSubgroups?: {

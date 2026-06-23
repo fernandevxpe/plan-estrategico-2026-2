@@ -1,0 +1,12 @@
+key;keyType;organization;cnpj;wonDeals;repeatDeals;totalRevenue;repeatRevenue;firstWonMonth;lastWonMonth;types
+org:le parc;account_name;Edificio Le Parc;;2;1;115800;102000;2025-02;2026-02;"LSPDA, LDC - Laudo de disponibilidade de carga"
+org:verano adm;account_name;Verano ADM;;2;1;50531.72;43031.72;2026-02;2026-02;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, Instalação de Carregador Eletrico"
+org:montendre;account_name;Cond. Montendre;;2;1;51249.29;33649.29;2025-04;2025-12;"LIE - Laudo de Instalações Elétricas, PROJETOS, LSPDA, OBRA"
+org:cristiano;account_name;Edf Cristiano;;2;1;24500;20000;2025-10;2025-10;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA"
+org:castelo blois;account_name;Edf Castelo de Blois;;2;1;25800;19800;2025-09;2026-01;"LIE - Laudo de Instalações Elétricas, OBRA"
+org:maria carolina;account_name;Edf Maria Carolina;;2;1;24440;19440;2025-06;2025-12;"LIE - Laudo de Instalações Elétricas, Obras eletricas"
+org:praia japaratinga;account_name;Edf Praia de Japaratinga;;2;1;16040;10540;2025-06;2025-07;"LIE - Laudo de Instalações Elétricas, OBRA"
+org:carmen costa;account_name;Condomínio Carmen Costa;;2;1;16200;9200;2026-04;2026-06;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"
+org:pichilau vila esperanca;account_name;Pichilau Vila Esperança;;2;1;9000;5500;2025-06;2025-06;PROJETOS
+org:cidade recife;account_name;Edf Cidade do Recife;;2;1;10500;5000;2026-02;2026-05;"LDC - Laudo de disponibilidade de carga, PROJETOS"
+org:villa casa forte;account_name;Edf Villa Casa Forte;;2;1;9500;4500;2025-12;2026-02;"Laudos e consultoria condominial, OBRA"

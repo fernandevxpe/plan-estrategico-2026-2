@@ -51,7 +51,7 @@ export function getTimelineForScenario(
     analysis.projection2026H2.scenarios.find((item) => item.name === scenario)?.revenue ??
     projection.h2Projected;
   const baseH2 =
-    analysis.projection2026H2.scenarios.find((item) => item.name === "Base recomendada")?.revenue ??
+    analysis.projection2026H2.scenarios.find((item) => item.name === "Realista recomendado")?.revenue ??
     1;
   const scale = baseH2 ? h2Factor / baseH2 : 1;
 

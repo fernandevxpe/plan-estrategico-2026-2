@@ -1,0 +1,7 @@
+key;month;confidence;organization;cnpj;wonDeals;revenue;types
+cnpj:11419309000137;2026-03;same_month_multi_service;Edf Reserva do Poço;11419309000137;2;92000;"OBRA, PIE - Projeto infra.  Eletrocalha e Emergência"
+org:verano adm;2026-02;same_month_multi_service;Verano ADM;;2;50531.72;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA"
+cnpj:10395888000162;2026-01;same_month_multi_service;Edf Samsara;10395888000162;2;32500;"OBRA, PIE - Projeto infra.  Eletrocalha e Emergência"
+org:cristiano;2025-10;same_month_multi_service;Edf Cristiano;;2;24500;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA"
+cnpj:04239390000108;2025-11;same_month_multi_service;Edf Terra Brasilis;04239390000108;2;18700;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA"
+cnpj:08888803000136;2025-08;same_month_multi_service;condomínio Residencial Estrela;08888803000136;2;9600;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular"

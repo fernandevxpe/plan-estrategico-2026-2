@@ -192,6 +192,18 @@ const businessTypeLabels = new Set([
   'CDM',
   'Instalação de Carregador Eletrico'
 ]);
+const businessTypePriority = [
+  'OBRA',
+  'CDM',
+  'Instalação de Carregador Eletrico',
+  'PIE - Projeto infra.  Eletrocalha e Emergência',
+  'LDC - Laudo de disponibilidade de carga',
+  'LIE - Laudo de Instalações Elétricas',
+  'LCC - Laudo Carregador Coletivo',
+  'ICV - Inspeção de carregador veicular',
+  'LSPDA',
+  'PROJETOS'
+];
 const cnpjField = orgFieldsRaw.find((field) => /cnpj/i.test(field.name));
 
 function dealOrgId(deal) {
@@ -205,6 +217,13 @@ function businessTypesForDeal(deal, fallbackService) {
   return [fallbackService || 'Sem tipo comercial'];
 }
 
+function primaryBusinessTypeForDeal(types, fallbackService) {
+  for (const priority of businessTypePriority) {
+    if (types.includes(priority)) return priority;
+  }
+  return types[0] || fallbackService || 'Sem tipo comercial';
+}
+
 const deals = dealsRaw.map((deal) => {
   const pipeline = pipelineById[deal.pipeline_id];
   const stage = stageById[deal.stage_id];
@@ -213,6 +232,7 @@ const deals = dealsRaw.map((deal) => {
   const service = inferService({ ...deal, stage_name: stage?.name, pipeline_name: pipeline?.name }, fieldsByKey);
   const cnpj = normalizeDocument(cnpjField ? organization?.[cnpjField.key] : null);
   const orgName = deal.org_name ?? deal.org_id?.name ?? organization?.name ?? null;
+  const businessTypes = businessTypesForDeal(deal, service);
   return {
     id: deal.id,
     title: deal.title,
@@ -239,7 +259,10 @@ const deals = dealsRaw.map((deal) => {
     channel: fieldValueLabel(deal.channel, fieldsByKey.channel) ?? deal.channel ?? null,
     origin: fieldValueLabel(deal.origin, fieldsByKey.origin) ?? deal.origin ?? null,
     labels: parseSetIds(deal.label).map((id) => labelById[id] ?? id),
-    businessTypes: businessTypesForDeal(deal, service),
+    businessTypes,
+    primaryBusinessType: primaryBusinessTypeForDeal(businessTypes, service),
+    hasExplicitBusinessType: businessTypes.some((type) => businessTypeLabels.has(type)),
+    isMultiBusinessType: businessTypes.length > 1,
     person: deal.person_name ?? deal.person_id?.name ?? null,
     service
   };
@@ -264,6 +287,13 @@ const analysisDeals = deals.filter((deal) =>
 const wonDeals = analysisDeals.filter((deal) => deal.status === 'won' && deal.wonMonth);
 const focus2026 = analysisDeals.filter((deal) => deal.createdMonth?.startsWith('2026') || deal.wonMonth?.startsWith('2026'));
 const monthly = monthlyRows(analysisDeals).filter((row) => row.month >= '2025-01' && row.month <= '2026-12');
+const generatedAt = new Date();
+const matureCohortMinAgeDays = 45;
+
+function monthEnd(month) {
+  const [year, rawMonth] = month.split('-').map(Number);
+  return new Date(Date.UTC(year, rawMonth, 0, 23, 59, 59));
+}
 
 const allWonDeals = deals
   .filter((deal) => deal.status === 'won' && deal.wonMonth)
@@ -288,8 +318,11 @@ const commercialFunnel = monthly.map((row) => {
   const created = deals.filter((deal) => deal.createdMonth === row.month);
   const createdWon = created.filter((deal) => deal.status === 'won');
   const createdLost = created.filter((deal) => deal.status === 'lost');
+  const createdClosed = createdWon.length + createdLost.length;
   const wonInMonth = deals.filter((deal) => deal.wonMonth === row.month);
   const lostInMonth = deals.filter((deal) => deal.lostMonth === row.month);
+  const cohortAgeDays = Math.max(0, daysBetween(monthEnd(row.month), generatedAt) ?? 0);
+  const isMatureCohort = cohortAgeDays >= matureCohortMinAgeDays;
   const openAtEnd = deals.filter((deal) => {
     if (!deal.createdMonth || deal.createdMonth > row.month) return false;
     if (!deal.closedMonth) return deal.status === 'open';
@@ -307,6 +340,12 @@ const commercialFunnel = monthly.map((row) => {
     createdStillOpenDeals: created.filter((deal) => deal.status === 'open').length,
     cohortConversionPct: created.length ? (createdWon.length / created.length) * 100 : null,
     cohortLossPct: created.length ? (createdLost.length / created.length) * 100 : null,
+    matureCohortMinAgeDays,
+    cohortAgeDays,
+    isMatureCohort,
+    matureConversionPct: isMatureCohort && created.length ? (createdWon.length / created.length) * 100 : null,
+    closedConversionPct: createdClosed ? (createdWon.length / createdClosed) * 100 : null,
+    closedDealsFromCohort: createdClosed,
     wonDeals: wonInMonth.length,
     wonValue,
     lostDeals: lostInMonth.length,
@@ -316,10 +355,22 @@ const commercialFunnel = monthly.map((row) => {
   };
 });
 
-const businessTypeMonthly = [];
+const businessTypeDeals = [];
+const businessTypeMultiDeals = [];
 for (const deal of wonDeals) {
+  businessTypeDeals.push({
+    month: deal.wonMonth,
+    type: deal.primaryBusinessType,
+    dealId: deal.id,
+    dealTitle: deal.title,
+    organization: deal.organization,
+    value: deal.value,
+    labels: deal.businessTypes.join(', '),
+    isMultiBusinessType: deal.isMultiBusinessType
+  });
+
   for (const type of deal.businessTypes) {
-    businessTypeMonthly.push({
+    businessTypeMultiDeals.push({
       month: deal.wonMonth,
       type,
       dealId: deal.id,
@@ -330,7 +381,7 @@ for (const deal of wonDeals) {
   }
 }
 
-const businessTypeSummary = groupBy(businessTypeMonthly, (item) => `${item.month}|||${item.type}`)
+const businessTypeSummary = groupBy(businessTypeDeals, (item) => `${item.month}|||${item.type}`)
   .map(([key, items]) => {
     const [month, type] = key.split('|||');
     return {
@@ -391,6 +442,46 @@ const cnpjCoverage = {
 };
 const postSalesByCnpj = summarizeRepeatSales(wonDeals, (deal) => deal.cnpj, 'cnpj');
 const repeatSalesByAccount = summarizeRepeatSales(wonDeals, (deal) => deal.accountKey, 'organization_name');
+const repeatSalesByAccountName = summarizeRepeatSales(
+  wonDeals.filter((deal) => !deal.cnpj),
+  (deal) => deal.accountKey,
+  'account_name'
+);
+const sameMonthMultiService = groupBy(wonDeals, (deal) => `${deal.accountKey}|||${deal.wonMonth}`)
+  .map(([key, rows]) => {
+    const [accountKey, month] = key.split('|||');
+    const types = [...new Set(rows.map((deal) => deal.primaryBusinessType))];
+    return {
+      key: accountKey,
+      month,
+      confidence: 'same_month_multi_service',
+      organization: rows[0]?.organization ?? null,
+      cnpj: rows.find((deal) => deal.cnpj)?.cnpj ?? null,
+      wonDeals: rows.length,
+      revenue: sum(rows, (deal) => deal.value),
+      types: types.join(', '),
+      deals: rows.map((deal) => ({ id: deal.id, title: deal.title, value: deal.value, primaryBusinessType: deal.primaryBusinessType }))
+    };
+  })
+  .filter((row) => row.wonDeals > 1 && row.types.includes(','))
+  .sort((a, b) => b.revenue - a.revenue);
+const postSalesConfidence = {
+  cnpjExact: {
+    accounts: postSalesByCnpj.length,
+    repeatRevenue: sum(postSalesByCnpj, (row) => row.repeatRevenue),
+    confidence: 'high'
+  },
+  accountName: {
+    accounts: repeatSalesByAccountName.length,
+    repeatRevenue: sum(repeatSalesByAccountName, (row) => row.repeatRevenue),
+    confidence: 'medium'
+  },
+  sameMonthMultiService: {
+    accounts: sameMonthMultiService.length,
+    revenue: sum(sameMonthMultiService, (row) => row.revenue),
+    confidence: 'medium'
+  }
+};
 const postSalesMonthly = monthly.map((row) => {
   const wonInMonth = wonDeals.filter((deal) => deal.wonMonth === row.month);
   const byCnpj = wonInMonth.filter((deal) => deal.isPostSaleByCnpj);
@@ -406,6 +497,44 @@ const postSalesMonthly = monthly.map((row) => {
     repeatShareByAccountPct: wonInMonth.length ? (byAccount.length / wonInMonth.length) * 100 : null
   };
 });
+
+const openDealsForQuality = analysisDeals.filter((deal) => deal.status === 'open');
+const oldOpenDeals = openDealsForQuality.filter((deal) => {
+  const age = daysBetween(deal.addTime, generatedAt);
+  return age != null && age > 120;
+});
+const wonDealsWithoutExplicitType = wonDeals.filter((deal) => !deal.hasExplicitBusinessType);
+const multiTypeWonDeals = wonDeals.filter((deal) => deal.isMultiBusinessType);
+const dataQualityAlerts = [
+  {
+    id: 'cnpj_coverage',
+    severity: cnpjCoverage.organizationsWithCnpj / Math.max(1, cnpjCoverage.organizations) < 0.25 ? 'high' : 'medium',
+    title: 'Cobertura de CNPJ parcial',
+    message: `${cnpjCoverage.organizationsWithCnpj}/${cnpjCoverage.organizations} organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.`,
+    count: cnpjCoverage.organizations - cnpjCoverage.organizationsWithCnpj
+  },
+  {
+    id: 'missing_business_type',
+    severity: wonDealsWithoutExplicitType.length ? 'medium' : 'low',
+    title: 'Negócios ganhos sem etiqueta comercial explícita',
+    message: `${wonDealsWithoutExplicitType.length}/${wonDeals.length} ganhos usam fallback de serviço/funil como tipo principal.`,
+    count: wonDealsWithoutExplicitType.length
+  },
+  {
+    id: 'multi_business_type',
+    severity: multiTypeWonDeals.length ? 'medium' : 'low',
+    title: 'Negócios com múltiplas etiquetas',
+    message: `${multiTypeWonDeals.length} ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.`,
+    count: multiTypeWonDeals.length
+  },
+  {
+    id: 'old_open_deals',
+    severity: oldOpenDeals.length > 100 ? 'high' : 'medium',
+    title: 'Base aberta contém negócios antigos',
+    message: `${oldOpenDeals.length} negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.`,
+    count: oldOpenDeals.length
+  }
+];
 
 const serviceSummary = groupBy(wonDeals, (deal) => deal.service)
   .map(([service, items]) => ({
@@ -539,22 +668,18 @@ const projection2026H2 = {
       wonDeals: runRateWonDeals
     },
     {
-      name: 'Realista',
+      name: 'Realista recomendado',
       premise: 'Ritmo atual com aceleracao sazonal moderada derivada de 2025',
       revenue: realisticRevenue,
       wonDeals: realisticWonDeals
-    },
+    }
+  ],
+  aggressiveScenarios: [
     {
       name: 'Potencial sazonal 2025',
       premise: 'Jul-dez/2025 multiplicado pelo crescimento jan-mai de 2026 vs 2025',
       revenue: seasonalRevenue,
       wonDeals: seasonalWonDeals
-    },
-    {
-      name: 'Base recomendada',
-      premise: 'Cenario realista recomendado para planejamento 2026.2',
-      revenue: weightedRevenue,
-      wonDeals: weightedWonDeals
     }
   ],
   months: projectionMonths
@@ -664,7 +789,7 @@ const yearProjectionByScenario = projection2026H2.scenarios.map((scenario) => ({
   wonDealsEstimated: Math.round(sum(janMay2026, (row) => row.wonDeals) + runRateWonMonthly + scenario.wonDeals)
 }));
 
-const baseScenario = projection2026H2.scenarios.find((item) => item.name === 'Base recomendada');
+const baseScenario = projection2026H2.scenarios.find((item) => item.name === 'Realista recomendado');
 const projectedByMonth = Object.fromEntries(projectionMonths.map((row) => [row.month, row]));
 
 const timeline2026 = monthNames.map((label, index) => {
@@ -752,7 +877,7 @@ const planningSummary = {
   yearProjectionByScenario,
   timeline2026,
   insights: planningInsights,
-  defaultScenario: 'Base recomendada',
+  defaultScenario: 'Realista recomendado',
   baseYearTotal2026: h1ProjectedTotal + (baseScenario?.revenue ?? 0)
 };
 
@@ -1797,11 +1922,16 @@ const report = {
   deepAnalysis,
   growthGuides,
   businessTypeMonthly: businessTypeTrend,
-  businessTypeDeals: businessTypeMonthly,
+  businessTypeDeals,
+  businessTypeMultiDeals,
   cnpjCoverage,
   postSalesByCnpj,
   repeatSalesByAccount,
+  repeatSalesByAccountName,
+  sameMonthMultiService,
+  postSalesConfidence,
   postSalesMonthly,
+  dataQualityAlerts,
   serviceSummary,
   serviceMonthly,
   wonDeals: wonDeals.sort((a, b) => (a.wonMonth || '').localeCompare(b.wonMonth || '')),
@@ -1836,9 +1966,12 @@ await writeCsv(
   }))
 );
 await writeCsv('business-type-monthly.csv', businessTypeTrend);
-await writeCsv('business-type-deals.csv', businessTypeMonthly);
+await writeCsv('business-type-deals.csv', businessTypeDeals);
+await writeCsv('business-type-multi-deals.csv', businessTypeMultiDeals);
 await writeCsv('post-sales-cnpj.csv', postSalesByCnpj.map(({ deals, ...row }) => row));
 await writeCsv('account-repeat-sales.csv', repeatSalesByAccount.map(({ deals, ...row }) => row));
+await writeCsv('account-name-repeat-sales.csv', repeatSalesByAccountName.map(({ deals, ...row }) => row));
+await writeCsv('same-month-multi-service.csv', sameMonthMultiService.map(({ deals, ...row }) => row));
 await writeCsv('post-sales-monthly.csv', postSalesMonthly);
 await writeCsv('service-summary.csv', serviceSummary);
 await writeCsv('won-deals.csv', wonDeals);
@@ -1916,7 +2049,7 @@ ${growthComparison.slice(0, 6).map((row) => `| ${row.label} | ${money(row.revenu
 | --- | --- | ---: | ---: |
 ${projection2026H2.scenarios.map((scenario) => `| ${scenario.name} | ${scenario.premise} | ${money(scenario.revenue)} | ${Math.round(scenario.wonDeals)} |`).join('\n')}
 
-> Recomendacao: usar o cenario "Base recomendada" como meta realista de planejamento, mantendo o potencial sazonal como teto agressivo e nao como compromisso operacional.
+> Recomendacao: usar o cenario "Realista recomendado" como forecast de planejamento, mantendo o potencial sazonal como teto agressivo e nao como compromisso operacional.
 
 ## Projecao mensal jul-dez/2026
 

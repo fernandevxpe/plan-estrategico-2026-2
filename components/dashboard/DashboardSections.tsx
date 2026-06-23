@@ -6,30 +6,17 @@ import {
   BarChart3,
   BriefcaseBusiness,
   Database,
-  LineChart,
+  Repeat2,
   Target,
-  TrendingDown,
   TrendingUp
 } from "lucide-react";
-import {
-  ProjectionChart,
-  RevenueChart,
-  ServiceMixChart,
-  TicketChart,
-  YearComparisonChart
-} from "@/components/charts";
-import type { Analysis, ExecutiveKpis, PlanningFilters } from "@/lib/analysis/types";
-import {
-  filterBusinessTypes,
-  filterFunnel,
-  filterWonDeals
-} from "@/lib/analysis/metrics";
+import { RevenueChart, YearComparisonChart } from "@/components/charts";
+import type { Analysis, BusinessTypeMonthly, ExecutiveKpis, PlanningFilters } from "@/lib/analysis/types";
+import { filterBusinessTypes, filterFunnel, filterWonDeals } from "@/lib/analysis/metrics";
 import {
   brl,
   formatGrowth,
   monthLabel,
-  NEW_DEALS_CONVERSION_HINT,
-  NEW_DEALS_CONVERSION_LABEL,
   NEW_DEALS_CONVERSION_SHORT,
   number,
   serviceClass
@@ -41,54 +28,69 @@ type Props = {
   kpis: ExecutiveKpis;
 };
 
+function weightedAverage(rows: { value: number; weight: number }[]) {
+  const totalWeight = rows.reduce((sum, row) => sum + row.weight, 0);
+  return totalWeight ? rows.reduce((sum, row) => sum + row.value * row.weight, 0) / totalWeight : null;
+}
+
+function topTypes(rows: BusinessTypeMonthly[]) {
+  const map = new Map<string, { type: string; revenue: number; wonDeals: number }>();
+  for (const row of rows) {
+    const current = map.get(row.type) ?? { type: row.type, revenue: 0, wonDeals: 0 };
+    current.revenue += row.revenue;
+    current.wonDeals += row.wonDeals;
+    map.set(row.type, current);
+  }
+  return [...map.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 6);
+}
+
 export function DashboardSections({ analysis, filters, kpis }: Props) {
-  const months2026 = analysis.monthly.filter((item) => item.month.startsWith("2026"));
-  const currentMonth = months2026[months2026.length - 1];
   const funnelRows = filterFunnel(analysis, filters);
-  const businessTypes = filterBusinessTypes(analysis, filters).slice(0, 40);
+  const businessTypes = filterBusinessTypes(analysis, filters);
   const wonDealsFiltered = [...filterWonDeals(analysis, filters)].sort((a, b) => b.value - a.value);
   const topWonDeals = wonDealsFiltered.slice(0, 12);
-  const postSales2026 = analysis.postSalesMonthly.filter((item) => {
-    if (filters.year === "2025") return item.month.startsWith("2025");
-    if (filters.year === "2026") return item.month.startsWith("2026");
-    return true;
-  });
+  const latestFunnel = funnelRows.at(-1);
+  const matureRows = funnelRows.filter((row) => row.isMatureCohort);
+  const matureConversion = weightedAverage(
+    matureRows
+      .filter((row) => row.matureConversionPct != null)
+      .map((row) => ({ value: row.matureConversionPct ?? 0, weight: row.createdDeals }))
+  );
+  const closedConversion = weightedAverage(
+    funnelRows
+      .filter((row) => row.closedConversionPct != null)
+      .map((row) => ({ value: row.closedConversionPct ?? 0, weight: row.closedDealsFromCohort ?? 0 }))
+  );
   const repeatRevenue = analysis.repeatSalesByAccount.reduce((sum, item) => sum + item.repeatRevenue, 0);
   const cnpjCoveragePct = analysis.cnpjCoverage.organizations
     ? (analysis.cnpjCoverage.organizationsWithCnpj / analysis.cnpjCoverage.organizations) * 100
     : 0;
-  const maxServiceRevenue = Math.max(...analysis.serviceSummary.map((item) => item.revenue), 1);
-  const activeScenario = analysis.projection2026H2.scenarios.find((item) => item.name === filters.scenario);
   const growthRows =
     filters.year === "2025"
       ? analysis.growthComparison
       : filters.year === "2026"
         ? analysis.growthComparison.slice(0, 6)
         : analysis.growthComparison;
-
+  const months2026 = analysis.monthly.filter((item) => item.month.startsWith("2026"));
   const chartData = months2026.map((item) => ({
     ...item,
     label: monthLabel(item.month),
     revenueK: Math.round(item.wonRevenue / 1000)
   }));
-
-  const completeMonths = months2026.filter((item) => item.month >= "2026-01" && item.month <= "2026-05");
-  const h1Revenue = completeMonths.reduce((sum, item) => sum + item.wonRevenue, 0);
-  const h1Won = completeMonths.reduce((sum, item) => sum + item.wonDeals, 0);
-  const avgRevenue = h1Revenue / Math.max(1, completeMonths.length);
-  const avgWon = h1Won / Math.max(1, completeMonths.length);
+  const typeLeaders = topTypes(businessTypes);
+  const postSalesConfidence = analysis.postSalesConfidence;
 
   return (
     <>
-      <section className="hero-band">
+      <section className="hero-band" id="comercial">
         <div className="headline">
           <p className="eyebrow">
-            <Activity size={16} /> Análise operacional
+            <Activity size={16} /> Motor comercial
           </p>
-          <h1>Funil, serviços, recorrência e fechamentos.</h1>
+          <h1>O que sustenta a projeção realista.</h1>
           <p>
-            Seções abaixo respeitam os filtros de ano
-            {filters.selectedMonth ? ` e o mês ${filters.selectedMonth}` : ""}.
+            A leitura principal mostra pipeline bruto, conversão madura, mix de vendas sem duplicar receita
+            e recorrência separada por nível de confiança.
           </p>
         </div>
 
@@ -110,95 +112,38 @@ export function DashboardSections({ analysis, filters, kpis }: Props) {
           <div className="status-item">
             <div className="status-icon"><AlertTriangle size={18} /></div>
             <div>
-              <strong>Junho é parcial</strong>
-              <span>Projeção usa janeiro a maio como meses completos de 2026.</span>
+              <strong>Pipeline aberto é bruto</strong>
+              <span>Negócios antigos ou frios aparecem na base, mas não entram como forecast automático.</span>
             </div>
           </div>
         </aside>
       </section>
 
       <section className="kpi-grid kpi-grid-secondary">
-        <KpiCard title="Receita jan-mai" value={brl.format(h1Revenue)} note={`Média mensal ${brl.format(avgRevenue)}`} icon={<TrendingUp size={18} />} />
-        <KpiCard title="Projetos fechados" value={h1Won.toLocaleString("pt-BR")} note={`Média de ${number.format(avgWon)} fechamentos/mês`} icon={<Target size={18} />} />
-        <KpiCard title="Crescimento vs 2025" value={formatGrowth(analysis.projection2026H2.basis.yoyGrowthPct)} note="Receita jan-mai/2026 contra jan-mai/2025" icon={<LineChart size={18} />} />
-        <KpiCard title="Cenário ativo H2" value={brl.format(kpis.projected2026H2)} note={filters.scenario} icon={<TrendingUp size={18} />} />
+        <KpiCard title="Base aberta" value={`${latestFunnel?.openBaseDealsEndOfMonth ?? 0}`} note={brl.format(latestFunnel?.openBaseValueEndOfMonth ?? 0)} icon={<Target size={18} />} />
+        <KpiCard title="Conversão madura" value={formatGrowth(matureConversion)} note={`Coortes com ${latestFunnel?.matureCohortMinAgeDays ?? 45}+ dias`} icon={<TrendingUp size={18} />} />
+        <KpiCard title="Conversão fechados" value={formatGrowth(closedConversion)} note="Ganhos / (ganhos + perdidos)" icon={<BarChart3 size={18} />} />
+        <KpiCard title="Forecast H2 realista" value={brl.format(kpis.projected2026H2)} note={filters.scenario} icon={<TrendingUp size={18} />} />
       </section>
-
-      <section className="section-title" id="funil">
-        <div>
-          <h2>Funil comercial mensal</h2>
-          <p>Novos negócios, {NEW_DEALS_CONVERSION_LABEL.toLowerCase()}, ganhos e base aberta.</p>
-        </div>
-        <span className="pill green">{funnelRows.at(-1)?.openBaseDealsEndOfMonth ?? 0} negócios abertos</span>
-      </section>
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Mês</th>
-              <th className="right">Novos</th>
-              <th className="right">Valor criado</th>
-                <th className="right" title={NEW_DEALS_CONVERSION_HINT}>{NEW_DEALS_CONVERSION_SHORT}</th>
-              <th className="right">Ganhos</th>
-              <th className="right">Receita ganha</th>
-              <th className="right">Perdidos</th>
-              <th className="right">Base aberta</th>
-              <th className="right">Valor aberto</th>
-            </tr>
-          </thead>
-          <tbody>
-            {funnelRows.map((item) => (
-              <tr key={item.month}>
-                <td><strong>{item.month}</strong></td>
-                <td className="right">{item.createdDeals}</td>
-                <td className="right">{brl.format(item.createdValue)}</td>
-                <td className="right">{formatGrowth(item.cohortConversionPct)}</td>
-                <td className="right">{item.wonDeals}</td>
-                <td className="right">{brl.format(item.wonValue)}</td>
-                <td className="right">{item.lostDeals}</td>
-                <td className="right">{item.openBaseDealsEndOfMonth}</td>
-                <td className="right">{brl.format(item.openBaseValueEndOfMonth)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
 
       <section className="dashboard-grid">
         <div className="card chart-card">
           <div className="card-title">
             <div>
               <h2>Receita, novos negócios e fechamentos</h2>
-              <span>2026 mês a mês</span>
+              <span>2026 mês a mês · junho parcial</span>
             </div>
-            <span className="pill">Junho parcial</span>
           </div>
           <div className="chart-box">
             <RevenueChart data={chartData} />
           </div>
         </div>
 
-        <div className="card chart-card" id="servicos">
-          <div className="card-title">
-            <div>
-              <h2>Mix de serviços</h2>
-              <span>Receita ganha 2025-2026</span>
-            </div>
-            <BarChart3 size={18} />
-          </div>
-          <div className="chart-box">
-            <ServiceMixChart data={analysis.serviceSummary} />
-          </div>
-        </div>
-      </section>
-
-      <section className="dashboard-grid" id="crescimento">
         <div className="card chart-card">
           <div className="card-title">
             <div>
-              <h2>2025 x 2026 por mês</h2>
-              <span>Receita ganha realizada em cada mês</span>
+              <h2>2025 x 2026</h2>
+              <span>Comparação anual por mês</span>
             </div>
             <span className="pill green">{formatGrowth(analysis.projection2026H2.basis.yoyGrowthPct)} jan-mai</span>
           </div>
@@ -206,361 +151,176 @@ export function DashboardSections({ analysis, filters, kpis }: Props) {
             <YearComparisonChart data={growthRows} />
           </div>
         </div>
-
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Base histórica usada</h2>
-              <span>O que 2025 muda na projeção</span>
-            </div>
-          </div>
-          <div className="mini-grid">
-            <div className="mini">
-              <span className="metric-label">Jan-mai 2025</span>
-              <strong>{brl.format(analysis.projection2026H2.basis.h1LikeRevenue2025)}</strong>
-            </div>
-            <div className="mini">
-              <span className="metric-label">Jan-mai 2026</span>
-              <strong>{brl.format(analysis.projection2026H2.basis.h1LikeRevenue2026)}</strong>
-            </div>
-            <div className="mini">
-              <span className="metric-label">Jul-dez 2025</span>
-              <strong>{brl.format(analysis.projection2026H2.basis.h2Revenue2025)}</strong>
-            </div>
-            <div className="mini">
-              <span className="metric-label">Fechamentos jul-dez/25</span>
-              <strong>{analysis.projection2026H2.basis.h2WonDeals2025}</strong>
-            </div>
-          </div>
-        </div>
       </section>
 
-      <section className="dashboard-grid" id="projecoes">
-        <div className="card chart-card">
-          <div className="card-title">
-            <div>
-              <h2>Projeção mensal jul-dez/2026</h2>
-              <span>Ritmo atual, sazonalidade 2025 e base ponderada</span>
-            </div>
-          </div>
-          <div className="chart-box">
-            <ProjectionChart data={analysis.projection2026H2.months} />
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Cenários 2026.2</h2>
-              <span>Receita e fechamentos estimados</span>
-            </div>
-          </div>
-          <div className="scenario-list">
-            {analysis.projection2026H2.scenarios.map((scenario) => (
-              <div
-                className={`scenario ${scenario.name === filters.scenario ? "scenario-active" : ""}`}
-                key={scenario.name}
-              >
-                <div>
-                  <strong>{scenario.name}</strong>
-                  <span>{scenario.premise}</span>
-                </div>
-                <div className="scenario-values">
-                  <strong>{brl.format(scenario.revenue)}</strong>
-                  <span>{Math.round(scenario.wonDeals)} fechamentos</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section-title" id="tipos">
-        <div>
-          <h2>Tipos de negócios fechados por mês</h2>
-          <p>Etiquetas comerciais do Pipedrive com crescimento MoM e YoY.</p>
-        </div>
-      </section>
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Mês</th>
-              <th>Tipo</th>
-              <th className="right">Fechados</th>
-              <th className="right">Receita</th>
-              <th className="right">Ticket</th>
-              <th className="right">Receita MoM</th>
-              <th className="right">Receita YoY</th>
-            </tr>
-          </thead>
-          <tbody>
-            {businessTypes.map((item) => (
-              <tr key={`${item.month}-${item.type}`}>
-                <td><strong>{item.month}</strong></td>
-                <td>{item.type}</td>
-                <td className="right">{item.wonDeals}</td>
-                <td className="right">{brl.format(item.revenue)}</td>
-                <td className="right">{brl.format(item.averageTicket)}</td>
-                <td className="right">{formatGrowth(item.revenueMoMPct)}</td>
-                <td className="right">{formatGrowth(item.revenueYoYPct)}</td>
+      <details className="appendix-details compact-details" open>
+        <summary>Detalhe do motor comercial</summary>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th className="right">Novos</th>
+                <th className="right">Valor criado</th>
+                <th className="right">{NEW_DEALS_CONVERSION_SHORT}</th>
+                <th className="right">Conv. madura</th>
+                <th className="right">Conv. fechados</th>
+                <th className="right">Ganhos</th>
+                <th className="right">Receita ganha</th>
+                <th className="right">Base aberta</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <section className="dashboard-grid" id="pos-venda">
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Pós-venda e recorrência</h2>
-              <span>Negócios ganhos com CNPJ/conta repetida</span>
-            </div>
-          </div>
-          <div className="mini-grid">
-            <div className="mini">
-              <span className="metric-label">CNPJs recorrentes</span>
-              <strong>{analysis.postSalesByCnpj.length}</strong>
-            </div>
-            <div className="mini">
-              <span className="metric-label">Contas recorrentes</span>
-              <strong>{analysis.repeatSalesByAccount.length}</strong>
-            </div>
-            <div className="mini">
-              <span className="metric-label">Receita repetida</span>
-              <strong>{brl.format(repeatRevenue)}</strong>
-            </div>
-            <div className="mini">
-              <span className="metric-label">Cobertura CNPJ</span>
-              <strong>{number.format(cnpjCoveragePct)}%</strong>
-            </div>
-          </div>
+            </thead>
+            <tbody>
+              {funnelRows.map((item) => (
+                <tr key={item.month}>
+                  <td><strong>{item.month}</strong></td>
+                  <td className="right">{item.createdDeals}</td>
+                  <td className="right">{brl.format(item.createdValue)}</td>
+                  <td className="right">{formatGrowth(item.cohortConversionPct)}</td>
+                  <td className="right">{item.isMatureCohort ? formatGrowth(item.matureConversionPct ?? null) : "Coorte nova"}</td>
+                  <td className="right">{formatGrowth(item.closedConversionPct ?? null)}</td>
+                  <td className="right">{item.wonDeals}</td>
+                  <td className="right">{brl.format(item.wonValue)}</td>
+                  <td className="right">{item.openBaseDealsEndOfMonth}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      </details>
 
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Recorrência mensal</h2>
-              <span>Participação dos fechamentos repetidos</span>
-            </div>
-          </div>
-          {postSales2026.map((item) => (
-            <div className="service-row" key={item.month}>
-              <div className="service-header">
-                <strong>{item.month}</strong>
-                <span className="pill green">{formatGrowth(item.repeatShareByAccountPct)}</span>
-              </div>
-              <div className="mini-grid">
-                <div className="mini">
-                  <span className="metric-label">Repetidos</span>
-                  <strong>{item.repeatDealsByAccount}</strong>
-                </div>
-                <div className="mini">
-                  <span className="metric-label">Receita repetida</span>
-                  <strong>{brl.format(item.repeatRevenueByAccount)}</strong>
-                </div>
-              </div>
-            </div>
-          ))}
+      <section className="section-title" id="mix">
+        <div>
+          <h2>Mix de vendas</h2>
+          <p>Tipo principal por negócio, sem duplicar receita quando há múltiplas etiquetas.</p>
         </div>
       </section>
 
-      <section className="dashboard-grid">
-        <div className="card chart-card">
-          <div className="card-title">
+      <section className="insights mix-summary">
+        {typeLeaders.map((item) => (
+          <div className="card insight" key={item.type}>
+            <BarChart3 size={24} />
             <div>
-              <h2>Ticket médio por mês</h2>
-              <span>Qualidade econômica dos fechamentos</span>
-            </div>
-          </div>
-          <div className="chart-box">
-            <TicketChart data={chartData} />
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Serviços fechados</h2>
-              <span>Volume, receita e ticket</span>
-            </div>
-          </div>
-          {analysis.serviceSummary.map((service) => (
-            <div className="service-row" key={service.service}>
-              <div className="service-header">
-                <strong>{service.service}</strong>
-                <span className={`pill ${serviceClass(service.service)}`}>{service.wonDeals} ganhos</span>
-              </div>
-              <div className="bar" style={{ "--w": `${(service.revenue / maxServiceRevenue) * 100}%` } as React.CSSProperties}>
-                <span />
-              </div>
-              <div className="mini-grid">
-                <div className="mini">
-                  <span className="metric-label">Receita</span>
-                  <strong>{brl.format(service.revenue)}</strong>
-                </div>
-                <div className="mini">
-                  <span className="metric-label">Ticket médio</span>
-                  <strong>{brl.format(service.averageTicket)}</strong>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="insights">
-        {analysis.planningSummary.insights.map((insight) => (
-          <div className="card insight" key={insight.title}>
-            {insight.kind === "decline" ? <TrendingDown size={24} /> : insight.kind === "seasonal" ? <Target size={24} /> : <Database size={24} />}
-            <div>
-              <h3>{insight.title}</h3>
-              <p>{insight.body}</p>
+              <h3>{item.type}</h3>
+              <p>{brl.format(item.revenue)} · {item.wonDeals} fechamento(s) · ticket {brl.format(item.revenue / Math.max(1, item.wonDeals))}</p>
             </div>
           </div>
         ))}
       </section>
 
-      <section className="section-title">
-        <div>
-          <h2>Taxas de crescimento detalhadas</h2>
-          <p>MoM contra mês anterior; YoY contra o mesmo mês de 2025.</p>
+      <details className="appendix-details compact-details">
+        <summary>Detalhe mensal por tipo principal</summary>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th>Tipo</th>
+                <th className="right">Fechados</th>
+                <th className="right">Receita</th>
+                <th className="right">Ticket</th>
+                <th className="right">Receita MoM</th>
+                <th className="right">Receita YoY</th>
+              </tr>
+            </thead>
+            <tbody>
+              {businessTypes.slice(0, 60).map((item) => (
+                <tr key={`${item.month}-${item.type}`}>
+                  <td><strong>{item.month}</strong></td>
+                  <td>{item.type}</td>
+                  <td className="right">{item.wonDeals}</td>
+                  <td className="right">{brl.format(item.revenue)}</td>
+                  <td className="right">{brl.format(item.averageTicket)}</td>
+                  <td className="right">{formatGrowth(item.revenueMoMPct)}</td>
+                  <td className="right">{formatGrowth(item.revenueYoYPct)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <section className="dashboard-grid" id="pos-venda">
+        <div className="card">
+          <div className="card-title">
+            <div>
+              <h2>Pós-venda por confiança</h2>
+              <span>CNPJ exato separado de aproximações por conta</span>
+            </div>
+            <Repeat2 size={18} />
+          </div>
+          <div className="mini-grid">
+            <div className="mini">
+              <span className="metric-label">CNPJ exato</span>
+              <strong>{postSalesConfidence?.cnpjExact.accounts ?? analysis.postSalesByCnpj.length}</strong>
+              <small>{brl.format(postSalesConfidence?.cnpjExact.repeatRevenue ?? 0)}</small>
+            </div>
+            <div className="mini">
+              <span className="metric-label">Conta normalizada</span>
+              <strong>{postSalesConfidence?.accountName.accounts ?? analysis.repeatSalesByAccount.length}</strong>
+              <small>{brl.format(postSalesConfidence?.accountName.repeatRevenue ?? repeatRevenue)}</small>
+            </div>
+            <div className="mini">
+              <span className="metric-label">Multi-serviço no mês</span>
+              <strong>{postSalesConfidence?.sameMonthMultiService.accounts ?? 0}</strong>
+              <small>{brl.format(postSalesConfidence?.sameMonthMultiService.revenue ?? 0)}</small>
+            </div>
+            <div className="mini">
+              <span className="metric-label">Cobertura CNPJ</span>
+              <strong>{number.format(cnpjCoveragePct)}%</strong>
+              <small>{analysis.cnpjCoverage.organizationsWithCnpj}/{analysis.cnpjCoverage.organizations}</small>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-title">
+            <div>
+              <h2>Principais contas recorrentes</h2>
+              <span>Ordenado por receita repetida</span>
+            </div>
+          </div>
+          {analysis.repeatSalesByAccount.slice(0, 5).map((item) => (
+            <div className="service-row" key={item.key}>
+              <div className="service-header">
+                <strong>{item.organization ?? "Não informado"}</strong>
+                <span className={`pill ${item.cnpj ? "green" : "amber"}`}>{item.cnpj ? "CNPJ" : "Conta"}</span>
+              </div>
+              <p className="metric-note">
+                {item.wonDeals} fechamentos · repetição {brl.format(item.repeatRevenue)} · {item.firstWonMonth} a {item.lastWonMonth}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Mês</th>
-              <th className="right">Receita 2025</th>
-              <th className="right">Receita 2026</th>
-              <th className="right">YoY receita</th>
-              <th className="right">MoM 2026</th>
-              <th className="right">Novos YoY</th>
-              <th className="right">Fechados YoY</th>
-            </tr>
-          </thead>
-          <tbody>
-            {growthRows.map((item) => (
-              <tr key={item.monthNumber}>
-                <td><strong>{item.label}</strong></td>
-                <td className="right">{item.revenue2025 == null ? "—" : brl.format(item.revenue2025)}</td>
-                <td className="right">{item.revenue2026 == null ? "—" : brl.format(item.revenue2026)}</td>
-                <td className="right">{formatGrowth(item.revenueYoYPct)}</td>
-                <td className="right">{formatGrowth(item.revenueMoM2026Pct)}</td>
-                <td className="right">{formatGrowth(item.createdYoYPct)}</td>
-                <td className="right">{formatGrowth(item.wonDealsYoYPct)}</td>
+      <details className="appendix-details compact-details">
+        <summary>Fechamentos e recorrência detalhados</summary>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th>Negócio</th>
+                <th>Cliente</th>
+                <th>Tipo principal</th>
+                <th className="right">Valor</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <section className="section-title">
-        <div>
-          <h2>Projeção mensal do segundo semestre</h2>
-          <p>Cenário ativo: {filters.scenario}</p>
+            </thead>
+            <tbody>
+              {topWonDeals.map((deal) => (
+                <tr key={deal.id}>
+                  <td>{deal.wonMonth}</td>
+                  <td><strong>{deal.title}</strong></td>
+                  <td className="muted">{deal.organization ?? "Não informado"}</td>
+                  <td><span className={`pill ${serviceClass(deal.service)}`}>{deal.primaryBusinessType ?? deal.service}</span></td>
+                  <td className="right"><strong>{brl.format(deal.value)}</strong></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <span className="pill green">{brl.format(activeScenario?.revenue ?? kpis.projected2026H2)}</span>
-      </section>
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Mês</th>
-              <th className="right">Realizado 2025</th>
-              <th className="right">Ritmo atual</th>
-              <th className="right">Sazonal 2025 ajustado</th>
-              <th className="right">Base ponderada</th>
-              <th className="right">Fechamentos</th>
-            </tr>
-          </thead>
-          <tbody>
-            {analysis.projection2026H2.months.map((item) => (
-              <tr key={item.month}>
-                <td><strong>{item.month}</strong></td>
-                <td className="right">{brl.format(item.baselineRevenue2025)}</td>
-                <td className="right">{brl.format(item.runRateRevenue)}</td>
-                <td className="right">{brl.format(item.seasonalRevenue)}</td>
-                <td className="right"><strong>{brl.format(item.projectedRevenue)}</strong></td>
-                <td className="right">{Math.round(item.projectedWonDeals)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <section className="section-title" id="fechamentos">
-        <div>
-          <h2>Fechamentos filtrados</h2>
-          <p>Ordenado por valor ganho conforme filtros ativos.</p>
-        </div>
-        <span className="pill">{wonDealsFiltered.length} negócios</span>
-      </section>
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Mês</th>
-              <th>Negócio</th>
-              <th>Cliente</th>
-              <th>Serviço</th>
-              <th className="right">Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {topWonDeals.map((deal) => (
-              <tr key={deal.id}>
-                <td>{deal.wonMonth}</td>
-                <td><strong>{deal.title}</strong></td>
-                <td className="muted">{deal.organization ?? "Não informado"}</td>
-                <td><span className={`pill ${serviceClass(deal.service)}`}>{deal.service}</span></td>
-                <td className="right"><strong>{brl.format(deal.value)}</strong></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <section className="section-title">
-        <div>
-          <h2>2026 mês a mês</h2>
-          <p>Base completa para leitura de crescimento mensal.</p>
-        </div>
-        <span className="pill">{currentMonth?.month ?? "2026"} em andamento</span>
-      </section>
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Mês</th>
-              <th className="right">Novos negócios</th>
-              <th className="right">Fechados</th>
-              <th className="right">Receita</th>
-              <th className="right">Ticket médio</th>
-              <th className="right">Crescimento</th>
-            </tr>
-          </thead>
-          <tbody>
-            {months2026.map((item) => (
-              <tr key={item.month}>
-                <td><strong>{item.month}</strong></td>
-                <td className="right">{item.createdDeals}</td>
-                <td className="right">{item.wonDeals}</td>
-                <td className="right">{brl.format(item.wonRevenue)}</td>
-                <td className="right">{brl.format(item.averageTicket)}</td>
-                <td className="right">{formatGrowth(item.revenueGrowthPct)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      </details>
     </>
   );
 }

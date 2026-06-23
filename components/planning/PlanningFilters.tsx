@@ -3,11 +3,9 @@
 import type { PeriodFilter, ScenarioName, YearFilter } from "@/lib/analysis/types";
 
 const SCENARIOS: ScenarioName[] = [
-  "Base recomendada",
   "Conservador",
   "Ritmo atual",
-  "Realista",
-  "Potencial sazonal 2025"
+  "Realista recomendado"
 ];
 
 type Props = {

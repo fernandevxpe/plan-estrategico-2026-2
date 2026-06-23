@@ -24,16 +24,12 @@ export default async function Page() {
             </div>
           </div>
           <nav className="nav" aria-label="Secoes do dashboard">
-            <a href="#planejamento">Planejamento</a>
-            <a href="#guias">Projeções 2x/3x</a>
-            <a href="#alertas">Alertas</a>
-            <a href="#investigacao">Investigação</a>
-            <a href="#recordes">Recordes</a>
-            <a href="#funil">Funil</a>
-            <a href="#projecoes">Projeções</a>
-            <a href="#tipos">Tipos</a>
-            <a href="#fechamentos">Fechamentos</a>
-            <a href="#qualidade">Base</a>
+            <a href="#planejamento">Resumo</a>
+            <a href="#comercial">Comercial</a>
+            <a href="#mix">Mix</a>
+            <a href="#pos-venda">Pós-venda</a>
+            <a href="#metas">Metas</a>
+            <a href="#apendice">Apêndice</a>
           </nav>
         </div>
       </header>

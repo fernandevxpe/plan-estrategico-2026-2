@@ -24,6 +24,7 @@ import { IndicatorAnalysisSection } from "@/components/dashboard/IndicatorAnalys
 import { PerformanceAlerts } from "@/components/dashboard/PerformanceAlerts";
 import { DeepAnalysisSection } from "@/components/dashboard/DeepAnalysisSection";
 import { GrowthGuidesSection } from "@/components/guides/GrowthGuidesSection";
+import { brl, formatGrowth, monthLabel } from "@/lib/analysis/format";
 
 type Props = {
   analysis: Analysis;
@@ -32,7 +33,7 @@ type Props = {
 
 export function DashboardApp({ analysis, generatedAt }: Props) {
   const [scenario, setScenario] = useState<ScenarioName>(
-    (analysis.planningSummary.defaultScenario as ScenarioName) ?? "Base recomendada"
+    (analysis.planningSummary.defaultScenario as ScenarioName) ?? "Realista recomendado"
   );
   const [year, setYear] = useState<YearFilter>("all");
   const [period, setPeriod] = useState<PeriodFilter>("month");
@@ -52,6 +53,11 @@ export function DashboardApp({ analysis, generatedAt }: Props) {
     () => (selectedMonth ? getMonthDetail(analysis, selectedMonth) : null),
     [analysis, selectedMonth]
   );
+  const latestHighAlert = useMemo(
+    () => [...analysis.deepAnalysis.performanceAlerts].reverse().find((alert) => alert.severity === "high"),
+    [analysis.deepAnalysis.performanceAlerts]
+  );
+  const mainInsight = analysis.planningSummary.insights[0];
 
   return (
     <>
@@ -66,9 +72,28 @@ export function DashboardApp({ analysis, generatedAt }: Props) {
         onPeriodChange={setPeriod}
       />
 
-      <ExecutiveSummary kpis={kpis} />
+      <section className="executive-brief" aria-label="Resumo executivo de decisão">
+        <article className="brief-primary">
+          <span className="brief-kicker">Forecast recomendado</span>
+          <strong>{brl.format(kpis.projected2026Total)}</strong>
+          <p>
+            {kpis.scenarioName} · H2 {brl.format(kpis.projected2026H2)} ·{" "}
+            {formatGrowth(kpis.growthVs2025Pct)} vs 2025
+          </p>
+        </article>
+        <article className="brief-card">
+          <span className="brief-kicker">Risco imediato</span>
+          <strong>{latestHighAlert ? monthLabel(latestHighAlert.month) : "Sem alerta alto"}</strong>
+          <p>{latestHighAlert?.message ?? "Nenhuma queda múltipla crítica no recorte atual."}</p>
+        </article>
+        <article className="brief-card">
+          <span className="brief-kicker">Alavanca</span>
+          <strong>{mainInsight?.title ?? "Foco no pipeline"}</strong>
+          <p>{mainInsight?.body ?? "Priorizar conversão e destravamento da base aberta."}</p>
+        </article>
+      </section>
 
-      <PerformanceAlerts alerts={analysis.deepAnalysis.performanceAlerts} />
+      <ExecutiveSummary kpis={kpis} />
 
       <section className="page-zone" id="planejamento">
         <div className="section-title">
@@ -136,15 +161,46 @@ export function DashboardApp({ analysis, generatedAt }: Props) {
         </div>
       </section>
 
+      <DashboardSections analysis={analysis} filters={filters} kpis={kpis} />
+
       <GrowthGuidesSection guides={analysis.growthGuides} />
 
-      <DeepAnalysisSection analysis={analysis} />
+      <section className="page-zone appendix-zone" id="apendice">
+        <div className="section-title">
+          <div>
+            <h2>Apêndice investigativo</h2>
+            <p>Alertas, recordes e investigação profunda ficam compactados aqui para não diluir a decisão executiva.</p>
+          </div>
+        </div>
 
-      <section className="page-zone" id="recordes">
-        <IndicatorAnalysisSection analysis={analysis} />
+        <details className="appendix-details" open>
+          <summary>Alertas operacionais e qualidade</summary>
+          <PerformanceAlerts alerts={analysis.deepAnalysis.performanceAlerts} />
+          {analysis.dataQualityAlerts?.length ? (
+            <div className="alerts-grid data-quality-grid">
+              {analysis.dataQualityAlerts.map((alert) => (
+                <article className={`card alert-card alert-${alert.severity}`} key={alert.id}>
+                  <div className="alert-card-head">
+                    <strong>{alert.title}</strong>
+                    <span className={`pill ${alert.severity === "high" ? "amber" : "blue"}`}>{alert.count}</span>
+                  </div>
+                  <p>{alert.message}</p>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </details>
+
+        <details className="appendix-details">
+          <summary>Recordes e picos comerciais</summary>
+          <IndicatorAnalysisSection analysis={analysis} />
+        </details>
+
+        <details className="appendix-details">
+          <summary>Investigação profunda do funil</summary>
+          <DeepAnalysisSection analysis={analysis} />
+        </details>
       </section>
-
-      <DashboardSections analysis={analysis} filters={filters} kpis={kpis} />
     </>
   );
 }

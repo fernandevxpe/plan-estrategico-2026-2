@@ -1,9 +1,7 @@
 export type ScenarioName =
   | "Conservador"
   | "Ritmo atual"
-  | "Realista"
-  | "Potencial sazonal 2025"
-  | "Base recomendada";
+  | "Realista recomendado";
 
 export type YearFilter = "2025" | "2026" | "all";
 export type PeriodFilter = "year" | "semester" | "quarter" | "month";
@@ -32,6 +30,8 @@ export type WonDeal = {
   title: string;
   organization: string | null;
   service: string;
+  primaryBusinessType?: string;
+  businessTypes?: string[];
   wonMonth: string;
   value: number;
 };
@@ -81,6 +81,12 @@ export type CommercialFunnel = {
   createdStillOpenDeals: number;
   cohortConversionPct: number | null;
   cohortLossPct: number | null;
+  matureCohortMinAgeDays?: number;
+  cohortAgeDays?: number;
+  isMatureCohort?: boolean;
+  matureConversionPct?: number | null;
+  closedConversionPct?: number | null;
+  closedDealsFromCohort?: number;
   wonDeals: number;
   wonValue: number;
   lostDeals: number;
@@ -113,6 +119,25 @@ export type RepeatSale = {
   firstWonMonth: string | null;
   lastWonMonth: string | null;
   types: string;
+};
+
+export type SameMonthMultiService = {
+  key: string;
+  month: string;
+  confidence: "same_month_multi_service";
+  organization: string | null;
+  cnpj: string | null;
+  wonDeals: number;
+  revenue: number;
+  types: string;
+};
+
+export type DataQualityAlert = {
+  id: string;
+  severity: "low" | "medium" | "high";
+  title: string;
+  message: string;
+  count: number;
 };
 
 export type PostSalesMonthly = {
@@ -209,6 +234,7 @@ export type Analysis = {
       realisticSeasonalityLiftPct?: number;
     };
     scenarios: ProjectionScenario[];
+    aggressiveScenarios?: ProjectionScenario[];
     months: ProjectionMonth[];
   };
   planningSummary: PlanningSummary;
@@ -224,7 +250,15 @@ export type Analysis = {
   };
   postSalesByCnpj: RepeatSale[];
   repeatSalesByAccount: RepeatSale[];
+  repeatSalesByAccountName?: RepeatSale[];
+  sameMonthMultiService?: SameMonthMultiService[];
+  postSalesConfidence?: {
+    cnpjExact: { accounts: number; repeatRevenue: number; confidence: string };
+    accountName: { accounts: number; repeatRevenue: number; confidence: string };
+    sameMonthMultiService: { accounts: number; revenue: number; confidence: string };
+  };
   postSalesMonthly: PostSalesMonthly[];
+  dataQualityAlerts?: DataQualityAlert[];
   serviceSummary: ServiceSummary[];
   wonDeals: WonDeal[];
   clickupProjectCandidates: unknown[];

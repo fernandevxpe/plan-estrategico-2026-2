@@ -28,7 +28,7 @@ export function GrowthGuidesSection({ guides }: Props) {
   );
 
   return (
-    <section className="growth-guides page-zone" id="guias">
+    <section className="growth-guides page-zone" id="metas">
       <div className="section-title guide-section-head">
         <div>
           <h2>Projeções 2x e 3x</h2>

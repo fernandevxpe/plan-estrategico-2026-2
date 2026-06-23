@@ -11,13 +11,17 @@ function unauthorized() {
   });
 }
 
+function normalizeSecret(value: string | undefined) {
+  return value?.trim().replace(/^['"]|['"]$/g, "");
+}
+
 export function middleware(request: NextRequest) {
   if (process.env.NODE_ENV === "development") {
     return NextResponse.next();
   }
 
-  const expectedUser = process.env.DASHBOARD_AUTH_USER;
-  const expectedPassword = process.env.DASHBOARD_AUTH_PASSWORD;
+  const expectedUser = normalizeSecret(process.env.DASHBOARD_AUTH_USER);
+  const expectedPassword = normalizeSecret(process.env.DASHBOARD_AUTH_PASSWORD);
 
   if (!expectedUser || !expectedPassword) {
     return new NextResponse("Dashboard authentication is not configured.", {

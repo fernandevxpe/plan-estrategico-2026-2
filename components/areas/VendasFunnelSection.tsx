@@ -5,30 +5,43 @@ import { brl, formatGrowth, monthLabel } from "@/lib/analysis/format";
 
 type Props = {
   funnel: VendasFunnelDashboard;
+  embedded?: boolean;
 };
 
-export function VendasFunnelSection({ funnel }: Props) {
+export function VendasFunnelSection({ funnel, embedded = false }: Props) {
   const maxDeals = Math.max(...funnel.stages.map((row) => row.deals), 1);
 
   return (
-    <div className="vendas-funnel">
-      <section className="section-title subsection-title">
-        <div>
-          <h3>Funil por fase — na prática</h3>
-          <p>
-            Pipeline principal: <strong>{funnel.mainPipeline}</strong> · {funnel.stagesTotalDeals} negócios
-            abertos · {brl.format(funnel.stagesTotalValue)} em valor
-          </p>
-        </div>
-      </section>
-
-      <div className="investigation-notes">
-        {funnel.contextDiagnosis.map((note) => (
-          <div className="insight-mini" key={note}>
-            <span>{note}</span>
+    <div className={`vendas-funnel ${embedded ? "is-embedded" : ""}`}>
+      {!embedded ? (
+        <section className="section-title subsection-title">
+          <div>
+            <h3>Funil por fase — na prática</h3>
+            <p>
+              Pipeline principal: <strong>{funnel.mainPipeline}</strong> · {funnel.stagesTotalDeals} negócios
+              abertos · {brl.format(funnel.stagesTotalValue)} em valor
+            </p>
           </div>
-        ))}
-      </div>
+        </section>
+      ) : (
+        <p className="vendas-sync-note">
+          <strong>{funnel.mainPipeline}</strong> · {funnel.stagesTotalDeals} abertos ·{" "}
+          {brl.format(funnel.stagesTotalValue)}
+        </p>
+      )}
+
+      <details className="vendas-inline-details" open>
+        <summary>
+          <span>Diagnóstico do funil</span>
+        </summary>
+        <div className="vendas-inline-details-body">
+          <ul className="vendas-compact-list">
+            {funnel.contextDiagnosis.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        </div>
+      </details>
 
       <div className="card">
         <div className="card-title">

@@ -177,32 +177,41 @@ export function AreasOverview({ dashboard, linkToPages = false }: Props) {
   );
 }
 
-export function AreaDetailPanel({ area }: { area: AreaDashboardItem }) {
+export function AreaDetailPanel({ area, compact = false }: { area: AreaDashboardItem; compact?: boolean }) {
   const done = area.activities.filter((item) => item.status === "concluida").length;
   const progress = area.activities.length ? Math.round((done / area.activities.length) * 100) : 0;
 
   return (
-    <div className="area-detail">
-      <div className="area-detail-hero">
-        <div>
-          <p className="eyebrow">{area.parentId ? "Subárea" : "Área"}</p>
-          <h3>{area.name}</h3>
-          <p>{area.description}</p>
+    <div className={`area-detail ${compact ? "area-detail-compact" : ""}`}>
+      {!compact ? (
+        <div className="area-detail-hero">
+          <div>
+            <p className="eyebrow">{area.parentId ? "Subárea" : "Área"}</p>
+            <h3>{area.name}</h3>
+            <p>{area.description}</p>
+          </div>
+          <div className="area-detail-meta">
+            <span className={`pill ${statusClass[area.status]}`}>{statusLabel[area.status]}</span>
+            <div className="mini">
+              <span className="metric-label">Líder</span>
+              <strong>{area.lead}</strong>
+            </div>
+            <div className="mini">
+              <span className="metric-label">Plano</span>
+              <strong>{progress}% concluído</strong>
+            </div>
+          </div>
         </div>
-        <div className="area-detail-meta">
+      ) : (
+        <div className="area-detail-compact-meta">
           <span className={`pill ${statusClass[area.status]}`}>{statusLabel[area.status]}</span>
-          <div className="mini">
-            <span className="metric-label">Líder</span>
-            <strong>{area.lead}</strong>
-          </div>
-          <div className="mini">
-            <span className="metric-label">Plano</span>
-            <strong>{progress}% concluído</strong>
-          </div>
+          <span className="metric-note">
+            {area.lead} · {progress}% do plano
+          </span>
         </div>
-      </div>
+      )}
 
-      {area.metrics.highlights.length ? (
+      {area.metrics.highlights.length && !compact ? (
         <div className="investigation-notes">
           {area.metrics.highlights.map((note) => (
             <div className="insight-mini" key={note}>
@@ -217,7 +226,7 @@ export function AreaDetailPanel({ area }: { area: AreaDashboardItem }) {
           <div className="card-title">
             <div>
               <h2>Indicadores 2026</h2>
-              <span>Dados reais onde disponíveis</span>
+              {!compact ? <span>Dados reais onde disponíveis</span> : null}
             </div>
           </div>
           <div className="mini-grid">
@@ -273,25 +282,44 @@ export function AreaDetailPanel({ area }: { area: AreaDashboardItem }) {
         </div>
       </section>
 
-      <section className="section-title subsection-title">
-        <div>
-          <h3>Notas estratégicas</h3>
-        </div>
-      </section>
-      <div className="investigation-notes">
-        {area.strategicNotes.map((note) => (
-          <div className="insight-mini" key={note}>
-            <span>{note}</span>
+      {compact ? (
+        <details className="vendas-inline-details">
+          <summary>
+            <span>Notas estratégicas ({area.strategicNotes.length})</span>
+          </summary>
+          <div className="vendas-inline-details-body">
+            <ul className="vendas-compact-list">
+              {area.strategicNotes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
           </div>
-        ))}
-      </div>
+        </details>
+      ) : (
+        <>
+          <section className="section-title subsection-title">
+            <div>
+              <h3>Notas estratégicas</h3>
+            </div>
+          </section>
+          <div className="investigation-notes">
+            {area.strategicNotes.map((note) => (
+              <div className="insight-mini" key={note}>
+                <span>{note}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
-      <section className="section-title subsection-title">
-        <div>
-          <h3>Plano de execução</h3>
-          <p>Atividades, responsáveis e prazos — vamos detalhar juntos.</p>
-        </div>
-      </section>
+      {!compact ? (
+        <section className="section-title subsection-title">
+          <div>
+            <h3>Plano de execução</h3>
+            <p>Atividades, responsáveis e prazos — vamos detalhar juntos.</p>
+          </div>
+        </section>
+      ) : null}
 
       <div className="table-wrap">
         <table>
@@ -355,23 +383,41 @@ export function AreaDetailPanel({ area }: { area: AreaDashboardItem }) {
       ) : null}
 
       {area.risks.length ? (
-        <section className="dashboard-grid">
-          <div className="card">
-            <div className="card-title">
-              <div>
-                <h2>Riscos e mitigação</h2>
+        compact ? (
+          <details className="vendas-inline-details">
+            <summary>
+              <span>Riscos e mitigação ({area.risks.length})</span>
+            </summary>
+            <div className="vendas-inline-details-body">
+              <div className="guide-risks">
+                {area.risks.map((risk) => (
+                  <div className="guide-risk" key={risk.title}>
+                    <strong>{risk.title}</strong>
+                    <p>{risk.mitigation}</p>
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="guide-risks">
-              {area.risks.map((risk) => (
-                <div className="guide-risk" key={risk.title}>
-                  <strong>{risk.title}</strong>
-                  <p>{risk.mitigation}</p>
+          </details>
+        ) : (
+          <section className="dashboard-grid">
+            <div className="card">
+              <div className="card-title">
+                <div>
+                  <h2>Riscos e mitigação</h2>
                 </div>
-              ))}
+              </div>
+              <div className="guide-risks">
+                {area.risks.map((risk) => (
+                  <div className="guide-risk" key={risk.title}>
+                    <strong>{risk.title}</strong>
+                    <p>{risk.mitigation}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )
       ) : null}
     </div>
   );

@@ -3,14 +3,16 @@
 import type { VendasFunnelDashboard } from "@/lib/areas/build-vendas-funnel";
 import vendasFocusJson from "@/data/areas/vendas-focus.json";
 import { brl } from "@/lib/analysis/format";
+import { VendasInlineDetails } from "@/components/areas/VendasInlineDetails";
 
 type VendasFocus = typeof vendasFocusJson;
 
 type Props = {
   funnel: VendasFunnelDashboard;
+  embedded?: boolean;
 };
 
-export function VendasOperationalFocus({ funnel }: Props) {
+export function VendasOperationalFocus({ funnel, embedded = false }: Props) {
   const focus = vendasFocusJson as VendasFocus;
   const gate = focus.operationalGate;
   const hiring = focus.hiringPolicy;
@@ -20,55 +22,40 @@ export function VendasOperationalFocus({ funnel }: Props) {
   const rituals = focus.weeklyRitualsScope;
 
   return (
-    <div className="vendas-operational-focus">
-      <div className="vendas-gate-banner" role="alert">
-        <p className="vendas-gate-eyebrow">Prioridade absoluta</p>
-        <h2>{gate.title}</h2>
+    <div className={`vendas-operational-focus ${embedded ? "is-embedded" : ""}`}>
+      <div className="vendas-gate-compact" role="alert">
         <p className="vendas-gate-statement">{gate.statement}</p>
         <p className="vendas-gate-criteria">
-          <strong>Critério de liberação:</strong> {gate.releaseCriteria}
+          <strong>Critério:</strong> {gate.releaseCriteria}
         </p>
         <div className="vendas-gate-stats">
           <div className="mini">
-            <span className="metric-label">Em Negociação agora</span>
+            <span className="metric-label">Negociação</span>
             <strong>
               {funnel.negotiationDeals} neg. · {brl.format(funnel.negotiationValue)}
             </strong>
           </div>
           <div className="mini">
-            <span className="metric-label">Novo vendedor (ago)</span>
-            <strong>Foco na base existente</strong>
+            <span className="metric-label">1º vendedor (ago)</span>
+            <strong>Base existente</strong>
             <small>{hiring.firstSeller.focus}</small>
           </div>
           <div className="mini">
-            <span className="metric-label">2º vendedor (Cenário B)</span>
-            <strong>Só após gate + meta</strong>
+            <span className="metric-label">2º vendedor</span>
+            <strong>Gate + meta</strong>
             <small>{hiring.secondSeller.when}</small>
           </div>
         </div>
       </div>
 
-      <section className="section-title subsection-title">
-        <div>
-          <h3>{pipeline.title}</h3>
-          <p>{pipeline.headline}</p>
-        </div>
-      </section>
-      <div className="investigation-notes">
+      <ul className="vendas-compact-list">
         {pipeline.actions.map((item) => (
-          <div className="insight-mini insight-priority" key={item}>
-            <span>{item}</span>
-          </div>
+          <li key={item}>{item}</li>
         ))}
-      </div>
+      </ul>
 
-      <div className="dashboard-grid">
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>{hiring.title}</h2>
-            </div>
-          </div>
+      <div className="vendas-details-grid">
+        <VendasInlineDetails title="Contratação & ramp 0→100%" defaultOpen>
           <div className="guide-risks">
             <div className="guide-risk">
               <strong>1º vendedor — {hiring.firstSeller.when}</strong>
@@ -81,95 +68,48 @@ export function VendasOperationalFocus({ funnel }: Props) {
               <p className="metric-note">{hiring.secondSeller.note}</p>
             </div>
           </div>
-        </div>
+        </VendasInlineDetails>
 
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Bloqueado até destravar propostas</h2>
-            </div>
-          </div>
-          <ul className="area-objectives">
+        <VendasInlineDetails title="Bloqueado até destravar propostas">
+          <ul className="vendas-compact-list">
             {gate.blockedUntilCleared.map((item) => (
-              <li key={item}>
-                <span>{item}</span>
-              </li>
+              <li key={item}>{item}</li>
             ))}
           </ul>
-        </div>
-      </div>
+        </VendasInlineDetails>
 
-      <section className="section-title subsection-title">
-        <div>
-          <h3>{process.title}</h3>
-          <p>{process.statement}</p>
+        <VendasInlineDetails title={process.title}>
+          <p className="metric-note">{process.statement}</p>
           <p className="metric-note">{process.leadership}</p>
-        </div>
-      </section>
-      <div className="mini-grid">
-        {process.deliverables.map((item) => (
-          <div className="mini" key={item}>
-            <strong>{item}</strong>
-          </div>
-        ))}
-      </div>
+          <ul className="vendas-compact-list">
+            {process.deliverables.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </VendasInlineDetails>
 
-      <section className="section-title subsection-title">
-        <div>
-          <h3>{proposals.title}</h3>
-          <p>{proposals.rolloutNote}</p>
-          <p>{proposals.postSalesNote}</p>
-        </div>
-      </section>
-      <div className="areas-sub-grid">
-        {proposals.templates.map((template) => (
-          <div className="card area-sub-card" key={template.id}>
-            <span className="vendas-template-priority">#{template.priority}</span>
-            <h4>{template.name}</h4>
-            <p>{template.role}</p>
-            <small className="metric-note">Meta rollout: {template.duePhase}</small>
+        <VendasInlineDetails title="Templates LDC → LIE → LCC">
+          <p className="metric-note">{proposals.rolloutNote}</p>
+          <div className="vendas-template-row">
+            {proposals.templates.map((template) => (
+              <div className="vendas-template-chip" key={template.id}>
+                <span className="vendas-template-priority">#{template.priority}</span>
+                <strong>{template.name}</strong>
+                <small>{template.duePhase}</small>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+          <p className="metric-note">{proposals.postSalesNote}</p>
+        </VendasInlineDetails>
 
-      <section className="section-title subsection-title">
-        <div>
-          <h3>{rituals.title}</h3>
-          <p>
-            {rituals.status} — alinhar follow-up, leads, assembleias, entregas e pós-venda na rotina real do
-            time.
-          </p>
-        </div>
-      </section>
-      <div className="dashboard-grid">
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Agenda a definir</h2>
-            </div>
-          </div>
-          <ul className="area-objectives">
+        <VendasInlineDetails title={rituals.title}>
+          <p className="metric-note">{rituals.status}</p>
+          <ul className="vendas-compact-list">
             {rituals.topics.map((topic) => (
-              <li key={topic}>
-                <span>{topic}</span>
-              </li>
+              <li key={topic}>{topic}</li>
             ))}
           </ul>
-        </div>
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Restrições reais</h2>
-            </div>
-          </div>
-          <ul className="area-objectives">
-            {rituals.constraints.map((item) => (
-              <li key={item}>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        </VendasInlineDetails>
       </div>
     </div>
   );

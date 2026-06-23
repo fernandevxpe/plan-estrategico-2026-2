@@ -6,6 +6,7 @@ import { brl, formatGrowth } from "@/lib/analysis/format";
 
 type Props = {
   scenarios: VendasScenariosDashboard;
+  embedded?: boolean;
 };
 
 function gapClass(value: number) {
@@ -119,7 +120,7 @@ function ScenarioCompensationDetail({ scenario }: { scenario: VendasScenario }) 
   );
 }
 
-export function VendasScenariosSection({ scenarios }: Props) {
+export function VendasScenariosSection({ scenarios, embedded = false }: Props) {
   const [activeScenario, setActiveScenario] = useState<"one-hire" | "two-hires">("one-hire");
   const [scenarioA, scenarioB] = scenarios.scenarios;
   const c = scenarios.conservativeIndividual;
@@ -128,16 +129,22 @@ export function VendasScenariosSection({ scenarios }: Props) {
   const active = activeScenario === "one-hire" ? scenarioA : scenarioB;
 
   return (
-    <div className="vendas-scenarios">
-      <section className="section-title subsection-title">
-        <div>
-          <h3>Projeção H2 — cenários de headcount e remuneração</h3>
-          <p>
-            {comp.label} · taxa conservadora · meta anual{" "}
-            <strong>{brl.format(scenarios.targets.annual3M)}</strong>
-          </p>
-        </div>
-      </section>
+    <div className={`vendas-scenarios ${embedded ? "is-embedded" : ""}`}>
+      {!embedded ? (
+        <section className="section-title subsection-title">
+          <div>
+            <h3>Projeção H2 — cenários de headcount e remuneração</h3>
+            <p>
+              {comp.label} · taxa conservadora · meta anual{" "}
+              <strong>{brl.format(scenarios.targets.annual3M)}</strong>
+            </p>
+          </div>
+        </section>
+      ) : (
+        <p className="vendas-sync-note">
+          {comp.label} · meta {brl.format(scenarios.targets.annual3M)} · {scenarios.rampNote}
+        </p>
+      )}
 
       <div className="guide-kpi-row">
         <div className="guide-kpi-card">

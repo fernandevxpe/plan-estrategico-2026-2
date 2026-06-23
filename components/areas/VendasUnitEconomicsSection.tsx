@@ -23,9 +23,10 @@ import { brl, formatGrowth, number } from "@/lib/analysis/format";
 
 type Props = {
   unitEconomics: VendasUnitEconomicsDashboard;
+  embedded?: boolean;
 };
 
-export function VendasUnitEconomicsSection({ unitEconomics }: Props) {
+export function VendasUnitEconomicsSection({ unitEconomics, embedded = false }: Props) {
   const [activeScenario, setActiveScenario] = useState<"one-hire" | "two-hires">("one-hire");
   const [scenarioA, scenarioB] = unitEconomics.scenarios;
   const active = activeScenario === "one-hire" ? scenarioA : scenarioB;
@@ -50,18 +51,24 @@ export function VendasUnitEconomicsSection({ unitEconomics }: Props) {
   }));
 
   return (
-    <div className="vendas-unit-economics">
-      <section className="section-title subsection-title">
-        <div>
-          <h3>CAC, custos de aquisição e margem bruta</h3>
-          <p>
-            Imposto {assumptions.taxPct}% · SDR {brl.format(assumptions.sdr)} · Técnico{" "}
-            {brl.format(assumptions.visitTechnician)} · Tráfego {brl.format(2500)}→
-            {brl.format(4500)} · Gestor {brl.format(assumptions.trafficManager)} · Conteúdo{" "}
-            {brl.format(assumptions.contentProduction)}
-          </p>
-        </div>
-      </section>
+    <div className={`vendas-unit-economics ${embedded ? "is-embedded" : ""}`}>
+      {!embedded ? (
+        <section className="section-title subsection-title">
+          <div>
+            <h3>CAC, custos de aquisição e margem bruta</h3>
+            <p>
+              Imposto {assumptions.taxPct}% · SDR {brl.format(assumptions.sdr)} · Técnico{" "}
+              {brl.format(assumptions.visitTechnician)} · Tráfego {brl.format(2500)}→
+              {brl.format(4500)} · Gestor {brl.format(assumptions.trafficManager)} · Conteúdo{" "}
+              {brl.format(assumptions.contentProduction)}
+            </p>
+          </div>
+        </section>
+      ) : (
+        <p className="vendas-sync-note">
+          Imposto {assumptions.taxPct}% · margem bruta comercial modelada (sem custo de entrega)
+        </p>
+      )}
 
       <div className="scenario-compare-bar">
         <button

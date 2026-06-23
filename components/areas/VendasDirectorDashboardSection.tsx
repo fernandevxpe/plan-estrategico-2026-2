@@ -2,9 +2,11 @@
 
 import type { VendasDirectorDashboard } from "@/lib/areas/build-vendas-director-dashboard";
 import { brl } from "@/lib/analysis/format";
+import { VendasInlineDetails } from "@/components/areas/VendasInlineDetails";
 
 type Props = {
   dashboard: VendasDirectorDashboard;
+  embedded?: boolean;
 };
 
 function statusClass(status: string) {
@@ -17,104 +19,77 @@ function formatGeneratedAt(iso: string) {
   return new Date(iso).toLocaleString("pt-BR", {
     day: "2-digit",
     month: "short",
-    year: "numeric",
     hour: "2-digit",
     minute: "2-digit"
   });
 }
 
-export function VendasDirectorDashboardSection({ dashboard }: Props) {
+export function VendasDirectorDashboardSection({ dashboard, embedded = false }: Props) {
   const criticalKpis = dashboard.kpis.filter((kpi) => kpi.status === "critical");
 
   return (
-    <div className="vendas-director-dashboard">
-      <section className="section-title subsection-title">
-        <div>
-          <h3>{dashboard.title}</h3>
-          <p>
-            {dashboard.meeting.cadence} · {dashboard.meeting.duration} · dados de{" "}
-            {formatGeneratedAt(dashboard.generatedAt)}
-          </p>
-        </div>
-      </section>
+    <div className={`vendas-director-dashboard ${embedded ? "is-embedded" : ""}`}>
+      <p className="vendas-sync-note">
+        Dados de {formatGeneratedAt(dashboard.generatedAt)} · {dashboard.meeting.purpose}
+      </p>
 
       <div className={`vendas-director-gate ${dashboard.gateOk ? "gate-ok" : "gate-breach"}`}>
-        <strong>{dashboard.gateOk ? "Gate OK" : "Gate em risco"}</strong>
+        <strong>{dashboard.gateOk ? "Reunião: gate OK" : "Reunião: revisar gate primeiro"}</strong>
         <span>
           {dashboard.gateOk
-            ? "Nenhum indicador crítico de SLA de propostas no snapshot atual."
-            : `${criticalKpis.length} indicador(es) crítico(s) — revisar na reunião antes de escalar.`}
+            ? "SLA de propostas dentro do esperado."
+            : `${criticalKpis.length} indicador(es) crítico(s) na pauta.`}
         </span>
       </div>
 
-      <div className="guide-kpi-row">
+      <div className="vendas-kpi-compact">
         {dashboard.kpis.map((kpi) => (
-          <div className={`guide-kpi-card director-kpi-${kpi.status}`} key={kpi.id}>
+          <div className={`vendas-kpi-chip director-kpi-${kpi.status}`} key={kpi.id}>
             <span className="metric-label">{kpi.label}</span>
-            <strong>{kpi.current}</strong>
+            <div className="vendas-kpi-chip-row">
+              <strong>{kpi.current}</strong>
+              <span className={`pill ${statusClass(kpi.status)}`}>
+                {kpi.status === "ok" ? "OK" : kpi.status === "warn" ? "!" : "!!"}
+              </span>
+            </div>
             {kpi.weeklyTarget != null ? (
-              <small>Meta semanal time: {kpi.weeklyTarget}</small>
+              <small>Meta: {kpi.weeklyTarget}</small>
             ) : kpi.gateTarget != null ? (
-              <small>Gate: ≤ {kpi.gateTarget}</small>
-            ) : (
-              <small>{kpi.source}</small>
-            )}
-            {kpi.note ? <small className="metric-note">{kpi.note}</small> : null}
-            <span className={`pill ${statusClass(kpi.status)}`}>
-              {kpi.status === "ok" ? "OK" : kpi.status === "warn" ? "Atenção" : "Crítico"}
-            </span>
+              <small>Gate ≤ {kpi.gateTarget}</small>
+            ) : null}
           </div>
         ))}
       </div>
 
-      <div className="dashboard-grid">
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Reunião semanal — pauta</h2>
-              <span>{dashboard.meeting.purpose}</span>
-            </div>
-          </div>
+      <div className="vendas-details-grid">
+        <VendasInlineDetails title="Pauta da reunião (1h–2h)" defaultOpen>
           <ol className="director-agenda">
             {dashboard.meeting.agenda.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ol>
-        </div>
+        </VendasInlineDetails>
 
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>{dashboard.salesRhythm.title}</h2>
-            </div>
-          </div>
-          <ul className="area-objectives">
+        <VendasInlineDetails title={dashboard.salesRhythm.title}>
+          <ul className="vendas-compact-list">
             {dashboard.salesRhythm.notes.map((note) => (
-              <li key={note}>
-                <span>{note}</span>
-              </li>
+              <li key={note}>{note}</li>
             ))}
           </ul>
-        </div>
-      </div>
+        </VendasInlineDetails>
 
-      <div className="dashboard-grid">
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Metas semanais do time</h2>
-              <span>
-                {dashboard.teamWeeklyTargets.headcountFte.toFixed(1)} FTE efetivos · base 100% por vendedor
-              </span>
-            </div>
-          </div>
+        <VendasInlineDetails title="Metas semanais do time" defaultOpen>
           <div className="mini-grid">
             <div className="mini">
-              <span className="metric-label">Visitas / diagnósticos</span>
+              <span className="metric-label">FTE efetivos</span>
+              <strong>{dashboard.teamWeeklyTargets.headcountFte.toFixed(1)}</strong>
+            </div>
+            <div className="mini">
+              <span className="metric-label">Visitas</span>
               <strong>{dashboard.teamWeeklyTargets.visitas}</strong>
             </div>
             <div className="mini">
-              <span className="metric-label">Propostas geradas</span>
+              <span className="metric-label">Propostas</span>
               <strong>{dashboard.teamWeeklyTargets.propostasGeradas}</strong>
             </div>
             <div className="mini">
@@ -122,7 +97,7 @@ export function VendasDirectorDashboardSection({ dashboard }: Props) {
               <strong>{dashboard.teamWeeklyTargets.apresentacoes}</strong>
             </div>
             <div className="mini">
-              <span className="metric-label">Follow-ups negociação</span>
+              <span className="metric-label">Follow-ups</span>
               <strong>{dashboard.teamWeeklyTargets.followups}</strong>
             </div>
             <div className="mini">
@@ -130,22 +105,16 @@ export function VendasDirectorDashboardSection({ dashboard }: Props) {
               <strong>{dashboard.teamWeeklyTargets.fechamentos}</strong>
             </div>
           </div>
-        </div>
+        </VendasInlineDetails>
 
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Atividade recente</h2>
-              <span>Janela móvel desde último sync</span>
-            </div>
-          </div>
+        <VendasInlineDetails title="Atividade recente">
           <div className="mini-grid">
             <div className="mini">
-              <span className="metric-label">Fechamentos 7d</span>
+              <span className="metric-label">Fech. 7d</span>
               <strong>{dashboard.rolling.won7d}</strong>
             </div>
             <div className="mini">
-              <span className="metric-label">Fechamentos 30d</span>
+              <span className="metric-label">Fech. 30d</span>
               <strong>{dashboard.rolling.won30d}</strong>
             </div>
             <div className="mini">
@@ -157,52 +126,39 @@ export function VendasDirectorDashboardSection({ dashboard }: Props) {
               <strong>{dashboard.rolling.created30d}</strong>
             </div>
           </div>
-        </div>
-      </div>
+        </VendasInlineDetails>
 
-      <section className="section-title subsection-title">
-        <div>
-          <h3>{dashboard.rampSchedule.title}</h3>
-          <p>0% → 33% → 66% → 100% — projetado por mês após contratação</p>
-        </div>
-      </section>
-
-      <div className="table-wrap">
-        <table className="payroll-table director-ramp-table">
-          <thead>
-            <tr>
-              <th>Mês</th>
-              <th>Vendedor</th>
-              <th>Ramp</th>
-              <th>Receita proj.</th>
-              <th>Fase</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dashboard.rampProjection.map((row) => (
-              <tr key={row.month}>
-                <td>
-                  <strong>{row.label}</strong>
-                </td>
-                <td>{row.sellerLabel}</td>
-                <td>{row.rampPct}%</td>
-                <td>{brl.format(row.revenueTarget)}</td>
-                <td>{row.isHireMonth ? "Contratação" : row.rampPct < 100 ? "Ramp" : "Pleno"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="investigation-notes">
-        {dashboard.rampSchedule.steps.map((step) => (
-          <div className="insight-mini" key={step.monthOffset}>
-            <strong>
-              {step.pct}% — {step.label}
-            </strong>
-            <span>{step.note}</span>
+        <VendasInlineDetails title={dashboard.rampSchedule.title}>
+          <div className="table-wrap">
+            <table className="payroll-table director-ramp-table">
+              <thead>
+                <tr>
+                  <th>Mês</th>
+                  <th>Ramp</th>
+                  <th>Receita proj.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dashboard.rampProjection.map((row) => (
+                  <tr key={row.month}>
+                    <td>
+                      <strong>{row.label}</strong>
+                    </td>
+                    <td>{row.rampPct}%</td>
+                    <td>{brl.format(row.revenueTarget)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
+          <div className="vendas-ramp-steps">
+            {dashboard.rampSchedule.steps.map((step) => (
+              <span className="vendas-ramp-step" key={step.monthOffset}>
+                {step.pct}%
+              </span>
+            ))}
+          </div>
+        </VendasInlineDetails>
       </div>
     </div>
   );

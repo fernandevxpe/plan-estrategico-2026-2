@@ -1,0 +1,156 @@
+{
+  "operatingModel": {
+    "title": "Modelo operacional — time único de 5",
+    "headline": "Mesmo time atende laudos e projetos. LDC já escala (automação + app). Projetos variados são a lacuna — padronizar, automatizar por bloco e cross-train para flexibilidade.",
+    "teamComposition": {
+      "totalFte": 5,
+      "engineerRole": "Engenheiro: inspeções (geralmente à noite) + montagem de laudos LDC — processo já bem produzido e automatizado.",
+      "projectsFocus": "Maior tempo histórico em projetos variados (menor receita/unidade, mas obrigatórios) — alvo de padronização e automação CAD.",
+      "flexibilityGoal": "Cross-training: todos tocam todos os instrumentos — mais lento no curto prazo, mais flexível para o comercial."
+    },
+    "evolutionPath": [
+      { "phase": "1", "label": "Executor padronizado", "description": "Checklist, libs CAD, blocos automatizados, PDS semanal" },
+      { "phase": "2", "label": "Especialista revisor", "description": "Domínio por tipo (PIE, PROJETOS, LDC…) + revisão técnica" },
+      { "phase": "3", "label": "Gerente operacional", "description": "1–2 líderes acompanham apresentação com comercial — engenheiro não escala sozinho" }
+    ]
+  },
+  "strategicPillars": [
+    {
+      "id": "automation-cad",
+      "title": "Automação CAD por blocos",
+      "description": "PIE/eletrocalha feito. Próximos: CDM (ampliação), projeto de sistema, botão de emergência, disparagem — prioridade estratégica H2.",
+      "status": "em_andamento"
+    },
+    {
+      "id": "cad-library",
+      "title": "Biblioteca interna & base de serviços",
+      "description": "Padronizar escopos, lista de material automática, criar/cobrir plantas, copiar doc A→B, replicar blocos — tudo catalogado para qualquer inicialização do mesmo escopo.",
+      "status": "pendente"
+    },
+    {
+      "id": "time-tracking",
+      "title": "Tempo por cliente & desempenho",
+      "description": "Monitorar tempo exato por serviço/cliente: quem é mais rápido, quem erra menos, o que cada um faz. Reconhecer top performers e capacitar quem está defasado.",
+      "status": "pendente"
+    },
+    {
+      "id": "process-docs",
+      "title": "Guia mestre por escopo",
+      "description": "Co-pro coletivo atualiza sempre o guia de inicialização de cada tipo de serviço — boas práticas viram processo oficial.",
+      "status": "pendente"
+    },
+    {
+      "id": "app-laudos",
+      "title": "App interno (laudos + OS)",
+      "description": "Checklist, fotos, vídeos, áudios, ordens de serviço — base para escalar LDC/LIE e liberar engenheiro.",
+      "status": "em_andamento"
+    },
+    {
+      "id": "training",
+      "title": "Capacitação semanal",
+      "description": "Cursos + apresentação de trabalhos entregues — conhecimento compartilhado.",
+      "status": "pendente"
+    },
+    {
+      "id": "pds",
+      "title": "PDS simplificado",
+      "description": "Planejado × feito × aprendido por projeto — retrospectiva que alimenta o próximo.",
+      "status": "pendente"
+    },
+    {
+      "id": "rotation",
+      "title": "Job rotation & especialistas",
+      "description": "Rotação entre frentes; depois especialistas revisores; depois gerentes de apresentação com comercial.",
+      "status": "planejando"
+    }
+  ],
+  "learningLoop": {
+    "title": "Ciclo de aprendizado contínuo",
+    "steps": [
+      "Projeto entregue → PDS (planejado / feito / aprendido)",
+      "Apresentação semanal do time — melhorias documentadas",
+      "Atualizar libs, checklists ClickUp e blocos CAD",
+      "Próximo projeto parte da base nova — executor em paralelo reutiliza"
+    ]
+  },
+  "automationBacklog": {
+    "title": "Fila de automação CAD — prioridade H2",
+    "completed": [
+      { "id": "pie-eletrocalha", "name": "PIE — montagem eletrocalha semi-automatizada", "impact": "Semanas → horas" }
+    ],
+    "next": [
+      { "id": "cdm", "name": "CDM — ampliação", "priority": 1, "note": "Próximo foco explícito de projeto" },
+      { "id": "sistema", "name": "Projeto de sistema", "priority": 2, "note": "Estratégico H2" },
+      { "id": "emergencia", "name": "Botão de emergência", "priority": 3, "note": "Automação de processo recorrente" },
+      { "id": "disparagem", "name": "Disparagem", "priority": 4, "note": "Volume comum — alto retorno" }
+    ],
+    "libraryTools": [
+      "Lista de material automática",
+      "Criar plantas / cobrir plantas existentes",
+      "Copiar documento A → documento B",
+      "Replicar blocos e padrões entre projetos"
+    ]
+  },
+  "performanceCulture": {
+    "title": "Cultura de medição & melhoria H2",
+    "dailyRhythm": "~4h/dia de dedicação em projetos — horários não batem 100%; reservar dias focados para produção CAD e dias para PDS/capacitação.",
+    "metrics": [
+      "Tempo de execução exato por cliente e por tipo de serviço",
+      "Velocidade e qualidade por pessoa (erros / retrabalho)",
+      "O que cada membro executa e quanto tempo leva",
+      "Oportunidades de melhoria e boas práticas documentadas"
+    ],
+    "actions": [
+      "Reconhecer quem faz melhor e mais rápido",
+      "Capacitar quem está defasado com base em dados",
+      "Co-pro semanal alimentando guia mestre do escopo"
+    ]
+  },
+  "presentationDecentralization": {
+    "title": "Descentralizar apresentação ao cliente",
+    "current": "Hoje só o engenheiro principal apresenta e faz inspeções.",
+    "target": "Níveis: executor técnico · revisor · apresentador com comercial · engenheiro só em casos críticos.",
+    "goal": "Escalar 2x vendas sem escalar 1 engenheiro — líderes internos (estagiários com potencial → gerentes)."
+  },
+  "capacityAssumptions": {
+    "scenario": "Conservador H2 — vendas estáveis vs jan–mai",
+    "pieAutomatedPerMonth": "7–10",
+    "projectsTotalTargetPerMonth": "4–6",
+    "ldcMonthlyHistorical": "6–8",
+    "lieMonthlyHistorical": "2–3",
+    "backlogStatus": "Poucos críticos restantes (<5) — fila de projetos estabilizando",
+    "gateNote": "Não comprometer SLA de projetos para absorver pico comercial sem automação pronta."
+  },
+  "roadmapPhases": [
+    {
+      "phase": "jul–ago/2026",
+      "title": "Estabilizar & medir",
+      "items": [
+        "Baseline SLA + tempo exato por cliente/tipo (ClickUp)",
+        "Inventário base de serviços + estrutura biblioteca CAD",
+        "Calendário: dias foco produção vs PDS/capacitação (~4h/dia)",
+        "PDS piloto + co-pro alimentando guia mestre CDM"
+      ]
+    },
+    {
+      "phase": "set–out/2026",
+      "title": "Padronizar & automatizar",
+      "items": [
+        "Automação CDM (ampliação) — 1º após PIE",
+        "Libs: lista material, plantas, copiar A→B, replicar blocos",
+        "Automação: projeto sistema + botão emergência (piloto)",
+        "Dashboard tempo/pessoa — reconhecer top performers"
+      ]
+    },
+    {
+      "phase": "nov–dez/2026",
+      "title": "Escalar cultura & automações",
+      "items": [
+        "Automação disparagem em produção",
+        "Capacitação dirigida por dados (quem está defasado)",
+        "Guia mestre atualizado para cada escopo ativo",
+        "Revisão capacidade vs pipeline comercial"
+      ]
+    }
+  ]
+}

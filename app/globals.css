@@ -1757,6 +1757,77 @@ tr:last-child td {
   margin-bottom: 12px;
 }
 
+.pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.pillar-card {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+}
+
+.pillar-card strong {
+  display: block;
+  margin: 8px 0 6px;
+  font-size: 14px;
+}
+
+.pillar-card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.evolution-phases {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.evolution-phase {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: white;
+}
+
+.evolution-phase strong {
+  display: block;
+  margin: 6px 0 4px;
+}
+
+.evolution-phase p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.consultoria-roadmap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.automation-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.capacity-gap-note {
+  margin: 0;
+  padding-top: 4px;
+  font-weight: 600;
+  color: #08704f;
+}
+
 .subsection-title {
   margin-top: 8px;
 }

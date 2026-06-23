@@ -48,20 +48,50 @@
     "consultoria-projetos": {
       "id": "consultoria-projetos",
       "strategicNotes": [
-        "PIE e PROJETOS compõem mix de ticket médio — priorizar nos meses de pico.",
-        "5 projetistas absorvem volume com automação de laudos padronizados."
+        "Time único 5 FTE: engenheiro em LDC/inspeção (noite) — processo maduro; lacuna = projetos variados.",
+        "PIE com automação eletrocalha: semanas → horas · capacidade 7–10/mês.",
+        "Cross-training: todos os instrumentos — flexível para o comercial, mais lento no curto prazo.",
+        "PDS semanal: planejado × feito × aprendido → próximo projeto parte da base nova.",
+        "Evolução: executor → especialista revisor → gerente (apresentação com comercial).",
+        "H2: cultura de medição — tempo por cliente, desempenho por pessoa, dias foco (~4h/dia).",
+        "Automação CAD: CDM ampliação → sistema → emergência → disparagem.",
+        "Biblioteca interna: lista material, plantas, copiar A→B, guia mestre por escopo."
       ],
       "objectives": [
-        { "id": "cp1", "title": "Entregar fila de projetos sem atraso crítico", "metric": "SLA entrega", "target": "≥ 90%" },
-        { "id": "cp2", "title": "Manter ticket médio de projetos", "metric": "Ticket PROJETOS/PIE", "target": "≥ R$ 7.000" }
+        { "id": "cp0", "title": "SLA projetos no prazo", "metric": "SLA entrega", "target": "≥ 90% · fila crítica < 5" },
+        { "id": "cp1", "title": "Capacidade PIE automatizada", "metric": "PIE/mês", "target": "7–10 entregas estáveis" },
+        { "id": "cp2", "title": "Automação CDM + fila CAD", "metric": "Blocos automatizados", "target": "CDM ago–set · sistema+emergência out" },
+        { "id": "cp2b", "title": "Biblioteca interna de serviços", "metric": "Ferramentas CAD", "target": "Lista material + plantas + A→B até set" },
+        { "id": "cp3", "title": "Tempo por cliente & desempenho", "metric": "Tracking ClickUp", "target": "100% projetos com tempo registrado" },
+        { "id": "cp3b", "title": "PDS e guia mestre por escopo", "metric": "Co-pro semanal", "target": "100% projetos fechados com retrospectiva" },
+        { "id": "cp4", "title": "Descentralizar apresentação", "metric": "Apresentações/mês", "target": "1 líder interno + comercial até nov" },
+        { "id": "cp5", "title": "Ticket médio projetos", "metric": "Ticket PIE+PROJ", "target": "≥ R$ 7.000" }
       ],
       "activities": [
-        { "id": "cp-a1", "title": "Mapear fila atual por projetista", "responsible": "Coordenação projetos", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
-        { "id": "cp-a2", "title": "Padronizar templates PIE e PROJETOS no ClickUp", "responsible": "Projetistas", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
-        { "id": "cp-a3", "title": "Revisar capacidade mensal vs meta 2x/3x", "responsible": "Gestão", "dueMonth": "2026-07", "priority": "high", "status": "pendente" }
+        { "id": "cp-a0", "title": "Baseline SLA e tempo por tipo (PIE, PROJ, LDC, LIE) — ClickUp", "responsible": "Engenheiro + Coord.", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a1", "title": "Inventário base de serviços + estrutura biblioteca CAD interna", "responsible": "Projetistas + Eng.", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a1b", "title": "Automação CDM (ampliação) — mapear e desenvolver bloco", "responsible": "Tech + Projetistas", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a1c", "title": "Tracking tempo exato por cliente/tipo no ClickUp — baseline jul", "responsible": "Coord. projetos", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a1d", "title": "Calendário dias foco: produção CAD vs PDS/capacitação (~4h/dia)", "responsible": "Coord. + Time", "dueMonth": "2026-07", "priority": "high", "status": "pendente" },
+        { "id": "cp-a2", "title": "Documentação única + libs CAD padronizadas (v1)", "responsible": "Projetistas", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a3", "title": "PDS simplificado — piloto 3 projetos + ritual semanal de apresentação", "responsible": "Coord. projetos", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a4", "title": "Capacitação semanal (curso + trabalho entregue compartilhado)", "responsible": "Engenheiro + Time", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "cp-a5", "title": "Definir líderes internos por frente (estagiários em ramp)", "responsible": "Engenheiro diretor", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "cp-a6", "title": "Job rotation piloto — rotação mensal entre PIE/PROJ/LDC básico", "responsible": "Coord. projetos", "dueMonth": "2026-09", "priority": "high", "status": "pendente" },
+        { "id": "cp-a7", "title": "Automação projeto de sistema + botão de emergência (piloto)", "responsible": "Tech + Projetistas", "dueMonth": "2026-10", "priority": "high", "status": "pendente" },
+        { "id": "cp-a7b", "title": "Automação disparagem — produção", "responsible": "Tech + Projetistas", "dueMonth": "2026-11", "priority": "high", "status": "pendente" },
+        { "id": "cp-a7c", "title": "Ferramentas libs: lista material, plantas, copiar A→B, replicar blocos", "responsible": "Projetistas + Tech", "dueMonth": "2026-09", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a7d", "title": "Dashboard desempenho: tempo, erros, top performers — revisão mensal", "responsible": "Coord. projetos", "dueMonth": "2026-09", "priority": "high", "status": "pendente" },
+        { "id": "cp-a8", "title": "Templates ClickUp unificados — checklist por tipo de projeto", "responsible": "Projetistas", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "cp-a9", "title": "Níveis de verificação: executor · revisor · apresentador · eng. crítico", "responsible": "Engenheiro + Comercial", "dueMonth": "2026-10", "priority": "high", "status": "pendente" },
+        { "id": "cp-a10", "title": "1º gerente operacional em apresentação com comercial", "responsible": "Engenheiro diretor", "dueMonth": "2026-11", "priority": "high", "status": "pendente" },
+        { "id": "cp-a11", "title": "Revisão capacidade mensal vs pipeline comercial", "responsible": "Gestão + Coord.", "dueMonth": "2026-12", "priority": "high", "status": "pendente" }
       ],
       "risks": [
-        { "title": "Saturação no cenário 3x", "mitigation": "Priorizar laudos automatizáveis e fila por prioridade comercial." }
+        { "title": "Engenheiro único — inspeção + laudo + apresentação", "mitigation": "LDC automatizado + líderes internos + apresentação descentralizada com comercial." },
+        { "title": "PROJETOS variados sem padrão consomem FTE", "mitigation": "Automação por bloco + PDS + libs antes de escalar vendas." },
+        { "title": "Cross-training reduz velocidade no curto prazo", "mitigation": "Especialistas revisores mantêm qualidade; rotação gradual." },
+        { "title": "Comercial vende acima da fila de projetos", "mitigation": "Gate capacidade: SLA ClickUp antes de aceitar prazo agressivo." }
       ]
     },
     "consultoria-laudos": {

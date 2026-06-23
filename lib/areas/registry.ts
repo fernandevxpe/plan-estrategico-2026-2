@@ -37,7 +37,7 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     description: "PIE, PROJETOS, CDM e projetos de infraestrutura elétrica.",
     parentId: "consultoria",
     status: "executando",
-    lead: "Projetistas",
+    lead: "Engenheiro diretor + coord. projetos (formação)",
     businessTypes: ["PROJETOS", "PIE - Projeto infra.  Eletrocalha e Emergência", "CDM"]
   },
   {

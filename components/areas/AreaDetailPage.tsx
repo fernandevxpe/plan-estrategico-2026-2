@@ -8,7 +8,9 @@ import type { VendasDirectorDashboard } from "@/lib/areas/build-vendas-director-
 import type { AreaDashboardItem, AreasDashboard } from "@/lib/areas/types";
 import { AreaDetailPanel } from "@/components/areas/AreasOverview";
 import { AreasSidebar } from "@/components/areas/AreasSidebar";
+import { ConsultoriaProjetosAreaPage } from "@/components/areas/ConsultoriaProjetosAreaPage";
 import { VendasAreaPage } from "@/components/areas/VendasAreaPage";
+import type { ConsultoriaProjetosDashboard } from "@/lib/areas/build-consultoria-projetos-dashboard";
 
 type Props = {
   dashboard: AreasDashboard;
@@ -17,9 +19,18 @@ type Props = {
   vendasScenarios?: VendasScenariosDashboard | null;
   vendasUnitEconomics?: VendasUnitEconomicsDashboard | null;
   vendasDirectorDashboard?: VendasDirectorDashboard | null;
+  consultoriaProjetos?: ConsultoriaProjetosDashboard | null;
 };
 
-export function AreaDetailPage({ dashboard, area, vendasFunnel, vendasScenarios, vendasUnitEconomics, vendasDirectorDashboard }: Props) {
+export function AreaDetailPage({
+  dashboard,
+  area,
+  vendasFunnel,
+  vendasScenarios,
+  vendasUnitEconomics,
+  vendasDirectorDashboard,
+  consultoriaProjetos
+}: Props) {
   return (
     <div className="areas-page">
       <div className="page-header">
@@ -51,6 +62,8 @@ export function AreaDetailPage({ dashboard, area, vendasFunnel, vendasScenarios,
               scenarios={vendasScenarios}
               unitEconomics={vendasUnitEconomics}
             />
+          ) : area.id === "consultoria-projetos" && consultoriaProjetos ? (
+            <ConsultoriaProjetosAreaPage area={area} data={consultoriaProjetos} />
           ) : (
             <AreaDetailPanel area={area} />
           )}

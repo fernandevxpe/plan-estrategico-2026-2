@@ -5,6 +5,7 @@ import { findAreaById } from "@/lib/areas/build-areas-dashboard";
 import { buildVendasFunnel } from "@/lib/areas/build-vendas-funnel";
 import { buildVendasScenarios } from "@/lib/areas/build-vendas-scenarios";
 import { buildVendasDirectorDashboard } from "@/lib/areas/build-vendas-director-dashboard";
+import { buildConsultoriaProjetosDashboard } from "@/lib/areas/build-consultoria-projetos-dashboard";
 import { buildVendasUnitEconomics } from "@/lib/areas/build-vendas-unit-economics";
 import { AREA_SLUGS } from "@/lib/areas/registry";
 import { loadDashboardData } from "@/lib/data/load-dashboard";
@@ -33,6 +34,9 @@ export default async function AreaSlugPage({ params }: Props) {
       ? buildVendasDirectorDashboard(analysis, vendasScenarios)
       : null;
 
+  const consultoriaProjetos =
+    slug === "consultoria-projetos" ? buildConsultoriaProjetosDashboard(analysis) : null;
+
   return (
     <AppShell>
       <AreaDetailPage
@@ -42,6 +46,7 @@ export default async function AreaSlugPage({ params }: Props) {
         vendasScenarios={vendasScenarios}
         vendasUnitEconomics={vendasUnitEconomics}
         vendasDirectorDashboard={vendasDirectorDashboard}
+        consultoriaProjetos={consultoriaProjetos}
       />
     </AppShell>
   );

@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "areas": {
+    "vendas": {
+      "id": "vendas",
+      "strategicNotes": [
+        "Manter 2 comerciais com meta clara por pessoa — contratar 3º se fechamentos sustentarem >8/pessoa.",
+        "Recuperar conversão dos novos negócios após queda mar–mai/2026.",
+        "Ritual semanal de pipeline toda segunda-feira."
+      ],
+      "objectives": [
+        { "id": "v1", "title": "Bater meta H1 de R$ 1M em receita fechada", "metric": "Receita H1", "target": "R$ 1.000.000" },
+        { "id": "v2", "title": "Manter conversão dos novos negócios acima de 15%", "metric": "Conv. novos neg.", "target": "≥ 15%" },
+        { "id": "v3", "title": "Desbloquear pipeline em negociação", "metric": "Pipeline aberto", "target": "Revisão semanal" }
+      ],
+      "activities": [
+        { "id": "v-a1", "title": "Ritual semanal de pipeline (segunda)", "responsible": "Comercial", "dueMonth": "2026-07", "priority": "critical", "status": "em_andamento" },
+        { "id": "v-a2", "title": "Definir gatilho formal de contratação do 3º comercial", "responsible": "Gestão", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "v-a3", "title": "Padronizar follow-up em 48h pós-proposta", "responsible": "Comercial", "dueMonth": "2026-07", "priority": "high", "status": "pendente" },
+        { "id": "v-a4", "title": "Checkpoint mensal vs metas 2x/3x", "responsible": "Comercial + Gestão", "dueMonth": "2026-12", "priority": "high", "status": "em_andamento" }
+      ],
+      "risks": [
+        { "title": "Queda de conversão após fevereiro", "mitigation": "Follow-up 48h e revisão de etapas com maior perda." },
+        { "title": "2 comerciais no limite no cenário 3x", "mitigation": "Monitorar fechamentos/pessoa e antecipar contratação." }
+      ]
+    },
+    "consultoria-projetos": {
+      "id": "consultoria-projetos",
+      "strategicNotes": [
+        "PIE e PROJETOS compõem mix de ticket médio — priorizar nos meses de pico.",
+        "5 projetistas absorvem volume com automação de laudos padronizados."
+      ],
+      "objectives": [
+        { "id": "cp1", "title": "Entregar fila de projetos sem atraso crítico", "metric": "SLA entrega", "target": "≥ 90%" },
+        { "id": "cp2", "title": "Manter ticket médio de projetos", "metric": "Ticket PROJETOS/PIE", "target": "≥ R$ 7.000" }
+      ],
+      "activities": [
+        { "id": "cp-a1", "title": "Mapear fila atual por projetista", "responsible": "Coordenação projetos", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a2", "title": "Padronizar templates PIE e PROJETOS no ClickUp", "responsible": "Projetistas", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "cp-a3", "title": "Revisar capacidade mensal vs meta 2x/3x", "responsible": "Gestão", "dueMonth": "2026-07", "priority": "high", "status": "pendente" }
+      ],
+      "risks": [
+        { "title": "Saturação no cenário 3x", "mitigation": "Priorizar laudos automatizáveis e fila por prioridade comercial." }
+      ]
+    },
+    "consultoria-laudos": {
+      "id": "consultoria-laudos",
+      "strategicNotes": [
+        "LDC é o maior share de receita jan–mai/2026 — motor de volume.",
+        "Automação de laudos repetitivos libera capacidade dos 5 projetistas."
+      ],
+      "objectives": [
+        { "id": "cl1", "title": "Manter LDC como carro-chefe de volume", "metric": "Share LDC", "target": "≥ 35% receita área" },
+        { "id": "cl2", "title": "Reduzir tempo médio de entrega LDC/LIE", "metric": "Dias entrega", "target": "A definir baseline" }
+      ],
+      "activities": [
+        { "id": "cl-a1", "title": "Inventariar laudos automatizáveis vs manuais", "responsible": "Projetistas + Tech", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a2", "title": "Definir SLA por tipo de laudo", "responsible": "Coordenação laudos", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "cl-a3", "title": "Treinar fluxo de etiqueta comercial no CRM", "responsible": "Comercial", "dueMonth": "2026-07", "priority": "medium", "status": "pendente" }
+      ],
+      "risks": [
+        { "title": "Volume alto de LDC com margem apertada", "mitigation": "Automatizar e proteger ticket em laudos complexos." }
+      ]
+    },
+    "obras": {
+      "id": "obras",
+      "strategicNotes": [
+        "Obras puxam ticket alto — incluir pelo menos 2 obras/mês acima de R$ 20k no H2.",
+        "Integrar pipeline comercial com capacidade de execução em campo."
+      ],
+      "objectives": [
+        { "id": "o1", "title": "Aumentar participação de obras no mix", "metric": "Share obras", "target": "≥ 22%" },
+        { "id": "o2", "title": "Proteger ticket médio de obras", "metric": "Ticket OBRA", "target": "≥ R$ 20.000" }
+      ],
+      "activities": [
+        { "id": "o-a1", "title": "Listar obras em pipeline e previsão H2", "responsible": "Comercial + Obras", "dueMonth": "2026-07", "priority": "high", "status": "pendente" },
+        { "id": "o-a2", "title": "Definir responsável de campo por obra", "responsible": "Operação obras", "dueMonth": "2026-08", "priority": "high", "status": "pendente" }
+      ],
+      "risks": [
+        { "title": "Gargalo de execução em campo", "mitigation": "Planejar capacidade antes de fechar volume alto." }
+      ]
+    },
+    "marketing": {
+      "id": "marketing",
+      "strategicNotes": [
+        "Tráfego: R$ 2k/mês jan–mar e R$ 2,5k/mês abr–jun; escalar no H2 conforme cenário 2x/3x.",
+        "Acompanhar CPA por contrato fechado mensalmente."
+      ],
+      "objectives": [
+        { "id": "m1", "title": "Executar budget de tráfego H1", "metric": "Investimento H1", "target": "R$ 13.500" },
+        { "id": "m2", "title": "Manter CPA dentro do benchmark", "metric": "CPA médio", "target": "Monitorar mensal" }
+      ],
+      "activities": [
+        { "id": "m-a1", "title": "Calendário de campanhas jul–dez alinhado à sazonalidade", "responsible": "Marketing", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "m-a2", "title": "Relatório mensal: investimento × fechamentos × CPA", "responsible": "Marketing", "dueMonth": "2026-12", "priority": "high", "status": "em_andamento" },
+        { "id": "m-a3", "title": "Testar criativos para LDC e obras", "responsible": "Marketing", "dueMonth": "2026-08", "priority": "medium", "status": "pendente" }
+      ],
+      "risks": [
+        { "title": "CPA subir sem aumento de conversão", "mitigation": "Pausar campanhas fracas e realocar para meses de pico." }
+      ]
+    },
+    "eventos": {
+      "id": "eventos",
+      "strategicNotes": [
+        "Área em estruturação — definir calendário de eventos H2 e ROI esperado.",
+        "Conectar eventos ao funil comercial com origem rastreada no CRM."
+      ],
+      "objectives": [
+        { "id": "e1", "title": "Definir calendário de eventos H2", "metric": "Eventos", "target": "A definir" },
+        { "id": "e2", "title": "Rastrear leads de eventos no Pipedrive", "metric": "Origem CRM", "target": "100% tagueados" }
+      ],
+      "activities": [
+        { "id": "e-a1", "title": "Levantar eventos do setor jul–dez", "responsible": "A definir", "dueMonth": "2026-07", "priority": "high", "status": "pendente" },
+        { "id": "e-a2", "title": "Definir responsável e budget de eventos", "responsible": "Gestão", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" }
+      ],
+      "risks": [
+        { "title": "Investimento sem retorno mensurável", "mitigation": "Exigir meta de leads qualificados por evento." }
+      ]
+    },
+    "smart-charging": {
+      "id": "smart-charging",
+      "strategicNotes": [
+        "ICV, instalação de carregador e LCC — nicho em crescimento.",
+        "Alinhar comercial e operação para pacotes EV completos."
+      ],
+      "objectives": [
+        { "id": "sc1", "title": "Aumentar fechamentos EV no H2", "metric": "Contratos EV", "target": "A definir" },
+        { "id": "sc2", "title": "Montar oferta integrada laudo + instalação", "metric": "Pacote", "target": "1 playbook" }
+      ],
+      "activities": [
+        { "id": "sc-a1", "title": "Documentar playbook comercial Smart Charging", "responsible": "Comercial + Produto EV", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "sc-a2", "title": "Mapear concorrência e ticket médio EV", "responsible": "Produto EV", "dueMonth": "2026-07", "priority": "medium", "status": "pendente" }
+      ],
+      "risks": [
+        { "title": "Demanda ainda concentrada em poucos meses", "mitigation": "Prospecção ativa em condomínios com garagem." }
+      ]
+    },
+    "automacoes-ferramentas": {
+      "id": "automacoes-ferramentas",
+      "strategicNotes": [
+        "Automação é alavanca para escalar de 3 para 5 projetistas sem proporcionalidade.",
+        "CRM precisa de etiqueta comercial obrigatória em todo negócio novo."
+      ],
+      "objectives": [
+        { "id": "af1", "title": "Campo obrigatório de tipo comercial no CRM", "metric": "Cobertura etiqueta", "target": "100%" },
+        { "id": "af2", "title": "Automatizar laudos de alto volume", "metric": "Laudos auto.", "target": "A definir %" }
+      ],
+      "activities": [
+        { "id": "af-a1", "title": "Tornar etiqueta comercial obrigatória no Pipedrive", "responsible": "Tech + Comercial", "dueMonth": "2026-07", "priority": "critical", "status": "em_andamento" },
+        { "id": "af-a2", "title": "Listar automações prioritárias com projetistas", "responsible": "Tech", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "af-a3", "title": "Integrar dashboard com sync ClickUp", "responsible": "Tech", "dueMonth": "2026-09", "priority": "medium", "status": "pendente" }
+      ],
+      "risks": [
+        { "title": "Dados inconsistentes limitam planejamento", "mitigation": "Qualidade de dados como OKR do trimestre." }
+      ]
+    },
+    "medidores-iot": {
+      "id": "medidores-iot",
+      "strategicNotes": [
+        "Área em estruturação — produto e go-to-market a definir com gestão.",
+        "Potencial de recorrência e nova fonte de receita (fora da meta de contratos atual)."
+      ],
+      "objectives": [
+        { "id": "iot1", "title": "Definir proposta de valor Medidores IoT", "metric": "MVP", "target": "Documento" },
+        { "id": "iot2", "title": "Identificar 3 clientes piloto", "metric": "Pilotos", "target": "3" }
+      ],
+      "activities": [
+        { "id": "iot-a1", "title": "Workshop de definição do produto IoT", "responsible": "A definir", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "iot-a2", "title": "Mapear fornecedores e custo de hardware", "responsible": "A definir", "dueMonth": "2026-09", "priority": "medium", "status": "pendente" }
+      ],
+      "risks": [
+        { "title": "Dispersão sem foco comercial", "mitigation": "Só avançar após piloto com cliente pagante." }
+      ]
+    },
+    "escala": {
+      "id": "escala",
+      "strategicNotes": [
+        "De 3 para 5 projetistas + automação — modelo para crescer sem quebrar SLA.",
+        "Escala comercial condicionada a capacidade de entrega."
+      ],
+      "objectives": [
+        { "id": "es1", "title": "Onboarding completo dos 2 novos projetistas", "metric": "Capacidade", "target": "5 FTE operando" },
+        { "id": "es2", "title": "Playbook de contratação comercial", "metric": "Headcount", "target": "Gatilho documentado" }
+      ],
+      "activities": [
+        { "id": "es-a1", "title": "Documentar capacidade máxima por projetista/mês", "responsible": "Gestão + Operação", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "es-a2", "title": "Plano de contratação se cenário 3x se confirmar", "responsible": "Gestão", "dueMonth": "2026-09", "priority": "high", "status": "pendente" },
+        { "id": "es-a3", "title": "Revisar terceirização de laudos de alto volume", "responsible": "Gestão", "dueMonth": "2026-10", "priority": "medium", "status": "pendente" }
+      ],
+      "risks": [
+        { "title": "Crescer vendas mais rápido que entrega", "mitigation": "Gate comercial: não vender acima da fila de produção." }
+      ]
+    }
+  }
+}

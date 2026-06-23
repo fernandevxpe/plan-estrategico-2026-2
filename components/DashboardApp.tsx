@@ -24,14 +24,17 @@ import { IndicatorAnalysisSection } from "@/components/dashboard/IndicatorAnalys
 import { PerformanceAlerts } from "@/components/dashboard/PerformanceAlerts";
 import { DeepAnalysisSection } from "@/components/dashboard/DeepAnalysisSection";
 import { GrowthGuidesSection } from "@/components/guides/GrowthGuidesSection";
+import { AreasPlanningSection } from "@/components/areas/AreasPlanningSection";
+import type { AreasDashboard } from "@/lib/areas/types";
 import { brl, formatGrowth, monthLabel } from "@/lib/analysis/format";
 
 type Props = {
   analysis: Analysis;
+  areasDashboard: AreasDashboard;
   generatedAt: string;
 };
 
-export function DashboardApp({ analysis, generatedAt }: Props) {
+export function DashboardApp({ analysis, areasDashboard, generatedAt }: Props) {
   const [scenario, setScenario] = useState<ScenarioName>(
     (analysis.planningSummary.defaultScenario as ScenarioName) ?? "Realista recomendado"
   );
@@ -164,6 +167,8 @@ export function DashboardApp({ analysis, generatedAt }: Props) {
       <DashboardSections analysis={analysis} filters={filters} kpis={kpis} />
 
       <GrowthGuidesSection guides={analysis.growthGuides} />
+
+      <AreasPlanningSection dashboard={areasDashboard} />
 
       <section className="page-zone appendix-zone" id="apendice">
         <div className="section-title">

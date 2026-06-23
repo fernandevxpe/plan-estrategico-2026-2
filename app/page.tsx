@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { DashboardApp } from "@/components/DashboardApp";
 import type { Analysis } from "@/lib/analysis/types";
+import { buildAreasDashboard } from "@/lib/areas/build-areas-dashboard";
 
 async function getAnalysis(): Promise<Analysis> {
   const file = path.join(process.cwd(), "data/processed/analysis.json");
@@ -10,6 +11,7 @@ async function getAnalysis(): Promise<Analysis> {
 
 export default async function Page() {
   const analysis = await getAnalysis();
+  const areasDashboard = buildAreasDashboard(analysis);
   const generatedAt = new Date(analysis.generatedAt).toLocaleString("pt-BR");
 
   return (
@@ -29,13 +31,14 @@ export default async function Page() {
             <a href="#mix">Mix</a>
             <a href="#pos-venda">Pós-venda</a>
             <a href="#metas">Metas</a>
+            <a href="#areas">Áreas</a>
             <a href="#apendice">Apêndice</a>
           </nav>
         </div>
       </header>
 
       <div className="shell">
-        <DashboardApp analysis={analysis} generatedAt={generatedAt} />
+        <DashboardApp analysis={analysis} areasDashboard={areasDashboard} generatedAt={generatedAt} />
       </div>
     </main>
   );

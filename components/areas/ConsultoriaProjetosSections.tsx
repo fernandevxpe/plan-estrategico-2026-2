@@ -52,10 +52,51 @@ export function ConsultoriaProjetosOperationalFocus({ data }: Props) {
   const pillars = data.focus.strategicPillars;
   const loop = data.focus.learningLoop;
   const presentation = data.focus.presentationDecentralization;
+  const pcc = data.focus.pccHybridProduct;
 
   return (
     <div className="vendas-operational-focus is-embedded">
       <p className="vendas-gate-statement">{model.headline}</p>
+
+      <VendasInlineDetails title={pcc.title} defaultOpen>
+        <p className="vendas-gate-statement laudos-np17-headline">{pcc.headline}</p>
+        <p className="metric-note">{pcc.commercialContext}</p>
+        <p className="metric-note">
+          <strong>{pcc.twoParts.title}</strong>
+        </p>
+        <div className="evolution-phases icv-pipeline lie-flow">
+          <div className="evolution-phase">
+            <span className="vendas-template-priority">Parte 1</span>
+            <strong>{pcc.twoParts.part1.name}</strong>
+            <p>{pcc.twoParts.part1.description}</p>
+            <small className="metric-note">Saída: {pcc.twoParts.part1.output}</small>
+            <small className="metric-note">{pcc.twoParts.part1.reuseFromLdc}</small>
+          </div>
+          <div className="evolution-phase">
+            <span className="vendas-template-priority">Parte 2</span>
+            <strong>{pcc.twoParts.part2.name}</strong>
+            <p>{pcc.twoParts.part2.description}</p>
+            <small className="metric-note">Saída: {pcc.twoParts.part2.output}</small>
+            <small className="metric-note">{pcc.twoParts.part2.downstream}</small>
+          </div>
+        </div>
+        <VendasInlineDetails title={pcc.documentScope.title} defaultOpen>
+          <p className="metric-note capacity-gap-note">{pcc.documentScope.gap}</p>
+          <p className="metric-note">{pcc.documentScope.h2Action}</p>
+          <ul className="vendas-compact-list">
+            {pcc.documentScope.deliverables.map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+          </ul>
+        </VendasInlineDetails>
+        <p className="metric-note">Sequência operacional:</p>
+        <ol className="director-agenda">
+          {pcc.processSequence.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        <p className="metric-note">Integração: {pcc.linkedAreas.join(" · ")}</p>
+      </VendasInlineDetails>
 
       <div className="vendas-gate-stats">
         <div className="mini">

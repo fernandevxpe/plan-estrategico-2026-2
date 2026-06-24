@@ -34,7 +34,7 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     id: "consultoria-projetos",
     name: "Projetos",
     shortName: "Projetos",
-    description: "PIE, PROJETOS, CDM e projetos de infraestrutura elétrica.",
+    description: "PIE, PROJETOS, CDM, PCC (carregamento coletivo) e projetos de infraestrutura elétrica.",
     parentId: "consultoria",
     status: "executando",
     lead: "Engenheiro diretor + coord. projetos (formação)",
@@ -47,7 +47,7 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     description: "LDC, LIE, LCC, LGR, LSPDA e laudos de disponibilidade de carga.",
     parentId: "consultoria",
     status: "executando",
-    lead: "Projetistas",
+    lead: "Coord. laudos + Engenheiro diretor",
     businessTypes: [
       "LDC - Laudo de disponibilidade de carga",
       "LIE - Laudo de Instalações Elétricas",
@@ -80,47 +80,47 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     id: "eventos",
     name: "Eventos",
     shortName: "Eventos",
-    description: "Presença em feiras, networking e geração de pipeline presencial.",
+    description: "FESÍNDICO set/26 (estande pago), eventos próprios, carteira PE e pipeline presencial com origem CRM.",
     parentId: null,
-    status: "planejando",
-    lead: "A definir"
+    status: "executando",
+    lead: "A definir (urgente)"
   },
   {
     id: "smart-charging",
     name: "Smart Charging",
     shortName: "Smart Charging",
-    description: "Carregadores veiculares, ICV, instalação e laudos de infraestrutura EV.",
+    description: "Controlador de Carga, Central EV, produção e validação em cliente — precede Medidores IoT.",
     parentId: null,
-    status: "planejando",
-    lead: "Produto EV",
+    status: "executando",
+    lead: "Diogo + Macgyver (FW/HW)",
     businessTypes: ["ICV - Inspeção de carregador veicular", "Instalação de Carregador Eletrico", "LCC - Laudo Carregador Coletivo"]
   },
   {
     id: "automacoes-ferramentas",
     name: "Automações e Ferramentas",
     shortName: "Automações",
-    description: "CRM, ClickUp, automações internas e produtividade da operação.",
+    description: "App offline campo + plataforma web + ClickUp — 6 módulos de serviço, testes e automação por gargalo.",
     parentId: null,
     status: "executando",
-    lead: "Tech / Operações"
+    lead: "Tech + Operação",
   },
   {
     id: "medidores-iot",
     name: "Medidores IoT",
     shortName: "IoT",
-    description: "Medição, telemetria e produtos conectados para condomínios e clientes.",
+    description: "Frota 4G, SM3F2.0 (Controlador de Carga), SA3F1.0 — evolução após Smart Charging.",
     parentId: null,
-    status: "estruturando",
-    lead: "A definir"
+    status: "executando",
+    lead: "Macgyver + Diogo · pós Smart Charging"
   },
   {
     id: "escala",
     name: "Escala",
     shortName: "Escala",
-    description: "Capacidade, contratações, processos e crescimento sustentável da operação.",
+    description: "Expansão geográfica EV/Smart Charging — estudo mercado, ranking regiões e headcount comercial.",
     parentId: null,
-    status: "planejando",
-    lead: "Gestão"
+    status: "executando",
+    lead: "Gestão + Diretor Comercial"
   }
 ];
 

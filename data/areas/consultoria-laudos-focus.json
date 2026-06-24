@@ -1,0 +1,426 @@
+{
+  "operatingModel": {
+    "title": "Modelo operacional — três laudos principais",
+    "headline": "Três laudos formam o núcleo: LDC (carro-chefe comercial — maduro e diferencial), LIE (automação H2) e ICV (NP 17). LDC + planejamento energético lideram vendas no momento EV; ICV acelera no 2S.",
+    "teamComposition": {
+      "totalFte": 5,
+      "sharedTeam": "Mesmo time de 5 atende laudos e projetos — flexibilidade comercial, com trilhas dedicadas por tipo quando volume exigir.",
+      "engineerRole": "Engenheiro centraliza LIE: inspeções noturnas + confecção do laudo hoje. LDC já com automação madura. Meta: engenheiro-analista monta LIE na plataforma a partir do que o app coletou em campo.",
+      "lieLane": "Plataforma de montagem ~80% pronta. Lacuna crítica: app de campo — mapear passo a passo o que coletar para não esquecer nada e alimentar o laudo final.",
+      "ldcLane": "Vendido com planejamento energético. Confecção madura (1 pessoa) + instalador dedicado (medidores IoT, levantamento de carga). H2: mapear processo/automações e capacitar backup — preparar escala.",
+      "icvLane": "ICV cresceu pouco até recentemente — agora acelera. H2: automação ICV + plataforma de gestão de carregadores por condomínio.",
+      "automationLever": "App → template → testes → revisão humana. Automação libera capacidade; plataforma EV gera receita recorrente de atualização."
+    },
+    "evolutionPath": [
+      { "phase": "1", "label": "Executor padronizado", "description": "App coleta dados, checklist por tipo (LDC/LIE/ICV), templates base, PDCA por entrega" },
+      { "phase": "2", "label": "Especialista por laudo", "description": "Domínio LDC / LIE / ICV + revisão técnica e tempo registrado no ClickUp" },
+      { "phase": "3", "label": "Coordenação + plataforma EV", "description": "Líder distribui fila; plataforma atualiza carregadores por condomínio e dispara novo laudo ICV" }
+    ]
+  },
+  "coreLaudoTypes": {
+    "title": "Três laudos principais",
+    "types": [
+      {
+        "id": "ldc",
+        "code": "LDC",
+        "name": "Laudo de Disponibilidade de Carga",
+        "role": "Carro-chefe de vendas — LDC + planejamento energético. Maior qualidade e diferencial competitivo; automações maduras",
+        "ytdNote": "~88% receita laudos · 6–8/mês · mercado EV aquecido",
+        "status": "maduro"
+      },
+      {
+        "id": "lie",
+        "code": "LIE",
+        "name": "Laudo de Instalações Elétricas",
+        "role": "Inspeção noturna + laudo — processo centralizado no engenheiro; base forte de automação; plataforma ~80% pronta",
+        "ytdNote": "~2/mês · foco H2: padronizar app de campo → plataforma analista",
+        "status": "em_andamento"
+      },
+      {
+        "id": "icv",
+        "code": "ICV",
+        "name": "Laudo de Inspeção de Carregador",
+        "role": "Aposta estratégica H2 — crescimento acelerado + NP 17",
+        "ytdNote": "Volume baixo YTD, tendência de alta forte no 2S",
+        "status": "estrategico"
+      }
+    ]
+  },
+  "ldcMatureOperation": {
+    "title": "LDC + planejamento energético — operação madura e escala",
+    "headline": "Serviço vendido em pacote: laudo de disponibilidade de carga + planejamento energético. Confecção do laudo é madura — maior qualidade e diferencial competitivo da casa, reforçado pelo momento de mercado (carros elétricos, estudos cada vez mais necessários).",
+    "commercialPackage": {
+      "core": "LDC + planejamento energético (pacote usual de venda)",
+      "addOn": "Frequentemente vendido junto com laudo de qualidade de energia — exige analisador de qualidade (não IoT)"
+    },
+    "teamStructure": {
+      "laudoProduction": "1 pessoa concentra confecção do laudo/planejamento — gargalo se ausente (doença, provas — já ocorreu)",
+      "fieldInstaller": "Instalador dedicado: instalação de medidores IoT + levantamento de carga (base do estudo)",
+      "engineerLoad": "Mesma pessoa também concentrada na ilha LIE + expansão carregadores — risco de sobrecarga cruzada"
+    },
+    "iotAndAutomation": {
+      "current": "Medidores IoT aceleram o serviço; várias automações rodando, organizadas e funcionais",
+      "nextStep": "Próximo salto não é refazer — é mapear tudo e preparar para escala/expansão comercial. Algoritmo de levantamento de carga também alimenta PCC (carregamento coletivo — ver Projetos).",
+      "expansionHeart": "Coração da operação multi-região: app com processos mapeados para coleta em campo + equipamentos de medição remota de fácil instalação, com erros visíveis e corrigíveis antes da entrega"
+    },
+    "qualityEnergyBottleneck": {
+      "title": "Analisadores de qualidade de energia (não IoT)",
+      "description": "Laudo de qualidade de energia exige analisadores convencionais — dados extraídos manualmente.",
+      "constraint": "Hoje ~4 analisadores disponíveis — exige logística de qual equipamento vai para qual cliente, limitando agilidade em picos.",
+      "improvementTrack": "Organizar fila/equipamentos; avaliar automação parcial da extração de dados"
+    },
+    "h2ImprovementProgram": {
+      "title": "Programa H2 — LDC preparado para escala",
+      "activities": [
+        "Mapear todas as automações LDC/planejamento energético existentes",
+        "Documentar processo atual passo a passo (como é feito hoje)",
+        "Avaliar pontos de melhoria e esforço de cada um",
+        "Analisar o que do planejamento energético (parte mais difícil) pode ser automatizado e o que precisa para acontecer",
+        "Capacitação + guia passo a passo para 2ª pessoa tocar o estudo — emergencial/2S (agenda da titular mais livre para LIE/ICV)"
+      ],
+      "urgency": "Capacitação cruzada é prioridade emergencial — single point of failure já causou atrasos"
+    },
+    "longTermPd": {
+      "title": "P&D longo prazo — equipamento Prodist Módulo 8",
+      "description": "Desenvolver ou adquirir equipamento de medição remota que atenda requisitos de qualidade de energia (Prodist Módulo 8), reduzindo dependência de analisadores portáteis e logística manual.",
+      "timeline": "~1 ano de desenvolvimento — entra na sequência após concluir laudos essenciais (LIE/ICV) e frente Smart Charging",
+      "linkedArea": "Medidores IoT"
+    }
+  },
+  "icvStrategicOpportunity": {
+    "title": "ICV — oportunidade NP 17 (Corpo de Bombeiros)",
+    "headline": "Norma NP 17 passa a exigir laudo de todos os carregadores veiculares para liberação do condomínio. Demanda estrutural — não é pico pontual.",
+    "drivers": [
+      "ICV era serviço recente e de baixo volume; crescimento significativo nos últimos meses",
+      "NP 17 obriga laudo por carregador instalado — base instalada + novas instalações",
+      "Cada novo carregador ou condomínio novo = oportunidade de laudo + atualização cadastral",
+      "Receita ICV tende a superar ritmo atual no segundo semestre"
+    ],
+    "commercialLink": "Integrar com Smart Charging, instalação e LCC — funil EV completo."
+  },
+  "liePlatformAndFieldApp": {
+    "title": "LIE — plataforma analista + app de campo",
+    "headline": "Processo de instalações elétricas centralizado no engenheiro: inspeções noturnas e confecção do laudo. Já existe base forte de automação — a plataforma para o engenheiro-analista montar o laudo está ~80% pronta.",
+    "currentBottleneck": "O gargalo não é só o documento final — é a organização do que precisa ser colhido em campo, passo a passo, sem esquecer nada. O app de campo precisa estar bem mapeado; cada item coletado já constrói a base do laudo na plataforma.",
+    "flow": [
+      {
+        "step": 1,
+        "name": "Campo — app padronizado",
+        "description": "Inspeção noturna com checklist passo a passo: fotos, medições, pontos elétricos, observações. Chaves/campos padronizados no app para os dados chegarem organizados.",
+        "status": "em_andamento",
+        "gap": "Mapear 100% do que coletar — nada pode ficar de fora"
+      },
+      {
+        "step": 2,
+        "name": "Plataforma — visão do analista",
+        "description": "Engenheiro-analista abre a plataforma e vê tudo que foi colhido em campo, já estruturado, para montar/revisar o laudo.",
+        "status": "em_andamento",
+        "gap": "~80% pronto — integrar com app de campo padronizado"
+      },
+      {
+        "step": 3,
+        "name": "Confecção + revisão em tempo real",
+        "description": "Montagem do laudo na plataforma com revisão/correção enquanto documento vai sendo construído — não só validação final.",
+        "status": "em_andamento",
+        "gap": "Terminar interface de revisão colaborativa na plataforma"
+      },
+      {
+        "step": 4,
+        "name": "Apresentação web + guia pós-venda",
+        "description": "Integrar laudo à apresentação por cliente (web) e ao Guia de Contratação → proposta automatizada para obras.",
+        "status": "planejando",
+        "gap": "Roadmap integração Laudos ↔ Obras ↔ Comercial"
+      }
+    ],
+    "fieldChecklistPrinciples": [
+      "Lista fechada do que coletar em cada tipo de ponto/ambiente",
+      "Campos obrigatórios antes de encerrar a OS em campo",
+      "Fotos e registros vinculados ao item correto do checklist",
+      "Mesma chave de dados no app → mesma estrutura na plataforma → mesmo bloco no laudo"
+    ],
+    "h2Priority": "Prioridade jul–dez: app de campo completo · plataforma com revisão em tempo real · apresentação web integrada · pós-venda (guia de contratação)."
+  },
+  "lieH2DevelopmentProgram": {
+    "title": "LIE H2 — programa de desenvolvimento (automação + interface)",
+    "headline": "Área voltada para automação de processos, organização de base e interfaces melhoradas — campo, montagem/revisão e apresentação ao cliente.",
+    "tracks": [
+      {
+        "id": "field-app",
+        "name": "App de campo — checklist completo",
+        "description": "Desenvolver e melhorar o aplicativo em campo com todo o checklist mapeado passo a passo. Nada pode ficar de fora — cada coleta alimenta o laudo final.",
+        "status": "em_andamento",
+        "owner": "Fernando + Engenheiro"
+      },
+      {
+        "id": "platform-review",
+        "name": "Plataforma — revisão enquanto monta",
+        "description": "Terminar e melhorar a interface da plataforma (~80% pronta) para revisar o laudo ao mesmo tempo em que vai sendo montado — correção contínua, não só no final.",
+        "status": "em_andamento",
+        "owner": "Fernando + Tech"
+      },
+      {
+        "id": "presentation-web",
+        "name": "Apresentação web integrada",
+        "description": "Integrar laudo com documento de apresentação de saída. Avaliar fluxo 100% web: dados salvos no app como continuação web do modelo de apresentação já criado — uma apresentação por cliente, acesso facilitado.",
+        "status": "planejando",
+        "owner": "Fernando + Comercial"
+      },
+      {
+        "id": "post-venda-guia",
+        "name": "Pós-venda — guia de contratação → proposta → obra",
+        "description": "Saída do laudo vira Guia de Contratação de Serviço: pontos tratados no laudo marcados como prioridade → apresentação síndico/conselho → documento guia → proposta automatizada para os escopos → compartilhável para concorrência.",
+        "status": "planejando",
+        "owner": "Fernando + Comercial + Obras"
+      }
+    ],
+    "expectedOutcome": "Mais obras, propostas mais rápidas, faturamento acelerado — laudo deixa de ser só entrega técnica e vira motor de pós-venda."
+  },
+  "concentrationRisk": {
+    "title": "Risco de concentração — uma pessoa",
+    "statement": "Hoje inspeção noturna, confecção de laudo, revisão e apresentação concentram muitas atividades em uma única pessoa. Com volume de vendas crescente, isso pode sobrecarregar.",
+    "mitigations": [
+      "Plataforma + app reduzem tempo manual do engenheiro-analista",
+      "Descentralizar visitas em condomínio para outros perfis do time",
+      "Revisão colaborativa na plataforma (monta + corrige em paralelo)",
+      "Automatizar guia de contratação e proposta pós-laudo"
+    ]
+  },
+  "visitCentralizationOption": {
+    "title": "Opção: centralizar visitas em condomínio",
+    "headline": "Incluir nas atividades de quem faz visitas a execução de inspeções em campo — aliviando o engenheiro.",
+    "visitTypes": [
+      { "type": "LIE", "label": "Inspeção noturna — laudo de instalações elétricas", "note": "Visita no condomínio, geralmente à noite" },
+      { "type": "ICV", "label": "Inspeção de carregador veicular", "note": "Campo + app padronizado" },
+      { "type": "LDC", "label": "Visita/diagnóstico LDC quando aplicável", "note": "Conforme escopo" }
+    ],
+    "optionUnderEvaluation": "Centralizar visitas em condomínio em pessoas disponíveis do time de Obras — perfil já acostumado a campo, liberando engenheiro para analista/revisão/apresentação crítica.",
+    "decisionGate": "Definir piloto set/2026 após checklist app fechado — quem visita vs quem monta laudo na plataforma."
+  },
+  "postVendaGuiaContratacao": {
+    "title": "Pós-venda — laudo → guia de contratação → proposta → obra",
+    "headline": "Integração estratégica com Obras: a saída do laudo alimenta o funil de obras e acelera faturamento.",
+    "flow": [
+      "Laudo entregue — pontos identificados e priorizados no documento",
+      "Apresentação ao síndico ou conselho (modelo web por cliente)",
+      "Geração do Guia de Contratação de Serviço — todos os pontos tratados, prioridades selecionadas",
+      "Guia compartilhável para empresas em concorrência (quando aplicável)",
+      "Proposta automatizada gerada a partir dos escopos do guia",
+      "Fechamento → obra — ciclo mais curto, mais receita mais rápido"
+    ],
+    "integrationAreas": ["Consultoria Laudos", "Vendas / Comercial", "Obras", "Automações"],
+    "h2Milestone": "Piloto guia de contratação automático a partir de 1 laudo LIE até nov/2026."
+  },
+  "webPresentationModel": {
+    "title": "Modelo de apresentação web (por cliente)",
+    "description": "Continuação do modelo de apresentação já criado e mantido — uma apresentação por cliente, acessível na web, integrada ao laudo e ao guia de contratação.",
+    "principles": [
+      "Laudo, apresentação e guia na mesma base de dados (app/plataforma web)",
+      "Cliente acessa apresentação sem depender de PDF avulso",
+      "Atualização do laudo reflete na apresentação",
+      "Facilita reunião síndico/conselho com material padronizado"
+    ],
+    "technicalNote": "Avaliar stack web única (app campo + plataforma analista + apresentação) vs integrações pontuais."
+  },
+  "icvAutomationPipeline": {
+    "title": "Plano de automação ICV — em desenvolvimento",
+    "subtitle": "Processo em etapas; revisão humana na fase inicial; Fernando entra com mais tempo no H2 para acelerar.",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "App — coleta e organização",
+        "description": "Aplicativo faz coleta em campo e organiza a base de informações (fotos, checklist, dados do carregador e do condomínio).",
+        "status": "em_andamento"
+      },
+      {
+        "stage": 2,
+        "name": "Template do documento base",
+        "description": "Modelo padronizado do laudo ICV alimentado pelos dados coletados no app.",
+        "status": "em_andamento"
+      },
+      {
+        "stage": 3,
+        "name": "Testes e confecção automatizada",
+        "description": "Bateria de testes para gerar o documento de forma cada vez mais automatizada, reduzindo tempo manual.",
+        "status": "planejando"
+      },
+      {
+        "stage": 4,
+        "name": "Revisão humana",
+        "description": "Revisão técnica obrigatória na fase inicial — engenheiro ou revisor valida antes da entrega ao cliente.",
+        "status": "planejando"
+      }
+    ]
+  },
+  "evChargerPlatform": {
+    "title": "Plataforma de gestão de carregadores veiculares",
+    "vision": "Desenvolver plataforma para gerir todo o histórico de carregadores por condomínio: quando entra condomínio novo ou carregador novo é instalado, atualizar cadastro e disparar novo laudo ICV.",
+    "capabilities": [
+      "Cadastro de condomínios e carregadores (base viva, não laudo avulso)",
+      "Adicionar carregador novo → fluxo automático de atualização + novo ICV",
+      "Histórico de laudos e inspeções por equipamento",
+      "Integração com app de coleta e template de documento"
+    ],
+    "financialModel": {
+      "title": "Modelo financeiro — dívidas e parcelas",
+      "description": "Estruturar cobrança de atualizações e novos laudos ICV por condomínio: parcelas/dívidas recorrentes quando há inclusão de carregador ou renovação exigida pela NP 17. Receita previsível além do laudo pontual.",
+      "items": [
+        "Definir precificação: laudo inicial vs atualização por carregador adicionado",
+        "Controle de parcelas/dívidas por condomínio no CRM ou plataforma",
+        "Alertas de renovação e novos carregadores instalados"
+      ]
+    },
+    "h2Ownership": "Fernando entra com mais dedicação no H2 para liderar desenvolvimento da plataforma e automação ICV."
+  },
+  "strategicPillars": [
+    {
+      "id": "icv-np17",
+      "title": "ICV + NP 17 — aposta H2",
+      "description": "Automação ICV (app → template → testes → revisão) e preparação comercial para volume NP 17. Maior alavanca de crescimento laudos no 2S.",
+      "status": "em_andamento"
+    },
+    {
+      "id": "ev-platform",
+      "title": "Plataforma carregadores por condomínio",
+      "description": "Cadastro vivo de carregadores; atualização quando instala equipamento novo; modelo financeiro com parcelas/dívidas por condomínio.",
+      "status": "planejando"
+    },
+    {
+      "id": "ldc-scale",
+      "title": "LDC — mapear e preparar escala",
+      "description": "Inventário automações + processo passo a passo + capacitação 2ª pessoa. Logística analisadores qualidade energia.",
+      "status": "em_andamento"
+    },
+    {
+      "id": "ldc-volume",
+      "title": "LDC — carro-chefe comercial",
+      "description": "Manter qualidade e volume (6–8/mês) com planejamento energético. Diferencial + momento EV.",
+      "status": "maduro"
+    },
+    {
+      "id": "lie-platform-ui",
+      "title": "LIE — plataforma revisão em tempo real",
+      "description": "Terminar interface para montar e revisar laudo simultaneamente; integrar apresentação web por cliente.",
+      "status": "em_andamento"
+    },
+    {
+      "id": "post-venda-guia",
+      "title": "Pós-venda — guia de contratação",
+      "description": "Laudo → guia com prioridades → apresentação síndico → proposta auto → obra. Integração Obras.",
+      "status": "planejando"
+    },
+    {
+      "id": "visit-decentralization",
+      "title": "Descentralizar visitas condomínio",
+      "description": "Opção: time Obras ou visitantes fazem LIE noturno, ICV e inspeções — engenheiro foca analista/apresentação.",
+      "status": "planejando"
+    },
+    {
+      "id": "sla-tracking",
+      "title": "SLA & tempo por tipo",
+      "description": "Baseline LDC / LIE / ICV no ClickUp — tempo, erros e top performers.",
+      "status": "pendente"
+    },
+    {
+      "id": "pdca",
+      "title": "PDCA por entrega",
+      "description": "Plan → Do → Check → Act — guia mestre por tipo de laudo.",
+      "status": "pendente"
+    }
+  ],
+  "learningLoop": {
+    "title": "Ciclo PDCA — melhoria contínua",
+    "steps": [
+      "Laudo entregue → PDCA (Plan / Do / Check / Act)",
+      "Co-pro semanal — melhorias ICV, LDC e LIE documentadas",
+      "Atualizar app, templates e plataforma de carregadores",
+      "Próximo laudo do mesmo tipo parte da base nova"
+    ]
+  },
+  "automationRollout": {
+    "title": "Prioridade de automação H2",
+    "completed": [
+      { "id": "ldc-core", "name": "LDC — montagem automatizada (fluxo maduro)", "impact": "Volume estável · engenheiro foca inspeção + revisão crítica" }
+    ],
+    "next": [
+      { "id": "ldc-map", "name": "LDC — mapear automações + processo atual", "priority": 1, "note": "Base para escala · jul–ago" },
+      { "id": "ldc-backup", "name": "LDC — capacitação 2ª pessoa (planejamento energético)", "priority": 2, "note": "Emergencial · single point of failure" },
+      { "id": "ldc-analyzers", "name": "Logística analisadores qualidade energia (4 un.)", "priority": 3, "note": "Fila equipamento/cliente" },
+      { "id": "lie-field", "name": "LIE — app de campo (checklist 100%)", "priority": 4, "note": "H2 crítico · alimenta plataforma" },
+      { "id": "lie-platform-ui", "name": "LIE — plataforma revisão em tempo real", "priority": 5, "note": "Terminar ~20% + UX montagem/correção" },
+      { "id": "lie-presentation", "name": "Apresentação web + integração laudo", "priority": 6, "note": "Uma apresentação por cliente" },
+      { "id": "post-venda-guia", "name": "Guia de contratação → proposta → obra", "priority": 7, "note": "Pós-venda · integração Obras" },
+      { "id": "visit-pilot", "name": "Piloto visitas descentralizadas (Obras?)", "priority": 8, "note": "LIE noturno + ICV" },
+      { "id": "icv-app", "name": "ICV — app + template (NP 17)", "priority": 9, "note": "Estratégico 2S" },
+      { "id": "ev-platform", "name": "Plataforma carregadores/condomínio", "priority": 10, "note": "Cadastro vivo + parcelas" },
+      { "id": "prodist-pd", "name": "P&D equipamento Prodist Mód. 8 (IoT)", "priority": 11, "note": "~1 ano · após LIE/ICV + Smart Charging" }
+    ],
+    "appFeatures": [
+      "LDC/planejamento energético — coleta IoT + levantamento de carga (instalador dedicado)",
+      "Checklist LIE passo a passo (inspeção noturna → plataforma analista)",
+      "Coleta estruturada ICV (carregador, condomínio, fotos, testes)",
+      "Checklist LDC integrado",
+      "Ordem de serviço → ClickUp",
+      "Registro de tempo por etapa e tipo de laudo"
+    ]
+  },
+  "performanceCulture": {
+    "title": "Medição & capacitação H2",
+    "metrics": [
+      "Tempo de execução por laudo (LDC / LIE / ICV) e por cliente",
+      "Volume ICV/mês vs meta pós-NP 17",
+      "SLA ≥ 90% no prazo após baseline",
+      "Receita recorrente plataforma EV (atualizações + parcelas)"
+    ],
+    "actions": [
+      "Priorizar dados ICV para calibrar automação e precificação",
+      "Capacitar time no fluxo app → template → revisão",
+      "PDCA alimentando guia mestre LDC, LIE e ICV"
+    ]
+  },
+  "capacityAssumptions": {
+    "scenario": "LDC estável + ICV em rampa H2 (NP 17) — escalar ICV só com automação pronta",
+    "ldcPerMonth": "6–8",
+    "liePerMonth": "2–3",
+    "icvPerMonth": "Crescimento forte 2S — meta a definir pós-baseline jul",
+    "avgTicketLdc": "~R$ 11.200",
+    "avgTicketLie": "~R$ 5.200",
+    "shareOfConsultoriaRevenue": "~53% receita consultoria YTD",
+    "gateNote": "Não prometer volume ICV em massa antes do app + template + revisão humana calibrados."
+  },
+  "roadmapPhases": [
+    {
+      "phase": "jul–ago/2026",
+      "title": "Baseline + app LIE + risco concentração",
+      "items": [
+        "Baseline SLA LDC / LIE / ICV",
+        "LDC: inventário completo automações + processo passo a passo",
+        "LDC: iniciar capacitação 2ª pessoa (planejamento energético)",
+        "Mapear logística 4 analisadores qualidade energia",
+        "LIE: checklist app de campo fechado",
+        "Esboço fluxo laudo → guia de contratação → proposta"
+      ]
+    },
+    {
+      "phase": "set–out/2026",
+      "title": "Plataforma + app em produção",
+      "items": [
+        "App LIE em produção — 100% checklist",
+        "Plataforma LIE: revisão em tempo real + integração app",
+        "Apresentação web por cliente — piloto integrado ao laudo",
+        "Piloto visitas: Obras ou visitante faz inspeção, engenheiro monta na plataforma",
+        "ICV: template + testes (NP 17)"
+      ]
+    },
+    {
+      "phase": "nov–dez/2026",
+      "title": "Pós-venda + escala",
+      "items": [
+        "Guia de Contratação automático a partir do laudo LIE — piloto",
+        "Proposta gerada dos escopos prioritários → funil Obras",
+        "Apresentação síndico/conselho padronizada (web)",
+        "Decisão visitas: modelo definitivo descentralizado ou híbrido",
+        "Dashboard laudos + conversão laudo→obra"
+      ]
+    }
+  ]
+}

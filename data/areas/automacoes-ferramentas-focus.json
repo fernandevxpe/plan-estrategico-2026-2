@@ -1,0 +1,208 @@
+{
+  "operatingModel": {
+    "title": "Automações & Ferramentas — app campo + plataforma web",
+    "headline": "App offline (~6 meses de dev): executar processos em campo com padrão, consistência e zero perda de informação — tudo organizado por cliente, sincronizado com ClickUp. Desenvolvimento lento; testes em campo atrasados. Arquitetura atual pode não atender todos os tipos de serviço — risco de retrabalho.",
+    "h2Focus": "Mapear processos · listar checklists · alimentar app · testes em campo de todos os serviços · melhorias · DB organizado · depois automação serviço a serviço priorizando gargalos operacionais."
+  },
+  "offlineApp": {
+    "title": "App offline (campo)",
+    "devMonths": 6,
+    "distribution": "Fora da loja — build gerado com atualização OTA",
+    "integration": "ClickUp — lista de atividades / tarefas sincronizadas",
+    "goal": "Processos executados em campo seguindo padrão, sem perda de informação, dados já organizados por cliente",
+    "status": "em_desenvolvimento",
+    "blockers": [
+      "Desenvolvimento mais lento que o esperado",
+      "Sem testes reais em campo para amadurecer produto",
+      "Testes em campo deveriam ter ocorrido nos últimos meses",
+      "Arquitetura/design pode não cobrir todos os corpos de serviço — retrabalho estrutural possível"
+    ],
+    "expectation": "Testes em campo imediatos assim que build estável — iterar com uso real"
+  },
+  "endToEndFlow": {
+    "title": "Fluxo ponta a ponta",
+    "steps": [
+      { "step": 1, "name": "Visita agendada", "where": "App campo", "output": "Dados condomínio + checklist visita" },
+      { "step": 2, "name": "Diagnóstico / levantamento", "where": "App campo", "output": "Registros, fotos, medidas" },
+      { "step": 3, "name": "Orçamento / proposta", "where": "Web + automação", "output": "PDF, slide, CRM" },
+      { "step": 4, "name": "Fechamento", "where": "CRM / Comercial", "output": "Negócio ganho → ClickUp" },
+      { "step": 5, "name": "Execução serviço", "where": "App campo + matriz", "output": "Laudo, instalação, medição" },
+      { "step": 6, "name": "Entrega", "where": "Plataforma web", "output": "Documento final ao cliente" }
+    ]
+  },
+  "webPlatform": {
+    "title": "Plataforma web (analista / back-office)",
+    "headline": "Atender diversos tipos de serviço — cada um com entregável diferente. Parte já automatizada; integrar gradualmente avaliando caso a caso: o que fica na plataforma vs. ferramenta separada.",
+    "principles": [
+      "Analista continua serviço iniciado no app de campo",
+      "Campos obrigatórios vs. opcionais por cliente/condomínio",
+      "Entregável final gerado a partir dos dados coletados",
+      "Avaliar por serviço: build na plataforma ou integração externa"
+    ]
+  },
+  "serviceModules": [
+    {
+      "id": "smart-charging",
+      "priority": 1,
+      "code": "EV / Smart Charging",
+      "name": "Expansão carregadores veiculares",
+      "status": "template_pronto",
+      "statusLabel": "Template inicial pronto",
+      "fieldRole": "Instalação + registro em campo",
+      "webRole": "Continuidade projeto + entrega",
+      "checklistHighlights": [
+        "Template EV alimentado e validado",
+        "Dados indo para banco organizado",
+        "Teste piloto em condomínio real"
+      ],
+      "dataPoints": ["Ponto carregamento", "Infraestrutura", "Central/controlador", "Fotos instalação"],
+      "blocker": "Alimentar template + testar persistência DB",
+      "linkedArea": "smart-charging"
+    },
+    {
+      "id": "lie",
+      "priority": 2,
+      "code": "LIE",
+      "name": "Laudo de Instalações Elétricas",
+      "status": "base_existente",
+      "statusLabel": "Base laudos emitidos",
+      "fieldRole": "Inspeção em campo — obrigatórios + opcionais por cliente",
+      "webRole": "Analista executa e finaliza laudo na plataforma",
+      "checklistHighlights": [
+        "Usar laudos já emitidos para definir grupos/documentos",
+        "Estrutura semi-automática de seções",
+        "App: campos obrigatórios vs. condicionais"
+      ],
+      "dataPoints": ["Quadros", "Circuitos", "Aterramento", "Fotos", "Não conformidades"],
+      "blocker": "Mapear estrutura a partir da base histórica de laudos",
+      "linkedArea": "consultoria-laudos"
+    },
+    {
+      "id": "ldc",
+      "priority": 3,
+      "code": "LDC",
+      "name": "Laudo de Disponibilidade de Carga",
+      "status": "colheita_campo",
+      "statusLabel": "Colheita campo necessária",
+      "fieldRole": "Medição + levantamento de carga em campo",
+      "webRole": "Algoritmo LDC + laudo final",
+      "checklistHighlights": [
+        "Pontos de medição (geral, CM, área comum)",
+        "Medidores IoT — código, local, cabos",
+        "Levantamento de carga completo"
+      ],
+      "dataPoints": ["Centro medição", "Cargas por circuito", "Medidor IoT", "Fotos pontos"],
+      "blocker": "Integrar colheita LDC + medidor no mesmo fluxo app",
+      "linkedArea": "consultoria-laudos"
+    },
+    {
+      "id": "medidor-iot",
+      "priority": 4,
+      "code": "IoT",
+      "name": "Instalação medidores IoT",
+      "status": "registros_parciais",
+      "statusLabel": "Registros já feitos manualmente",
+      "fieldRole": "Instalação + registro dispositivo",
+      "webRole": "Telemetria + laudo/planejamento",
+      "checklistHighlights": [
+        "Copiar código do dispositivo",
+        "Local instalado + condição",
+        "Distância / metragem cabos",
+        "Infraestrutura do ponto"
+      ],
+      "dataPoints": ["Serial medidor", "GPS/local", "Metragem cabo", "Tipo ponto", "Foto instalação"],
+      "blocker": "Padronizar registro no app vs. planilha/WhatsApp",
+      "linkedArea": "medidores-iot"
+    },
+    {
+      "id": "levantamento-carga",
+      "priority": 5,
+      "code": "Levantamento",
+      "name": "Levantamento de carga",
+      "status": "checklist_completo",
+      "statusLabel": "Checklist definido — falta app",
+      "fieldRole": "Analista/técnico mede e agrupa cargas",
+      "webRole": "Consolidação + LDC/planejamento energético",
+      "checklistHighlights": [
+        "Checklist completo a seguir",
+        "Diversas medidas organizadas e agrupadas",
+        "Por ponto: geral, CM, área comum"
+      ],
+      "dataPoints": ["Circuitos", "Potências", "Horários uso", "Agrupamento fases"],
+      "blocker": "Urgente — entrar no app para ontem",
+      "linkedArea": "consultoria-laudos"
+    },
+    {
+      "id": "visita-comercial",
+      "priority": 6,
+      "code": "Visita",
+      "name": "Visitas comerciais (propostas)",
+      "status": "planejando",
+      "statusLabel": "Agendamento + preenchimento app",
+      "fieldRole": "Vendedor visita condomínio agendado",
+      "webRole": "Geração proposta/orçamento automático",
+      "checklistHighlights": [
+        "Visita agendada no app",
+        "Levantamento geral para proposta",
+        "Dados → orçamento → PDF/slide"
+      ],
+      "dataPoints": ["Dados condomínio", "Demanda EV", "Infra existente", "Decisor/síndico"],
+      "blocker": "Gate comercial: propostas sem atraso antes de escalar",
+      "linkedArea": "vendas"
+    }
+  ],
+  "bottleneckStudy": {
+    "title": "Estudo de gargalos — priorização dev H2",
+    "headline": "Antes de automatizar tudo, mapear onde a operação perde mais tempo e qual serviço trava a cadeia visita → entrega.",
+    "candidates": [
+      { "id": "b1", "area": "Propostas atrasadas", "impact": "critical", "note": "Clientes sem orçamento — gate vendas bloqueia app visita comercial" },
+      { "id": "b2", "area": "LDC colheita campo", "impact": "high", "note": "Volume carro-chefe · Macgyver + medidores · retrabalho manual" },
+      { "id": "b3", "area": "Levantamento carga", "impact": "high", "note": "Checklist longo · medidas dispersas · urgente no app" },
+      { "id": "b4", "area": "Testes app em campo", "impact": "critical", "note": "Sem uso real não amadurece arquitetura" },
+      { "id": "b5", "area": "LIE estrutura documentos", "impact": "medium", "note": "Base laudos existe — acelerar semi-automação" },
+      { "id": "b6", "area": "Smart Charging template", "impact": "high", "note": "Template pronto — falta DB + piloto" }
+    ],
+    "method": "Score impacto operacional × volume serviço × prontidão template → ordem dev H2"
+  },
+  "h2Priorities": [
+    "Mapear processos de cada serviço (fluxograma + checklist completo)",
+    "Organizar base de informação para alimentar app e plataforma web",
+    "Testes em campo: Smart Charging → LIE → LDC → IoT → levantamento → visita",
+    "Validar persistência DB — tudo organizado por cliente",
+    "Aplicar melhorias de arquitetura pós-teste (retrabalho se necessário)",
+    "Automação individual por serviço — priorizar gargalos do estudo",
+    "Integração ClickUp ↔ app ↔ plataforma web"
+  ],
+  "roadmapPhases": [
+    {
+      "phase": "jul–ago/2026",
+      "title": "Mapear + 1º teste campo",
+      "items": [
+        "Listar checklists completos por serviço (6 módulos)",
+        "Alimentar template Smart Charging + teste DB",
+        "Primeiro piloto app em campo (EV ou LIE)",
+        "Estudo gargalos — ranking dev"
+      ]
+    },
+    {
+      "phase": "set–out/2026",
+      "title": "Campo LDC + LIE + IoT",
+      "items": [
+        "LIE: estrutura grupos/documentos da base histórica",
+        "LDC + levantamento carga no app",
+        "Instalação medidor — registro padronizado",
+        "Plataforma web: continuidade analista"
+      ]
+    },
+    {
+      "phase": "nov–dez/2026",
+      "title": "Visita comercial + automações",
+      "items": [
+        "Visita agendada → proposta (integração vendas)",
+        "Automação entregáveis por serviço (prioridade gargalo)",
+        "Avaliar arquitetura pós-uso — refactor se necessário",
+        "ClickUp sync estável ponta a ponta"
+      ]
+    }
+  ]
+}

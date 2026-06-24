@@ -1,32 +1,32 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { ConsultoriaProjetosDashboard } from "@/lib/areas/build-consultoria-projetos-dashboard";
+import type { MedidoresIoTDashboard } from "@/lib/areas/build-medidores-iot-dashboard";
 import type { AreaDashboardItem } from "@/lib/areas/types";
 import { AreaDetailPanel } from "@/components/areas/AreasOverview";
 import {
-  ConsultoriaProjetosCapacitySection,
-  ConsultoriaProjetosOperationalFocus,
-  ConsultoriaProjetosRoadmapSection,
-  ConsultoriaProjetosSummaryBar
-} from "@/components/areas/ConsultoriaProjetosSections";
+  MedidoresIoTOperationalFocus,
+  MedidoresIoTPurchaseSimulator,
+  MedidoresIoTRoadmapSection,
+  MedidoresIoTSummaryBar
+} from "@/components/areas/MedidoresIoTSections";
 import { VendasCollapsibleSection } from "@/components/areas/VendasCollapsibleSection";
 
-type SectionId = "modelo" | "capacidade" | "roadmap" | "plano";
+type SectionId = "modelo" | "simulacao" | "roadmap" | "plano";
 
 const DEFAULT_OPEN: Record<SectionId, boolean> = {
   modelo: true,
-  capacidade: true,
+  simulacao: true,
   roadmap: false,
   plano: false
 };
 
 type Props = {
   area: AreaDashboardItem;
-  data: ConsultoriaProjetosDashboard;
+  data: MedidoresIoTDashboard;
 };
 
-export function ConsultoriaProjetosAreaPage({ area, data }: Props) {
+export function MedidoresIoTAreaPage({ area, data }: Props) {
   const [openSections, setOpenSections] = useState(DEFAULT_OPEN);
 
   const toggle = useCallback((id: SectionId) => {
@@ -36,19 +36,19 @@ export function ConsultoriaProjetosAreaPage({ area, data }: Props) {
   const scrollTo = (id: SectionId) => {
     setOpenSections((prev) => ({ ...prev, [id]: true }));
     requestAnimationFrame(() => {
-      document.getElementById(`cp-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById(`iot-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
 
   return (
-    <div className="vendas-page consultoria-page">
-      <ConsultoriaProjetosSummaryBar data={data} />
+    <div className="vendas-page consultoria-page iot-page">
+      <MedidoresIoTSummaryBar data={data} />
 
       <div className="vendas-toolbar">
-        <nav className="vendas-nav" aria-label="Seções Projetos">
+        <nav className="vendas-nav" aria-label="Seções IoT">
           {[
-            { id: "modelo" as const, label: "Modelo" },
-            { id: "capacidade" as const, label: "Capacidade" },
+            { id: "modelo" as const, label: "Operação" },
+            { id: "simulacao" as const, label: "Simulação" },
             { id: "roadmap" as const, label: "Roadmap" },
             { id: "plano" as const, label: "Plano" }
           ].map((item) => (
@@ -61,38 +61,38 @@ export function ConsultoriaProjetosAreaPage({ area, data }: Props) {
 
       <div className="vendas-sections">
         <VendasCollapsibleSection
-          id="cp-modelo"
-          title="Modelo operacional & pilares"
-          subtitle="PCC híbrido · projetos variados · cross-training · PDCA · automação CAD"
+          id="iot-modelo"
+          title="Frota, produtos & time"
+          subtitle="40 medidores 4G · SM3F2.0 · SA3F1.0 · Diogo + Macgyver"
           variant="monitor"
           open={openSections.modelo}
           onToggle={() => toggle("modelo")}
         >
-          <ConsultoriaProjetosOperationalFocus data={data} />
+          <MedidoresIoTOperationalFocus data={data} />
         </VendasCollapsibleSection>
 
         <VendasCollapsibleSection
-          id="cp-capacidade"
-          title="Capacidade & entregas"
-          subtitle={`YTD ${data.ytd2026.avgMonthlyDeals}/mês · meta ${data.targets.projectsTotalPerMonth} · PIE ${data.targets.piePerMonth}`}
-          open={openSections.capacidade}
-          onToggle={() => toggle("capacidade")}
+          id="iot-simulacao"
+          title="Simulação de compra"
+          subtitle="SM3F2.0 + sensores 100A/600A/1000A + SA3F1.0"
+          open={openSections.simulacao}
+          onToggle={() => toggle("simulacao")}
         >
-          <ConsultoriaProjetosCapacitySection data={data} />
+          <MedidoresIoTPurchaseSimulator data={data} />
         </VendasCollapsibleSection>
 
         <VendasCollapsibleSection
-          id="cp-roadmap"
+          id="iot-roadmap"
           title="Roadmap jul–dez/2026"
-          subtitle="Estabilizar → padronizar → escalar & descentralizar apresentação"
+          subtitle="Manutenção frota → Smart Charging → SM3F2.0"
           open={openSections.roadmap}
           onToggle={() => toggle("roadmap")}
         >
-          <ConsultoriaProjetosRoadmapSection data={data} />
+          <MedidoresIoTRoadmapSection data={data} />
         </VendasCollapsibleSection>
 
         <VendasCollapsibleSection
-          id="cp-plano"
+          id="iot-plano"
           title="Plano de execução"
           subtitle={`${area.activities.length} atividades · objetivos e riscos`}
           open={openSections.plano}

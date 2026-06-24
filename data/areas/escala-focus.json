@@ -1,0 +1,521 @@
+{
+  "operatingModel": {
+    "title": "Escala — expansão geográfica Smart Charging & EV",
+    "headline": "Recife como base: 200+ condomínios visitados (contato É), diversas propostas e fechamentos, EV em forte evidência. Hoje 2 vendedores sem propostas em atraso — estamos descobrindo quantos vendedores a região suporta com boa performance. Referência operacional: 4 vendedores para Região Metropolitana de Recife.",
+    "discoveryNote": "Volume de vendas por região ainda incerto — depende de densidade de condomínios, penetração EV e taxa de lançamentos novos. Modelo abaixo usa dados ABVE 2025 + estimativas urbanas a validar em campo."
+  },
+  "currentBaseline": {
+    "title": "Baseline Recife / PE",
+    "city": "Recife",
+    "state": "PE",
+    "sellersToday": 2,
+    "sellersIdeal": 4,
+    "condosVisited": 200,
+    "proposalsStatus": "Sem propostas em atraso",
+    "partnerNote": "Contato É — oportunidade com 200+ condomínios visitados, diversas propostas apresentadas e fechamentos",
+    "evSales2025": 7401,
+    "evShareNationalPct": 3.31,
+    "stressTestGoal": "Estressar modelo PE para descobrir limite de tráfego/leads por região antes de escalar headcount"
+  },
+  "sellerModel": {
+    "title": "Modelo de vendedores por região",
+    "description": "Recife = 4 vendedores (referência). Demais regiões proporcionais ao índice composto: 40% vendas EV (ABVE 2025), 35% densidade vertical estimada, 25% proximidade logística a partir de Recife.",
+    "formulaNote": "Vendedores sugeridos = arredondar(4 × índice composto). Mínimo 1 onde há operação; interior/micro-regiões podem compartilhar vendedor da capital.",
+    "defaults": {
+      "recifeBaselineSellers": 4,
+      "evWeight": 40,
+      "condoWeight": 35,
+      "proximityWeight": 25
+    }
+  },
+  "researchIndicators": {
+    "title": "Indicadores a descobrir / validar",
+    "items": [
+      {
+        "id": "ev-sales",
+        "name": "Vendas VE por estado/região",
+        "source": "ABVE / ANFAVEA 2025",
+        "status": "parcial",
+        "note": "Dados 2025 disponíveis — atualizar trimestralmente"
+      },
+      {
+        "id": "condo-density",
+        "name": "Densidade de condomínios verticais",
+        "source": "ADEMI-PB, SECovi locais, IBGE",
+        "status": "estimativa",
+        "note": "Ranking urbano NE a calibrar com visitas e CRM"
+      },
+      {
+        "id": "new-launches",
+        "name": "Lançamentos imobiliários / ano",
+        "source": "SECovi-PE, SECovi-BA, DataZAP",
+        "status": "pendente",
+        "note": "Quantos prédios novos/ano alimentam pipeline EV"
+      },
+      {
+        "id": "renewal-rate",
+        "name": "Taxa de renovação do mercado",
+        "source": "CBIC + CRM interno",
+        "status": "pendente",
+        "note": "% condomínios novos vs parque existente — ciclo de recompra"
+      },
+      {
+        "id": "marketing-leads",
+        "name": "Volume tráfego / leads por região",
+        "source": "Marketing + Pipedrive",
+        "status": "pendente",
+        "note": "Estressar quanto tráfego gera X fechamentos em PE"
+      },
+      {
+        "id": "conversion-visit",
+        "name": "Conversão visita → fechamento EV",
+        "source": "CRM + contato É",
+        "status": "pendente",
+        "note": "200+ visitados — quantificar taxa real de fechamento"
+      }
+    ]
+  },
+  "macroRegions": [
+    {
+      "id": "ne-pe-rmr",
+      "name": "RM Recife + PE",
+      "phase": 1,
+      "phaseLabel": "Base — operação atual",
+      "priority": "atual",
+      "capital": "Recife",
+      "states": ["PE"],
+      "evSales2025": 7401,
+      "evIndex": 1,
+      "condoDensityIndex": 82,
+      "proximityIndex": 100,
+      "compositeIndex": 1,
+      "recommendedSellers": 4,
+      "condosEstimate": 850,
+      "newLaunchesYearEst": 45,
+      "notes": "Capital NE, densidade razoável, EV em evidência. Caruaru e interior PE com 1 vendedor compartilhado."
+    },
+    {
+      "id": "ne-pe-interior",
+      "name": "Interior PE (Caruaru, etc.)",
+      "phase": 1,
+      "phaseLabel": "Extensão base",
+      "priority": "alta",
+      "capital": "Caruaru",
+      "states": ["PE"],
+      "evSales2025": 1200,
+      "evIndex": 0.16,
+      "condoDensityIndex": 35,
+      "proximityIndex": 95,
+      "compositeIndex": 0.35,
+      "recommendedSellers": 1,
+      "condosEstimate": 120,
+      "newLaunchesYearEst": 8,
+      "notes": "Atender com vendedor compartilhado Recife — visitas agendadas, não escritório local."
+    },
+    {
+      "id": "ne-ba",
+      "name": "Salvador / BA",
+      "phase": 2,
+      "phaseLabel": "Expansão NE — onda 1",
+      "priority": "alta",
+      "capital": "Salvador",
+      "states": ["BA"],
+      "evSales2025": 8667,
+      "evIndex": 1.17,
+      "condoDensityIndex": 88,
+      "proximityIndex": 75,
+      "compositeIndex": 1.05,
+      "recommendedSellers": 4,
+      "condosEstimate": 920,
+      "newLaunchesYearEst": 55,
+      "notes": "Maior mercado EV do NE. Demanda equivalente ou pouco maior que Recife. Hub natural pós-PE."
+    },
+    {
+      "id": "ne-ce",
+      "name": "Fortaleza / CE",
+      "phase": 2,
+      "phaseLabel": "Expansão NE — onda 1",
+      "priority": "alta",
+      "capital": "Fortaleza",
+      "states": ["CE"],
+      "evSales2025": 5655,
+      "evIndex": 0.76,
+      "condoDensityIndex": 72,
+      "proximityIndex": 70,
+      "compositeIndex": 0.78,
+      "recommendedSellers": 3,
+      "condosEstimate": 580,
+      "newLaunchesYearEst": 38,
+      "notes": "Terceiro NE em EV. Verticalização forte na orla — bom fit Smart Charging."
+    },
+    {
+      "id": "ne-rn",
+      "name": "Natal / RN",
+      "phase": 3,
+      "phaseLabel": "Expansão NE — onda 2",
+      "priority": "media",
+      "capital": "Natal",
+      "states": ["RN"],
+      "evSales2025": 3024,
+      "evIndex": 0.41,
+      "condoDensityIndex": 58,
+      "proximityIndex": 65,
+      "compositeIndex": 0.52,
+      "recommendedSellers": 2,
+      "condosEstimate": 280,
+      "newLaunchesYearEst": 18,
+      "notes": "Mercado menor que PE/BA mas crescimento EV consistente."
+    },
+    {
+      "id": "ne-pb",
+      "name": "João Pessoa / PB",
+      "phase": 3,
+      "phaseLabel": "Expansão NE — onda 2",
+      "priority": "media-baixa",
+      "capital": "João Pessoa",
+      "states": ["PB"],
+      "evSales2025": 2722,
+      "evIndex": 0.37,
+      "condoDensityIndex": 48,
+      "proximityIndex": 80,
+      "compositeIndex": 0.48,
+      "recommendedSellers": 2,
+      "condosEstimate": 220,
+      "newLaunchesYearEst": 14,
+      "notes": "Proximidade logística alta, mas necessidade EV menor que Recife/Salvador — validar volume antes de 3º vendedor."
+    },
+    {
+      "id": "ne-al",
+      "name": "Maceió / AL",
+      "phase": 3,
+      "phaseLabel": "Expansão NE — onda 2",
+      "priority": "media-baixa",
+      "capital": "Maceió",
+      "states": ["AL"],
+      "evSales2025": 3485,
+      "evIndex": 0.47,
+      "condoDensityIndex": 45,
+      "proximityIndex": 72,
+      "compositeIndex": 0.52,
+      "recommendedSellers": 2,
+      "condosEstimate": 180,
+      "newLaunchesYearEst": 12,
+      "notes": "EV surpreendentemente acima de PB em volume — monitorar."
+    },
+    {
+      "id": "ne-se",
+      "name": "Aracaju / SE",
+      "phase": 4,
+      "phaseLabel": "Expansão NE — onda 3",
+      "priority": "baixa",
+      "capital": "Aracaju",
+      "states": ["SE"],
+      "evSales2025": 1654,
+      "evIndex": 0.22,
+      "condoDensityIndex": 38,
+      "proximityIndex": 68,
+      "compositeIndex": 0.35,
+      "recommendedSellers": 1,
+      "condosEstimate": 95,
+      "newLaunchesYearEst": 6,
+      "notes": "Mercado menor — 1 vendedor remoto ou compartilhado com BA."
+    },
+    {
+      "id": "se-sp",
+      "name": "São Paulo / SP",
+      "phase": 5,
+      "phaseLabel": "Expansão nacional — Tier 1",
+      "priority": "futuro-alta",
+      "capital": "São Paulo",
+      "states": ["SP"],
+      "evSales2025": 68618,
+      "evIndex": 9.27,
+      "condoDensityIndex": 100,
+      "proximityIndex": 15,
+      "compositeIndex": 3.8,
+      "recommendedSellers": 12,
+      "condosEstimate": 8500,
+      "newLaunchesYearEst": 420,
+      "notes": "Maior mercado EV BR (30,6% nacional). Exige operação local — não atender de Recife."
+    },
+    {
+      "id": "co-df",
+      "name": "Brasília / DF",
+      "phase": 5,
+      "phaseLabel": "Expansão nacional — Tier 1",
+      "priority": "futuro-alta",
+      "capital": "Brasília",
+      "states": ["DF"],
+      "evSales2025": 21639,
+      "evIndex": 2.92,
+      "condoDensityIndex": 75,
+      "proximityIndex": 25,
+      "compositeIndex": 1.85,
+      "recommendedSellers": 6,
+      "condosEstimate": 680,
+      "newLaunchesYearEst": 35,
+      "notes": "2º estado BR em EV — renda alta, condomínios horizontais + verticais."
+    },
+    {
+      "id": "se-rj",
+      "name": "Rio de Janeiro / RJ",
+      "phase": 5,
+      "phaseLabel": "Expansão nacional — Tier 1",
+      "priority": "futuro-alta",
+      "capital": "Rio de Janeiro",
+      "states": ["RJ"],
+      "evSales2025": 14280,
+      "evIndex": 1.93,
+      "condoDensityIndex": 95,
+      "proximityIndex": 30,
+      "compositeIndex": 1.55,
+      "recommendedSellers": 6,
+      "condosEstimate": 1200,
+      "newLaunchesYearEst": 48,
+      "notes": "Alta verticalização Zona Sul/Oeste — fit condomínio forte."
+    },
+    {
+      "id": "se-mg",
+      "name": "Belo Horizonte / MG",
+      "phase": 5,
+      "phaseLabel": "Expansão nacional — Tier 2",
+      "priority": "futuro-media",
+      "capital": "Belo Horizonte",
+      "states": ["MG"],
+      "evSales2025": 15155,
+      "evIndex": 2.05,
+      "condoDensityIndex": 70,
+      "proximityIndex": 35,
+      "compositeIndex": 1.45,
+      "recommendedSellers": 5,
+      "condosEstimate": 520,
+      "newLaunchesYearEst": 32,
+      "notes": "3º estado BR em volume EV."
+    },
+    {
+      "id": "sul-pr",
+      "name": "Curitiba / PR",
+      "phase": 5,
+      "phaseLabel": "Expansão nacional — Tier 2",
+      "priority": "futuro-media",
+      "capital": "Curitiba",
+      "states": ["PR"],
+      "evSales2025": 14024,
+      "evIndex": 1.89,
+      "condoDensityIndex": 68,
+      "proximityIndex": 20,
+      "compositeIndex": 1.35,
+      "recommendedSellers": 5,
+      "condosEstimate": 480,
+      "newLaunchesYearEst": 28,
+      "notes": "Polo Sul — infraestrutura EV madura."
+    }
+  ],
+  "stateRanking": [
+    { "uf": "SP", "name": "São Paulo", "evSales2025": 68618, "sharePct": 30.65, "tier": 1, "sellersSuggested": 12, "expansion": "Nacional — operação própria" },
+    { "uf": "DF", "name": "Distrito Federal", "evSales2025": 21639, "sharePct": 9.66, "tier": 1, "sellersSuggested": 6, "expansion": "Nacional — operação própria" },
+    { "uf": "MG", "name": "Minas Gerais", "evSales2025": 15155, "sharePct": 6.77, "tier": 2, "sellersSuggested": 5, "expansion": "Nacional — BH hub" },
+    { "uf": "RJ", "name": "Rio de Janeiro", "evSales2025": 14280, "sharePct": 6.38, "tier": 1, "sellersSuggested": 6, "expansion": "Nacional — operação própria" },
+    { "uf": "PR", "name": "Paraná", "evSales2025": 14024, "sharePct": 6.28, "tier": 2, "sellersSuggested": 5, "expansion": "Nacional — Curitiba hub" },
+    { "uf": "BA", "name": "Bahia", "evSales2025": 8667, "sharePct": 3.88, "tier": 2, "sellersSuggested": 4, "expansion": "NE onda 1 — pós PE" },
+    { "uf": "PE", "name": "Pernambuco", "evSales2025": 7401, "sharePct": 3.31, "tier": 0, "sellersSuggested": 4, "expansion": "Base atual — Recife" },
+    { "uf": "GO", "name": "Goiás", "evSales2025": 6487, "sharePct": 2.9, "tier": 3, "sellersSuggested": 3, "expansion": "CO — futuro" },
+    { "uf": "CE", "name": "Ceará", "evSales2025": 5655, "sharePct": 2.53, "tier": 2, "sellersSuggested": 3, "expansion": "NE onda 1" },
+    { "uf": "ES", "name": "Espírito Santo", "evSales2025": 5911, "sharePct": 2.64, "tier": 3, "sellersSuggested": 3, "expansion": "Sudeste — futuro" },
+    { "uf": "SC", "name": "Santa Catarina", "evSales2025": 13507, "sharePct": 6.03, "tier": 2, "sellersSuggested": 5, "expansion": "Sul — futuro" },
+    { "uf": "RS", "name": "Rio Grande do Sul", "evSales2025": 12554, "sharePct": 5.61, "tier": 2, "sellersSuggested": 4, "expansion": "Sul — futuro" },
+    { "uf": "AL", "name": "Alagoas", "evSales2025": 3485, "sharePct": 1.54, "tier": 3, "sellersSuggested": 2, "expansion": "NE onda 2" },
+    { "uf": "RN", "name": "Rio Grande do Norte", "evSales2025": 3024, "sharePct": 1.35, "tier": 3, "sellersSuggested": 2, "expansion": "NE onda 2" },
+    { "uf": "PB", "name": "Paraíba", "evSales2025": 2722, "sharePct": 1.22, "tier": 3, "sellersSuggested": 2, "expansion": "NE onda 2 — menor que PE" }
+  ],
+  "expansionPhases": [
+    {
+      "phase": 1,
+      "title": "Consolidar PE",
+      "timeline": "H2/2026",
+      "regions": ["RM Recife", "Interior PE (Caruaru)"],
+      "sellersTotal": 5,
+      "goal": "Estressar modelo: 2→4 vendedores, medir leads/fechamentos, validar limite operacional"
+    },
+    {
+      "phase": 2,
+      "title": "NE onda 1",
+      "timeline": "2027 H1",
+      "regions": ["Salvador/BA", "Fortaleza/CE"],
+      "sellersTotal": 7,
+      "goal": "Hubs próximos logísticamente — replicar playbook Recife"
+    },
+    {
+      "phase": 3,
+      "title": "NE onda 2",
+      "timeline": "2027 H2",
+      "regions": ["Natal/RN", "João Pessoa/PB", "Maceió/AL"],
+      "sellersTotal": 6,
+      "goal": "Capilaridade NE — vendedores compartilhados onde volume não justifica escritório"
+    },
+    {
+      "phase": 4,
+      "title": "NE completo + stress test",
+      "timeline": "2028",
+      "regions": ["Aracaju/SE", "Interior NE"],
+      "sellersTotal": 2,
+      "goal": "Fechar mapa NE antes de avaliar Sudeste"
+    },
+    {
+      "phase": 5,
+      "title": "Nacional Tier 1",
+      "timeline": "2028+",
+      "regions": ["SP", "RJ", "DF", "BH", "Curitiba"],
+      "sellersTotal": 34,
+      "goal": "Operação local obrigatória — mercados 2–10× Recife"
+    }
+  ],
+  "geoStrategy": {
+    "title": "Estratégia geográfica",
+    "principle": "Expandir por proximidade a Recife — simplificar logística, instalação (Macgyver) e suporte antes de saltos nacionais.",
+    "priorityOrder": [
+      "Recife + RM + Caruaru (base)",
+      "Salvador — maior EV NE, equivalente PE+",
+      "Fortaleza — verticalização + EV",
+      "Natal / João Pessoa — proximidade, volume menor",
+      "São Paulo / RJ / DF — apenas com operação local madura"
+    ]
+  },
+  "nucleusOperation": {
+    "title": "Núcleo operacional local",
+    "headline": "Cada núcleo = vendedor(s) + técnico em campo. Matriz Recife concentra análise, laudos, projetos e back-office — o local vende, instala e coleta. Antes de abrir: validar indicadores comerciais (visitas, reuniões, orçamentos, projetos).",
+    "matrixNote": "Matriz (Recife): todos os serviços são realizados e analisados centralmente. Núcleo local = comercial + instalação/medidores — sem projetista ou engenheiro no local.",
+    "costDefaults": {
+      "openingMaterial": 20000,
+      "monthlyFixed": 3000,
+      "metersPerSeller": 10,
+      "meterUnitCost": 2500,
+      "techniciansPerNucleus": 1
+    },
+    "costFormulaNote": "Investimento abertura = material local (R$ 20k) + (vendedores × 10 medidores × R$ 2,5k). Custo mensal = fixo R$ 3k/núcleo (+ folha local fora deste simulador).",
+    "unitProfileNote": "Perfil unitário calculado a partir do CRM (jan–mai/26, 2 vendedores) e meta H2 (8,9 fech./vendedor). Visitas e reuniões: estimativa operacional (~3–4 visitas/semana). Mix de serviços: business types YTD/2026.",
+    "localServices": [
+      { "id": "visitas", "label": "Visitas comerciais", "default": true, "deliveredBy": "Vendedor local" },
+      { "id": "reunioes", "label": "Reuniões / apresentações", "default": true, "deliveredBy": "Vendedor local" },
+      { "id": "orcamentos", "label": "Orçamentos iniciais", "default": true, "deliveredBy": "Vendedor local · revisão matriz" },
+      { "id": "instalacao-sc", "label": "Instalação Smart Charging", "default": true, "deliveredBy": "Técnico local" },
+      { "id": "medidores", "label": "Instalação medidores IoT", "default": true, "deliveredBy": "Técnico local" },
+      { "id": "laudos", "label": "Laudos (LDC/LIE/LCC)", "default": false, "deliveredBy": "Matriz Recife" },
+      { "id": "projetos", "label": "Projetos de engenharia", "default": false, "deliveredBy": "Matriz Recife" },
+      { "id": "analise", "label": "Análise técnica / revisão", "default": false, "deliveredBy": "Matriz Recife" }
+    ],
+    "kpiIndicators": [
+      { "id": "visitas", "label": "Visitas (últimos 90 dias)", "unit": "visitas", "description": "Volume de campo que sustenta o núcleo" },
+      { "id": "reunioes", "label": "Reuniões / apresentações", "unit": "reuniões", "description": "Assembleias, síndicos, decisores" },
+      { "id": "orcamentos", "label": "Orçamentos emitidos", "unit": "orçamentos", "description": "Propostas geradas no pipeline local" },
+      { "id": "projetos", "label": "Projetos em andamento", "unit": "projetos", "description": "Entregas técnicas vinculadas à região" },
+      { "id": "pipeline-cond", "label": "Condomínios no pipeline", "unit": "cond.", "description": "Base ativa de prospecção" },
+      { "id": "fechamentos", "label": "Fechamentos (90 dias)", "unit": "fechamentos", "description": "Conversão comercial comprovada" }
+    ],
+    "packages": [
+      {
+        "id": "piloto",
+        "name": "Piloto",
+        "description": "1 vendedor + 1 técnico — teste de mercado antes de hub",
+        "sellers": 1,
+        "technicians": 1,
+        "kpiGates": {
+          "visitas": 25,
+          "reunioes": 12,
+          "orcamentos": 15,
+          "projetos": 3,
+          "pipeline-cond": 40,
+          "fechamentos": 2
+        },
+        "services": ["visitas", "reunioes", "orcamentos", "instalacao-sc", "medidores"]
+      },
+      {
+        "id": "local",
+        "name": "Operação local",
+        "description": "2 vendedores + 1 técnico — operação estável",
+        "sellers": 2,
+        "technicians": 1,
+        "kpiGates": {
+          "visitas": 50,
+          "reunioes": 24,
+          "orcamentos": 30,
+          "projetos": 8,
+          "pipeline-cond": 80,
+          "fechamentos": 5
+        },
+        "services": ["visitas", "reunioes", "orcamentos", "instalacao-sc", "medidores"]
+      },
+      {
+        "id": "hub",
+        "name": "Hub regional",
+        "description": "4 vendedores + 2 técnicos — réplica Recife",
+        "sellers": 4,
+        "technicians": 2,
+        "kpiGates": {
+          "visitas": 100,
+          "reunioes": 48,
+          "orcamentos": 60,
+          "projetos": 15,
+          "pipeline-cond": 150,
+          "fechamentos": 10
+        },
+        "services": ["visitas", "reunioes", "orcamentos", "instalacao-sc", "medidores", "laudos"]
+      },
+      {
+        "id": "custom",
+        "name": "Personalizado",
+        "description": "Monte vendedores, técnicos e serviços — KPIs editáveis",
+        "sellers": 2,
+        "technicians": 1,
+        "kpiGates": {
+          "visitas": 40,
+          "reunioes": 20,
+          "orcamentos": 25,
+          "projetos": 6,
+          "pipeline-cond": 60,
+          "fechamentos": 4
+        },
+        "services": ["visitas", "reunioes", "orcamentos", "instalacao-sc", "medidores"]
+      }
+    ],
+    "regionOptions": [
+      { "id": "ne-pe-rmr", "label": "Recife / RM PE", "isMatrix": true },
+      { "id": "ne-pe-interior", "label": "Interior PE (Caruaru)" },
+      { "id": "ne-ba", "label": "Salvador / BA" },
+      { "id": "ne-ce", "label": "Fortaleza / CE" },
+      { "id": "ne-rn", "label": "Natal / RN" },
+      { "id": "ne-pb", "label": "João Pessoa / PB" },
+      { "id": "ne-al", "label": "Maceió / AL" },
+      { "id": "se-sp", "label": "São Paulo / SP" }
+    ]
+  },
+  "roadmapPhases": [
+    {
+      "phase": "jul–set/2026",
+      "title": "Descobrir limite PE",
+      "items": [
+        "Quantificar conversão dos 200+ condomínios visitados (É)",
+        "Estressar 2→4 vendedores — medir propostas/mês sem atraso",
+        "Mapear leads tráfego vs fechamentos Recife"
+      ]
+    },
+    {
+      "phase": "out–dez/2026",
+      "title": "Pesquisa mercado NE",
+      "items": [
+        "SECovi: lançamentos/ano PE, BA, CE",
+        "Calibrar ranking estados com dados CRM",
+        "Decisão go/no-go Salvador ou Fortaleza"
+      ]
+    },
+    {
+      "phase": "2027",
+      "title": "Primeira expansão",
+      "items": [
+        "Abrir hub NE onda 1 (BA ou CE)",
+        "Playbook comercial + instalação replicável",
+        "Headcount conforme modelo vendedores/região"
+      ]
+    }
+  ]
+}

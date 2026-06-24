@@ -1,0 +1,735 @@
+{
+  "operatingModel": {
+    "title": "Eventos — presença, educação e pipeline",
+    "headline": "Eventos não são estratégia dominante no mercado hoje, mas feiras anuais (FESÍNDICO) entram na agenda prioritária do síndico. Agenda do síndico profissional é volátil — sempre resolvendo bronca — variáveis incontroláveis (dia, horário, trânsito, região) afetam presença.",
+    "h2Focus": "Urgente: planejamento detalhado FESÍNDICO set/26 (estande pago). Carteira de eventos PE, custos, responsável, experimentação (jantares, networking) e rastreio CRM."
+  },
+  "firstEvent": {
+    "title": "1º evento — jun/2026",
+    "month": "2026-06",
+    "partner": "Administradora (parceria)",
+    "topic": "Carregadores elétricos em condomínios — palestra completa",
+    "registrations": 200,
+    "attendanceSyndicsEst": 30,
+    "showRatePct": 15,
+    "startTime": "18:30",
+    "learnings": [
+      "Público abaixo do esperado — múltiplos fatores não mensuráveis ainda",
+      "Possíveis causas: volume inscrição, dia da semana, horário 18h30, trânsito excessivo, região",
+      "Maioria sem conhecimento real sobre carregadores EV — tema em alta mas com informação errada circulando",
+      "Trabalho de educação necessário antes da venda",
+      "Síndico com múltiplos condomínios: agenda muda fácil — evento sofre com prioridades operacionais"
+    ],
+    "positives": [
+      "Palestra bem completa sobre EV",
+      "Parceria com administradora funcionou como canal",
+      "Experiência base para calibrar próximos formatos"
+    ],
+    "metricsToTrack": [
+      "Inscrições vs. presença (show rate)",
+      "Leads qualificados pós-evento",
+      "Conversão visita/proposta em 30/60/90 dias",
+      "Dia/horário/região para próximos testes"
+    ]
+  },
+  "fesindico2026": {
+    "title": "16ª FESÍNDICO 2026 — prioridade H2",
+    "dates": "25 e 26 de setembro de 2026",
+    "dateStart": "2026-09-25",
+    "dateEnd": "2026-09-26",
+    "venue": "Recife Expo Center — Cais Santa Rita, 156, São José, Recife/PE",
+    "hours": "10h às 21h (referência edição 2025)",
+    "entry": "Entrada gratuita visitantes (confirmar 2026)",
+    "website": "https://www.fesindico.com.br/",
+    "instagram": "@fesindico",
+    "status": "estande_pago",
+    "statusLabel": "Estande confirmado — planejamento urgente",
+    "reference2025": {
+      "visitors": 5000,
+      "exhibitors": 100,
+      "note": "15ª edição: 10–11/out/2025 no Recife Expo Center — EV foi tema em palestras; público misto (síndicos, administradoras, advogados, fornecedores)"
+    },
+    "objectives": [
+      "Captar leads qualificados (síndicos + administradoras + indicadores)",
+      "Demonstrar Smart Charging e soluções EV factíveis — ao vivo, não só folheto",
+      "Educar mercado: corrigir mitos sobre carregadores (lição do evento jun/26)",
+      "Fortalecer relacionamento com administradoras parceiras e ecossistema",
+      "Identificar condomínios com demanda EV imediata vs. pipeline médio prazo",
+      "Maximizar ROI do estande já pago — meta: custo/lead e custo/oportunidade abaixo de outros canais"
+    ],
+    "playbook": {
+      "title": "Playbook FESÍNDICO — planejar, executar e medir",
+      "intro": "Base de trabalho para aproveitar ao máximo os 2 dias de feira. Ajustar números, responsáveis e entregáveis conforme briefing do estande e budget disponível.",
+      "contextToKnow": {
+        "title": "O que saber antes de ir",
+        "items": [
+          "Maior feira de condomínios do Brasil — público amplo, não só síndicos; filtrar visitante curioso vs. decisor",
+          "Síndico profissional (multi-condomínio) tem agenda instável — capturar contato e agendar follow-up, não fechar no stand",
+          "EV está em alta mas maioria chega com informação errada — abordagem educativa converte melhor que pitch agressivo",
+          "Concorrentes de EV, medidores, administradoras e fornecedores estarão no hall — diferencial = demo funcionando + método XPE (visita → laudo → instalação)",
+          "Sexta costuma ter mais profissionais; sábado pode trazer síndicos amadores e condôminos — ajustar script",
+          "Horário 10h–21h: picos prováveis almoço (12–14h) e fim da tarde (17–19h) — reforçar equipe nesses slots",
+          "Entrada gratuita aumenta volume — qualificação é obrigatória em todo contato",
+          "Confirmar com organizador: mapa do estande, metragem, pontos elétricos, horário montagem/desmontagem, credenciais equipe"
+        ]
+      },
+      "successMetrics": {
+        "title": "Como medir sucesso (definir metas numéricas)",
+        "kpis": [
+          { "id": "leads", "label": "Leads captados (total)", "target": "A definir", "note": "Todo visitante com interesse real + contato" },
+          { "id": "qualified", "label": "Leads qualificados (síndico/adm com condomínio identificado)", "target": "A definir", "note": "BANT simplificado: tem condomínio, tem dor EV, tem contato" },
+          { "id": "visits", "label": "Visitas técnicas agendadas na feira", "target": "A definir", "note": "Meta ambiciosa: sair com data na agenda" },
+          { "id": "indicators", "label": "Indicadores / síndicos referência acolhidos", "target": "A definir", "note": "Programa de indicação" },
+          { "id": "demos", "label": "Demos Smart Charging realizadas", "target": "A definir", "note": "Contar cada demonstração completa" },
+          { "id": "costLead", "label": "Custo por lead qualificado", "target": "A definir", "note": "(custo total evento) ÷ leads qualificados" },
+          { "id": "conv30", "label": "Conversão lead → proposta em 30 dias", "target": "A definir", "note": "Medir no CRM com tag FESINDICO-2026" },
+          { "id": "conv90", "label": "Conversão lead → fechamento em 90 dias", "target": "A definir", "note": "ROI real do evento" }
+        ]
+      },
+      "timeline": [
+        {
+          "phase": "Até 15/jul",
+          "title": "Kick-off & responsável",
+          "tasks": [
+            "Nomear responsável único pelo evento (dono do checklist)",
+            "Reunião kick-off: objetivos, metas, budget restante",
+            "Solicitar à organização: planta do estande, manual expositor, credenciais",
+            "Levantar o que já está pago vs. custos pendentes (montagem, energia, mobiliário extra)"
+          ]
+        },
+        {
+          "phase": "Jul/2026",
+          "title": "Briefing estande & fornecedores",
+          "tasks": [
+            "Briefing design: layout, fluxo, identidade visual, pontos de demo",
+            "Contratar/definir montadora e prazos de entrega",
+            "Lista de materiais físicos (banner, totem, mesa, TV, iluminação)",
+            "Definir o que será demo ao vivo vs. vídeo loop",
+            "Orçamento brindes + coffee/bebida no estande"
+          ]
+        },
+        {
+          "phase": "Ago/2026",
+          "title": "Conteúdo, equipe & CRM",
+          "tasks": [
+            "Material educativo EV: folheto mitos vs. fatos + checklist condomínio",
+            "Treinamento equipe (2h): produto, demo, script, qualificação, objeções",
+            "Configurar tag Pipedrive FESINDICO-2026 + campos obrigatórios",
+            "Formulário lead (QR) testado em celular",
+            "Roster definitivo: quem fica sexta manhã/tarde/noite e sábado",
+            "Ensaio montagem demo Smart Charging em ambiente simulado"
+          ]
+        },
+        {
+          "phase": "Semana 22–24/set",
+          "title": "Montagem & pré-voo",
+          "tasks": [
+            "Montagem estande conforme manual organizador",
+            "Teste elétrico: demo + TV + carregamento dispositivos equipe",
+            "Kit equipe: crachás, uniforme/camisa, script impresso, power bank",
+            "Briefing final 30 min: metas do dia, rodízio, plano B se demo falhar",
+            "Postagem redes: estamos na FESÍNDICO + localização estande"
+          ]
+        },
+        {
+          "phase": "25–26/set",
+          "title": "Operação feira",
+          "tasks": [
+            "Abertura 9h30: equipe no stand, demo rodando, materiais repostos",
+            "Registro leads em tempo real — não deixar para o fim do dia",
+            "Foto/vídeo autorizado para marketing pós-evento",
+            "Debrief 30 min ao fim de cada dia: leads, aprendizados, ajuste sábado",
+            "Desmontagem conforme cronograma organizador"
+          ]
+        },
+        {
+          "phase": "27/set – 15/out",
+          "title": "Pós-evento intensivo",
+          "tasks": [
+            "Follow-up 48h: todo lead qualificado contactado",
+            "Semana 1: agendar visitas técnicas prometidas",
+            "Semana 2: debrief interno + planilha ROI preliminar",
+            "Dia 30: primeira leitura conversão lead → proposta"
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "logistica",
+          "title": "Logística & estande",
+          "subtitle": "Confirmar com organizador e montadora",
+          "groups": [
+            {
+              "name": "Informações a obter",
+              "items": [
+                "Número/localização do estande no mapa do hall",
+                "Metragem (m²) e altura máxima permitida",
+                "Pontos de energia (voltagem, amperagem) — crítico para demo EV",
+                "Horários: montagem, desmontagem, acesso veículo carga",
+                "Quantidade de credenciais por estande",
+                "Regras: som, alimentação no estande, distribuição de panfletos"
+              ]
+            },
+            {
+              "name": "Checklist físico",
+              "items": [
+                "Backdrop / painel principal com mensagem clara",
+                "Totem ou mesa de demo à altura do visitante",
+                "TV ou tablet com vídeo loop (backup se demo falhar)",
+                "Iluminação que destaque produto",
+                "Tomadas e extensões próprias",
+                "Armário ou baú para guardar materiais à noite",
+                "Lixeira, pano, kit limpeza — estande sempre apresentável"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "design",
+          "title": "Design & experiência do visitante",
+          "subtitle": "Fluxo: atrair → educar → demo → capturar lead",
+          "groups": [
+            {
+              "name": "Mensagem principal (3 segundos)",
+              "items": [
+                "Headline sugerida: Carregador elétrico em condomínio — do laudo à instalação",
+                "Sub: Tecnologia XPE · Smart Charging · método sem surpresa",
+                "Evitar jargão técnico na fachada — detalhe dentro do estande"
+              ]
+            },
+            {
+              "name": "Fluxo do estande",
+              "items": [
+                "Zona 1 — Atração: abridor visual + oferta (coffee, checklist grátis)",
+                "Zona 2 — Educação: painel mitos vs. fatos ou tablet interativo",
+                "Zona 3 — Demo: controlador + app/telemetria funcionando",
+                "Zona 4 — Conversa: mesa para qualificação e agendamento visita",
+                "QR code visível em cada zona com material diferente (rastrear interesse)"
+              ]
+            },
+            {
+              "name": "Diferencial visual",
+              "items": [
+                "Mostrar produto real, não só imagem — lição de feiras: quem demo ganha atenção",
+                "Cases com foto de condomínios atendidos (com autorização)",
+                "Selo ou frase de método: Visita → LCC/LIE → Projeto → Instalação → Mensalidade"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "demos",
+          "title": "Demonstrações & tecnologia",
+          "subtitle": "Smart Charging como protagonista",
+          "groups": [
+            {
+              "name": "O que demonstrar",
+              "items": [
+                "Controlador de Carga ligado e operacional — simular carga ou status real",
+                "App ou painel de gestão (rateio, vagas, usuários) se disponível",
+                "Medidor IoT / telemetria como complemento (se integrado)",
+                "Storytelling verbal: como síndico resolve dor de EV sem briga na assembleia"
+              ]
+            },
+            {
+              "name": "Requisitos técnicos",
+              "items": [
+                "Plano B sem internet: vídeo offline + fotos do sistema em operação",
+                "Plano B demo: segundo controlador ou tablet com gravação",
+                "Responsável técnico no stand nos horários de pico",
+                "Checklist pré-demo: ligar 30 min antes, testar 3x ao dia",
+                "Cabos organizados e identificados — segurança e apresentação"
+              ]
+            },
+            {
+              "name": "Roteiro demo (5 min)",
+              "items": [
+                "1 min — Dor: condomínio sem regra EV = conflito + risco elétrico",
+                "2 min — Solução: laudo + infraestrutura + controlador + gestão",
+                "1 min — Demo ao vivo do controlador/app",
+                "1 min — Próximo passo: visita técnica ou diagnóstico gratuito"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "educacao",
+          "title": "Educação EV — mitos vs. fatos",
+          "subtitle": "Lição do evento jun/26: educar antes de vender",
+          "groups": [
+            {
+              "name": "Mitos comuns a endereçar",
+              "items": [
+                "Qualquer tomada serve para carregar carro elétrico",
+                "Síndico pode proibir EV sem alternativa",
+                "Carregador é só plugar na garagem — não precisa de laudo",
+                "Infraestrutura EV sempre custa fortuna e exige obra pesada",
+                "Um carregador serve todo o condomínio sem controle"
+              ]
+            },
+            {
+              "name": "Materiais educativos",
+              "items": [
+                "Folheto A5: 5 mitos sobre EV em condomínio",
+                "Checklist: Meu condomínio está pronto para EV? (lead magnet)",
+                "Card com QR para material digital completo",
+                "Slide ou painel: passo a passo legal (LCC, assembleia, infra)"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "materiais",
+          "title": "Materiais & comunicação",
+          "subtitle": "Tudo que precisa existir antes do dia 25",
+          "groups": [
+            {
+              "name": "Impressos",
+              "items": [
+                "Folder institucional XPE + linha EV",
+                "Cartão de visita ou card com QR lead",
+                "Checklist EV condomínio (entregável)",
+                "Tabela resumo serviços: LCC, LIE, ICV, instalação, mensalidade"
+              ]
+            },
+            {
+              "name": "Digital",
+              "items": [
+                "Landing ou formulário Pipedrive/Webform com origem FESINDICO-2026",
+                "Vídeo loop 60–90s (demo + depoimento se houver)",
+                "Posts agendados Instagram/LinkedIn dias 24–26 set",
+                "Lista WhatsApp para follow-up rápido (com opt-in no stand)"
+              ]
+            },
+            {
+              "name": "Brindes & atração",
+              "items": [
+                "Coffee / água / café — aumenta tempo no estande",
+                "Brinde útil (não genérico): ex. guia bolso EV ou cabo organizador com marca",
+                "Oferta feira: diagnóstico ou visita técnica com condição especial (definir limite)",
+                "Sorteio opcional: ex. checklist + sorteio visita técnica gratuita"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "equipe",
+          "title": "Equipe, papéis & comportamento",
+          "subtitle": "Quem fica no stand e como se portar",
+          "groups": [
+            {
+              "name": "Papéis mínimos",
+              "items": [
+                "Líder estande — decide rodízio, resolve imprevisto, debrief",
+                "Comercial — aborda, qualifica, agenda follow-up",
+                "Técnico — conduz demo, responde dúvidas infra/laudo",
+                "Apoio — reposição material, coffee, captura lead no tablet",
+                "Gestor circulante — visita estandes parceiros e concorrentes (1h/dia)"
+              ]
+            },
+            {
+              "name": "Quantidade no stand",
+              "items": [
+                "Mínimo 2 pessoas sempre (nunca deixar estande vazio)",
+                "Ideal 3–4 nos horários de pico (12–14h e 17–19h)",
+                "Rodízio: blocos de 2h com pausa 20 min",
+                "Definir quem almoça quando — tabela impressa no estande"
+              ]
+            },
+            {
+              "name": "Postura & regras",
+              "items": [
+                "Proativo: convidar quem passa, não esperar visitante entrar",
+                "Nunca ficar em grupo fechado conversando — sempre aberto ao hall",
+                "Celular só para captura lead ou emergência",
+                "Uniforme ou camisa XPE — identificação clara",
+                "Parceira administradora: alinhar discurso e divisão de papéis antes"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "leads",
+          "title": "Captura de leads & CRM",
+          "subtitle": "Sem registro = evento perdido",
+          "groups": [
+            {
+              "name": "Campos obrigatórios por lead",
+              "items": [
+                "Nome, telefone, e-mail",
+                "Perfil: síndico / administradora / indicador / outro",
+                "Condomínio (nome + bairro + nº unidades se souber)",
+                "Dor/interesse: EV já solicitado? Quantos carros elétricos?",
+                "Próximo passo acordado: visita / call / enviar material",
+                "Origem: FESINDICO-2026 + dia (sex/sáb)"
+              ]
+            },
+            {
+              "name": "Processo no stand",
+              "items": [
+                "Registrar na hora — tablet ou celular com formulário",
+                "Foto do crachá ou cartão como backup",
+                "Líder revisa leads a cada 2h — ninguém sai sem registro",
+                "Lead quente: avisar comercial sênior ainda durante feira",
+                "Sincronizar Pipedrive diariamente (mínimo fim de cada dia)"
+              ]
+            },
+            {
+              "name": "Classificação rápida",
+              "items": [
+                "A — Quente: quer visita, tem EV, assembleia próxima",
+                "B — Morno: interesse real, timing incerto",
+                "C — Frio: curioso, sem condomínio, estudante",
+                "Priorizar follow-up A e B em 48h"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "operacao",
+          "title": "Operação nos 2 dias",
+          "subtitle": "Sexta 25 e sábado 26 — rotina sugerida",
+          "groups": [
+            {
+              "name": "Rotina diária",
+              "items": [
+                "09h30 — Chegada, ligar demo, conferir materiais",
+                "10h00 — Abertura oficial, post story redes",
+                "12h00–14h00 — Reforço equipe (pico almoço)",
+                "15h00 — Reposição brindes e folhetos",
+                "17h00–19h00 — Segundo pico, demo prioritária",
+                "20h30 — Últimos contatos, pré-registro leads do dia",
+                "21h00 — Fechamento, debrief 15 min, checklist desligar equipamentos"
+              ]
+            },
+            {
+              "name": "Sexta vs. sábado",
+              "items": [
+                "Sexta: foco administradoras, síndicos profissionais, fornecedores B2B",
+                "Sábado: síndicos amadores, condôminos — filtrar com carinho",
+                "Sábado manhã: bom para visitantes que trabalham — não reduzir equipe cedo"
+              ]
+            },
+            {
+              "name": "Inteligência de mercado",
+              "items": [
+                "Visitante gestor: passar nos estandes concorrentes EV — preço, discurso, demo",
+                "Fotografar materiais concorrentes (discretamente)",
+                "Anotar objeções que se repetem — alimentar script e marketing",
+                "Networking com administradoras e advogados condominiais"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "pos",
+          "title": "Pós-evento",
+          "subtitle": "O evento termina; o pipeline começa",
+          "groups": [
+            {
+              "name": "Cadência follow-up",
+              "items": [
+                "0–48h — Contato todo lead A e B (WhatsApp ou ligação)",
+                "Dia 3–7 — E-mail material prometido + agendar visitas",
+                "Dia 14 — Segunda tentativa leads B sem resposta",
+                "Dia 30 — Revisão: quantos viraram proposta",
+                "Dia 90 — ROI final do evento"
+              ]
+            },
+            {
+              "name": "Debrief interno (até 7 dias após)",
+              "items": [
+                "Total leads / qualificados / visitas agendadas",
+                "Melhor horário e perfil de visitante",
+                "O que funcionou na demo e no material",
+                "O que falhou (fila, demo, equipe, brinde)",
+                "Custo total vs. custo/lead — comparar com evento jun/26",
+                "Decisões para FESÍNDICO 2027"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "orcamento",
+          "title": "Orçamento — itens a controlar",
+          "subtitle": "Estande pago; mapear o restante",
+          "groups": [
+            {
+              "name": "Custos a levantar",
+              "items": [
+                "Estande (pago) — valor e o que inclui",
+                "Montagem e desmontagem",
+                "Design gráfico e impressão",
+                "Mobiliário extra (TV, mesa, totem)",
+                "Demo: transporte equipamento, seguro",
+                "Brindes e coffee/bebida (2 dias)",
+                "Equipe: diárias, transporte, alimentação",
+                "Marketing: posts, material digital",
+                "Contingência 10–15%"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "riscos",
+          "title": "Riscos & plano B",
+          "subtitle": "Antecipar o que pode dar errado",
+          "groups": [
+            {
+              "name": "Riscos",
+              "items": [
+                "Demo falha no hall — ter vídeo backup",
+                "Equipe faltou — lista suplentes confirmada antes",
+                "Lead não registrado — revisão a cada 2h obrigatória",
+                "Brinde acaba cedo — estoque para 2 dias + reserva",
+                "Concorrente com demo maior — focar método e atendimento",
+                "Baixo fluxo no estande — gestor puxa visitantes do corredor",
+                "Síndico sem tempo — capturar contato e agendar, não insistir venda"
+              ]
+            }
+          ]
+        }
+      ],
+      "personas": [
+        {
+          "id": "sindico-pro",
+          "name": "Síndico profissional",
+          "signal": "Multi-condomínio, pouco tempo, vai direto ao ponto",
+          "approach": "Respeitar tempo · 2 min educação + oferta visita · pedir indicação em outros condomínios"
+        },
+        {
+          "id": "sindico-morador",
+          "name": "Síndico morador",
+          "signal": "Mais aberto a conversa, pode não conhecer EV",
+          "approach": "Educação paciente · checklist · agendar conversa com administradora se houver"
+        },
+        {
+          "id": "administradora",
+          "name": "Representante administradora",
+          "signal": "Interesse em pacote para carteira de condomínios",
+          "approach": "Falar escala · parceria · cases · marcar reunião B2B pós-feira"
+        },
+        {
+          "id": "indicador",
+          "name": "Indicador / síndico referência",
+          "signal": "Já conhece XPE ou veio por indicação",
+          "approach": "Acolher · programa indicação · material exclusivo · conectar com gestão"
+        },
+        {
+          "id": "fornecedor",
+          "name": "Fornecedor / parceiro potencial",
+          "signal": "Eletricista, engenheiro, loja EV",
+          "approach": "Networking · cartão · conversa parceria — não é lead EV direto"
+        }
+      ],
+      "scripts": {
+        "title": "Scripts de abordagem",
+        "opening": "Olá! A XPE ajuda condomínios a instalar carregador elétrico do jeito certo — com laudo, infraestrutura e gestão. Posso te mostrar em 2 minutos como funciona?",
+        "qualification": [
+          "Você é síndico ou trabalha com administradora?",
+          "Seu condomínio já teve pedido de carregador elétrico?",
+          "Quantas unidades tem o condomínio?",
+          "Já existe alguma infraestrutura ou é do zero?",
+          "Qual o melhor canal para falarmos depois da feira — WhatsApp ou e-mail?"
+        ],
+        "closing": "Vou te mandar nosso checklist de EV e agendar uma visita técnica sem compromisso. Qual dia da semana que vem funciona melhor?"
+      }
+    },
+    "standPlanning": {
+      "title": "Resumo — 6 pilares do estande",
+      "pillars": [
+        {
+          "id": "posicionamento",
+          "name": "Posicionamento & narrativa",
+          "items": [
+            "Mensagem: EV factível em condomínio — do laudo à instalação",
+            "Diferencial vs. concorrentes no hall",
+            "Material educativo mitos vs. fatos",
+            "Cases / condomínios atendidos"
+          ]
+        },
+        {
+          "id": "demos",
+          "name": "Demonstrações ao vivo",
+          "items": [
+            "Controlador Smart Charging funcionando",
+            "App/telemetria se disponível",
+            "Roteiro demo 5 min",
+            "Vídeo loop backup"
+          ]
+        },
+        {
+          "id": "design",
+          "name": "Design & fluxo visitante",
+          "items": [
+            "Zonas: atrair → educar → demo → lead",
+            "QR codes por zona",
+            "Produto real visível"
+          ]
+        },
+        {
+          "id": "equipe",
+          "name": "Equipe & roster",
+          "items": [
+            "Mín. 2 no stand · 3–4 no pico",
+            "Papéis: líder, comercial, técnico, apoio",
+            "Treinamento ago/26"
+          ]
+        },
+        {
+          "id": "atracao",
+          "name": "Atração & diferencial",
+          "items": [
+            "Coffee/bebida",
+            "Checklist EV grátis",
+            "Oferta visita técnica feira",
+            "Parceira administradora alinhada"
+          ]
+        },
+        {
+          "id": "crm",
+          "name": "CRM & pós-evento",
+          "items": [
+            "Tag FESINDICO-2026",
+            "Registro em tempo real",
+            "Follow-up 48h",
+            "ROI 30/90 dias"
+          ]
+        }
+      ]
+    }
+  },
+  "eventCalendar": {
+    "title": "Carteira de eventos — PE / setor condominial",
+    "note": "Datas confirmadas quando disponíveis · custos estande/patrocínio a levantar · prioridade para agenda do síndico",
+    "events": [
+      {
+        "id": "fesindico",
+        "name": "FESÍNDICO — Feira de Condomínios",
+        "edition": "16ª edição",
+        "period": "Setembro",
+        "dates": "25–26/09/2026",
+        "location": "Recife Expo Center",
+        "tier": 1,
+        "priority": "critical",
+        "xpeStatus": "estande_pago",
+        "costNote": "Estande pago — detalhar custo total + montagem",
+        "audience": "Síndicos, administradoras, advogados, fornecedores",
+        "evRelevance": "Alta — EV em palestras 2025",
+        "website": "https://www.fesindico.com.br/"
+      },
+      {
+        "id": "secovi-congresso",
+        "name": "V Congresso de Gestão Condominial",
+        "organizer": "Secovi-PE",
+        "period": "Outubro",
+        "dates": "02/10/2026",
+        "location": "Teatro RioMar",
+        "tier": 2,
+        "priority": "high",
+        "xpeStatus": "avaliar",
+        "costNote": "Patrocínio / ingresso — a levantar",
+        "audience": "Síndicos e administradores associados Secovi",
+        "evRelevance": "Média-alta — gestão e inovação",
+        "website": "https://www.secovi-pe.com.br/"
+      },
+      {
+        "id": "encontro-techmetria",
+        "name": "Encontro de Síndicos (Techmetria)",
+        "organizer": "Techmetria + parceiros",
+        "period": "Abril (padrão anual)",
+        "dates": "Abr/2026 — VIII edição",
+        "location": "Ferreira Costa Tamarineira",
+        "tier": 3,
+        "priority": "medium",
+        "xpeStatus": "observar",
+        "costNote": "Inscrição gratuita — avaliar patrocínio",
+        "audience": "Síndicos, administradores",
+        "evRelevance": "Média",
+        "website": null
+      },
+      {
+        "id": "ademi-pe",
+        "name": "Eventos ADEMI-PE",
+        "organizer": "ADEMI Pernambuco",
+        "period": "Variável",
+        "dates": "A mapear 2026",
+        "location": "Recife / PE",
+        "tier": 3,
+        "priority": "medium",
+        "xpeStatus": "pesquisar",
+        "costNote": "A levantar",
+        "audience": "Construtoras, incorporadoras — influência condomínios novos",
+        "evRelevance": "Média — condomínios novos = EV desde projeto",
+        "website": null
+      },
+      {
+        "id": "network-jantares",
+        "name": "Jantares & networking setor",
+        "organizer": "Diversos / indicação",
+        "period": "Contínuo",
+        "dates": "Experimentação H2",
+        "location": "Recife",
+        "tier": 4,
+        "priority": "experimental",
+        "xpeStatus": "testar",
+        "costNote": "Budget experimentação — baixo custo",
+        "audience": "Síndicos, administradoras, indicadores",
+        "evRelevance": "Alta para relacionamento",
+        "website": null
+      }
+    ]
+  },
+  "strategy": {
+    "title": "Estratégia eventos",
+    "principles": [
+      "FESÍNDICO = âncora anual — investimento já feito, maximizar ROI",
+      "Eventos próprios: formato, horário e parceiro importam — testar sábado manhã vs. noite",
+      "Educação EV antes de venda — público chega com mitos",
+      "Escolher pessoa certa para representar (comercial + credibilidade técnica)",
+      "Toda lead com origem rastreada no CRM",
+      "Carteira dedicada: estande + patrocínio + experimentação networking"
+    ],
+    "budgetCategories": [
+      { "id": "estande", "label": "Estande / montagem", "example": "FESÍNDICO pago" },
+      { "id": "patrocinio", "label": "Patrocínio eventos", "example": "Secovi, regionais" },
+      { "id": "proprio", "label": "Eventos próprios", "example": "Parceria administradora" },
+      { "id": "network", "label": "Networking / jantares", "example": "Experimentação H2" },
+      { "id": "brindes", "label": "Brindes & materiais", "example": "FESÍNDICO" }
+    ],
+    "ownerNote": "Definir responsável eventos — pessoa com perfil comercial + relacionamento + avaliação pós-evento"
+  },
+  "roadmapPhases": [
+    {
+      "phase": "jul–ago/2026",
+      "title": "Planejar FESÍNDICO",
+      "items": [
+        "Briefing estande: design, demo, equipe, brindes",
+        "Levantar custos restantes (montagem, material, equipe)",
+        "Definir responsável + roster dias 25–26 set",
+        "Material educativo EV (mitos vs. fatos)",
+        "Integração CRM tag FESÍNDICO"
+      ]
+    },
+    {
+      "phase": "set/2026",
+      "title": "FESÍNDICO 25–26 set",
+      "items": [
+        "Operação estande — demos Smart Charging",
+        "Captura leads + indicadores",
+        "Follow-up 48h pós-evento",
+        "Debrief: métricas vs. 1º evento jun"
+      ]
+    },
+    {
+      "phase": "out–dez/2026",
+      "title": "Carteira 2027 + experimentação",
+      "items": [
+        "ROI FESÍNDICO — conversões 30/60/90 dias",
+        "Mapear ADEMI + eventos regionais 2027",
+        "Testar 1–2 formatos networking/jantar",
+        "Calibrar evento próprio (horário, parceiro, sábado?)"
+      ]
+    }
+  ]
+}

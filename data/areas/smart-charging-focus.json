@@ -1,0 +1,106 @@
+{
+  "operatingModel": {
+    "title": "Smart Charging — produto + produção H2",
+    "headline": "Prioridade H2/2026: validar protótipo em cliente real, evoluir firmware e hardware (Central 2.0→2.1, Controlador V1.0→V1.1) e estruturar processo de produção ponta a ponta. Medidores IoT (SM3F2.0) dependem desta validação — mão de obra compartilhada com Diogo (firmware) e Macgyver (hardware/campo).",
+    "sequencingNote": "IoT evolui cronologicamente depois do Smart Charging estabilizado em cliente e vendas."
+  },
+  "hardwareRoadmap": {
+    "title": "Evolução hardware H2",
+    "items": [
+      { "product": "Controlador de Carga", "from": "V1.0", "to": "V1.1", "status": "em_validacao", "note": "Base do SM3F2.0 — resultados excelentes" },
+      { "product": "Central", "from": "2.0", "to": "2.1", "status": "em_andamento", "note": "Melhorias produção 2ª fase / 2ª versão" }
+    ]
+  },
+  "productionProcess": {
+    "title": "Gestão de produção — fluxo a implementar H2",
+    "headline": "Desafio significativo 2S: padronizar produção e vendas Smart Charging.",
+    "steps": [
+      { "step": 1, "name": "Pedido de compra", "description": "PO recebido do comercial/cliente" },
+      { "step": 2, "name": "Ordens de serviço", "description": "Quebrar PO em OS de produção e instalação" },
+      { "step": 3, "name": "Produção", "description": "Montagem Controlador/Central conforme BOM" },
+      { "step": 4, "name": "Atualização de estoque", "description": "Entrada/saída componentes e produto acabado" },
+      { "step": 5, "name": "Lista de atividades e prazos", "description": "ClickUp — prazos por etapa" },
+      { "step": 6, "name": "Entrega", "description": "Expedição ao cliente ou agendamento instalação" },
+      { "step": 7, "name": "Disponível para instalação", "description": "Macgyver / equipe campo — estoque instalável" }
+    ],
+    "gap": "Processo ainda não padronizado — construir no H2 junto com primeiras vendas significativas."
+  },
+  "teamAndCompensation": {
+    "title": "Time P&D + campo",
+    "members": [
+      { "name": "Diogo", "role": "Firmware", "monthly": "R$ 2.500", "h2": "Validação cliente + melhorias firmware" },
+      { "name": "Macgyver", "role": "Hardware + instalação", "monthly": "R$ 5.000", "h2": "Instalações, levantamento LDC/ICV; salário composto com produção SC quando vendas crescerem" }
+    ]
+  },
+  "h2Priorities": [
+    "Validação protótipo Smart Charging em cliente real",
+    "Melhorias firmware (Controlador + Central)",
+    "Melhorias hardware — Central 2.1 e Controlador V1.1",
+    "Implementar fluxo PO → OS → Produção → Estoque → Prazos → Entrega → Instalação",
+    "Padronizar produção e vendas antes de escalar SM3F2.0 (IoT)"
+  ],
+  "linkedAreas": ["medidores-iot (SM3F2.0)", "consultoria-laudos (LDC/ICV campo)", "consultoria-projetos (PCC/EV)"],
+  "salesProjection": {
+    "title": "Projeção de vendas — 12 meses",
+    "description": "Informe mês a mês quantos condomínios fechou e quantos controladores vendeu. Veja o faturamento de contrato (pontual) e a mensalidade entrando em cada mês.",
+    "operationMonths": 12,
+    "defaults": {
+      "baseInfraTicket": 20000,
+      "controllerUnitPrice": 1500,
+      "controllersPerCondoHint": 4,
+      "monthlyFeePerCondo": 300
+    },
+    "formulaNote": "Faturamento contrato = (condomínios × ticket médio) + (controladores × preço unitário). Mensalidade entra no mês subsequente ao fechamento — condomínio vendido em out/26 começa a pagar em nov/26.",
+    "marginDefaults": {
+      "taxPct": 15,
+      "cmvPct": 45,
+      "cacPct": 10,
+      "recurringProfitPct": 70
+    },
+    "marginNote": "Contrato: imposto + CMV + CAC sobre faturamento pontual — o restante é lucro. Mensalidade: lucro líquido configurável (padrão 70%) sobre a receita recorrente.",
+    "months": [
+      { "id": "2026-07", "label": "Jul/26" },
+      { "id": "2026-08", "label": "Ago/26" },
+      { "id": "2026-09", "label": "Set/26" },
+      { "id": "2026-10", "label": "Out/26" },
+      { "id": "2026-11", "label": "Nov/26" },
+      { "id": "2026-12", "label": "Dez/26" },
+      { "id": "2027-01", "label": "Jan/27" },
+      { "id": "2027-02", "label": "Fev/27" },
+      { "id": "2027-03", "label": "Mar/27" },
+      { "id": "2027-04", "label": "Abr/27" },
+      { "id": "2027-05", "label": "Mai/27" },
+      { "id": "2027-06", "label": "Jun/27" }
+    ]
+  },
+  "roadmapPhases": [
+    {
+      "phase": "jul–ago/2026",
+      "title": "Validar em cliente real",
+      "items": [
+        "Protótipo Controlador de Carga — cliente piloto",
+        "Firmware estabilização V1.0",
+        "Esboço fluxo produção (PO → instalação)"
+      ]
+    },
+    {
+      "phase": "set–out/2026",
+      "title": "Produção + hardware 2.1 / V1.1",
+      "items": [
+        "Central 2.0 → 2.1 — melhorias produção",
+        "Controlador V1.0 → V1.1",
+        "OS + estoque + prazos no ClickUp (piloto)",
+        "Primeiras vendas significativas → compor remuneração Macgyver"
+      ]
+    },
+    {
+      "phase": "nov–dez/2026",
+      "title": "Padronizar escala",
+      "items": [
+        "Processo produção documentado ponta a ponta",
+        "Playbook comercial + operação integrados",
+        "Liberar sequência SM3F2.0 (Medidores IoT) pós-validação"
+      ]
+    }
+  ]
+}

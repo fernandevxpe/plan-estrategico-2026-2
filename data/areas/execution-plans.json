@@ -51,30 +51,35 @@
         "Time único 5 FTE: engenheiro em LDC/inspeção (noite) — processo maduro; lacuna = projetos variados.",
         "PIE com automação eletrocalha: semanas → horas · capacidade 7–10/mês.",
         "Cross-training: todos os instrumentos — flexível para o comercial, mais lento no curto prazo.",
-        "PDS semanal: planejado × feito × aprendido → próximo projeto parte da base nova.",
+        "PDCA semanal: Plan → Do → Check → Act → próximo projeto parte da base nova.",
         "Evolução: executor → especialista revisor → gerente (apresentação com comercial).",
         "H2: cultura de medição — tempo por cliente, desempenho por pessoa, dias foco (~4h/dia).",
         "Automação CAD: CDM ampliação → sistema → emergência → disparagem.",
-        "Biblioteca interna: lista material, plantas, copiar A→B, guia mestre por escopo."
+        "PCC (Projeto Carregamento Coletivo): híbrido laudo LDC resumido + projeto ponto → pré-orçamento obra."
       ],
       "objectives": [
         { "id": "cp0", "title": "SLA projetos no prazo", "metric": "SLA entrega", "target": "≥ 90% · fila crítica < 5" },
         { "id": "cp1", "title": "Capacidade PIE automatizada", "metric": "PIE/mês", "target": "7–10 entregas estáveis" },
         { "id": "cp2", "title": "Automação CDM + fila CAD", "metric": "Blocos automatizados", "target": "CDM ago–set · sistema+emergência out" },
+        { "id": "cp2c", "title": "PCC — template Parte 1 + Parte 2", "metric": "Escopo PCC", "target": "Documento sequenciado + guia até out" },
         { "id": "cp2b", "title": "Biblioteca interna de serviços", "metric": "Ferramentas CAD", "target": "Lista material + plantas + A→B até set" },
         { "id": "cp3", "title": "Tempo por cliente & desempenho", "metric": "Tracking ClickUp", "target": "100% projetos com tempo registrado" },
-        { "id": "cp3b", "title": "PDS e guia mestre por escopo", "metric": "Co-pro semanal", "target": "100% projetos fechados com retrospectiva" },
+        { "id": "cp3b", "title": "PDCA e guia mestre por escopo", "metric": "Co-pro semanal", "target": "100% projetos fechados com retrospectiva" },
         { "id": "cp4", "title": "Descentralizar apresentação", "metric": "Apresentações/mês", "target": "1 líder interno + comercial até nov" },
         { "id": "cp5", "title": "Ticket médio projetos", "metric": "Ticket PIE+PROJ", "target": "≥ R$ 7.000" }
       ],
       "activities": [
         { "id": "cp-a0", "title": "Baseline SLA e tempo por tipo (PIE, PROJ, LDC, LIE) — ClickUp", "responsible": "Engenheiro + Coord.", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
         { "id": "cp-a1", "title": "Inventário base de serviços + estrutura biblioteca CAD interna", "responsible": "Projetistas + Eng.", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a1e", "title": "PCC: mapear sequência Parte 1 (diagnóstico LDC resumido) → Parte 2 (projeto ponto)", "responsible": "Engenheiro + Projetistas", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a1f", "title": "PCC: definir escopo documento final — contexto carregamento coletivo", "responsible": "Coord. projetos + Comercial", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
         { "id": "cp-a1b", "title": "Automação CDM (ampliação) — mapear e desenvolver bloco", "responsible": "Tech + Projetistas", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a7e", "title": "PCC: template entregável (Parte 1 + Parte 2 + pré-orçamento obra)", "responsible": "Projetistas + Eng.", "dueMonth": "2026-09", "priority": "high", "status": "pendente" },
+        { "id": "cp-a7f", "title": "PCC: integrar fluxo pré-orçamento → proposta Obras no CRM/ClickUp", "responsible": "Comercial + Coord.", "dueMonth": "2026-10", "priority": "high", "status": "pendente" },
         { "id": "cp-a1c", "title": "Tracking tempo exato por cliente/tipo no ClickUp — baseline jul", "responsible": "Coord. projetos", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
-        { "id": "cp-a1d", "title": "Calendário dias foco: produção CAD vs PDS/capacitação (~4h/dia)", "responsible": "Coord. + Time", "dueMonth": "2026-07", "priority": "high", "status": "pendente" },
+        { "id": "cp-a1d", "title": "Calendário dias foco: produção CAD vs PDCA/capacitação (~4h/dia)", "responsible": "Coord. + Time", "dueMonth": "2026-07", "priority": "high", "status": "pendente" },
         { "id": "cp-a2", "title": "Documentação única + libs CAD padronizadas (v1)", "responsible": "Projetistas", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
-        { "id": "cp-a3", "title": "PDS simplificado — piloto 3 projetos + ritual semanal de apresentação", "responsible": "Coord. projetos", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cp-a3", "title": "PDCA — piloto 3 projetos + ritual semanal de apresentação", "responsible": "Coord. projetos", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
         { "id": "cp-a4", "title": "Capacitação semanal (curso + trabalho entregue compartilhado)", "responsible": "Engenheiro + Time", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
         { "id": "cp-a5", "title": "Definir líderes internos por frente (estagiários em ramp)", "responsible": "Engenheiro diretor", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
         { "id": "cp-a6", "title": "Job rotation piloto — rotação mensal entre PIE/PROJ/LDC básico", "responsible": "Coord. projetos", "dueMonth": "2026-09", "priority": "high", "status": "pendente" },
@@ -89,7 +94,8 @@
       ],
       "risks": [
         { "title": "Engenheiro único — inspeção + laudo + apresentação", "mitigation": "LDC automatizado + líderes internos + apresentação descentralizada com comercial." },
-        { "title": "PROJETOS variados sem padrão consomem FTE", "mitigation": "Automação por bloco + PDS + libs antes de escalar vendas." },
+        { "title": "PCC sem sequência clara Parte 1/2 — retrabalho e confusão comercial", "mitigation": "Template e guia mestre PCC até set; alinhar com LDC (algoritmo) e Obras (pré-orçamento)." },
+        { "title": "PROJETOS variados sem padrão consomem FTE", "mitigation": "Automação por bloco + PDCA + libs + template PCC antes de escalar vendas." },
         { "title": "Cross-training reduz velocidade no curto prazo", "mitigation": "Especialistas revisores mantêm qualidade; rotação gradual." },
         { "title": "Comercial vende acima da fila de projetos", "mitigation": "Gate capacidade: SLA ClickUp antes de aceitar prazo agressivo." }
       ]
@@ -97,38 +103,96 @@
     "consultoria-laudos": {
       "id": "consultoria-laudos",
       "strategicNotes": [
-        "LDC é o maior share de receita jan–mai/2026 — motor de volume.",
-        "Automação de laudos repetitivos libera capacidade dos 5 projetistas."
+        "LDC + planejamento energético = carro-chefe comercial (maduro, diferencial EV). IoT + automações rodando; H2 = mapear processo, capacitar 2ª pessoa, preparar escala.",
+        "LIE H2: app campo completo + plataforma revisão em tempo real + apresentação web + guia de contratação → proposta → obra.",
+        "Risco: muitas atividades concentradas em uma pessoa — opção descentralizar visitas (LIE noturno, ICV) para time Obras.",
+        "NP 17 exige laudo de todos os carregadores — demanda estrutural ICV.",
+        "Fernando: dedicação ampliada H2 ao desenvolvimento app/plataforma/apresentação web."
       ],
       "objectives": [
-        { "id": "cl1", "title": "Manter LDC como carro-chefe de volume", "metric": "Share LDC", "target": "≥ 35% receita área" },
-        { "id": "cl2", "title": "Reduzir tempo médio de entrega LDC/LIE", "metric": "Dias entrega", "target": "A definir baseline" }
+        { "id": "cl1", "title": "LDC — preparar escala", "metric": "Processo mapeado", "target": "Automações + guia + 2ª pessoa capacitada até out" },
+        { "id": "cl5", "title": "LIE — app + plataforma + apresentação", "metric": "Fluxo LIE web", "target": "Campo + revisão tempo real + apresentação até out" },
+        { "id": "cl8", "title": "Guia de contratação pós-laudo", "metric": "Laudo → proposta", "target": "Piloto automático LIE → guia → proposta até nov" },
+        { "id": "cl9", "title": "Descentralizar visitas", "metric": "Piloto visitas", "target": "Modelo definido set · piloto out" },
+        { "id": "cl2", "title": "Automação ICV (NP 17)", "metric": "Pipeline ICV", "target": "App + template + testes até out" },
+        { "id": "cl3", "title": "Plataforma carregadores/condomínio", "metric": "MVP plataforma", "target": "Cadastro + novo carregador → laudo até dez" },
+        { "id": "cl6", "title": "SLA laudos no prazo", "metric": "Dias entrega", "target": "≥ 90% LDC/LIE/ICV após baseline" },
+        { "id": "cl7", "title": "PDCA por entrega", "metric": "Retrospectivas", "target": "100% laudos fechados com PDCA" }
       ],
       "activities": [
-        { "id": "cl-a1", "title": "Inventariar laudos automatizáveis vs manuais", "responsible": "Projetistas + Tech", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
-        { "id": "cl-a2", "title": "Definir SLA por tipo de laudo", "responsible": "Coordenação laudos", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
-        { "id": "cl-a3", "title": "Treinar fluxo de etiqueta comercial no CRM", "responsible": "Comercial", "dueMonth": "2026-07", "priority": "medium", "status": "pendente" }
+        { "id": "cl-a1", "title": "Baseline SLA + tempo separado LDC / LIE / ICV — ClickUp", "responsible": "Coord. laudos", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a1b", "title": "LDC: inventário completo automações + processo passo a passo", "responsible": "Engenheiro + Coord.", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a1c", "title": "LDC: avaliar melhorias + esforço — o que automatizar no planejamento energético", "responsible": "Engenheiro + Fernando", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "cl-a1d", "title": "LDC: capacitação 2ª pessoa — guia planejamento energético (emergencial)", "responsible": "Engenheiro + Coord.", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a1e", "title": "Organizar logística 4 analisadores qualidade energia (fila equipamento/cliente)", "responsible": "Coord. laudos", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "cl-a2", "title": "LIE: mapear checklist app de campo (passo a passo — inspeção noturna)", "responsible": "Engenheiro + Fernando", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a2b", "title": "LIE: padronizar chaves app → plataforma analista (~80% pronta)", "responsible": "Fernando + Tech", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a3", "title": "ICV etapa 1: app coleta e organização de dados em campo", "responsible": "Fernando + Tech", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a3b", "title": "Mapear base instalada carregadores + pipeline NP 17", "responsible": "Comercial + Coord.", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a5", "title": "PDCA piloto laudos + co-pro semanal (LDC + ICV)", "responsible": "Coord. laudos", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a6", "title": "Refinamento automação LDC + trilha dedicada 1 FTE", "responsible": "Engenheiro + Coord.", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "cl-a7", "title": "ICV etapas 2–3: template documento + testes confecção automatizada", "responsible": "Fernando + Tech", "dueMonth": "2026-09", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a4", "title": "Esboço modelo financeiro: laudo ICV vs atualização/parcelas por condomínio", "responsible": "Gestão + Fernando", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "cl-a8b", "title": "LIE piloto: engenheiro-analista monta laudo na plataforma com dados do app", "responsible": "Engenheiro + Fernando", "dueMonth": "2026-09", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a8", "title": "Fluxo revisão humana ICV em produção (100% fase inicial)", "responsible": "Engenheiro + Coord.", "dueMonth": "2026-09", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a9", "title": "LIE app de campo em produção — 100% checklist mapeado", "responsible": "Fernando + Engenheiro", "dueMonth": "2026-10", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a10", "title": "MVP plataforma: cadastro condomínio + carregadores veiculares", "responsible": "Fernando + Tech", "dueMonth": "2026-10", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a11", "title": "Plataforma: adicionar carregador novo → fluxo laudo ICV", "responsible": "Fernando + Tech", "dueMonth": "2026-11", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a12", "title": "Controle parcelas/dívidas por condomínio (CRM ou plataforma)", "responsible": "Gestão + Tech", "dueMonth": "2026-11", "priority": "high", "status": "pendente" },
+        { "id": "cl-a13", "title": "Campanha comercial NP 17 — alinhamento Smart Charging", "responsible": "Comercial + Coord.", "dueMonth": "2026-12", "priority": "high", "status": "pendente" },
+        { "id": "cl-a14", "title": "Dashboard LDC/LIE/ICV + revisão capacidade vs pipeline", "responsible": "Coord. laudos", "dueMonth": "2026-12", "priority": "high", "status": "pendente" },
+        { "id": "cl-a2c", "title": "LIE: especificar UX plataforma — revisar laudo enquanto monta", "responsible": "Fernando + Engenheiro", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a2d", "title": "Esboço fluxo laudo → Guia de Contratação → proposta (integração Obras)", "responsible": "Fernando + Comercial + Obras", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "cl-a2e", "title": "Avaliar descentralização visitas: Obras faz LIE noturno + ICV — piloto", "responsible": "Engenheiro + Op. Obras", "dueMonth": "2026-09", "priority": "high", "status": "pendente" },
+        { "id": "cl-a9b", "title": "Apresentação web por cliente integrada ao laudo LIE — piloto", "responsible": "Fernando + Comercial", "dueMonth": "2026-10", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a9c", "title": "Plataforma LIE: interface revisão em tempo real em produção", "responsible": "Fernando + Tech", "dueMonth": "2026-10", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a11b", "title": "Piloto Guia de Contratação automático (laudo LIE → escopos → proposta)", "responsible": "Fernando + Comercial", "dueMonth": "2026-11", "priority": "critical", "status": "pendente" },
+        { "id": "cl-a13b", "title": "Apresentação síndico/conselho — material web padronizado", "responsible": "Comercial + Coord.", "dueMonth": "2026-11", "priority": "high", "status": "pendente" },
+        { "id": "cl-a14b", "title": "Dashboard conversão laudo → guia → proposta → obra", "responsible": "Gestão + Coord.", "dueMonth": "2026-12", "priority": "high", "status": "pendente" }
       ],
       "risks": [
-        { "title": "Volume alto de LDC com margem apertada", "mitigation": "Automatizar e proteger ticket em laudos complexos." }
+        { "title": "Sobrecarga — atividades concentradas em uma pessoa", "mitigation": "App + plataforma + piloto visitas Obras; revisão colaborativa; guia/proposta automáticos." },
+        { "title": "Volume ICV prometido antes da automação calibrada", "mitigation": "Gate: app + template + revisão humana antes de campanha em massa NP 17." },
+        { "title": "LDC: uma pessoa no planejamento energético — ponto único de falha", "mitigation": "Capacitação 2ª pessoa urgente; mapeamento processo; instalador IoT dedicado mantém campo." },
+        { "title": "4 analisadores qualidade energia limitam agilidade", "mitigation": "Fila organizada ago; P&D Prodist Mód. 8 (IoT) pós Smart Charging." },
+        { "title": "Guia de contratação sem integração Obras", "mitigation": "Esboço fluxo ago; piloto nov com Comercial + Obras alinhados." },
+        { "title": "LIE depende do engenheiro para inspeção + laudo + apresentação", "mitigation": "Descentralizar visitas; plataforma web; automação pós-laudo." },
+        { "title": "App de campo LIE incompleto — laudo final sem base", "mitigation": "Checklist fechado passo a passo; campos obrigatórios antes de fechar OS." }
       ]
     },
     "obras": {
       "id": "obras",
       "strategicNotes": [
-        "Obras puxam ticket alto — incluir pelo menos 2 obras/mês acima de R$ 20k no H2.",
-        "Integrar pipeline comercial com capacidade de execução em campo."
+        "YTD jan–jun/26: ~R$ 287k em 13 fechamentos (subgrupos deduplicados) — ticket ~R$ 22k. Mix: EV infra (R$ 131k) + CDM obra (R$ 108k).",
+        "Ritmo irregular: pico mar/26 (Reserva do Poço R$ 83,5k), mai zero, jun R$ 950 — abaixo do gate ≥ R$ 20k.",
+        "Meta H2: ≥ 2 obras/mês > R$ 20k · integrar laudo→guia→obra e PCC→pré-orçamento · capacidade campo antes de escalar.",
+        "Macgyver compartilhado EV+IoT+campo — risco sobrecarga. Piloto set/26: Obras faz LIE noturno + ICV."
       ],
       "objectives": [
-        { "id": "o1", "title": "Aumentar participação de obras no mix", "metric": "Share obras", "target": "≥ 22%" },
-        { "id": "o2", "title": "Proteger ticket médio de obras", "metric": "Ticket OBRA", "target": "≥ R$ 20.000" }
+        { "id": "o1", "title": "Volume obras H2", "metric": "Obras > R$ 20k", "target": "≥ 2/mês" },
+        { "id": "o2", "title": "Proteger ticket médio", "metric": "Ticket obra", "target": "≥ R$ 20.000" },
+        { "id": "o3", "title": "Share obras no mix", "metric": "Receita", "target": "≥ 22%" },
+        { "id": "o4", "title": "Responsável por obra ativa", "metric": "Campo", "target": "100% nomeados" },
+        { "id": "o5", "title": "Conversão laudo→obra", "metric": "Funil pós-laudo", "target": "Dashboard dez/26" },
+        { "id": "o6", "title": "OS ClickUp padronizada", "metric": "Templates obra", "target": "3 tipos até set/26" }
       ],
       "activities": [
-        { "id": "o-a1", "title": "Listar obras em pipeline e previsão H2", "responsible": "Comercial + Obras", "dueMonth": "2026-07", "priority": "high", "status": "pendente" },
-        { "id": "o-a2", "title": "Definir responsável de campo por obra", "responsible": "Operação obras", "dueMonth": "2026-08", "priority": "high", "status": "pendente" }
+        { "id": "o-a1", "title": "Listar pipeline obras H2 com subgrupo e previsão mês", "responsible": "Comercial + Obras", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "o-a2", "title": "Definir responsável de campo por obra + capacidade simultânea", "responsible": "Operação obras", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "o-a3", "title": "Esboço fluxo laudo → Guia → proposta obra (com Laudos)", "responsible": "Fernando + Comercial + Obras", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "o-a4", "title": "Template OS ClickUp: obra geral + CDM + EV", "responsible": "Op. Obras + Tech", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "o-a5", "title": "Revisar classificação CRM deals 'obras gerais' indefinidos", "responsible": "Comercial", "dueMonth": "2026-08", "priority": "medium", "status": "pendente" },
+        { "id": "o-a6", "title": "Piloto visitas Obras: LIE noturno + ICV", "responsible": "Engenheiro + Op. Obras", "dueMonth": "2026-09", "priority": "high", "status": "pendente" },
+        { "id": "o-a7", "title": "Integrar PCC pré-orçamento → proposta Obras no CRM", "responsible": "Projetos + Comercial", "dueMonth": "2026-10", "priority": "high", "status": "pendente" },
+        { "id": "o-a8", "title": "Checklist pré-obra mínimo (kick-off por obra)", "responsible": "Op. Obras", "dueMonth": "2026-09", "priority": "high", "status": "pendente" },
+        { "id": "o-a9", "title": "Dashboard conversão laudo→obra (v1)", "responsible": "Gestão + Comercial", "dueMonth": "2026-12", "priority": "medium", "status": "pendente" },
+        { "id": "o-a10", "title": "Política obras < R$ 10k: aceitar, recusar ou terceirizar", "responsible": "Gestão", "dueMonth": "2026-08", "priority": "medium", "status": "pendente" }
       ],
       "risks": [
-        { "title": "Gargalo de execução em campo", "mitigation": "Planejar capacidade antes de fechar volume alto." }
+        { "title": "Gargalo execução campo — Macgyver único EV+IoT+obra", "mitigation": "Capacidade antes de volume; fluxo SC nov/26; reforço ou parceiro." },
+        { "title": "Mai/jun sem volume — meta H2 em risco", "mitigation": "Pipeline ativo jul; funil laudo→obra; campanha cases EV." },
+        { "title": "CRM impreciso — CDM fora etiqueta OBRA", "mitigation": "Subgrupos obrigatórios; revisão mensal deals." },
+        { "title": "Comercial promete prazo sem validar capacidade", "mitigation": "Gate Op. Obras antes de fechar; treinamento ago." }
       ]
     },
     "marketing": {
@@ -153,93 +217,154 @@
     "eventos": {
       "id": "eventos",
       "strategicNotes": [
-        "Área em estruturação — definir calendário de eventos H2 e ROI esperado.",
-        "Conectar eventos ao funil comercial com origem rastreada no CRM."
+        "1º evento jun/26: ~200 inscritos, ~30 síndicos — show rate ~15%. Educação EV necessária; agenda do síndico é volátil.",
+        "URGENTE: FESÍNDICO 25–26/set/2026 — estande pago. Planejar posicionamento, demos Smart Charging, equipe, brindes e CRM.",
+        "Carteira PE: Secovi congresso out/26, Techmetria abr, ADEMI, jantares networking — custos e responsável a definir."
       ],
       "objectives": [
-        { "id": "e1", "title": "Definir calendário de eventos H2", "metric": "Eventos", "target": "A definir" },
-        { "id": "e2", "title": "Rastrear leads de eventos no Pipedrive", "metric": "Origem CRM", "target": "100% tagueados" }
+        { "id": "e1", "title": "Planejamento completo FESÍNDICO set/26", "metric": "Checklist estande", "target": "100% até ago/26" },
+        { "id": "e2", "title": "Leads qualificados FESÍNDICO", "metric": "Leads CRM", "target": "Meta a definir" },
+        { "id": "e3", "title": "Rastrear origem eventos no Pipedrive", "metric": "Tag origem", "target": "100%" },
+        { "id": "e4", "title": "Debrief 1º evento + calibrar formato próprio", "metric": "Show rate", "target": ">20% próximo teste" }
       ],
       "activities": [
-        { "id": "e-a1", "title": "Levantar eventos do setor jul–dez", "responsible": "A definir", "dueMonth": "2026-07", "priority": "high", "status": "pendente" },
-        { "id": "e-a2", "title": "Definir responsável e budget de eventos", "responsible": "Gestão", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" }
+        { "id": "e-a1", "title": "Kick-off FESÍNDICO: responsável + metas KPI + budget restante", "responsible": "Gestão", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "e-a2", "title": "Briefing estande: layout, montadora, planta e energia do stand", "responsible": "A definir", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "e-a3", "title": "Material educativo EV (mitos vs. fatos) + checklist condomínio", "responsible": "Marketing + Comercial", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "e-a4", "title": "Treinamento equipe + roster sexta/sábado + ensaio demo Smart Charging", "responsible": "Comercial + Técnico", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "e-a5", "title": "CRM: tag FESINDICO-2026 + formulário QR testado", "responsible": "Comercial", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "e-a6", "title": "Operação FESÍNDICO 25–26 set + follow-up 48h", "responsible": "Equipe evento", "dueMonth": "2026-09", "priority": "critical", "status": "pendente" },
+        { "id": "e-a7", "title": "Debrief + ROI 30 dias pós-FESÍNDICO", "responsible": "Gestão", "dueMonth": "2026-10", "priority": "high", "status": "pendente" },
+        { "id": "e-a8", "title": "Testar 1 formato networking/jantar síndicos", "responsible": "Comercial", "dueMonth": "2026-11", "priority": "medium", "status": "pendente" }
       ],
       "risks": [
-        { "title": "Investimento sem retorno mensurável", "mitigation": "Exigir meta de leads qualificados por evento." }
+        { "title": "FESÍNDICO sem planejamento — estande pago subutilizado", "mitigation": "Checklist 6 pilares: posicionamento, demo, design, equipe, atração, CRM." },
+        { "title": "Baixa presença em eventos próprios (agenda síndico)", "mitigation": "Testar sábado manhã; parceria administradora; horário fora de pico trânsito." },
+        { "title": "Investimento sem retorno mensurável", "mitigation": "Meta leads qualificados + conversão 30/60/90 dias por evento." }
       ]
     },
     "smart-charging": {
       "id": "smart-charging",
       "strategicNotes": [
-        "ICV, instalação de carregador e LCC — nicho em crescimento.",
-        "Alinhar comercial e operação para pacotes EV completos."
+        "H2 prioridade: validação protótipo em cliente real + firmware/hardware (Central 2.0→2.1, Controlador V1.0→V1.1).",
+        "Implementar produção: PO → OS → Produção → Estoque → Prazos → Entrega → Instalação.",
+        "Time: Diogo (firmware R$2,5k) + Macgyver (hardware/campo R$5k) — salário Macgyver composto com produção quando vendas EV crescerem.",
+        "Medidores IoT (SM3F2.0) cronologicamente subsequente — após Smart Charging validado."
       ],
       "objectives": [
-        { "id": "sc1", "title": "Aumentar fechamentos EV no H2", "metric": "Contratos EV", "target": "A definir" },
-        { "id": "sc2", "title": "Montar oferta integrada laudo + instalação", "metric": "Pacote", "target": "1 playbook" }
+        { "id": "sc1", "title": "Validação cliente real", "metric": "Protótipo", "target": "Piloto operando até out" },
+        { "id": "sc2", "title": "Hardware V1.1 / Central 2.1", "metric": "Revisão HW", "target": "Versões em produção até dez" },
+        { "id": "sc3", "title": "Processo produção ponta a ponta", "metric": "Fluxo PO→instalação", "target": "Documentado + ClickUp até nov" },
+        { "id": "sc4", "title": "Vendas EV significativas", "metric": "Fechamentos EV", "target": "Playbook + primeiras vendas H2" }
       ],
       "activities": [
-        { "id": "sc-a1", "title": "Documentar playbook comercial Smart Charging", "responsible": "Comercial + Produto EV", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
-        { "id": "sc-a2", "title": "Mapear concorrência e ticket médio EV", "responsible": "Produto EV", "dueMonth": "2026-07", "priority": "medium", "status": "pendente" }
+        { "id": "sc-a1", "title": "Protótipo Controlador de Carga — validação cliente real", "responsible": "Diogo + Macgyver", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "sc-a2", "title": "Melhorias firmware Controlador + Central (V1.0 baseline)", "responsible": "Diogo", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "sc-a3", "title": "Hardware Central 2.0 → 2.1 — melhorias produção 2ª fase", "responsible": "Macgyver", "dueMonth": "2026-09", "priority": "critical", "status": "pendente" },
+        { "id": "sc-a4", "title": "Controlador V1.0 → V1.1 — revisão pós-piloto", "responsible": "Diogo + Macgyver", "dueMonth": "2026-10", "priority": "critical", "status": "pendente" },
+        { "id": "sc-a5", "title": "Mapear fluxo PO → OS → Produção → Estoque → Entrega → Instalação", "responsible": "Macgyver + Gestão", "dueMonth": "2026-09", "priority": "critical", "status": "pendente" },
+        { "id": "sc-a6", "title": "Implementar OS + estoque + prazos no ClickUp (piloto)", "responsible": "Tech + Macgyver", "dueMonth": "2026-10", "priority": "high", "status": "pendente" },
+        { "id": "sc-a7", "title": "Playbook comercial Smart Charging integrado laudos/projetos", "responsible": "Comercial + Produto EV", "dueMonth": "2026-10", "priority": "high", "status": "pendente" },
+        { "id": "sc-a8", "title": "Modelo remuneração Macgyver — produção vs vendas EV", "responsible": "Gestão", "dueMonth": "2026-11", "priority": "high", "status": "pendente" },
+        { "id": "sc-a9", "title": "Documentar processo produção padronizado (handoff Medidores IoT)", "responsible": "Macgyver + Diogo", "dueMonth": "2026-12", "priority": "high", "status": "pendente" }
       ],
       "risks": [
-        { "title": "Demanda ainda concentrada em poucos meses", "mitigation": "Prospecção ativa em condomínios com garagem." }
+        { "title": "Validação atrasada bloqueia SM3F2.0 (IoT)", "mitigation": "Foco jul–out em cliente real; IoT só manutenção frota no 2S." },
+        { "title": "Produção sem processo — gargalo com primeiras vendas", "mitigation": "Fluxo PO→instalação até out antes de escalar comercial." },
+        { "title": "Macgyver único em hardware + campo + LDC/ICV", "mitigation": "Compor remuneração com produção SC; não sobrecarregar antes de processo pronto." }
       ]
     },
     "automacoes-ferramentas": {
       "id": "automacoes-ferramentas",
       "strategicNotes": [
-        "Automação é alavanca para escalar de 3 para 5 projetistas sem proporcionalidade.",
-        "CRM precisa de etiqueta comercial obrigatória em todo negócio novo."
+        "App offline ~6 meses: campo padronizado, sync ClickUp — testes em campo atrasados, arquitetura pode precisar refactor.",
+        "P1 Smart Charging (template pronto) · P2 LIE (base laudos) · LDC · IoT · levantamento · visita comercial.",
+        "Plataforma web: continuidade analista, entregável por serviço — avaliar caso a caso vs. ferramenta separada.",
+        "H2: mapear processos + checklists → teste campo → DB organizado → automação por gargalo operacional."
       ],
       "objectives": [
-        { "id": "af1", "title": "Campo obrigatório de tipo comercial no CRM", "metric": "Cobertura etiqueta", "target": "100%" },
-        { "id": "af2", "title": "Automatizar laudos de alto volume", "metric": "Laudos auto.", "target": "A definir %" }
+        { "id": "af1", "title": "1º teste app em campo", "metric": "Piloto", "target": "Smart Charging ou LIE até ago" },
+        { "id": "af2", "title": "Checklists mapeados (6 módulos)", "metric": "Documentação", "target": "100% serviços até ago" },
+        { "id": "af3", "title": "LDC + levantamento no app", "metric": "Colheita campo", "target": "Piloto out" },
+        { "id": "af4", "title": "Estudo gargalos → ordem dev", "metric": "Ranking", "target": "Priorização até set" }
       ],
       "activities": [
-        { "id": "af-a1", "title": "Tornar etiqueta comercial obrigatória no Pipedrive", "responsible": "Tech + Comercial", "dueMonth": "2026-07", "priority": "critical", "status": "em_andamento" },
-        { "id": "af-a2", "title": "Listar automações prioritárias com projetistas", "responsible": "Tech", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
-        { "id": "af-a3", "title": "Integrar dashboard com sync ClickUp", "responsible": "Tech", "dueMonth": "2026-09", "priority": "medium", "status": "pendente" }
+        { "id": "af-a1", "title": "Listar checklists completos — 6 módulos de serviço", "responsible": "Tech + Operação", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
+        { "id": "af-a2", "title": "Alimentar template Smart Charging + validar persistência DB", "responsible": "Tech", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "af-a3", "title": "Primeiro piloto app em campo (EV ou LIE)", "responsible": "Tech + Macgyver", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "af-a4", "title": "LIE — estrutura grupos/documentos da base histórica laudos", "responsible": "Tech + Coord. laudos", "dueMonth": "2026-09", "priority": "critical", "status": "pendente" },
+        { "id": "af-a5", "title": "LDC + levantamento carga — fluxo colheita no app", "responsible": "Tech + Macgyver", "dueMonth": "2026-10", "priority": "critical", "status": "pendente" },
+        { "id": "af-a6", "title": "Instalação medidor IoT — registro padronizado (serial, cabos, ponto)", "responsible": "Tech + IoT", "dueMonth": "2026-10", "priority": "high", "status": "pendente" },
+        { "id": "af-a7", "title": "Estudo gargalos operacionais → ranking prioridade dev", "responsible": "Tech + Gestão", "dueMonth": "2026-09", "priority": "high", "status": "pendente" },
+        { "id": "af-a8", "title": "Plataforma web — continuidade analista (LIE piloto)", "responsible": "Tech", "dueMonth": "2026-11", "priority": "high", "status": "pendente" },
+        { "id": "af-a9", "title": "Visita comercial agendada → dados para proposta (integração vendas)", "responsible": "Tech + Comercial", "dueMonth": "2026-12", "priority": "medium", "status": "pendente" },
+        { "id": "af-a10", "title": "ClickUp ↔ app ↔ plataforma — sync estável", "responsible": "Tech", "dueMonth": "2026-12", "priority": "high", "status": "pendente" }
       ],
       "risks": [
-        { "title": "Dados inconsistentes limitam planejamento", "mitigation": "Qualidade de dados como OKR do trimestre." }
+        { "title": "Arquitetura app não cobre todos os serviços", "mitigation": "Teste campo cedo · refactor após piloto, não escalar antes." },
+        { "title": "Dev lento sem feedback de uso real", "mitigation": "Piloto ago · 1 serviço por vez, não 6 em paralelo." },
+        { "title": "Plataforma web tenta abraçar tudo de uma vez", "mitigation": "Caso a caso: entregável na plataforma vs. integração externa." },
+        { "title": "Levantamento/LDC urgente e ainda manual", "mitigation": "Prioridade out no app — Macgyver como usuário piloto." }
       ]
     },
     "medidores-iot": {
       "id": "medidores-iot",
       "strategicNotes": [
-        "Área em estruturação — produto e go-to-market a definir com gestão.",
-        "Potencial de recorrência e nova fonte de receita (fora da meta de contratos atual)."
+        "40 medidores 4G — 25% (~10) manutenção simples H2; recuperar sem uso (Selecta Alimentos).",
+        "SM3F2.0 baseado no Controlador de Carga (Smart Charging) — custo menor, precisão maior.",
+        "SA3F1.0 (R$1.500) substitui analisador convencional — expandir analisadores atuais é caro.",
+        "Evolução cronológica após Smart Charging — Diogo (FW) + Macgyver (HW/campo)."
       ],
       "objectives": [
-        { "id": "iot1", "title": "Definir proposta de valor Medidores IoT", "metric": "MVP", "target": "Documento" },
-        { "id": "iot2", "title": "Identificar 3 clientes piloto", "metric": "Pilotos", "target": "3" }
+        { "id": "iot1", "title": "Manutenção frota 4G", "metric": "Medidores OK", "target": "100% críticos até ago" },
+        { "id": "iot2", "title": "Recuperação medidores parados", "metric": "Recuperados", "target": "Selecta + demais sem uso até set" },
+        { "id": "iot3", "title": "SM3F2.0 piloto", "metric": "Unidades piloto", "target": "Pós-validação Controlador até out" },
+        { "id": "iot4", "title": "Roadmap SA3F1.0", "metric": "Especificação", "target": "Substituto analisador — dez" }
       ],
       "activities": [
-        { "id": "iot-a1", "title": "Workshop de definição do produto IoT", "responsible": "A definir", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
-        { "id": "iot-a2", "title": "Mapear fornecedores e custo de hardware", "responsible": "A definir", "dueMonth": "2026-09", "priority": "medium", "status": "pendente" }
+        { "id": "iot-a1", "title": "Manutenção simples ~10 medidores (25% frota 4G)", "responsible": "Macgyver", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "iot-a2", "title": "Recolher medidores sem uso — Selecta Alimentos + outros", "responsible": "Macgyver + Coord.", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "iot-a3", "title": "Inventário frota: status, cliente, disponível instalação", "responsible": "Coord. laudos", "dueMonth": "2026-07", "priority": "high", "status": "pendente" },
+        { "id": "iot-a4", "title": "SM3F2.0 — especificação BOM (Controlador + sensores 100/600/1000A)", "responsible": "Macgyver + Diogo", "dueMonth": "2026-09", "priority": "high", "status": "pendente" },
+        { "id": "iot-a5", "title": "Piloto SM3F2.0 pós-validação Smart Charging", "responsible": "Macgyver + Diogo", "dueMonth": "2026-10", "priority": "high", "status": "pendente" },
+        { "id": "iot-a6", "title": "SA3F1.0 — requisitos substituto analisador qualidade energia", "responsible": "Diogo + Eng.", "dueMonth": "2026-11", "priority": "medium", "status": "pendente" },
+        { "id": "iot-a7", "title": "Integrar stack IoT ao app coleta LDC (documentação)", "responsible": "Fernando + Coord.", "dueMonth": "2026-12", "priority": "medium", "status": "pendente" }
       ],
       "risks": [
-        { "title": "Dispersão sem foco comercial", "mitigation": "Só avançar após piloto com cliente pagante." }
+        { "title": "Smart Charging atrasado bloqueia SM3F2.0", "mitigation": "H2 IoT = manutenção + recuperação; novo hardware só pós-validação." },
+        { "title": "Frota degradada sem manutenção 25%", "mitigation": "Priorizar ago · Macgyver alocado." },
+        { "title": "Macgyver sobrecarregado (HW + LDC/ICV + SC)", "mitigation": "Sequência clara SC primeiro; compor remuneração com produção." }
       ]
     },
     "escala": {
       "id": "escala",
       "strategicNotes": [
-        "De 3 para 5 projetistas + automação — modelo para crescer sem quebrar SLA.",
-        "Escala comercial condicionada a capacidade de entrega."
+        "Recife base: 200+ cond. visitados (É), 2 vendedores sem atraso → meta 4 para RM PE.",
+        "Estudo mercado: VE por estado (ABVE 2025), densidade cond., lançamentos/ano — a validar.",
+        "Expansão por proximidade: PE → BA/CE → PB/RN/AL → nacional (SP/RJ/DF).",
+        "Estressar modelo PE antes de escalar headcount ou abrir hub NE."
       ],
       "objectives": [
-        { "id": "es1", "title": "Onboarding completo dos 2 novos projetistas", "metric": "Capacidade", "target": "5 FTE operando" },
-        { "id": "es2", "title": "Playbook de contratação comercial", "metric": "Headcount", "target": "Gatilho documentado" }
+        { "id": "es1", "title": "Descobrir limite vendedores PE", "metric": "Headcount", "target": "2→4 vend. com SLA ok até set" },
+        { "id": "es2", "title": "Conversão pipeline É", "metric": "Taxa fechamento", "target": "Quantificar 200+ visitados até ago" },
+        { "id": "es3", "title": "Ranking expansão NE", "metric": "Decisão hub", "target": "BA vs CE até dez" },
+        { "id": "es4", "title": "Indicadores SECovi/CBIC", "metric": "Lançamentos/ano", "target": "PE, BA, CE mapeados até out" }
       ],
       "activities": [
-        { "id": "es-a1", "title": "Documentar capacidade máxima por projetista/mês", "responsible": "Gestão + Operação", "dueMonth": "2026-07", "priority": "critical", "status": "pendente" },
-        { "id": "es-a2", "title": "Plano de contratação se cenário 3x se confirmar", "responsible": "Gestão", "dueMonth": "2026-09", "priority": "high", "status": "pendente" },
-        { "id": "es-a3", "title": "Revisar terceirização de laudos de alto volume", "responsible": "Gestão", "dueMonth": "2026-10", "priority": "medium", "status": "pendente" }
+        { "id": "es-a1", "title": "Quantificar conversão 200+ condomínios visitados (contato É)", "responsible": "Comercial + Gestão", "dueMonth": "2026-08", "priority": "critical", "status": "pendente" },
+        { "id": "es-a2", "title": "Estressar 2→4 vendedores Recife — medir propostas/mês e SLA", "responsible": "Diretor Comercial", "dueMonth": "2026-09", "priority": "critical", "status": "pendente" },
+        { "id": "es-a3", "title": "Mapear tráfego/leads vs fechamentos por região (baseline PE)", "responsible": "Marketing + Comercial", "dueMonth": "2026-08", "priority": "high", "status": "pendente" },
+        { "id": "es-a4", "title": "Pesquisa SECovi: lançamentos imobiliários PE, BA, CE", "responsible": "Gestão + Comercial", "dueMonth": "2026-10", "priority": "high", "status": "pendente" },
+        { "id": "es-a5", "title": "Calibrar ranking estados com dados CRM + ABVE trimestral", "responsible": "Gestão", "dueMonth": "2026-10", "priority": "high", "status": "pendente" },
+        { "id": "es-a6", "title": "Decisão go/no-go hub NE onda 1 (Salvador ou Fortaleza)", "responsible": "Gestão + Diretor", "dueMonth": "2026-12", "priority": "high", "status": "pendente" },
+        { "id": "es-a7", "title": "Playbook expansão geográfica (vendedor + instalação + suporte)", "responsible": "Gestão + Operação", "dueMonth": "2026-12", "priority": "medium", "status": "pendente" },
+        { "id": "es-a8", "title": "Interior PE (Caruaru) — piloto 1 vendedor compartilhado", "responsible": "Comercial", "dueMonth": "2026-11", "priority": "medium", "status": "pendente" }
       ],
       "risks": [
-        { "title": "Crescer vendas mais rápido que entrega", "mitigation": "Gate comercial: não vender acima da fila de produção." }
+        { "title": "Escalar vendedores sem saber limite PE", "mitigation": "Estressar modelo jul–set antes de contratar além de 4." },
+        { "title": "João Pessoa/PB menor que expectativa", "mitigation": "Ranking ABVE confirma PB abaixo PE — 2 vend. max até validar." },
+        { "title": "Expandir longe (SP) antes de NE maduro", "mitigation": "Fases geográficas — proximidade Recife primeiro." },
+        { "title": "Indicadores cond./lançamentos desatualizados", "mitigation": "SECovi + CRM trimestral; marcar estimativas no dashboard." }
       ]
     }
   }

@@ -8,9 +8,23 @@ import type { VendasDirectorDashboard } from "@/lib/areas/build-vendas-director-
 import type { AreaDashboardItem, AreasDashboard } from "@/lib/areas/types";
 import { AreaDetailPanel } from "@/components/areas/AreasOverview";
 import { AreasSidebar } from "@/components/areas/AreasSidebar";
+import { AutomacoesFerramentasAreaPage } from "@/components/areas/AutomacoesFerramentasAreaPage";
+import { EventosAreaPage } from "@/components/areas/EventosAreaPage";
+import { ObrasAreaPage } from "@/components/areas/ObrasAreaPage";
 import { ConsultoriaProjetosAreaPage } from "@/components/areas/ConsultoriaProjetosAreaPage";
+import { ConsultoriaLaudosAreaPage } from "@/components/areas/ConsultoriaLaudosAreaPage";
+import { EscalaAreaPage } from "@/components/areas/EscalaAreaPage";
+import { MedidoresIoTAreaPage } from "@/components/areas/MedidoresIoTAreaPage";
+import { SmartChargingAreaPage } from "@/components/areas/SmartChargingAreaPage";
 import { VendasAreaPage } from "@/components/areas/VendasAreaPage";
+import type { AutomacoesFerramentasDashboard } from "@/lib/areas/build-automacoes-ferramentas-dashboard";
+import type { EventosDashboard } from "@/lib/areas/build-eventos-dashboard";
+import type { ObrasDashboard } from "@/lib/areas/build-obras-dashboard";
 import type { ConsultoriaProjetosDashboard } from "@/lib/areas/build-consultoria-projetos-dashboard";
+import type { ConsultoriaLaudosDashboard } from "@/lib/areas/build-consultoria-laudos-dashboard";
+import type { EscalaDashboard } from "@/lib/areas/build-escala-dashboard";
+import type { MedidoresIoTDashboard } from "@/lib/areas/build-medidores-iot-dashboard";
+import type { SmartChargingDashboard } from "@/lib/areas/build-smart-charging-dashboard";
 
 type Props = {
   dashboard: AreasDashboard;
@@ -20,6 +34,13 @@ type Props = {
   vendasUnitEconomics?: VendasUnitEconomicsDashboard | null;
   vendasDirectorDashboard?: VendasDirectorDashboard | null;
   consultoriaProjetos?: ConsultoriaProjetosDashboard | null;
+  consultoriaLaudos?: ConsultoriaLaudosDashboard | null;
+  medidoresIoT?: MedidoresIoTDashboard | null;
+  smartCharging?: SmartChargingDashboard | null;
+  escala?: EscalaDashboard | null;
+  automacoesFerramentas?: AutomacoesFerramentasDashboard | null;
+  eventos?: EventosDashboard | null;
+  obras?: ObrasDashboard | null;
 };
 
 export function AreaDetailPage({
@@ -29,7 +50,14 @@ export function AreaDetailPage({
   vendasScenarios,
   vendasUnitEconomics,
   vendasDirectorDashboard,
-  consultoriaProjetos
+  consultoriaProjetos,
+  consultoriaLaudos,
+  medidoresIoT,
+  smartCharging,
+  escala,
+  automacoesFerramentas,
+  eventos,
+  obras
 }: Props) {
   return (
     <div className="areas-page">
@@ -64,6 +92,20 @@ export function AreaDetailPage({
             />
           ) : area.id === "consultoria-projetos" && consultoriaProjetos ? (
             <ConsultoriaProjetosAreaPage area={area} data={consultoriaProjetos} />
+          ) : area.id === "consultoria-laudos" && consultoriaLaudos ? (
+            <ConsultoriaLaudosAreaPage area={area} data={consultoriaLaudos} />
+          ) : area.id === "medidores-iot" && medidoresIoT ? (
+            <MedidoresIoTAreaPage area={area} data={medidoresIoT} />
+          ) : area.id === "smart-charging" && smartCharging ? (
+            <SmartChargingAreaPage area={area} data={smartCharging} />
+          ) : area.id === "escala" && escala ? (
+            <EscalaAreaPage area={area} data={escala} />
+          ) : area.id === "automacoes-ferramentas" && automacoesFerramentas ? (
+            <AutomacoesFerramentasAreaPage area={area} data={automacoesFerramentas} />
+          ) : area.id === "eventos" && eventos ? (
+            <EventosAreaPage area={area} data={eventos} />
+          ) : area.id === "obras" && obras ? (
+            <ObrasAreaPage area={area} data={obras} />
           ) : (
             <AreaDetailPanel area={area} />
           )}

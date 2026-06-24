@@ -1,0 +1,108 @@
+{
+  "operatingModel": {
+    "title": "Medidores IoT — operação + P&D longo prazo",
+    "headline": "40 medidores 4G em operação (LDC/planejamento energético). H2/2026: manutenção da frota, recuperação de equipamentos parados e preparação do SM3F2.0 (Controlador de Carga). Evolução de hardware/firmware cronologicamente subsequente ao Smart Charging — mão de obra compartilhada (Diogo + Macgyver).",
+    "h2Focus": "Manutenções simples (~25% da frota) + recolher medidores sem uso (Selecta Alimentos e outros). Não escalar frota agressivamente no 2S — estabilizar e preparar próxima geração.",
+    "sequencingNote": "Desenvolvimento IoT (SM3F2.0, SA3F1.0, Central 2.1) vem após validação Smart Charging em cliente real — produção e vendas EV sincronizadas depois."
+  },
+  "currentFleet": {
+    "title": "Frota atual",
+    "totalMeters4g": 40,
+    "maintenanceNeededPct": 25,
+    "maintenanceNeededCount": 10,
+    "h2Actions": [
+      "Realizar manutenções simples nos ~10 medidores (25%)",
+      "Recolher medidores de clientes sem uso — prioridade Selecta Alimentos",
+      "Recuperação e recondicionamento para estoque disponível"
+    ],
+    "recoveryTargets": ["Selecta Alimentos", "Demais clientes com medidor parado / sem uso"]
+  },
+  "productLine": {
+    "title": "Linha de produtos",
+    "sm3f20": {
+      "id": "SM3F2.0",
+      "name": "Medidor SM3F2.0",
+      "description": "100% baseado no novo Controlador de Carga (em validação — excelentes resultados). Opção emergencial: custo inferior ao medidor atual e precisão superior.",
+      "defaultUnitPrice": 1000,
+      "basedOn": "Controlador de Carga V1.0 → V1.1 (Smart Charging)",
+      "status": "validacao"
+    },
+    "sa3f10": {
+      "id": "SA3F1.0",
+      "name": "Medidor SA3F1.0",
+      "description": "Substituto do analisador de qualidade de energia convencional. Hoje ~5 analisadores — expandir com analisadores tradicionais tem custo elevado.",
+      "defaultUnitPrice": 1500,
+      "replaces": "Analisador qualidade energia (não IoT) — ver Laudos",
+      "status": "planejando"
+    },
+    "sensors": [
+      { "id": "100a", "label": "Sensor 100A", "defaultUnitPrice": 100, "note": "TC / sensor baixa corrente" },
+      { "id": "600a", "label": "Sensor 600A", "defaultUnitPrice": 200, "note": "Faixa intermediária" },
+      { "id": "1000a", "label": "Sensor 1000A", "defaultUnitPrice": 500, "note": "Alta corrente" }
+    ]
+  },
+  "purchaseSimulation": {
+    "title": "Simulação de compra — SM3F2.0 + sensores + SA3F1.0",
+    "description": "Estime investimento em novos equipamentos. Quantidades e preços editáveis.",
+    "defaults": {
+      "sm3f20Quantity": 0,
+      "sm3f20UnitPrice": 1000,
+      "sa3f10Quantity": 0,
+      "sa3f10UnitPrice": 1500,
+      "sensorQuantities": { "100a": 0, "600a": 0, "1000a": 0 }
+    },
+    "analyzerComparison": {
+      "currentAnalyzers": 5,
+      "note": "Expandir frota de analisadores tradicionais é caro — SA3F1.0 como alternativa IoT de longo prazo."
+    }
+  },
+  "sharedTeam": {
+    "title": "Time compartilhado Smart Charging + IoT",
+    "members": [
+      {
+        "name": "Diogo",
+        "role": "Eng. firmware",
+        "monthlyComp": "R$ 2.500",
+        "focus": "Firmware Controlador, Central, medidores — melhorias H2"
+      },
+      {
+        "name": "Macgyver",
+        "role": "Eng. hardware + campo",
+        "monthlyComp": "R$ 5.000",
+        "focus": "Hardware, instalações em campo, levantamento de carga LDC/ICV",
+        "compensationModel": "Compor salário com produção Smart Charging quando vendas EV forem significativas; depois produção IoT sincronizada"
+      }
+    ],
+    "linkedArea": "smart-charging"
+  },
+  "roadmapPhases": [
+    {
+      "phase": "jul–ago/2026",
+      "title": "Frota + Smart Charging primeiro",
+      "items": [
+        "Manutenção ~10 medidores (25% frota 4G)",
+        "Recuperação Selecta Alimentos + sem uso",
+        "Apoiar validação Controlador de Carga (base SM3F2.0)",
+        "Smart Charging: protótipo cliente real (prioridade)"
+      ]
+    },
+    {
+      "phase": "set–out/2026",
+      "title": "Próxima geração preparada",
+      "items": [
+        "SM3F2.0 piloto pós-validação Controlador",
+        "Simular compra sensores + unidades para demanda LDC",
+        "Central 2.0 → 2.1 · Controlador V1.0 → V1.1 (com Smart Charging)"
+      ]
+    },
+    {
+      "phase": "nov–dez/2026",
+      "title": "Escala planejada 2027",
+      "items": [
+        "Roadmap SA3F1.0 (substituto analisador)",
+        "Produção sincronizada com vendas Smart Charging",
+        "Documentar stack IoT integrado ao app LDC"
+      ]
+    }
+  ]
+}

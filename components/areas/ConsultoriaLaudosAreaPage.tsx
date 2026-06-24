@@ -1,15 +1,15 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { ConsultoriaProjetosDashboard } from "@/lib/areas/build-consultoria-projetos-dashboard";
+import type { ConsultoriaLaudosDashboard } from "@/lib/areas/build-consultoria-laudos-dashboard";
 import type { AreaDashboardItem } from "@/lib/areas/types";
 import { AreaDetailPanel } from "@/components/areas/AreasOverview";
 import {
-  ConsultoriaProjetosCapacitySection,
-  ConsultoriaProjetosOperationalFocus,
-  ConsultoriaProjetosRoadmapSection,
-  ConsultoriaProjetosSummaryBar
-} from "@/components/areas/ConsultoriaProjetosSections";
+  ConsultoriaLaudosCapacitySection,
+  ConsultoriaLaudosOperationalFocus,
+  ConsultoriaLaudosRoadmapSection,
+  ConsultoriaLaudosSummaryBar
+} from "@/components/areas/ConsultoriaLaudosSections";
 import { VendasCollapsibleSection } from "@/components/areas/VendasCollapsibleSection";
 
 type SectionId = "modelo" | "capacidade" | "roadmap" | "plano";
@@ -23,10 +23,10 @@ const DEFAULT_OPEN: Record<SectionId, boolean> = {
 
 type Props = {
   area: AreaDashboardItem;
-  data: ConsultoriaProjetosDashboard;
+  data: ConsultoriaLaudosDashboard;
 };
 
-export function ConsultoriaProjetosAreaPage({ area, data }: Props) {
+export function ConsultoriaLaudosAreaPage({ area, data }: Props) {
   const [openSections, setOpenSections] = useState(DEFAULT_OPEN);
 
   const toggle = useCallback((id: SectionId) => {
@@ -36,16 +36,16 @@ export function ConsultoriaProjetosAreaPage({ area, data }: Props) {
   const scrollTo = (id: SectionId) => {
     setOpenSections((prev) => ({ ...prev, [id]: true }));
     requestAnimationFrame(() => {
-      document.getElementById(`cp-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById(`cl-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
 
   return (
-    <div className="vendas-page consultoria-page">
-      <ConsultoriaProjetosSummaryBar data={data} />
+    <div className="vendas-page consultoria-page consultoria-laudos-page">
+      <ConsultoriaLaudosSummaryBar data={data} />
 
       <div className="vendas-toolbar">
-        <nav className="vendas-nav" aria-label="Seções Projetos">
+        <nav className="vendas-nav" aria-label="Seções Laudos">
           {[
             { id: "modelo" as const, label: "Modelo" },
             { id: "capacidade" as const, label: "Capacidade" },
@@ -61,38 +61,38 @@ export function ConsultoriaProjetosAreaPage({ area, data }: Props) {
 
       <div className="vendas-sections">
         <VendasCollapsibleSection
-          id="cp-modelo"
+          id="cl-modelo"
           title="Modelo operacional & pilares"
-          subtitle="PCC híbrido · projetos variados · cross-training · PDCA · automação CAD"
+          subtitle="LIE H2 · app campo · plataforma revisão · apresentação web · guia→obra · visitas"
           variant="monitor"
           open={openSections.modelo}
           onToggle={() => toggle("modelo")}
         >
-          <ConsultoriaProjetosOperationalFocus data={data} />
+          <ConsultoriaLaudosOperationalFocus data={data} />
         </VendasCollapsibleSection>
 
         <VendasCollapsibleSection
-          id="cp-capacidade"
-          title="Capacidade & entregas"
-          subtitle={`YTD ${data.ytd2026.avgMonthlyDeals}/mês · meta ${data.targets.projectsTotalPerMonth} · PIE ${data.targets.piePerMonth}`}
+          id="cl-capacidade"
+          title="Capacidade & mix"
+          subtitle={`YTD ${data.ytd2026.avgMonthlyDeals}/mês · LDC meta ${data.targets.ldcPerMonth}`}
           open={openSections.capacidade}
           onToggle={() => toggle("capacidade")}
         >
-          <ConsultoriaProjetosCapacitySection data={data} />
+          <ConsultoriaLaudosCapacitySection data={data} />
         </VendasCollapsibleSection>
 
         <VendasCollapsibleSection
-          id="cp-roadmap"
+          id="cl-roadmap"
           title="Roadmap jul–dez/2026"
-          subtitle="Estabilizar → padronizar → escalar & descentralizar apresentação"
+          subtitle="Baseline → automatizar ICV → plataforma carregadores/condomínio"
           open={openSections.roadmap}
           onToggle={() => toggle("roadmap")}
         >
-          <ConsultoriaProjetosRoadmapSection data={data} />
+          <ConsultoriaLaudosRoadmapSection data={data} />
         </VendasCollapsibleSection>
 
         <VendasCollapsibleSection
-          id="cp-plano"
+          id="cl-plano"
           title="Plano de execução"
           subtitle={`${area.activities.length} atividades · objetivos e riscos`}
           open={openSections.plano}

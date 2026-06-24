@@ -1,7 +1,7 @@
 {
   "operatingModel": {
     "title": "Modelo operacional — time único de 5",
-    "headline": "Mesmo time atende laudos e projetos. LDC já escala (automação + app). Projetos variados são a lacuna — padronizar, automatizar por bloco e cross-train para flexibilidade.",
+    "headline": "Mesmo time atende laudos e projetos. LDC já escala (automação + app). Projetos variados são a lacuna — padronizar, automatizar por bloco e cross-train. PCC (carregamento coletivo) é produto híbrido laudo+projeto em crescimento.",
     "teamComposition": {
       "totalFte": 5,
       "engineerRole": "Engenheiro: inspeções (geralmente à noite) + montagem de laudos LDC — processo já bem produzido e automatizado.",
@@ -9,12 +9,60 @@
       "flexibilityGoal": "Cross-training: todos tocam todos os instrumentos — mais lento no curto prazo, mais flexível para o comercial."
     },
     "evolutionPath": [
-      { "phase": "1", "label": "Executor padronizado", "description": "Checklist, libs CAD, blocos automatizados, PDS semanal" },
+      { "phase": "1", "label": "Executor padronizado", "description": "Checklist, libs CAD, blocos automatizados, PDCA semanal" },
       { "phase": "2", "label": "Especialista revisor", "description": "Domínio por tipo (PIE, PROJETOS, LDC…) + revisão técnica" },
       { "phase": "3", "label": "Gerente operacional", "description": "1–2 líderes acompanham apresentação com comercial — engenheiro não escala sozinho" }
     ]
   },
+  "pccHybridProduct": {
+    "title": "PCC — Projeto de Carregamento Coletivo (produto híbrido)",
+    "headline": "Serviço relativamente novo, mas crescente como alternativa: em muitos casos evita implantar sprinkler de imediato, oferecendo pontos onde moradores carregam veículos. Combina diagnóstico tipo LDC com projeto de ponto de carregamento — personalizado, porém com sequência definida.",
+    "commercialContext": "Vendido como pacote com sequência clara. Frequentemente aparece junto com LCC no pipeline (LCC + PCC). Faz ponte Laudos ↔ Projetos ↔ Obras.",
+    "twoParts": {
+      "title": "Duas partes — sequência obrigatória",
+      "part1": {
+        "id": "diagnostico-ldc",
+        "name": "Parte 1 — Diagnóstico / disponibilidade (laudo resumido)",
+        "description": "LDC resumido para contexto de carregamento coletivo: medição e levantamento de carga (mesmo algoritmo LDC), sem escopo completo de LDC tradicional (não é medição/carregador para todos).",
+        "output": "Define o que pode ser instalado — limites de carga e viabilidade elétrica para carregamento coletivo.",
+        "reuseFromLdc": "Reutiliza automações, medidores IoT e fluxo de levantamento de carga do LDC/planejamento energético."
+      },
+      "part2": {
+        "id": "projeto-ponto",
+        "name": "Parte 2 — Projeto do ponto de carregamento",
+        "description": "Com base no que a Parte 1 autorizou e no que foi discutido com o cliente: onde fica o carregador, qual equipamento, layout e escopo de execução.",
+        "output": "Projeto do que será feito, onde será feito e como será entregue — inclui pré-orçamento orientado ao custo de execução de obra.",
+        "downstream": "Alimenta proposta de obras no final do funil — produto híbrido fecha em obra."
+      }
+    },
+    "documentScope": {
+      "title": "Escopo do documento final (contexto coletivo)",
+      "gap": "Faltava deixar explícita a sequência Parte 1 → Parte 2 e o escopo final do entregável no contexto de carregamento coletivo.",
+      "h2Action": "Definir template único PCC: estrutura Parte 1 (diagnóstico) + Parte 2 (projeto) + pré-orçamento obra — objetivo de saída adaptado ao coletivo, não ao LDC completo.",
+      "deliverables": [
+        "Parte 1: laudo de disponibilidade resumido (coletivo)",
+        "Parte 2: projeto do ponto de carregamento (planta, especificação, local)",
+        "Pré-orçamento / base para proposta de obras",
+        "Apresentação integrada ao síndico/conselho (quando aplicável)"
+      ]
+    },
+    "processSequence": [
+      "Visita + medição/levantamento de carga (fluxo LDC simplificado)",
+      "Parte 1 entregue: o que pode ser instalado",
+      "Alinhamento com cliente: pontos, quantidade, tipo de carregador",
+      "Parte 2: projeto CAD do ponto de carregamento",
+      "Pré-orçamento obra → proposta comercial obras",
+      "Execução obra (área Obras)"
+    ],
+    "linkedAreas": ["consultoria-laudos (LDC/algoritmo)", "consultoria-projetos (CAD)", "obras (execução)", "smart-charging (EV)"]
+  },
   "strategicPillars": [
+    {
+      "id": "pcc-hybrid",
+      "title": "PCC — laudo + projeto (EV coletivo)",
+      "description": "Padronizar sequência Parte 1 (diagnóstico LDC resumido) → Parte 2 (projeto ponto) → pré-orçamento obra. Template e guia mestre.",
+      "status": "em_andamento"
+    },
     {
       "id": "automation-cad",
       "title": "Automação CAD por blocos",
@@ -52,9 +100,9 @@
       "status": "pendente"
     },
     {
-      "id": "pds",
-      "title": "PDS simplificado",
-      "description": "Planejado × feito × aprendido por projeto — retrospectiva que alimenta o próximo.",
+      "id": "pdca",
+      "title": "PDCA — melhoria contínua",
+      "description": "Plan → Do → Check → Act por projeto — retrospectiva que alimenta o guia mestre do escopo.",
       "status": "pendente"
     },
     {
@@ -67,7 +115,7 @@
   "learningLoop": {
     "title": "Ciclo de aprendizado contínuo",
     "steps": [
-      "Projeto entregue → PDS (planejado / feito / aprendido)",
+      "Projeto entregue → PDCA (Plan / Do / Check / Act)",
       "Apresentação semanal do time — melhorias documentadas",
       "Atualizar libs, checklists ClickUp e blocos CAD",
       "Próximo projeto parte da base nova — executor em paralelo reutiliza"
@@ -93,7 +141,7 @@
   },
   "performanceCulture": {
     "title": "Cultura de medição & melhoria H2",
-    "dailyRhythm": "~4h/dia de dedicação em projetos — horários não batem 100%; reservar dias focados para produção CAD e dias para PDS/capacitação.",
+    "dailyRhythm": "~4h/dia de dedicação em projetos — horários não batem 100%; reservar dias focados para produção CAD e dias para PDCA/capacitação.",
     "metrics": [
       "Tempo de execução exato por cliente e por tipo de serviço",
       "Velocidade e qualidade por pessoa (erros / retrabalho)",
@@ -128,8 +176,9 @@
       "items": [
         "Baseline SLA + tempo exato por cliente/tipo (ClickUp)",
         "Inventário base de serviços + estrutura biblioteca CAD",
-        "Calendário: dias foco produção vs PDS/capacitação (~4h/dia)",
-        "PDS piloto + co-pro alimentando guia mestre CDM"
+        "PCC: definir escopo documento final (Parte 1 diagnóstico + Parte 2 projeto coletivo)",
+        "Calendário: dias foco produção vs PDCA/capacitação (~4h/dia)",
+        "PDCA piloto + co-pro alimentando guia mestre CDM"
       ]
     },
     {
@@ -137,6 +186,7 @@
       "title": "Padronizar & automatizar",
       "items": [
         "Automação CDM (ampliação) — 1º após PIE",
+        "PCC: template único Parte 1 + Parte 2 + pré-orçamento obra",
         "Libs: lista material, plantas, copiar A→B, replicar blocos",
         "Automação: projeto sistema + botão emergência (piloto)",
         "Dashboard tempo/pessoa — reconhecer top performers"
@@ -148,8 +198,8 @@
       "items": [
         "Automação disparagem em produção",
         "Capacitação dirigida por dados (quem está defasado)",
-        "Guia mestre atualizado para cada escopo ativo",
-        "Revisão capacidade vs pipeline comercial"
+        "Guia mestre PCC + escopos ativos (CDM, PIE, etc.)",
+        "Revisão capacidade vs pipeline (PCC + LCC + EV)"
       ]
     }
   ]

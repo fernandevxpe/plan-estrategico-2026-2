@@ -1,0 +1,338 @@
+{
+  "operatingModel": {
+    "title": "Obras — execução em campo e ticket alto",
+    "headline": "Obras são ~58% da receita YTD quando somamos etiqueta OBRA + serviço CRM — mas a visão correta por subgrupo é ~R$ 287k em 13 fechamentos (jan–jun/26), ticket médio ~R$ 22k. Mix dominado por infraestrutura EV e ampliação CDM. Ritmo irregular: mar/26 pico (R$ 101k), mai zero, jun R$ 950.",
+    "h2Focus": "Meta H2: ≥ 2 obras/mês acima de R$ 20k · proteger ticket · integrar laudo→guia→obra e PCC→pré-orçamento · capacidade de campo antes de escalar volume.",
+    "teamComposition": {
+      "lead": "Responsável central por obra — coordena todas as execuções (confirmado)",
+      "fieldCapacity": "3–5 pessoas dedicadas a campo + Macgyver (EV/IoT/SC compartilhado)",
+      "simultaneousCapacity": "Até 2 obras grandes simultâneas sem atrasar",
+      "smallJobPolicy": "Obras < R$ 10k só como porta de entrada para obra maior — não como fim em si",
+      "visitPilot": "Piloto set/26: time Obras executa LIE noturno + ICV — libera engenheiro",
+      "externalCapacity": "Eletricistas/empreiteiros parceiros — mapear e padronizar"
+    },
+    "dataQualityNote": "CRM: etiqueta OBRA nem sempre cobre CDM-obra (ex.: Madalena Colonial R$ 45k). Classificação por subgrupo usa CRM + ClickUp. 2 deals 'obras gerais' com confiança baixa."
+  },
+  "performance2026": {
+    "title": "Desempenho jan–jun/2026 (subgrupos deduplicados)",
+    "source": "analysis.obraSubgroups — CRM + evidência ClickUp",
+    "totals": {
+      "wonDeals": 13,
+      "revenue": 287232,
+      "avgTicket": 22095,
+      "shareOfTotalRevenuePct": 32
+    },
+    "monthlyPattern": [
+      { "month": "2026-01", "deals": 3, "revenue": 64800, "note": "CDM Samsara, Quinta Algarve + Castelo Blois" },
+      { "month": "2026-02", "deals": 4, "revenue": 67282, "note": "Verano EV R$ 43k + Melo Barbosa + Villa Casa Forte" },
+      { "month": "2026-03", "deals": 3, "revenue": 102700, "note": "Pico: Reserva do Poço EV R$ 83,5k" },
+      { "month": "2026-04", "deals": 2, "revenue": 51500, "note": "Madalena CDM R$ 45k + Enseada PIE" },
+      { "month": "2026-05", "deals": 0, "revenue": 0, "note": "Zero fechamentos obra" },
+      { "month": "2026-06", "deals": 1, "revenue": 950, "note": "Adequação elétrica — abaixo do gate R$ 20k" }
+    ],
+    "targets": {
+      "shareObras": "≥ 22% do mix",
+      "ticketMin": "≥ R$ 20.000",
+      "volumeH2": "≥ 2 obras/mês > R$ 20k"
+    },
+    "gateStatus": "Atenção — jun/26 e mai/26 abaixo da meta de volume e ticket"
+  },
+  "obraTypes": {
+    "title": "Tipos de obra — classificação operacional",
+    "types": [
+      {
+        "id": "ev-infra",
+        "name": "Infraestrutura de carregamento veicular",
+        "ytd2026": { "deals": 3, "revenue": 131032, "avgTicket": 43677 },
+        "confidence": "alta",
+        "examples": ["Reserva do Poço R$ 83,5k", "Verano ADM R$ 43k", "Villa Casa Forte R$ 4,5k"],
+        "upstream": ["LCC/PIE/PCM", "Smart Charging", "Instalação carregador"],
+        "executionNotes": "Fluxo EV: laudo → projeto → obra → controlador. Integrar com SC PO→OS→instalação."
+      },
+      {
+        "id": "cdm-obra",
+        "name": "CDM — obra/ampliação de centro de medição",
+        "ytd2026": { "deals": 4, "revenue": 107800, "avgTicket": 26950 },
+        "confidence": "alta",
+        "examples": ["Madalena Colonial R$ 45k", "Samsara R$ 28k", "Quinta Tereza R$ 17,8k"],
+        "upstream": ["LDC", "PCM", "planejamento energético"],
+        "executionNotes": "Frequentemente pós-LDC. Padronizar checklist obra CDM no ClickUp."
+      },
+      {
+        "id": "geral",
+        "name": "Obras elétricas gerais/indefinidas",
+        "ytd2026": { "deals": 2, "revenue": 33300, "avgTicket": 16650 },
+        "confidence": "baixa",
+        "examples": ["Castelo Blois R$ 19,8k", "Melo Barbosa R$ 13,5k"],
+        "upstream": ["LIE", "diagnóstico assembleia"],
+        "executionNotes": "Triagem CRM incompleta — revisar escopo e reclassificar."
+      },
+      {
+        "id": "pie-exec",
+        "name": "Infraestrutura/eletrocalha/PIE",
+        "ytd2026": { "deals": 1, "revenue": 6500, "avgTicket": 6500 },
+        "confidence": "média",
+        "examples": ["Enseada do Mar — eletrocalha"],
+        "upstream": ["PIE projeto", "PROJETOS"],
+        "executionNotes": "Ponte Projetos → Obras — pré-orçamento do projeto alimenta proposta."
+      },
+      {
+        "id": "cdm-proj",
+        "name": "CDM — projeto/planejamento (pré-obra)",
+        "ytd2026": { "deals": 1, "revenue": 6250, "avgTicket": 6250 },
+        "confidence": "média",
+        "examples": ["Morada Rosarinho — PCM"],
+        "upstream": ["LDC", "PCM"],
+        "executionNotes": "Não é obra de execução — mas alimenta pipeline obra CDM."
+      },
+      {
+        "id": "adequacao",
+        "name": "Adequação/correção elétrica geral",
+        "ytd2026": { "deals": 1, "revenue": 950, "avgTicket": 950 },
+        "confidence": "média",
+        "examples": ["Rio Araguaia — melhoria elétrica"],
+        "upstream": ["LIE", "diagnóstico pontual"],
+        "executionNotes": "Ticket baixo — avaliar se entra no mix ou vira upsell para obra maior."
+      }
+    ]
+  },
+  "upstreamFunnels": {
+    "title": "De onde vêm as obras — funis de entrada",
+    "sources": [
+      {
+        "id": "lie-guia",
+        "name": "LIE → Guia de Contratação → proposta → obra",
+        "status": "planejando",
+        "owner": "Laudos + Comercial + Obras",
+        "h2Milestone": "Esboço fluxo ago/26 · piloto guia automático nov/26",
+        "obraTypes": ["geral", "adequacao", "ev-infra"],
+        "monitor": ["% laudos LIE com guia gerado", "Tempo laudo→proposta obra", "Conversão guia→fechamento"]
+      },
+      {
+        "id": "pcc",
+        "name": "PCC Parte 1+2 → pré-orçamento → proposta Obras",
+        "status": "em_andamento",
+        "owner": "Projetos + Comercial + Obras",
+        "h2Milestone": "Integrar fluxo CRM/ClickUp out/26",
+        "obraTypes": ["ev-infra"],
+        "monitor": ["PCC entregues com pré-orçamento", "Tempo PCC→fechamento obra"]
+      },
+      {
+        "id": "ldc-cdm",
+        "name": "LDC + PCM → ampliação CDM",
+        "status": "maduro",
+        "owner": "Laudos + Obras",
+        "h2Milestone": "Checklist obra CDM padronizado",
+        "obraTypes": ["cdm-obra", "cdm-proj"],
+        "monitor": ["LDC com recomendação CDM", "Conversão LDC→obra CDM"]
+      },
+      {
+        "id": "ev-direct",
+        "name": "PIE/LCC/Instalação carregador → obra EV",
+        "status": "executando",
+        "owner": "Smart Charging + Obras + Comercial",
+        "h2Milestone": "Fluxo PO→OS→instalação até nov/26",
+        "obraTypes": ["ev-infra"],
+        "monitor": ["Pipeline EV aberto", "Tempo proposta→instalação", "OS EV no prazo"]
+      }
+    ]
+  },
+  "fieldOperations": {
+    "title": "Operação de campo — o que executar e como",
+    "standardFlow": {
+      "title": "Fluxo padrão obra elétrica condominial",
+      "steps": [
+        { "step": 1, "name": "Pré-obra", "actions": ["Proposta aprovada no CRM", "OS ClickUp criada", "Responsável obra nomeado", "Materiais e equipe agendados"] },
+        { "step": 2, "name": "Mobilização", "actions": ["ART/contrato se aplicável", "Comunicação síndico/portaria", "Checklist segurança", "Fotos estado anterior"] },
+        { "step": 3, "name": "Execução", "actions": ["Registro diário campo (app futuro)", "Controle materiais", "Desvios documentados", "Comunicação cliente"] },
+        { "step": 4, "name": "Entrega", "actions": ["Testes e comissionamento", "Fotos/vídeo final", "Termo de aceite", "Atualizar CRM ganho + pós-venda"] },
+        { "step": 5, "name": "Pós-obra", "actions": ["Garantia registrada", "NPS ou feedback", "Indicação/referência", "Manutenção se aplicável"] }
+      ]
+    },
+    "evFlow": {
+      "title": "Fluxo obra EV / Smart Charging",
+      "steps": ["PO comercial", "OS produção + OS instalação", "Produção controlador", "Estoque", "Agendamento instalação", "Instalação Macgyver/equipe", "Comissionamento + mensalidade"],
+      "linkedArea": "smart-charging",
+      "gap": "Processo PO→instalação ainda não padronizado no ClickUp"
+    },
+    "osClickUp": {
+      "title": "Ordens de serviço — padrão desejado",
+      "status": "parcial",
+      "templatesNeeded": [
+        "OS Obra elétrica geral",
+        "OS Ampliação CDM",
+        "OS Infraestrutura EV",
+        "OS Instalação controlador SC",
+        "OS Adequação/correção pontual"
+      ],
+      "fieldsPerOs": [
+        "Cliente/condomínio",
+        "Responsável campo",
+        "Data início/fim previsto",
+        "Escopo (link proposta/laudo)",
+        "Materiais previstos vs. realizado",
+        "Horas campo",
+        "Status: agendada → em execução → entregue → aceite"
+      ]
+    }
+  },
+  "monitoring": {
+    "title": "Painel de monitoramento — o que acompanhar",
+    "commercial": [
+      { "id": "pipeline", "label": "Pipeline obras aberto", "frequency": "semanal", "owner": "Comercial + Obras", "target": "Listar H2 jul/26" },
+      { "id": "ticket", "label": "Ticket médio obra fechada", "frequency": "mensal", "owner": "Gestão", "target": "≥ R$ 20k" },
+      { "id": "share", "label": "Share obras no mix receita", "frequency": "mensal", "owner": "Gestão", "target": "≥ 22%" },
+      { "id": "conv-laudo", "label": "Conversão laudo→obra", "frequency": "mensal", "owner": "Comercial", "target": "Dashboard dez/26" },
+      { "id": "subgrupo", "label": "Mix por subgrupo (EV vs CDM vs geral)", "frequency": "mensal", "owner": "Gestão", "target": "Evoluir classificação CRM" }
+    ],
+    "operational": [
+      { "id": "os-prazo", "label": "OS em execução no prazo", "frequency": "semanal", "owner": "Op. Obras", "target": "≥ 90%" },
+      { "id": "resp-obra", "label": "Responsável nomeado por obra ativa", "frequency": "por obra", "owner": "Op. Obras", "target": "100%" },
+      { "id": "capacidade", "label": "Obras simultâneas vs. capacidade campo", "frequency": "semanal", "owner": "Op. Obras", "target": "Sem sobrecarga Macgyver" },
+      { "id": "aceite", "label": "Termo de aceite / entrega formalizada", "frequency": "por obra", "owner": "Campo", "target": "100% antes de fechar OS" },
+      { "id": "desvio", "label": "Desvios de escopo/custo documentados", "frequency": "por obra", "owner": "Responsável obra", "target": "Todo desvio registrado" }
+    ],
+    "quality": [
+      { "id": "retrabalho", "label": "Retrabalho pós-entrega", "frequency": "mensal", "owner": "Op. Obras", "target": "Tendência ↓" },
+      { "id": "crm-tag", "label": "Etiqueta/subgrupo correto no CRM", "frequency": "por fechamento", "owner": "Comercial", "target": "100% classificado" },
+      { "id": "clickup-link", "label": "OS ClickUp vinculada ao deal CRM", "frequency": "por obra", "owner": "Op. Obras", "target": "100%" }
+    ]
+  },
+  "capacity": {
+    "title": "Capacidade de execução",
+    "headline": "Não escalar volume de fechamento sem planejar quem executa. Macgyver é recurso compartilhado EV + IoT + campo.",
+    "assumptions": [
+      "Equipe campo: 3–5 pessoas dedicadas",
+      "Responsável central coordena todas as obras",
+      "Máximo 2 obras grandes simultâneas",
+      "Obra < R$ 10k: só se for upsell/porta para obra maior",
+      "1 obra grande EV (R$ 40k+) pode consumir 1–2 semanas de campo",
+      "CDM ampliação: tipicamente 3–7 dias campo dependendo escopo",
+      "Piloto visitas Obras (LIE/ICV) libera engenheiro mas consome capacidade campo"
+    ],
+    "decisionGates": [
+      "Antes de fechar 3ª obra simultânea — validar capacidade",
+      "Obra < R$ 10k — avaliar se vale slot de equipe ou recusar/terceirizar",
+      "EV em escala — exige fluxo SC produção pronto (nov/26)"
+    ]
+  },
+  "playbook": {
+    "title": "Playbook operacional Obras H2",
+    "sections": [
+      {
+        "id": "comercial",
+        "title": "Comercial & pipeline",
+        "items": [
+          "Manter lista viva de obras em negociação com valor, subgrupo e previsão mês",
+          "Priorizar EV (ticket alto) e CDM pós-LDC (funil maduro)",
+          "Não prometer prazo de execução sem validar capacidade com Operação",
+          "Proposta deve referenciar laudo/projeto origem (rastreio conversão)",
+          "Definir política para obras pequenas (< R$ 10k): aceitar, recusar ou terceirizar"
+        ]
+      },
+      {
+        "id": "planejamento",
+        "title": "Planejamento por obra",
+        "items": [
+          "Kick-off obra: escopo, prazo, responsável, materiais, riscos",
+          "Cronograma cliente — comunicar síndico/administradora",
+          "Lista materiais com fornecedor e lead time",
+          "Plano de acesso (portaria, garagem, horário restrição)",
+          "Definir critério de aceite antes de iniciar"
+        ]
+      },
+      {
+        "id": "campo",
+        "title": "Execução em campo",
+        "items": [
+          "Checklist segurança (EPI, desenergização, sinalização)",
+          "Registro fotográfico antes/durante/depois",
+          "Comunicação diária com síndico em obras longas",
+          "Controle de materiais — evitar compra duplicada",
+          "Desvio de escopo: parar, registrar, aprovar aditivo antes de continuar"
+        ]
+      },
+      {
+        "id": "integracao",
+        "title": "Integração com outras áreas",
+        "items": [
+          "Laudos: receber guia de contratação com escopos priorizados",
+          "Projetos: PCC/PIE entregam pré-orçamento — Obras valida executabilidade",
+          "Smart Charging: instalação controlador após produção",
+          "Automações: app campo futuro para checklist obra",
+          "Marketing: criativos obras (ago/26) — cases Reserva do Poço, Verano"
+        ]
+      },
+      {
+        "id": "pos",
+        "title": "Pós-obra & retenção",
+        "items": [
+          "Termo de aceite assinado digital ou físico",
+          "Registrar garantia e prazo",
+          "Pedir indicação / referência para carteira",
+          "Upsell: manutenção, mensalidade SC, medidor IoT",
+          "Debrief interno: margem real vs. estimada, lições"
+        ]
+      }
+    ]
+  },
+  "roadmapPhases": [
+    {
+      "phase": "jul/2026",
+      "title": "Diagnóstico & estrutura",
+      "items": [
+        "Listar pipeline obras H2 com subgrupo e previsão",
+        "Definir responsável de campo por obra (nomear)",
+        "Esboço fluxo laudo → guia → proposta obra (com Laudos)",
+        "Revisar classificação CRM dos 2 deals 'gerais' indefinidos",
+        "Levantar capacidade real: quantas obras simultâneas?"
+      ]
+    },
+    {
+      "phase": "ago–set/2026",
+      "title": "Padronizar & piloto",
+      "items": [
+        "Template OS ClickUp — obra geral + CDM + EV",
+        "Piloto visitas Obras: LIE noturno + ICV",
+        "Checklist pré-obra mínimo (mesmo em planilha)",
+        "Integrar PCC pré-orçamento com proposta Obras",
+        "Treinamento comercial: não prometer prazo sem Op. Obras"
+      ]
+    },
+    {
+      "phase": "out–nov/2026",
+      "title": "Integração funil",
+      "items": [
+        "Fluxo CRM/ClickUp PCC → proposta Obras",
+        "Fluxo SC PO → OS → instalação (piloto)",
+        "Dashboard conversão laudo→obra (v1)",
+        "Campanha marketing cases obra EV"
+      ]
+    },
+    {
+      "phase": "dez/2026",
+      "title": "Medir & calibrar 2027",
+      "items": [
+        "ROI por subgrupo (EV vs CDM vs geral)",
+        "Meta 2027: volume + capacidade contratada",
+        "Decisão: terceirizar obras pequenas ou pacote mínimo",
+        "App campo obra — prioridade 2027?"
+      ]
+    }
+  ],
+  "openQuestions": [
+    "Quem é o responsável central nomeado (nome/cargo)?",
+    "Quem são as 3–5 pessoas de campo — CLT, PJ ou mix?",
+    "Margem alvo por subgrupo (EV vs CDM vs geral)?",
+    "Há eletricistas parceiros recorrentes? Contrato padrão?",
+    "Madalena e outros CDM: etiqueta CRM será padronizada como OBRA?",
+    "Macgyver: % tempo em obra vs. produção SC vs. IoT?"
+  ],
+  "risks": [
+    { "title": "Gargalo execução campo", "mitigation": "Capacidade antes de volume; roster obra; terceirizar pontual" },
+    { "title": "Macgyver único em EV+IoT+obra", "mitigation": "Sequência SC; compor remuneração; contratar/reforçar campo" },
+    { "title": "Funil laudo→obra lento", "mitigation": "Guia contratação automático nov/26; comercial alinhado" },
+    { "title": "CRM/classificação imprecisa", "mitigation": "Subgrupos obrigatórios; revisão mensal deals" },
+    { "title": "Obra pequena dilui ticket médio", "mitigation": "Política mínimo R$ 10–15k ou pacote diagnóstico→obra" }
+  ]
+}

@@ -7,6 +7,7 @@ import type {
   AreasExecutionPlans
 } from "@/lib/areas/types";
 import { AREA_DEFINITIONS } from "@/lib/areas/registry";
+import { buildObrasAreaMetrics } from "@/lib/areas/build-obras-dashboard";
 import executionPlansJson from "@/data/areas/execution-plans.json";
 
 const executionPlans = executionPlansJson as AreasExecutionPlans;
@@ -133,6 +134,19 @@ function buildMetricsForArea(analysis: Analysis, areaId: string): AreaMetrics {
         delivery.capacityNote,
         `Comercial: ${commercial.currentHeadcount} → ${commercial.recommendedHeadcount} recomendado`
       ]
+    };
+  }
+
+  if (areaId === "obras" && analysis.obraSubgroups?.summary?.length) {
+    const obra = buildObrasAreaMetrics(analysis);
+    return {
+      revenue2026Ytd: obra.revenue2026Ytd,
+      wonDeals2026Ytd: obra.wonDeals2026Ytd,
+      averageTicket: obra.averageTicket,
+      revenueSharePct: obra.revenueSharePct,
+      pipelineOpenDeals: null,
+      pipelineOpenValue: null,
+      highlights: obra.highlights
     };
   }
 

@@ -1,32 +1,32 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { ConsultoriaProjetosDashboard } from "@/lib/areas/build-consultoria-projetos-dashboard";
+import type { SmartChargingDashboard } from "@/lib/areas/build-smart-charging-dashboard";
 import type { AreaDashboardItem } from "@/lib/areas/types";
 import { AreaDetailPanel } from "@/components/areas/AreasOverview";
 import {
-  ConsultoriaProjetosCapacitySection,
-  ConsultoriaProjetosOperationalFocus,
-  ConsultoriaProjetosRoadmapSection,
-  ConsultoriaProjetosSummaryBar
-} from "@/components/areas/ConsultoriaProjetosSections";
+  SmartChargingOperationalFocus,
+  SmartChargingRoadmapSection,
+  SmartChargingSummaryBar
+} from "@/components/areas/SmartChargingSections";
+import { SmartChargingSalesSimulator } from "@/components/areas/SmartChargingSalesSimulator";
 import { VendasCollapsibleSection } from "@/components/areas/VendasCollapsibleSection";
 
-type SectionId = "modelo" | "capacidade" | "roadmap" | "plano";
+type SectionId = "modelo" | "projecao" | "roadmap" | "plano";
 
 const DEFAULT_OPEN: Record<SectionId, boolean> = {
   modelo: true,
-  capacidade: true,
+  projecao: true,
   roadmap: false,
   plano: false
 };
 
 type Props = {
   area: AreaDashboardItem;
-  data: ConsultoriaProjetosDashboard;
+  data: SmartChargingDashboard;
 };
 
-export function ConsultoriaProjetosAreaPage({ area, data }: Props) {
+export function SmartChargingAreaPage({ area, data }: Props) {
   const [openSections, setOpenSections] = useState(DEFAULT_OPEN);
 
   const toggle = useCallback((id: SectionId) => {
@@ -36,19 +36,19 @@ export function ConsultoriaProjetosAreaPage({ area, data }: Props) {
   const scrollTo = (id: SectionId) => {
     setOpenSections((prev) => ({ ...prev, [id]: true }));
     requestAnimationFrame(() => {
-      document.getElementById(`cp-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById(`sc-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
 
   return (
-    <div className="vendas-page consultoria-page">
-      <ConsultoriaProjetosSummaryBar data={data} />
+    <div className="vendas-page consultoria-page smart-charging-page">
+      <SmartChargingSummaryBar data={data} />
 
       <div className="vendas-toolbar">
-        <nav className="vendas-nav" aria-label="Seções Projetos">
+        <nav className="vendas-nav" aria-label="Seções Smart Charging">
           {[
-            { id: "modelo" as const, label: "Modelo" },
-            { id: "capacidade" as const, label: "Capacidade" },
+            { id: "modelo" as const, label: "Produto & produção" },
+            { id: "projecao" as const, label: "Projeção vendas" },
             { id: "roadmap" as const, label: "Roadmap" },
             { id: "plano" as const, label: "Plano" }
           ].map((item) => (
@@ -61,38 +61,38 @@ export function ConsultoriaProjetosAreaPage({ area, data }: Props) {
 
       <div className="vendas-sections">
         <VendasCollapsibleSection
-          id="cp-modelo"
-          title="Modelo operacional & pilares"
-          subtitle="PCC híbrido · projetos variados · cross-training · PDCA · automação CAD"
+          id="sc-modelo"
+          title="Hardware, produção & time"
+          subtitle="Controlador V1.1 · Central 2.1 · PO→instalação · Diogo + Macgyver"
           variant="monitor"
           open={openSections.modelo}
           onToggle={() => toggle("modelo")}
         >
-          <ConsultoriaProjetosOperationalFocus data={data} />
+          <SmartChargingOperationalFocus data={data} />
         </VendasCollapsibleSection>
 
         <VendasCollapsibleSection
-          id="cp-capacidade"
-          title="Capacidade & entregas"
-          subtitle={`YTD ${data.ytd2026.avgMonthlyDeals}/mês · meta ${data.targets.projectsTotalPerMonth} · PIE ${data.targets.piePerMonth}`}
-          open={openSections.capacidade}
-          onToggle={() => toggle("capacidade")}
+          id="sc-projecao"
+          title="Projeção de vendas — 12 meses"
+          subtitle="Condomínios + controladores por mês · contrato + mensalidade"
+          open={openSections.projecao}
+          onToggle={() => toggle("projecao")}
         >
-          <ConsultoriaProjetosCapacitySection data={data} />
+          <SmartChargingSalesSimulator data={data} />
         </VendasCollapsibleSection>
 
         <VendasCollapsibleSection
-          id="cp-roadmap"
+          id="sc-roadmap"
           title="Roadmap jul–dez/2026"
-          subtitle="Estabilizar → padronizar → escalar & descentralizar apresentação"
+          subtitle="Cliente real → produção padronizada → liberar IoT"
           open={openSections.roadmap}
           onToggle={() => toggle("roadmap")}
         >
-          <ConsultoriaProjetosRoadmapSection data={data} />
+          <SmartChargingRoadmapSection data={data} />
         </VendasCollapsibleSection>
 
         <VendasCollapsibleSection
-          id="cp-plano"
+          id="sc-plano"
           title="Plano de execução"
           subtitle={`${area.activities.length} atividades · objetivos e riscos`}
           open={openSections.plano}

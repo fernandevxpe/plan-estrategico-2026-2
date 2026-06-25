@@ -1,6 +1,6 @@
 # Clientes e recorrência
 
-Gerado em: 23/06/2026, 04:36:02
+Gerado em: 25/06/2026, 17:34:44
 
 ## Recorrência
 
@@ -14,11 +14,11 @@ Gerado em: 23/06/2026, 04:36:02
 
 | Mês | Receita | Nova | Repetida | % nova | % repetida |
 | --- | --- | --- | --- | --- | --- |
-| 2026-01 | R$ 129.600 | R$ 55.300 | R$ 74.300 | 42,7% | 57,3% |
-| 2026-02 | R$ 248.697 | R$ 72.915 | R$ 175.782 | 29,3% | 70,7% |
+| 2026-01 | R$ 180.132 | R$ 62.800 | R$ 117.332 | 34,9% | 65,1% |
+| 2026-02 | R$ 198.165 | R$ 65.415 | R$ 132.750 | 33% | 67% |
 | 2026-03 | R$ 210.700 | R$ 89.500 | R$ 121.200 | 42,5% | 57,5% |
-| 2026-04 | R$ 164.650 | R$ 100.950 | R$ 63.700 | 61,3% | 38,7% |
-| 2026-05 | R$ 121.000 | R$ 110.000 | R$ 11.000 | 90,9% | 9,1% |
+| 2026-04 | R$ 167.350 | R$ 103.650 | R$ 63.700 | 61,9% | 38,1% |
+| 2026-05 | R$ 118.300 | R$ 107.300 | R$ 11.000 | 90,7% | 9,3% |
 | 2026-06 | R$ 20.650 | R$ 8.750 | R$ 11.900 | 42,4% | 57,6% |
 
 ## Top 30 clientes por receita (organizações com fechamento)
@@ -28,7 +28,7 @@ Gerado em: 23/06/2026, 04:36:02
 | Cond. João Heráclio | 11419309000137 | 5 | R$ 126.200 | R$ 110.000 | 2025-02 | 2026-03 | LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular, PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA |
 | Edificio Le Parc | - | 2 | R$ 115.800 | R$ 102.000 | 2025-02 | 2026-02 | LSPDA, LDC - Laudo de disponibilidade de carga |
 | Edf Madalena Colonial | 10383770000114 | 2 | R$ 53.300 | R$ 45.000 | 2025-10 | 2026-04 | LDC - Laudo de disponibilidade de carga, CDM |
-| Verano ADM | - | 2 | R$ 50.532 | R$ 43.032 | 2026-02 | 2026-02 | PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, Instalação de Carregador Eletrico |
+| Verano ADM | - | 2 | R$ 50.532 | R$ 43.032 | 2026-01 | 2026-01 | PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, Instalação de Carregador Eletrico |
 | Cond. Montendre | - | 2 | R$ 51.249 | R$ 33.649 | 2025-04 | 2025-12 | LIE - Laudo de Instalações Elétricas, PROJETOS, LSPDA, OBRA |
 | Edf Samsara | 10395888000162 | 3 | R$ 37.500 | R$ 32.500 | 2025-09 | 2026-01 | LDC - Laudo de disponibilidade de carga, OBRA, PIE - Projeto infra.  Eletrocalha e Emergência |
 | Enseada do Mar | 14006221000181 | 3 | R$ 35.000 | R$ 27.500 | 2025-02 | 2026-04 | PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA, Obras eletricas |

@@ -1,6 +1,6 @@
 # Visão geral e metas — XPE Consultoria
 
-Gerado em: 23/06/2026, 04:36:02
+Gerado em: 25/06/2026, 17:34:44
 
 ## Escopo dos dados
 
@@ -18,8 +18,8 @@ Gerado em: 23/06/2026, 04:36:02
 | --- | ---: | ---: | ---: | ---: |
 | 2025 (ano) | R$ 890.413 | 101 | 467 | R$ 8.816 |
 | 2026 YTD (parcial) | R$ 895.297 | 80 | 444 | R$ 11.191 |
-| H1/2025 realizado | R$ 278.360 | 31 | 225 | R$ 8.979 |
-| H2/2025 realizado | R$ 612.053 | 70 | 242 | R$ 8.744 |
+| H1/2025 realizado | R$ 283.360 | 32 | 225 | R$ 8.855 |
+| H2/2025 realizado | R$ 607.053 | 69 | 242 | R$ 8.798 |
 | H1/2026 realizado | R$ 895.297 | 80 | 444 | R$ 11.191 |
 | H1/2026 projetado | R$ 1.049.576 | 91 | 367 | R$ 11.534 |
 
@@ -28,12 +28,12 @@ Gerado em: 23/06/2026, 04:36:02
 - Receita mensal média: **R$ 174.929**
 - Fechamentos mensais médios: **15,2**
 - Cenário padrão: **Realista recomendado**
-- Projeção anual base 2026: **R$ 2.284.502**
+- Projeção anual base 2026: **R$ 2.281.959**
 
 ## Insights automáticos
 
-- **Ritmo caiu após fevereiro** (decline): Depois do pico de R$ 248.697, 3 meses completos recuaram em sequência.
-- **2025 sugere aceleração no semestre** (seasonal): Jul-dez/2025 realizou R$ 612.053, acima do início daquele ano.
+- **Ritmo caiu após fevereiro** (decline): Depois do pico de R$ 198.165, 2 meses completos recuaram em sequência.
+- **2025 sugere aceleração no semestre** (seasonal): Jul-dez/2025 realizou R$ 607.053, acima do início daquele ano.
 - **Serviço precisa de padronização** (data): O CRM não trouxe produtos por negócio; a granularidade fina depende de um campo obrigatório.
 
 ## Capacidade operacional (cenário 2x)
@@ -41,7 +41,7 @@ Gerado em: 23/06/2026, 04:36:02
 - Comercial: **2** pessoas (meta H2: 8.9 fech./pessoa/mês)
 - Projetistas: **5** (era 3)
 - Tráfego H1: **R$ 13.500**
-- Meta H1 2x: **R$ 1.000.000** · Meta ano 2x: **R$ 2.234.926**
+- Meta H1 2x: **R$ 1.000.000** · Meta ano 2x: **R$ 2.232.383**
 
 ## Cenários anuais 2026
 
@@ -49,16 +49,16 @@ Gerado em: 23/06/2026, 04:36:02
 | --- | --- | --- | --- | --- |
 | Conservador | R$ 1.049.576 | R$ 892.140 | R$ 1.941.716 | 169 |
 | Ritmo atual | R$ 1.049.576 | R$ 1.049.576 | R$ 2.099.152 | 182 |
-| Realista recomendado | R$ 1.049.576 | R$ 1.234.926 | R$ 2.284.502 | 199 |
+| Realista recomendado | R$ 1.049.576 | R$ 1.232.383 | R$ 2.281.959 | 198 |
 
 ## Trimestres
 
 | Trimestre | Receita | Fechamentos | Novos neg. | Ticket médio |
 | --- | --- | --- | --- | --- |
 | 2025-Q1 | R$ 66.400 | 7 | 146 | R$ 9.486 |
-| 2025-Q2 | R$ 211.960 | 24 | 79 | R$ 8.832 |
-| 2025-Q3 | R$ 262.154 | 36 | 124 | R$ 7.282 |
-| 2025-Q4 | R$ 349.899 | 34 | 118 | R$ 10.291 |
+| 2025-Q2 | R$ 216.960 | 25 | 79 | R$ 8.678 |
+| 2025-Q3 | R$ 257.154 | 35 | 125 | R$ 7.347 |
+| 2025-Q4 | R$ 349.899 | 34 | 117 | R$ 10.291 |
 | 2026-Q1 | R$ 588.997 | 46 | 200 | R$ 12.804 |
 | 2026-Q2 | R$ 306.300 | 34 | 244 | R$ 9.009 |
 
@@ -66,18 +66,18 @@ Gerado em: 23/06/2026, 04:36:02
 
 | Mês | Tipo | Receita | Fechamentos | Novos neg. | Projeção receita |
 | --- | --- | --- | --- | --- | --- |
-| 2026-01 | actual | R$ 129.600 | 12 | 59 | - |
-| 2026-02 | actual | R$ 248.697 | 17 | 59 | - |
+| 2026-01 | actual | R$ 180.132 | 14 | 59 | - |
+| 2026-02 | actual | R$ 198.165 | 15 | 59 | - |
 | 2026-03 | actual | R$ 210.700 | 17 | 82 | - |
-| 2026-04 | actual | R$ 164.650 | 16 | 74 | - |
-| 2026-05 | actual | R$ 121.000 | 14 | 93 | - |
+| 2026-04 | actual | R$ 167.350 | 17 | 75 | - |
+| 2026-05 | actual | R$ 118.300 | 13 | 92 | - |
 | 2026-06 | partial | R$ 20.650 | 4 | 77 | R$ 174.929 |
-| 2026-07 | projected | R$ 0 | 0 | 0 | R$ 150.599 |
-| 2026-08 | projected | R$ 0 | 0 | 0 | R$ 212.260 |
-| 2026-09 | projected | R$ 0 | 0 | 0 | R$ 166.083 |
-| 2026-10 | projected | R$ 0 | 0 | 0 | R$ 226.282 |
-| 2026-11 | projected | R$ 0 | 0 | 0 | R$ 200.678 |
-| 2026-12 | projected | R$ 0 | 0 | 0 | R$ 279.023 |
+| 2026-07 | projected | R$ 0 | 0 | 0 | R$ 141.377 |
+| 2026-08 | projected | R$ 0 | 0 | 0 | R$ 213.567 |
+| 2026-09 | projected | R$ 0 | 0 | 0 | R$ 167.106 |
+| 2026-10 | projected | R$ 0 | 0 | 0 | R$ 227.676 |
+| 2026-11 | projected | R$ 0 | 0 | 0 | R$ 201.914 |
+| 2026-12 | projected | R$ 0 | 0 | 0 | R$ 280.742 |
 
 ## Projeção H2/2026 (jul–dez)
 
@@ -85,19 +85,19 @@ Gerado em: 23/06/2026, 04:36:02
 | --- | --- | --- | --- |
 | Conservador | 85% do ritmo medio real de jan-mai/2026 | R$ 892.140 | 78 |
 | Ritmo atual | Media mensal real de jan-mai/2026 aplicada a jul-dez | R$ 1.049.576 | 91 |
-| Realista recomendado | Ritmo atual com aceleracao sazonal moderada derivada de 2025 | R$ 1.234.926 | 107 |
+| Realista recomendado | Ritmo atual com aceleracao sazonal moderada derivada de 2025 | R$ 1.232.383 | 107 |
 
 ## Crescimento 2025 vs 2026 (jan–jun)
 
 | Mês | Rec. 2025 | Rec. 2026 | YoY rec. | Fech. 2025 | Fech. 2026 | MoM 2026 |
 | --- | --- | --- | --- | --- | --- | --- |
-| Jan | R$ 18.400 | R$ 129.600 | +604,3% | 3 | 12 | -6,3% |
-| Fev | R$ 37.500 | R$ 248.697 | +563,2% | 3 | 17 | +91,9% |
-| Mar | R$ 10.500 | R$ 210.700 | +1.906,7% | 1 | 17 | -15,3% |
-| Abr | R$ 75.800 | R$ 164.650 | +117,2% | 6 | 16 | -21,9% |
-| Mai | R$ 64.160 | R$ 121.000 | +88,6% | 7 | 14 | -26,5% |
-| Jun | R$ 72.000 | R$ 20.650 | -71,3% | 11 | 4 | -82,9% |
-| Jul | R$ 74.640 | - | -100% | 11 | - | n/a |
+| Jan | R$ 18.400 | R$ 180.132 | +879% | 3 | 14 | +30,3% |
+| Fev | R$ 37.500 | R$ 198.165 | +428,4% | 3 | 15 | +10% |
+| Mar | R$ 10.500 | R$ 210.700 | +1.906,7% | 1 | 17 | +6,3% |
+| Abr | R$ 75.800 | R$ 167.350 | +120,8% | 6 | 17 | -20,6% |
+| Mai | R$ 64.160 | R$ 118.300 | +84,4% | 7 | 13 | -29,3% |
+| Jun | R$ 77.000 | R$ 20.650 | -73,2% | 12 | 4 | -82,5% |
+| Jul | R$ 69.640 | - | -100% | 10 | - | n/a |
 | Ago | R$ 105.200 | - | -100% | 14 | - | n/a |
 | Set | R$ 82.314 | - | -100% | 11 | - | n/a |
 | Out | R$ 112.150 | - | -100% | 10 | - | n/a |
@@ -109,7 +109,7 @@ Gerado em: 23/06/2026, 04:36:02
 - **Cobertura de CNPJ parcial**: 200/1595 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
 - **Negócios ganhos sem etiqueta comercial explícita**: 5/181 ganhos usam fallback de serviço/funil como tipo principal.
 - **Negócios com múltiplas etiquetas**: 36 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
-- **Base aberta contém negócios antigos**: 143 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.
+- **Base aberta contém negócios antigos**: 144 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.
 
 ## Cobertura CNPJ
 

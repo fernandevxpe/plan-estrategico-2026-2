@@ -30,6 +30,7 @@ export type WonDeal = {
   title: string;
   organization: string | null;
   service: string;
+  pipeline?: string | null;
   primaryBusinessType?: string;
   businessTypes?: string[];
   wonMonth: string;
@@ -234,6 +235,9 @@ export type PlanningSummary = {
   partialMonth: string;
   runRateMonthly: number;
   runRateWonMonthly: number;
+  realizedRevenuePipelines: string[];
+  realizedRevenueTimezone: string;
+  planningRealizedMonthly: Monthly[];
   annual: Record<string, PeriodAggregate>;
   semesters: Record<string, PeriodAggregate>;
   quarters: Record<string, PeriodAggregate>;

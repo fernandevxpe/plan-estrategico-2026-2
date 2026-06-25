@@ -124,6 +124,9 @@ export function getMonthlyRows(analysis: Analysis, filters: PlanningFilters): Ta
   );
 
   if (filters.period === "month") {
+    const planningByMonth = Object.fromEntries(
+      (analysis.planningSummary.planningRealizedMonthly ?? []).map((row) => [row.month, row])
+    );
     const months = analysis.monthly.filter((row) => filterByYear(row.month, filters.year));
     const mapped = months.map((row) => {
       const is2026 = row.month.startsWith("2026");
@@ -133,15 +136,19 @@ export function getMonthlyRows(analysis: Analysis, filters: PlanningFilters): Ta
       if (timeline?.kind === "partial") kind = "partial";
       if (timeline?.kind === "projected") kind = "projected";
 
+      const realized = is2026 && kind !== "projected" ? planningByMonth[row.month] : null;
+      const revenue = realized?.wonRevenue ?? row.wonRevenue;
+      const wonDeals = realized?.wonDeals ?? row.wonDeals;
+
       return {
         key: row.month,
         label: monthLabel(row.month),
         month: row.month,
         createdDeals: row.createdDeals,
-        wonDeals: row.wonDeals,
-        revenue: row.wonRevenue,
-        averageTicket: row.averageTicket,
-        revenueMoMPct: is2026 ? row.revenueGrowthPct : null,
+        wonDeals,
+        revenue,
+        averageTicket: wonDeals ? revenue / wonDeals : row.averageTicket,
+        revenueMoMPct: is2026 ? (realized?.revenueGrowthPct ?? row.revenueGrowthPct) : null,
         revenueYoYPct: growth?.revenueYoYPct ?? null,
         kind,
         selectable: true
@@ -271,17 +278,34 @@ export function getMonthlyRows(analysis: Analysis, filters: PlanningFilters): Ta
   return rows.filter((row, index, arr) => arr.findIndex((item) => item.key === row.key) === index);
 }
 
+const PLANNING_REALIZED_PIPELINES = new Set(["[Exec] Laudos - Condo", "Obras"]);
+
 export function getMonthDetail(analysis: Analysis, month: string): MonthDetail | null {
   const monthly = analysis.monthly.find((row) => row.month === month);
+  const planningRow = analysis.planningSummary.planningRealizedMonthly?.find((row) => row.month === month);
   const timeline = analysis.planningSummary.timeline2026.find((item) => item.month === month);
   const projection = analysis.projection2026H2.months.find((row) => row.month === month);
   const growth = analysis.growthComparison.find((row) => month.endsWith(`-${row.monthNumber}`));
 
   if (!monthly && !projection) return null;
 
-  const revenue = monthly?.wonRevenue ?? projection?.projectedRevenue ?? 0;
-  const wonDeals = monthly?.wonDeals ?? Math.round(projection?.projectedWonDeals ?? 0);
+  const usePlanningRealized =
+    month.startsWith("2026") && timeline?.kind !== "projected" && planningRow != null;
+  const revenue = usePlanningRealized
+    ? planningRow.wonRevenue
+    : monthly?.wonRevenue ?? projection?.projectedRevenue ?? 0;
+  const wonDeals = usePlanningRealized
+    ? planningRow.wonDeals
+    : monthly?.wonDeals ?? Math.round(projection?.projectedWonDeals ?? 0);
   const kind = timeline?.kind ?? (projection ? "projected" : "actual");
+
+  const deals = analysis.wonDeals.filter((deal) => {
+    if (deal.wonMonth !== month) return false;
+    if (usePlanningRealized && deal.pipeline && !PLANNING_REALIZED_PIPELINES.has(deal.pipeline)) {
+      return false;
+    }
+    return true;
+  });
 
   return {
     month,
@@ -291,10 +315,12 @@ export function getMonthDetail(analysis: Analysis, month: string): MonthDetail |
     createdDeals: monthly?.createdDeals ?? 0,
     averageTicket: monthly?.averageTicket ?? (wonDeals ? revenue / wonDeals : 0),
     revenueYoYPct: growth?.revenueYoYPct ?? null,
-    revenueMoMPct: monthly?.revenueGrowthPct ?? null,
+    revenueMoMPct: usePlanningRealized
+      ? (planningRow.revenueGrowthPct ?? null)
+      : (monthly?.revenueGrowthPct ?? null),
     kind,
     businessTypes: analysis.businessTypeMonthly.filter((row) => row.month === month),
-    deals: analysis.wonDeals.filter((deal) => deal.wonMonth === month)
+    deals
   };
 }
 

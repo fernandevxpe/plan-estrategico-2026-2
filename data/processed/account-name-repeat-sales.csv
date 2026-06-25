@@ -1,6 +1,6 @@
 key;keyType;organization;cnpj;wonDeals;repeatDeals;totalRevenue;repeatRevenue;firstWonMonth;lastWonMonth;types
 org:le parc;account_name;Edificio Le Parc;;2;1;115800;102000;2025-02;2026-02;"LSPDA, LDC - Laudo de disponibilidade de carga"
-org:verano adm;account_name;Verano ADM;;2;1;50531.72;43031.72;2026-02;2026-02;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, Instalação de Carregador Eletrico"
+org:verano adm;account_name;Verano ADM;;2;1;50531.72;43031.72;2026-01;2026-01;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, Instalação de Carregador Eletrico"
 org:montendre;account_name;Cond. Montendre;;2;1;51249.29;33649.29;2025-04;2025-12;"LIE - Laudo de Instalações Elétricas, PROJETOS, LSPDA, OBRA"
 org:cristiano;account_name;Edf Cristiano;;2;1;24500;20000;2025-10;2025-10;"PIE - Projeto infra.  Eletrocalha e Emergência, OBRA"
 org:castelo blois;account_name;Edf Castelo de Blois;;2;1;25800;19800;2025-09;2026-01;"LIE - Laudo de Instalações Elétricas, OBRA"

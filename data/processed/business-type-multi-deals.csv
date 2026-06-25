@@ -30,7 +30,7 @@ month;type;dealId;dealTitle;organization;value
 2025-01;LDC - Laudo de disponibilidade de carga;804;Negócio Maison Monet;Maison Monet;7700
 2025-05;LDC - Laudo de disponibilidade de carga;819;Negócio Edf Guimarães Rosa;Edf Guimarães Rosa;4000
 2025-05;LDC - Laudo de disponibilidade de carga;822;Negócio Edf Quebra Mar;Edf Quebra Mar;7000
-2026-02;PIE - Projeto infra.  Eletrocalha e Emergência;823;Negócio Verano ADM;Verano ADM;7500
+2026-01;PIE - Projeto infra.  Eletrocalha e Emergência;823;Negócio Verano ADM;Verano ADM;7500
 2025-06;LDC - Laudo de disponibilidade de carga;826;Negócio Edf Margarida Renda Colonial;Edf Margarida Renda Colonial;6000
 2025-12;Laudos e consultoria condominial;868;Negócio Edf Giulia Priori;Edf Giulia Priori;7800
 2025-07;PROJETOS;937;Negócio Edf Delmar;Edf Delmar;4500
@@ -59,7 +59,7 @@ month;type;dealId;dealTitle;organization;value
 2025-06;PROJETOS;1009;Negócio Pichilau Abasteça;Pichilau Vila Esperança;3500
 2025-06;PROJETOS;1021;Negócio Ed Portal do Capibaribe;Ed Portal do Capibaribe;5000
 2025-06;LDC - Laudo de disponibilidade de carga;1022;Negócio Edf Ilha do Retiro;Edf Ilha do Retiro;4000
-2025-07;LDC - Laudo de disponibilidade de carga;1023;Negócio Edf Hockenheim;Edf Hockeneim;5000
+2025-06;LDC - Laudo de disponibilidade de carga;1023;Negócio Edf Hockenheim;Edf Hockeneim;5000
 2025-06;LIE - Laudo de Instalações Elétricas;1025;Edf Maria Carolina negócio;Edf Maria Carolina;5000
 2025-08;LDC - Laudo de disponibilidade de carga;1030;Negócio Edf Sirius e Antares;condomínio Residencial Estrela;8300
 2025-06;LDC - Laudo de disponibilidade de carga;1031;Negócio Edf Boa Viagem;Edf Boa Viagem;8000
@@ -168,8 +168,8 @@ month;type;dealId;dealTitle;organization;value
 2026-04;LDC - Laudo de disponibilidade de carga;1374;Edf Domus Prof Mario Pessoa negócio;Edf Domus Prof Mario Pessoa;6500
 2026-02;LDC - Laudo de disponibilidade de carga;1375;Edf. Augusto Lins e Silva negócio;Edf. Augusto Lins e Silva;6500
 2026-05;LDC - Laudo de disponibilidade de carga;1382;Edf Alameda dos Flamboyants negócio;Edf Alameda dos Flamboyants;8800
-2026-02;OBRA;1386;Verano ADM;Verano ADM;43031.72
-2026-02;Instalação de Carregador Eletrico;1386;Verano ADM;Verano ADM;43031.72
+2026-01;OBRA;1386;Verano ADM;Verano ADM;43031.72
+2026-01;Instalação de Carregador Eletrico;1386;Verano ADM;Verano ADM;43031.72
 2026-02;LDC - Laudo de disponibilidade de carga;1391;Edf Cidade do Recife;Edf Cidade do Recife;5500
 2026-02;LDC - Laudo de disponibilidade de carga;1393;Edf Ébano;Edf Ébano;4000
 2026-02;LDC - Laudo de disponibilidade de carga;1410;Edf Porto dos Corais;Edf Porto dos Corais;6500
@@ -194,8 +194,8 @@ month;type;dealId;dealTitle;organization;value
 2026-03;LIE - Laudo de Instalações Elétricas;1461;Edifício Fernando Perez negócio;Edifício Fernando Perez;4000
 2026-04;LDC - Laudo de disponibilidade de carga;1464;Edf Jardins das Acácias;Edf Jardins das Acácias;10000
 2026-05;LDC - Laudo de disponibilidade de carga;1473;condomínio Saint Sebastien;condomínio Saint Sebastien;8500
-2026-05;LIE - Laudo de Instalações Elétricas;1474;Edifício Ana Cristina;Edifício Ana Cristina;2700
-2026-05;LGR - Laudo de Gerenciamento de Risco;1474;Edifício Ana Cristina;Edifício Ana Cristina;2700
+2026-04;LIE - Laudo de Instalações Elétricas;1474;Edifício Ana Cristina;Edifício Ana Cristina;2700
+2026-04;LGR - Laudo de Gerenciamento de Risco;1474;Edifício Ana Cristina;Edifício Ana Cristina;2700
 2026-05;PROJETOS;1490;Edifício União;Edifício União;10000
 2026-06;LDC - Laudo de disponibilidade de carga;1507;Cond. The Plaza;Cond. The Plaza;2700
 2026-03;PROJETOS;1514;Edf Sobrado do Capibaribe;Edf Sobrado do Capibaribe;5000

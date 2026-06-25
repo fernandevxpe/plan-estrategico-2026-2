@@ -1,6 +1,6 @@
 # Áreas estratégicas — XPE Consultoria
 
-Gerado em: 23/06/2026, 04:36:02
+Gerado em: 25/06/2026, 17:34:44
 
 Todas as 11 áreas em um único documento. Para conversar sobre uma área específica, referencie a seção pelo nome.
 
@@ -123,27 +123,63 @@ _Nenhum risco cadastrado._
 
 ## Notas estratégicas
 
-- PIE e PROJETOS compõem mix de ticket médio — priorizar nos meses de pico.
-- 5 projetistas absorvem volume com automação de laudos padronizados.
+- Time único 5 FTE: engenheiro em LDC/inspeção (noite) — processo maduro; lacuna = projetos variados.
+- PIE com automação eletrocalha: semanas → horas · capacidade 7–10/mês.
+- Cross-training: todos os instrumentos — flexível para o comercial, mais lento no curto prazo.
+- PDCA semanal: Plan → Do → Check → Act → próximo projeto parte da base nova.
+- Evolução: executor → especialista revisor → gerente (apresentação com comercial).
+- H2: cultura de medição — tempo por cliente, desempenho por pessoa, dias foco (~4h/dia).
+- Automação CAD: CDM ampliação → sistema → emergência → disparagem.
+- PCC (Projeto Carregamento Coletivo): híbrido laudo LDC resumido + projeto ponto → pré-orçamento obra.
 
 ## Objetivos
 
 | Objetivo | Métrica | Meta |
 | --- | --- | --- |
-| Entregar fila de projetos sem atraso crítico | SLA entrega | ≥ 90% |
-| Manter ticket médio de projetos | Ticket PROJETOS/PIE | ≥ R$ 7.000 |
+| SLA projetos no prazo | SLA entrega | ≥ 90% · fila crítica < 5 |
+| Capacidade PIE automatizada | PIE/mês | 7–10 entregas estáveis |
+| Automação CDM + fila CAD | Blocos automatizados | CDM ago–set · sistema+emergência out |
+| PCC — template Parte 1 + Parte 2 | Escopo PCC | Documento sequenciado + guia até out |
+| Biblioteca interna de serviços | Ferramentas CAD | Lista material + plantas + A→B até set |
+| Tempo por cliente & desempenho | Tracking ClickUp | 100% projetos com tempo registrado |
+| PDCA e guia mestre por escopo | Co-pro semanal | 100% projetos fechados com retrospectiva |
+| Descentralizar apresentação | Apresentações/mês | 1 líder interno + comercial até nov |
+| Ticket médio projetos | Ticket PIE+PROJ | ≥ R$ 7.000 |
 
 ## Atividades
 
 | Atividade | Responsável | Prazo | Prioridade | Status |
 | --- | --- | --- | --- | --- |
-| Mapear fila atual por projetista | Coordenação projetos | 2026-07 | critical | pendente |
-| Padronizar templates PIE e PROJETOS no ClickUp | Projetistas | 2026-08 | high | pendente |
-| Revisar capacidade mensal vs meta 2x/3x | Gestão | 2026-07 | high | pendente |
+| Baseline SLA e tempo por tipo (PIE, PROJ, LDC, LIE) — ClickUp | Engenheiro + Coord. | 2026-07 | critical | pendente |
+| Inventário base de serviços + estrutura biblioteca CAD interna | Projetistas + Eng. | 2026-07 | critical | pendente |
+| PCC: mapear sequência Parte 1 (diagnóstico LDC resumido) → Parte 2 (projeto ponto) | Engenheiro + Projetistas | 2026-07 | critical | pendente |
+| PCC: definir escopo documento final — contexto carregamento coletivo | Coord. projetos + Comercial | 2026-08 | critical | pendente |
+| Automação CDM (ampliação) — mapear e desenvolver bloco | Tech + Projetistas | 2026-08 | critical | pendente |
+| PCC: template entregável (Parte 1 + Parte 2 + pré-orçamento obra) | Projetistas + Eng. | 2026-09 | high | pendente |
+| PCC: integrar fluxo pré-orçamento → proposta Obras no CRM/ClickUp | Comercial + Coord. | 2026-10 | high | pendente |
+| Tracking tempo exato por cliente/tipo no ClickUp — baseline jul | Coord. projetos | 2026-07 | critical | pendente |
+| Calendário dias foco: produção CAD vs PDCA/capacitação (~4h/dia) | Coord. + Time | 2026-07 | high | pendente |
+| Documentação única + libs CAD padronizadas (v1) | Projetistas | 2026-08 | critical | pendente |
+| PDCA — piloto 3 projetos + ritual semanal de apresentação | Coord. projetos | 2026-07 | critical | pendente |
+| Capacitação semanal (curso + trabalho entregue compartilhado) | Engenheiro + Time | 2026-08 | high | pendente |
+| Definir líderes internos por frente (estagiários em ramp) | Engenheiro diretor | 2026-08 | high | pendente |
+| Job rotation piloto — rotação mensal entre PIE/PROJ/LDC básico | Coord. projetos | 2026-09 | high | pendente |
+| Automação projeto de sistema + botão de emergência (piloto) | Tech + Projetistas | 2026-10 | high | pendente |
+| Automação disparagem — produção | Tech + Projetistas | 2026-11 | high | pendente |
+| Ferramentas libs: lista material, plantas, copiar A→B, replicar blocos | Projetistas + Tech | 2026-09 | critical | pendente |
+| Dashboard desempenho: tempo, erros, top performers — revisão mensal | Coord. projetos | 2026-09 | high | pendente |
+| Templates ClickUp unificados — checklist por tipo de projeto | Projetistas | 2026-08 | high | pendente |
+| Níveis de verificação: executor · revisor · apresentador · eng. crítico | Engenheiro + Comercial | 2026-10 | high | pendente |
+| 1º gerente operacional em apresentação com comercial | Engenheiro diretor | 2026-11 | high | pendente |
+| Revisão capacidade mensal vs pipeline comercial | Gestão + Coord. | 2026-12 | high | pendente |
 
 ## Riscos
 
-- **Saturação no cenário 3x** — mitigação: Priorizar laudos automatizáveis e fila por prioridade comercial.
+- **Engenheiro único — inspeção + laudo + apresentação** — mitigação: LDC automatizado + líderes internos + apresentação descentralizada com comercial.
+- **PCC sem sequência clara Parte 1/2 — retrabalho e confusão comercial** — mitigação: Template e guia mestre PCC até set; alinhar com LDC (algoritmo) e Obras (pré-orçamento).
+- **PROJETOS variados sem padrão consomem FTE** — mitigação: Automação por bloco + PDCA + libs + template PCC antes de escalar vendas.
+- **Cross-training reduz velocidade no curto prazo** — mitigação: Especialistas revisores mantêm qualidade; rotação gradual.
+- **Comercial vende acima da fila de projetos** — mitigação: Gate capacidade: SLA ClickUp antes de aceitar prazo agressivo.
 
 ## Mix por tipo comercial (2026 YTD)
 
@@ -171,27 +207,68 @@ _Nenhum risco cadastrado._
 
 ## Notas estratégicas
 
-- LDC é o maior share de receita jan–mai/2026 — motor de volume.
-- Automação de laudos repetitivos libera capacidade dos 5 projetistas.
+- LDC + planejamento energético = carro-chefe comercial (maduro, diferencial EV). IoT + automações rodando; H2 = mapear processo, capacitar 2ª pessoa, preparar escala.
+- LIE H2: app campo completo + plataforma revisão em tempo real + apresentação web + guia de contratação → proposta → obra.
+- Risco: muitas atividades concentradas em uma pessoa — opção descentralizar visitas (LIE noturno, ICV) para time Obras.
+- NP 17 exige laudo de todos os carregadores — demanda estrutural ICV.
+- Fernando: dedicação ampliada H2 ao desenvolvimento app/plataforma/apresentação web.
 
 ## Objetivos
 
 | Objetivo | Métrica | Meta |
 | --- | --- | --- |
-| Manter LDC como carro-chefe de volume | Share LDC | ≥ 35% receita área |
-| Reduzir tempo médio de entrega LDC/LIE | Dias entrega | A definir baseline |
+| LDC — preparar escala | Processo mapeado | Automações + guia + 2ª pessoa capacitada até out |
+| LIE — app + plataforma + apresentação | Fluxo LIE web | Campo + revisão tempo real + apresentação até out |
+| Guia de contratação pós-laudo | Laudo → proposta | Piloto automático LIE → guia → proposta até nov |
+| Descentralizar visitas | Piloto visitas | Modelo definido set · piloto out |
+| Automação ICV (NP 17) | Pipeline ICV | App + template + testes até out |
+| Plataforma carregadores/condomínio | MVP plataforma | Cadastro + novo carregador → laudo até dez |
+| SLA laudos no prazo | Dias entrega | ≥ 90% LDC/LIE/ICV após baseline |
+| PDCA por entrega | Retrospectivas | 100% laudos fechados com PDCA |
 
 ## Atividades
 
 | Atividade | Responsável | Prazo | Prioridade | Status |
 | --- | --- | --- | --- | --- |
-| Inventariar laudos automatizáveis vs manuais | Projetistas + Tech | 2026-07 | critical | pendente |
-| Definir SLA por tipo de laudo | Coordenação laudos | 2026-08 | high | pendente |
-| Treinar fluxo de etiqueta comercial no CRM | Comercial | 2026-07 | medium | pendente |
+| Baseline SLA + tempo separado LDC / LIE / ICV — ClickUp | Coord. laudos | 2026-07 | critical | pendente |
+| LDC: inventário completo automações + processo passo a passo | Engenheiro + Coord. | 2026-07 | critical | pendente |
+| LDC: avaliar melhorias + esforço — o que automatizar no planejamento energético | Engenheiro + Fernando | 2026-08 | high | pendente |
+| LDC: capacitação 2ª pessoa — guia planejamento energético (emergencial) | Engenheiro + Coord. | 2026-08 | critical | pendente |
+| Organizar logística 4 analisadores qualidade energia (fila equipamento/cliente) | Coord. laudos | 2026-08 | high | pendente |
+| LIE: mapear checklist app de campo (passo a passo — inspeção noturna) | Engenheiro + Fernando | 2026-07 | critical | pendente |
+| LIE: padronizar chaves app → plataforma analista (~80% pronta) | Fernando + Tech | 2026-08 | critical | pendente |
+| ICV etapa 1: app coleta e organização de dados em campo | Fernando + Tech | 2026-08 | critical | pendente |
+| Mapear base instalada carregadores + pipeline NP 17 | Comercial + Coord. | 2026-07 | critical | pendente |
+| PDCA piloto laudos + co-pro semanal (LDC + ICV) | Coord. laudos | 2026-07 | critical | pendente |
+| Refinamento automação LDC + trilha dedicada 1 FTE | Engenheiro + Coord. | 2026-08 | high | pendente |
+| ICV etapas 2–3: template documento + testes confecção automatizada | Fernando + Tech | 2026-09 | critical | pendente |
+| Esboço modelo financeiro: laudo ICV vs atualização/parcelas por condomínio | Gestão + Fernando | 2026-08 | high | pendente |
+| LIE piloto: engenheiro-analista monta laudo na plataforma com dados do app | Engenheiro + Fernando | 2026-09 | critical | pendente |
+| Fluxo revisão humana ICV em produção (100% fase inicial) | Engenheiro + Coord. | 2026-09 | critical | pendente |
+| LIE app de campo em produção — 100% checklist mapeado | Fernando + Engenheiro | 2026-10 | critical | pendente |
+| MVP plataforma: cadastro condomínio + carregadores veiculares | Fernando + Tech | 2026-10 | critical | pendente |
+| Plataforma: adicionar carregador novo → fluxo laudo ICV | Fernando + Tech | 2026-11 | critical | pendente |
+| Controle parcelas/dívidas por condomínio (CRM ou plataforma) | Gestão + Tech | 2026-11 | high | pendente |
+| Campanha comercial NP 17 — alinhamento Smart Charging | Comercial + Coord. | 2026-12 | high | pendente |
+| Dashboard LDC/LIE/ICV + revisão capacidade vs pipeline | Coord. laudos | 2026-12 | high | pendente |
+| LIE: especificar UX plataforma — revisar laudo enquanto monta | Fernando + Engenheiro | 2026-08 | critical | pendente |
+| Esboço fluxo laudo → Guia de Contratação → proposta (integração Obras) | Fernando + Comercial + Obras | 2026-08 | high | pendente |
+| Avaliar descentralização visitas: Obras faz LIE noturno + ICV — piloto | Engenheiro + Op. Obras | 2026-09 | high | pendente |
+| Apresentação web por cliente integrada ao laudo LIE — piloto | Fernando + Comercial | 2026-10 | critical | pendente |
+| Plataforma LIE: interface revisão em tempo real em produção | Fernando + Tech | 2026-10 | critical | pendente |
+| Piloto Guia de Contratação automático (laudo LIE → escopos → proposta) | Fernando + Comercial | 2026-11 | critical | pendente |
+| Apresentação síndico/conselho — material web padronizado | Comercial + Coord. | 2026-11 | high | pendente |
+| Dashboard conversão laudo → guia → proposta → obra | Gestão + Coord. | 2026-12 | high | pendente |
 
 ## Riscos
 
-- **Volume alto de LDC com margem apertada** — mitigação: Automatizar e proteger ticket em laudos complexos.
+- **Sobrecarga — atividades concentradas em uma pessoa** — mitigação: App + plataforma + piloto visitas Obras; revisão colaborativa; guia/proposta automáticos.
+- **Volume ICV prometido antes da automação calibrada** — mitigação: Gate: app + template + revisão humana antes de campanha em massa NP 17.
+- **LDC: uma pessoa no planejamento energético — ponto único de falha** — mitigação: Capacitação 2ª pessoa urgente; mapeamento processo; instalador IoT dedicado mantém campo.
+- **4 analisadores qualidade energia limitam agilidade** — mitigação: Fila organizada ago; P&D Prodist Mód. 8 (IoT) pós Smart Charging.
+- **Guia de contratação sem integração Obras** — mitigação: Esboço fluxo ago; piloto nov com Comercial + Obras alinhados.
+- **LIE depende do engenheiro para inspeção + laudo + apresentação** — mitigação: Descentralizar visitas; plataforma web; automação pós-laudo.
+- **App de campo LIE incompleto — laudo final sem base** — mitigação: Checklist fechado passo a passo; campos obrigatórios antes de fechar OS.
 
 ## Mix por tipo comercial (2026 YTD)
 
@@ -218,26 +295,43 @@ _Nenhum risco cadastrado._
 
 ## Notas estratégicas
 
-- Obras puxam ticket alto — incluir pelo menos 2 obras/mês acima de R$ 20k no H2.
-- Integrar pipeline comercial com capacidade de execução em campo.
+- YTD jan–jun/26: ~R$ 287k em 13 fechamentos (subgrupos deduplicados) — ticket ~R$ 22k. Mix: EV infra (R$ 131k) + CDM obra (R$ 108k).
+- Ritmo irregular: pico mar/26 (Reserva do Poço R$ 83,5k), mai zero, jun R$ 950 — abaixo do gate ≥ R$ 20k.
+- Meta H2: ≥ 2 obras/mês > R$ 20k · integrar laudo→guia→obra e PCC→pré-orçamento · capacidade campo antes de escalar.
+- Macgyver compartilhado EV+IoT+campo — risco sobrecarga. Piloto set/26: Obras faz LIE noturno + ICV.
 
 ## Objetivos
 
 | Objetivo | Métrica | Meta |
 | --- | --- | --- |
-| Aumentar participação de obras no mix | Share obras | ≥ 22% |
-| Proteger ticket médio de obras | Ticket OBRA | ≥ R$ 20.000 |
+| Volume obras H2 | Obras > R$ 20k | ≥ 2/mês |
+| Proteger ticket médio | Ticket obra | ≥ R$ 20.000 |
+| Share obras no mix | Receita | ≥ 22% |
+| Responsável por obra ativa | Campo | 100% nomeados |
+| Conversão laudo→obra | Funil pós-laudo | Dashboard dez/26 |
+| OS ClickUp padronizada | Templates obra | 3 tipos até set/26 |
 
 ## Atividades
 
 | Atividade | Responsável | Prazo | Prioridade | Status |
 | --- | --- | --- | --- | --- |
-| Listar obras em pipeline e previsão H2 | Comercial + Obras | 2026-07 | high | pendente |
-| Definir responsável de campo por obra | Operação obras | 2026-08 | high | pendente |
+| Listar pipeline obras H2 com subgrupo e previsão mês | Comercial + Obras | 2026-07 | critical | pendente |
+| Definir responsável de campo por obra + capacidade simultânea | Operação obras | 2026-07 | critical | pendente |
+| Esboço fluxo laudo → Guia → proposta obra (com Laudos) | Fernando + Comercial + Obras | 2026-08 | high | pendente |
+| Template OS ClickUp: obra geral + CDM + EV | Op. Obras + Tech | 2026-08 | high | pendente |
+| Revisar classificação CRM deals 'obras gerais' indefinidos | Comercial | 2026-08 | medium | pendente |
+| Piloto visitas Obras: LIE noturno + ICV | Engenheiro + Op. Obras | 2026-09 | high | pendente |
+| Integrar PCC pré-orçamento → proposta Obras no CRM | Projetos + Comercial | 2026-10 | high | pendente |
+| Checklist pré-obra mínimo (kick-off por obra) | Op. Obras | 2026-09 | high | pendente |
+| Dashboard conversão laudo→obra (v1) | Gestão + Comercial | 2026-12 | medium | pendente |
+| Política obras < R$ 10k: aceitar, recusar ou terceirizar | Gestão | 2026-08 | medium | pendente |
 
 ## Riscos
 
-- **Gargalo de execução em campo** — mitigação: Planejar capacidade antes de fechar volume alto.
+- **Gargalo execução campo — Macgyver único EV+IoT+obra** — mitigação: Capacidade antes de volume; fluxo SC nov/26; reforço ou parceiro.
+- **Mai/jun sem volume — meta H2 em risco** — mitigação: Pipeline ativo jul; funil laudo→obra; campanha cases EV.
+- **CRM impreciso — CDM fora etiqueta OBRA** — mitigação: Subgrupos obrigatórios; revisão mensal deals.
+- **Comercial promete prazo sem validar capacidade** — mitigação: Gate Op. Obras antes de fechar; treinamento ago.
 
 ## Mix por tipo comercial (2026 YTD)
 
@@ -307,26 +401,37 @@ Presença em feiras, networking e geração de pipeline presencial.
 
 ## Notas estratégicas
 
-- Área em estruturação — definir calendário de eventos H2 e ROI esperado.
-- Conectar eventos ao funil comercial com origem rastreada no CRM.
+- 1º evento jun/26: ~200 inscritos, ~30 síndicos — show rate ~15%. Educação EV necessária; agenda do síndico é volátil.
+- URGENTE: FESÍNDICO 25–26/set/2026 — estande pago. Planejar posicionamento, demos Smart Charging, equipe, brindes e CRM.
+- Carteira PE: Secovi congresso out/26, Techmetria abr, ADEMI, jantares networking — custos e responsável a definir.
 
 ## Objetivos
 
 | Objetivo | Métrica | Meta |
 | --- | --- | --- |
-| Definir calendário de eventos H2 | Eventos | A definir |
-| Rastrear leads de eventos no Pipedrive | Origem CRM | 100% tagueados |
+| Planejamento completo FESÍNDICO set/26 | Checklist estande | 100% até ago/26 |
+| Leads qualificados FESÍNDICO | Leads CRM | Meta a definir |
+| Rastrear origem eventos no Pipedrive | Tag origem | 100% |
+| Debrief 1º evento + calibrar formato próprio | Show rate | >20% próximo teste |
 
 ## Atividades
 
 | Atividade | Responsável | Prazo | Prioridade | Status |
 | --- | --- | --- | --- | --- |
-| Levantar eventos do setor jul–dez | A definir | 2026-07 | high | pendente |
-| Definir responsável e budget de eventos | Gestão | 2026-07 | critical | pendente |
+| Kick-off FESÍNDICO: responsável + metas KPI + budget restante | Gestão | 2026-07 | critical | pendente |
+| Briefing estande: layout, montadora, planta e energia do stand | A definir | 2026-07 | critical | pendente |
+| Material educativo EV (mitos vs. fatos) + checklist condomínio | Marketing + Comercial | 2026-08 | high | pendente |
+| Treinamento equipe + roster sexta/sábado + ensaio demo Smart Charging | Comercial + Técnico | 2026-08 | high | pendente |
+| CRM: tag FESINDICO-2026 + formulário QR testado | Comercial | 2026-08 | high | pendente |
+| Operação FESÍNDICO 25–26 set + follow-up 48h | Equipe evento | 2026-09 | critical | pendente |
+| Debrief + ROI 30 dias pós-FESÍNDICO | Gestão | 2026-10 | high | pendente |
+| Testar 1 formato networking/jantar síndicos | Comercial | 2026-11 | medium | pendente |
 
 ## Riscos
 
-- **Investimento sem retorno mensurável** — mitigação: Exigir meta de leads qualificados por evento.
+- **FESÍNDICO sem planejamento — estande pago subutilizado** — mitigação: Checklist 6 pilares: posicionamento, demo, design, equipe, atração, CRM.
+- **Baixa presença em eventos próprios (agenda síndico)** — mitigação: Testar sábado manhã; parceria administradora; horário fora de pico trânsito.
+- **Investimento sem retorno mensurável** — mitigação: Meta leads qualificados + conversão 30/60/90 dias por evento.
 
 ---
 
@@ -346,26 +451,39 @@ Presença em feiras, networking e geração de pipeline presencial.
 
 ## Notas estratégicas
 
-- ICV, instalação de carregador e LCC — nicho em crescimento.
-- Alinhar comercial e operação para pacotes EV completos.
+- H2 prioridade: validação protótipo em cliente real + firmware/hardware (Central 2.0→2.1, Controlador V1.0→V1.1).
+- Implementar produção: PO → OS → Produção → Estoque → Prazos → Entrega → Instalação.
+- Time: Diogo (firmware R$2,5k) + Macgyver (hardware/campo R$5k) — salário Macgyver composto com produção quando vendas EV crescerem.
+- Medidores IoT (SM3F2.0) cronologicamente subsequente — após Smart Charging validado.
 
 ## Objetivos
 
 | Objetivo | Métrica | Meta |
 | --- | --- | --- |
-| Aumentar fechamentos EV no H2 | Contratos EV | A definir |
-| Montar oferta integrada laudo + instalação | Pacote | 1 playbook |
+| Validação cliente real | Protótipo | Piloto operando até out |
+| Hardware V1.1 / Central 2.1 | Revisão HW | Versões em produção até dez |
+| Processo produção ponta a ponta | Fluxo PO→instalação | Documentado + ClickUp até nov |
+| Vendas EV significativas | Fechamentos EV | Playbook + primeiras vendas H2 |
 
 ## Atividades
 
 | Atividade | Responsável | Prazo | Prioridade | Status |
 | --- | --- | --- | --- | --- |
-| Documentar playbook comercial Smart Charging | Comercial + Produto EV | 2026-08 | high | pendente |
-| Mapear concorrência e ticket médio EV | Produto EV | 2026-07 | medium | pendente |
+| Protótipo Controlador de Carga — validação cliente real | Diogo + Macgyver | 2026-08 | critical | pendente |
+| Melhorias firmware Controlador + Central (V1.0 baseline) | Diogo | 2026-08 | critical | pendente |
+| Hardware Central 2.0 → 2.1 — melhorias produção 2ª fase | Macgyver | 2026-09 | critical | pendente |
+| Controlador V1.0 → V1.1 — revisão pós-piloto | Diogo + Macgyver | 2026-10 | critical | pendente |
+| Mapear fluxo PO → OS → Produção → Estoque → Entrega → Instalação | Macgyver + Gestão | 2026-09 | critical | pendente |
+| Implementar OS + estoque + prazos no ClickUp (piloto) | Tech + Macgyver | 2026-10 | high | pendente |
+| Playbook comercial Smart Charging integrado laudos/projetos | Comercial + Produto EV | 2026-10 | high | pendente |
+| Modelo remuneração Macgyver — produção vs vendas EV | Gestão | 2026-11 | high | pendente |
+| Documentar processo produção padronizado (handoff Medidores IoT) | Macgyver + Diogo | 2026-12 | high | pendente |
 
 ## Riscos
 
-- **Demanda ainda concentrada em poucos meses** — mitigação: Prospecção ativa em condomínios com garagem.
+- **Validação atrasada bloqueia SM3F2.0 (IoT)** — mitigação: Foco jul–out em cliente real; IoT só manutenção frota no 2S.
+- **Produção sem processo — gargalo com primeiras vendas** — mitigação: Fluxo PO→instalação até out antes de escalar comercial.
+- **Macgyver único em hardware + campo + LDC/ICV** — mitigação: Compor remuneração com produção SC; não sobrecarregar antes de processo pronto.
 
 ## Mix por tipo comercial (2026 YTD)
 
@@ -394,27 +512,41 @@ CRM, ClickUp, automações internas e produtividade da operação.
 
 ## Notas estratégicas
 
-- Automação é alavanca para escalar de 3 para 5 projetistas sem proporcionalidade.
-- CRM precisa de etiqueta comercial obrigatória em todo negócio novo.
+- App offline ~6 meses: campo padronizado, sync ClickUp — testes em campo atrasados, arquitetura pode precisar refactor.
+- P1 Smart Charging (template pronto) · P2 LIE (base laudos) · LDC · IoT · levantamento · visita comercial.
+- Plataforma web: continuidade analista, entregável por serviço — avaliar caso a caso vs. ferramenta separada.
+- H2: mapear processos + checklists → teste campo → DB organizado → automação por gargalo operacional.
 
 ## Objetivos
 
 | Objetivo | Métrica | Meta |
 | --- | --- | --- |
-| Campo obrigatório de tipo comercial no CRM | Cobertura etiqueta | 100% |
-| Automatizar laudos de alto volume | Laudos auto. | A definir % |
+| 1º teste app em campo | Piloto | Smart Charging ou LIE até ago |
+| Checklists mapeados (6 módulos) | Documentação | 100% serviços até ago |
+| LDC + levantamento no app | Colheita campo | Piloto out |
+| Estudo gargalos → ordem dev | Ranking | Priorização até set |
 
 ## Atividades
 
 | Atividade | Responsável | Prazo | Prioridade | Status |
 | --- | --- | --- | --- | --- |
-| Tornar etiqueta comercial obrigatória no Pipedrive | Tech + Comercial | 2026-07 | critical | em_andamento |
-| Listar automações prioritárias com projetistas | Tech | 2026-08 | high | pendente |
-| Integrar dashboard com sync ClickUp | Tech | 2026-09 | medium | pendente |
+| Listar checklists completos — 6 módulos de serviço | Tech + Operação | 2026-07 | critical | pendente |
+| Alimentar template Smart Charging + validar persistência DB | Tech | 2026-08 | critical | pendente |
+| Primeiro piloto app em campo (EV ou LIE) | Tech + Macgyver | 2026-08 | critical | pendente |
+| LIE — estrutura grupos/documentos da base histórica laudos | Tech + Coord. laudos | 2026-09 | critical | pendente |
+| LDC + levantamento carga — fluxo colheita no app | Tech + Macgyver | 2026-10 | critical | pendente |
+| Instalação medidor IoT — registro padronizado (serial, cabos, ponto) | Tech + IoT | 2026-10 | high | pendente |
+| Estudo gargalos operacionais → ranking prioridade dev | Tech + Gestão | 2026-09 | high | pendente |
+| Plataforma web — continuidade analista (LIE piloto) | Tech | 2026-11 | high | pendente |
+| Visita comercial agendada → dados para proposta (integração vendas) | Tech + Comercial | 2026-12 | medium | pendente |
+| ClickUp ↔ app ↔ plataforma — sync estável | Tech | 2026-12 | high | pendente |
 
 ## Riscos
 
-- **Dados inconsistentes limitam planejamento** — mitigação: Qualidade de dados como OKR do trimestre.
+- **Arquitetura app não cobre todos os serviços** — mitigação: Teste campo cedo · refactor após piloto, não escalar antes.
+- **Dev lento sem feedback de uso real** — mitigação: Piloto ago · 1 serviço por vez, não 6 em paralelo.
+- **Plataforma web tenta abraçar tudo de uma vez** — mitigação: Caso a caso: entregável na plataforma vs. integração externa.
+- **Levantamento/LDC urgente e ainda manual** — mitigação: Prioridade out no app — Macgyver como usuário piloto.
 
 ---
 
@@ -435,26 +567,37 @@ Medição, telemetria e produtos conectados para condomínios e clientes.
 
 ## Notas estratégicas
 
-- Área em estruturação — produto e go-to-market a definir com gestão.
-- Potencial de recorrência e nova fonte de receita (fora da meta de contratos atual).
+- 40 medidores 4G — 25% (~10) manutenção simples H2; recuperar sem uso (Selecta Alimentos).
+- SM3F2.0 baseado no Controlador de Carga (Smart Charging) — custo menor, precisão maior.
+- SA3F1.0 (R$1.500) substitui analisador convencional — expandir analisadores atuais é caro.
+- Evolução cronológica após Smart Charging — Diogo (FW) + Macgyver (HW/campo).
 
 ## Objetivos
 
 | Objetivo | Métrica | Meta |
 | --- | --- | --- |
-| Definir proposta de valor Medidores IoT | MVP | Documento |
-| Identificar 3 clientes piloto | Pilotos | 3 |
+| Manutenção frota 4G | Medidores OK | 100% críticos até ago |
+| Recuperação medidores parados | Recuperados | Selecta + demais sem uso até set |
+| SM3F2.0 piloto | Unidades piloto | Pós-validação Controlador até out |
+| Roadmap SA3F1.0 | Especificação | Substituto analisador — dez |
 
 ## Atividades
 
 | Atividade | Responsável | Prazo | Prioridade | Status |
 | --- | --- | --- | --- | --- |
-| Workshop de definição do produto IoT | A definir | 2026-08 | high | pendente |
-| Mapear fornecedores e custo de hardware | A definir | 2026-09 | medium | pendente |
+| Manutenção simples ~10 medidores (25% frota 4G) | Macgyver | 2026-08 | critical | pendente |
+| Recolher medidores sem uso — Selecta Alimentos + outros | Macgyver + Coord. | 2026-08 | critical | pendente |
+| Inventário frota: status, cliente, disponível instalação | Coord. laudos | 2026-07 | high | pendente |
+| SM3F2.0 — especificação BOM (Controlador + sensores 100/600/1000A) | Macgyver + Diogo | 2026-09 | high | pendente |
+| Piloto SM3F2.0 pós-validação Smart Charging | Macgyver + Diogo | 2026-10 | high | pendente |
+| SA3F1.0 — requisitos substituto analisador qualidade energia | Diogo + Eng. | 2026-11 | medium | pendente |
+| Integrar stack IoT ao app coleta LDC (documentação) | Fernando + Coord. | 2026-12 | medium | pendente |
 
 ## Riscos
 
-- **Dispersão sem foco comercial** — mitigação: Só avançar após piloto com cliente pagante.
+- **Smart Charging atrasado bloqueia SM3F2.0** — mitigação: H2 IoT = manutenção + recuperação; novo hardware só pós-validação.
+- **Frota degradada sem manutenção 25%** — mitigação: Priorizar ago · Macgyver alocado.
+- **Macgyver sobrecarregado (HW + LDC/ICV + SC)** — mitigação: Sequência clara SC primeiro; compor remuneração com produção.
 
 ---
 
@@ -477,25 +620,37 @@ Capacidade, contratações, processos e crescimento sustentável da operação.
 
 ## Notas estratégicas
 
-- De 3 para 5 projetistas + automação — modelo para crescer sem quebrar SLA.
-- Escala comercial condicionada a capacidade de entrega.
+- Recife base: 200+ cond. visitados (É), 2 vendedores sem atraso → meta 4 para RM PE.
+- Estudo mercado: VE por estado (ABVE 2025), densidade cond., lançamentos/ano — a validar.
+- Expansão por proximidade: PE → BA/CE → PB/RN/AL → nacional (SP/RJ/DF).
+- Estressar modelo PE antes de escalar headcount ou abrir hub NE.
 
 ## Objetivos
 
 | Objetivo | Métrica | Meta |
 | --- | --- | --- |
-| Onboarding completo dos 2 novos projetistas | Capacidade | 5 FTE operando |
-| Playbook de contratação comercial | Headcount | Gatilho documentado |
+| Descobrir limite vendedores PE | Headcount | 2→4 vend. com SLA ok até set |
+| Conversão pipeline É | Taxa fechamento | Quantificar 200+ visitados até ago |
+| Ranking expansão NE | Decisão hub | BA vs CE até dez |
+| Indicadores SECovi/CBIC | Lançamentos/ano | PE, BA, CE mapeados até out |
 
 ## Atividades
 
 | Atividade | Responsável | Prazo | Prioridade | Status |
 | --- | --- | --- | --- | --- |
-| Documentar capacidade máxima por projetista/mês | Gestão + Operação | 2026-07 | critical | pendente |
-| Plano de contratação se cenário 3x se confirmar | Gestão | 2026-09 | high | pendente |
-| Revisar terceirização de laudos de alto volume | Gestão | 2026-10 | medium | pendente |
+| Quantificar conversão 200+ condomínios visitados (contato É) | Comercial + Gestão | 2026-08 | critical | pendente |
+| Estressar 2→4 vendedores Recife — medir propostas/mês e SLA | Diretor Comercial | 2026-09 | critical | pendente |
+| Mapear tráfego/leads vs fechamentos por região (baseline PE) | Marketing + Comercial | 2026-08 | high | pendente |
+| Pesquisa SECovi: lançamentos imobiliários PE, BA, CE | Gestão + Comercial | 2026-10 | high | pendente |
+| Calibrar ranking estados com dados CRM + ABVE trimestral | Gestão | 2026-10 | high | pendente |
+| Decisão go/no-go hub NE onda 1 (Salvador ou Fortaleza) | Gestão + Diretor | 2026-12 | high | pendente |
+| Playbook expansão geográfica (vendedor + instalação + suporte) | Gestão + Operação | 2026-12 | medium | pendente |
+| Interior PE (Caruaru) — piloto 1 vendedor compartilhado | Comercial | 2026-11 | medium | pendente |
 
 ## Riscos
 
-- **Crescer vendas mais rápido que entrega** — mitigação: Gate comercial: não vender acima da fila de produção.
+- **Escalar vendedores sem saber limite PE** — mitigação: Estressar modelo jul–set antes de contratar além de 4.
+- **João Pessoa/PB menor que expectativa** — mitigação: Ranking ABVE confirma PB abaixo PE — 2 vend. max até validar.
+- **Expandir longe (SP) antes de NE maduro** — mitigação: Fases geográficas — proximidade Recife primeiro.
+- **Indicadores cond./lançamentos desatualizados** — mitigação: SECovi + CRM trimestral; marcar estimativas no dashboard.
 

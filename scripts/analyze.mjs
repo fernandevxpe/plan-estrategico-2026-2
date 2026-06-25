@@ -19,11 +19,22 @@ async function readOptionalJson(name, fallback = []) {
   }
 }
 
+const PLANNING_REALIZED_PIPELINES = new Set(['[Exec] Laudos - Condo', 'Obras']);
+const BUSINESS_TIMEZONE = 'America/Recife';
+
 function monthKey(value) {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 7);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BUSINESS_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit'
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  if (!year || !month) return null;
+  return `${year}-${month}`;
 }
 
 function yearOfMonth(month) {
@@ -290,6 +301,16 @@ const analysisDeals = deals.filter((deal) =>
 const wonDeals = analysisDeals.filter((deal) => deal.status === 'won' && deal.wonMonth);
 const focus2026 = analysisDeals.filter((deal) => deal.createdMonth?.startsWith('2026') || deal.wonMonth?.startsWith('2026'));
 const monthly = monthlyRows(analysisDeals).filter((row) => row.month >= '2025-01' && row.month <= '2026-12');
+const planningRealizedDeals = analysisDeals.filter(
+  (deal) =>
+    deal.status === 'won' &&
+    deal.wonMonth &&
+    PLANNING_REALIZED_PIPELINES.has(deal.pipeline)
+);
+const planningRealizedMonthly = monthlyRows(planningRealizedDeals).filter(
+  (row) => row.month >= '2025-01' && row.month <= '2026-12'
+);
+const planningMonthsByKey = Object.fromEntries(planningRealizedMonthly.map((row) => [row.month, row]));
 const generatedAt = new Date();
 const matureCohortMinAgeDays = 45;
 
@@ -942,7 +963,8 @@ const projectedByMonth = Object.fromEntries(projectionMonths.map((row) => [row.m
 const timeline2026 = monthNames.map((label, index) => {
   const monthNumber = String(index + 1).padStart(2, '0');
   const month = `2026-${monthNumber}`;
-  const actual = monthsByKey[month];
+  const actual = planningMonthsByKey[month];
+  const createdInMonth = analysisDeals.filter((deal) => deal.createdMonth === month);
   if (index <= 4) {
     return {
       month,
@@ -950,7 +972,7 @@ const timeline2026 = monthNames.map((label, index) => {
       kind: 'actual',
       revenue: actual?.wonRevenue ?? 0,
       wonDeals: actual?.wonDeals ?? 0,
-      createdDeals: actual?.createdDeals ?? 0,
+      createdDeals: createdInMonth.length,
       projectedRevenue: null
     };
   }
@@ -961,7 +983,7 @@ const timeline2026 = monthNames.map((label, index) => {
       kind: 'partial',
       revenue: actual?.wonRevenue ?? 0,
       wonDeals: actual?.wonDeals ?? 0,
-      createdDeals: actual?.createdDeals ?? 0,
+      createdDeals: createdInMonth.length,
       projectedRevenue: juneProjected
     };
   }
@@ -1008,6 +1030,9 @@ const planningSummary = {
   partialMonth: '2026-06',
   runRateMonthly,
   runRateWonMonthly,
+  realizedRevenuePipelines: [...PLANNING_REALIZED_PIPELINES],
+  realizedRevenueTimezone: BUSINESS_TIMEZONE,
+  planningRealizedMonthly,
   annual: {
     '2025': { ...aggregatePeriod(monthly2025, () => true), isPartial: false },
     '2026Ytd': { ...aggregatePeriod(monthly2026, () => true), isPartial: true }

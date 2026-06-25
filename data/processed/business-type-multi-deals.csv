@@ -1,225 +1,225 @@
-month;type;dealId;dealTitle;organization;value
-2025-06;LDC - Laudo de disponibilidade de carga;423;Negócio Cond Saint Eduardo;Cond Saint Eduardo;7000
-2025-05;LIE - Laudo de Instalações Elétricas;505;Negócio Cond. Solar das Palmeiras;Cond. Solar das Palmeiras;13500
-2025-05;LDC - Laudo de disponibilidade de carga;505;Negócio Cond. Solar das Palmeiras;Cond. Solar das Palmeiras;13500
-2026-02;PROJETOS;625;Negócio Edf. Aderbal Jurema;Edf. Aderbal Jurema;8415
-2026-02;PIE - Projeto infra.  Eletrocalha e Emergência;625;Negócio Edf. Aderbal Jurema;Edf. Aderbal Jurema;8415
-2025-02;LIE - Laudo de Instalações Elétricas;662;Negócio Cond. João Heráclio;Cond. João Heráclio;16200
-2025-02;LDC - Laudo de disponibilidade de carga;662;Negócio Cond. João Heráclio;Cond. João Heráclio;16200
-2025-02;ICV - Inspeção de carregador veicular;662;Negócio Cond. João Heráclio;Cond. João Heráclio;16200
-2025-12;Laudos e consultoria condominial;665;Negócio Edf Villa Casa Forte;Edf Villa Casa Forte;5000
-2025-07;LDC - Laudo de disponibilidade de carga;667;Negócio Edf Tignanello;Edf Tignanelo;5500
-2025-07;LDC - Laudo de disponibilidade de carga;669;Negócio Edf Carla Dias;Edf Carla Dias;5000
-2025-09;LDC - Laudo de disponibilidade de carga;673;Negócio Jardins do Capibaribe;Jardins do Capibaribe;9900
-2025-04;LIE - Laudo de Instalações Elétricas;681;Negócio Cond. Montendre;Cond. Montendre;17600
-2025-04;PROJETOS;681;Negócio Cond. Montendre;Cond. Montendre;17600
-2025-04;LSPDA;681;Negócio Cond. Montendre;Cond. Montendre;17600
-2025-08;LIE - Laudo de Instalações Elétricas;682;Negócio Cond. The Plaza;Cond. The Plaza;10000
-2025-08;LDC - Laudo de disponibilidade de carga;682;Negócio Cond. The Plaza;Cond. The Plaza;10000
-2026-01;LIE - Laudo de Instalações Elétricas;685;Negócio Edf. Ara Pacis;Edf. Ara Pacis;13000
-2026-01;LDC - Laudo de disponibilidade de carga;685;Negócio Edf. Ara Pacis;Edf. Ara Pacis;13000
-2025-09;LDC - Laudo de disponibilidade de carga;692;Negócio Hilson Macedo;Hilson Macedo;10600
-2025-09;ICV - Inspeção de carregador veicular;692;Negócio Hilson Macedo;Hilson Macedo;10600
-2025-09;LDC - Laudo de disponibilidade de carga;699;Negócio Edf Samsara;Edf Samsara;5000
-2025-02;LSPDA;745;Le Parc;Edificio Le Parc;13800
-2026-03;LDC - Laudo de disponibilidade de carga;752;Negócio Cond. Hilson de Azevedo Mota;Cond. Hilson de Azevedo Mota;9000
-2025-04;PIE - Projeto infra.  Eletrocalha e Emergência;770;Negócio Edf. Maria João;Pe no condominio;9500
-2025-01;LIE - Laudo de Instalações Elétricas;791;Negócio Ed. Rio Araguaia;Ed. Rio Araguaia;5000
-2025-01;LDC - Laudo de disponibilidade de carga;793;Negócio Edf Solar das Acácios;Edf Solar das Acácios;5700
-2025-04;LDC - Laudo de disponibilidade de carga;799;Negócio Edf Praça do Mar;Edf Praça do Mar;6000
-2025-01;LDC - Laudo de disponibilidade de carga;804;Negócio Maison Monet;Maison Monet;7700
-2025-05;LDC - Laudo de disponibilidade de carga;819;Negócio Edf Guimarães Rosa;Edf Guimarães Rosa;4000
-2025-05;LDC - Laudo de disponibilidade de carga;822;Negócio Edf Quebra Mar;Edf Quebra Mar;7000
-2026-01;PIE - Projeto infra.  Eletrocalha e Emergência;823;Negócio Verano ADM;Verano ADM;7500
-2025-06;LDC - Laudo de disponibilidade de carga;826;Negócio Edf Margarida Renda Colonial;Edf Margarida Renda Colonial;6000
-2025-12;Laudos e consultoria condominial;868;Negócio Edf Giulia Priori;Edf Giulia Priori;7800
-2025-07;PROJETOS;937;Negócio Edf Delmar;Edf Delmar;4500
-2025-05;PROJETOS;944;Negócio Edf Duas Naçoes;Edf Duas Naçoes;14000
-2026-05;LIE - Laudo de Instalações Elétricas;946;Negócio Edf Santorini;Edf Santorini;13000
-2026-05;LDC - Laudo de disponibilidade de carga;946;Negócio Edf Santorini;Edf Santorini;13000
-2025-05;LDC - Laudo de disponibilidade de carga;952;Negócio Edf Praia de Grauna;Edf Praia de Grauna;9500
-2025-04;LIE - Laudo de Instalações Elétricas;955;Edf. Maria Teresa Coelho;;17900
-2025-04;LDC - Laudo de disponibilidade de carga;955;Edf. Maria Teresa Coelho;;17900
-2025-04;ICV - Inspeção de carregador veicular;955;Edf. Maria Teresa Coelho;;17900
-2025-07;LIE - Laudo de Instalações Elétricas;959;Negócio Edf Praia de Imbituba;Edf Praia de Imbituba;16000
-2025-07;LDC - Laudo de disponibilidade de carga;959;Negócio Edf Praia de Imbituba;Edf Praia de Imbituba;16000
-2025-07;ICV - Inspeção de carregador veicular;959;Negócio Edf Praia de Imbituba;Edf Praia de Imbituba;16000
-2025-07;LDC - Laudo de disponibilidade de carga;962;Negócio Edf Splendid Rosarinho;Edf Splendid Rosarinho;6700
-2025-06;LIE - Laudo de Instalações Elétricas;963;Negócio Edf Praia de Japaratinga;Edf Praia de Japaratinga;5500
-2025-05;LDC - Laudo de disponibilidade de carga;971;Negócio Edf Morada Rosarinho;Edf Morada Rosarinho;5000
-2025-04;OBRA;973;Negócio Enseada do Mar;Enseada do Mar;21000
-2025-04;PIE - Projeto infra.  Eletrocalha e Emergência;974;Negócio Edf Brunello Di Montalcino;Edf Brunello Di Montalcino;3800
-2025-05;LDC - Laudo de disponibilidade de carga;975;Edf Luar das Ubaias negócio;Edf Luar das Ubaias;11160
-2025-05;PIE - Projeto infra.  Eletrocalha e Emergência;975;Edf Luar das Ubaias negócio;Edf Luar das Ubaias;11160
-2025-02;PIE - Projeto infra.  Eletrocalha e Emergência;1005;Negócio Enseada do Mar;Enseada do Mar;7500
-2025-02;PROJETOS;1005;Negócio Enseada do Mar;Enseada do Mar;7500
-2025-03;PROJETOS;1006;Negócio Rio Ave;Rio Ave;10500
-2025-06;PROJETOS;1007;Negócio Postos Pichilau - caruaru;Postos Pichilau - caruaru;17500
-2025-06;PROJETOS;1008;Negócio Pichilaue Abasteça;Pichilau Vila Esperança;5500
-2025-06;PROJETOS;1009;Negócio Pichilau Abasteça;Pichilau Vila Esperança;3500
-2025-06;PROJETOS;1021;Negócio Ed Portal do Capibaribe;Ed Portal do Capibaribe;5000
-2025-06;LDC - Laudo de disponibilidade de carga;1022;Negócio Edf Ilha do Retiro;Edf Ilha do Retiro;4000
-2025-06;LDC - Laudo de disponibilidade de carga;1023;Negócio Edf Hockenheim;Edf Hockeneim;5000
-2025-06;LIE - Laudo de Instalações Elétricas;1025;Edf Maria Carolina negócio;Edf Maria Carolina;5000
-2025-08;LDC - Laudo de disponibilidade de carga;1030;Negócio Edf Sirius e Antares;condomínio Residencial Estrela;8300
-2025-06;LDC - Laudo de disponibilidade de carga;1031;Negócio Edf Boa Viagem;Edf Boa Viagem;8000
-2025-06;LDC - Laudo de disponibilidade de carga;1035;Negócio Edf Villa das Pedras;Edf Villa das Pedras;5000
-2025-08;LDC - Laudo de disponibilidade de carga;1036;Edf Principe de Toscana;Edificio Principe de Toscana;4000
-2025-10;LIE - Laudo de Instalações Elétricas;1040;Negócio Edf Morada dos Agapanthus;Edf Morada dos Agapanthus;4500
-2025-08;LIE - Laudo de Instalações Elétricas;1043;Negócio Edf Morada Rosarinho;Edf Morada Rosarinho;11500
-2025-08;PROJETOS;1043;Negócio Edf Morada Rosarinho;Edf Morada Rosarinho;11500
-2025-08;LDC - Laudo de disponibilidade de carga;1052;Negócio Edf Turmalina;Edf Turmalina;8000
-2025-11;LDC - Laudo de disponibilidade de carga;1055;Negócio Edf Walter Turton;Edf Walter Turton;6000
-2025-11;LIE - Laudo de Instalações Elétricas;1062;Negócio Cond Casa da Montanha;Cond Casa da Montanha;10200
-2025-11;LDC - Laudo de disponibilidade de carga;1062;Negócio Cond Casa da Montanha;Cond Casa da Montanha;10200
-2025-08;LDC - Laudo de disponibilidade de carga;1071;Edf Terra Brasilis;Edf Terra Brasilis;17000
-2025-07;LDC - Laudo de disponibilidade de carga;1073;Negócio Edf Morada Ilha Verde;Edf Morada Ilha Verde;8000
-2025-10;LIE - Laudo de Instalações Elétricas;1074;Negócio Edf Piedade Prince;Edf Piedade Prince;14000
-2025-10;LDC - Laudo de disponibilidade de carga;1074;Negócio Edf Piedade Prince;Edf Piedade Prince;14000
-2025-10;ICV - Inspeção de carregador veicular;1074;Negócio Edf Piedade Prince;Edf Piedade Prince;14000
-2025-10;LDC - Laudo de disponibilidade de carga;1076;Negócio Edf Nicolau II;Edf Nicolau II;7700
-2025-11;LIE - Laudo de Instalações Elétricas;1077;Negócio Edf Maria Clarice;Edf Maria Clarice;5000
-2025-08;LDC - Laudo de disponibilidade de carga;1081;Edf Praia dos Jardins;Edf Praia dos Jardins;6000
-2025-08;LDC - Laudo de disponibilidade de carga;1083;Negócio Edf Sainte Daniela;Edf Sainte Daniela;7200
-2025-09;LDC - Laudo de disponibilidade de carga;1084;Negócio Edf Quinta do Algarve;Edf Quinta do Algarve;4800
-2025-08;LDC - Laudo de disponibilidade de carga;1085;Edf Luis Dias lins;Edf Luis dias lins;9500
-2025-08;LDC - Laudo de disponibilidade de carga;1089;Negócio Edf Píer Mauricio de Nassau;Edf Píer Mauricio de Nassau;5000
-2025-08;LIE - Laudo de Instalações Elétricas;1092;Edf FICUS negócio;Edf FICUS;10500
-2025-08;LDC - Laudo de disponibilidade de carga;1092;Edf FICUS negócio;Edf FICUS;10500
-2025-07;LDC - Laudo de disponibilidade de carga;1093;Negócio Edf Cristiano;Edf Cristiano;4000
-2025-07;LDC - Laudo de disponibilidade de carga;1101;Negócio Edf MIllennium;Edf MIllennium;7000
-2025-11;LIE - Laudo de Instalações Elétricas;1102;Negócio Edf Sobrado do Capibaribe;Edf Sobrado do Capibaribe;11000
-2025-11;LDC - Laudo de disponibilidade de carga;1102;Negócio Edf Sobrado do Capibaribe;Edf Sobrado do Capibaribe;11000
-2025-07;OBRA;1111;Negócio Edf Praia de Japaratinga;Edf Praia de Japaratinga;10540
-2025-07;LIE - Laudo de Instalações Elétricas;1112;Negócio Edf Villa das Pedras;Edf Villa das Pedras;2400
-2026-04;LIE - Laudo de Instalações Elétricas;1119;Negócio Edf Maria Ines;Condominio do Edificio Maria Ines;7000
-2025-08;PROJETOS;1124;Negócio Edf Maison Monet;Edf Maison Monet;5300
-2025-10;LDC - Laudo de disponibilidade de carga;1129;Negócio Paraíso Eco Resort Campina Grande;Paraíso Eco Resort Campina Grande;31350
-2025-09;OBRA;1130;Negócio Edf Casa Rosada;Edf Manoella Vilaça;16493.98
-2025-09;LDC - Laudo de disponibilidade de carga;1134;Edf Luar da Praia;Edf Luar da Praia;12420
-2025-09;LIE - Laudo de Instalações Elétricas;1136;Negócio Edf PARADOR DE GALICIA;Edf PARADOR DE GALICIA;5500
-2025-08;ICV - Inspeção de carregador veicular;1139;Negócio condomínio Residencial Estrela Sirius e Antares;condomínio Residencial Estrela;1300
-2025-08;ICV - Inspeção de carregador veicular;1140;Negócio Edf Praça do Mar;Edf Praça do Mar;1600
-2025-09;PROJETOS;1141;Negócio Edf MIllennium;Edf MIllennium;5000
-2025-09;LIE - Laudo de Instalações Elétricas;1142;Edf Castelo de Blois negócio;Edf Castelo de Blois;6000
-2026-02;LDC - Laudo de disponibilidade de carga;1152;Negócio Edificio Le Parc;Edificio Le Parc;102000
-2026-01;PROJETOS;1156;Negócio Edf Itaqua Vilage;Edf Itaqua Vilage;6000
-2025-11;LIE - Laudo de Instalações Elétricas;1162;Negócio Edf Maria Regina;Edf Maria Regina;11000
-2025-11;LDC - Laudo de disponibilidade de carga;1162;Negócio Edf Maria Regina;Edf Maria Regina;11000
-2025-10;LIE - Laudo de Instalações Elétricas;1172;Negócio edifício Morada das Palmeiras;edifício Morada das Palmeiras;6800
-2025-10;LDC - Laudo de disponibilidade de carga;1179;Negócio Edf Madalena Colonial;Edf Madalena Colonial;8300
-2025-10;LDC - Laudo de disponibilidade de carga;1180;Negócio Edf Reserva do Poço;Edf Reserva do Poço;13000
-2025-10;ICV - Inspeção de carregador veicular;1180;Negócio Edf Reserva do Poço;Edf Reserva do Poço;13000
-2025-09;PIE - Projeto infra.  Eletrocalha e Emergência;1183;Edf Luis dias lins negócio;Edf Luis dias lins;4000
-2025-09;LDC - Laudo de disponibilidade de carga;1184;Negócio Edf Cristiano;Edf Cristiano;2600
-2025-11;PIE - Projeto infra.  Eletrocalha e Emergência;1188;Edf Terra Brasilis;Edf Terra Brasilis;9000
-2025-12;LDC - Laudo de disponibilidade de carga;1191;Edf Novo Jardim;Edf Novo Jardim;9900
-2026-01;LIE - Laudo de Instalações Elétricas;1195;Edf Roraima;Edf nao informado;5000
-2025-11;LDC - Laudo de disponibilidade de carga;1202;Edf. Cap d'Antibes;Edf. Cap d'Antibes;7700
-2025-10;LDC - Laudo de disponibilidade de carga;1204;Edf Principe de Toscana;Edf Principe de Toscana;2000
-2025-11;OBRA;1206;Edf Terra Brasilis;Edf Terra Brasilis;9700
-2025-11;LIE - Laudo de Instalações Elétricas;1211;Edf Porto dos Corais;Edf Porto dos Corais;4500
-2025-12;Obras eletricas;1220;Edf Maria Carolina negócio;Edf Maria Carolina;19440
-2025-12;OBRA;1221;Cond. Montendre;Cond. Montendre;33649.29
-2025-10;PIE - Projeto infra.  Eletrocalha e Emergência;1225;Edf Cristiano;Edf Cristiano;4500
-2025-11;LDC - Laudo de disponibilidade de carga;1231;Edf Muçambê;Edf Muçambê;7800
-2025-10;OBRA;1232;Edf Cristiano;Edf Cristiano;20000
-2025-11;LIE - Laudo de Instalações Elétricas;1236;Conjunto Portinari;Conjunto Portinari;6000
-2025-11;LDC - Laudo de disponibilidade de carga;1238;Geraldo Posto Geração;Geraldo Posto Geração;4000
-2026-04;LIE - Laudo de Instalações Elétricas;1245;Edf Ilha de Millos;Edf Ilha de Millos;6700
-2025-12;LIE - Laudo de Instalações Elétricas;1246;Edf Rio Siriji;Edf Rio Siriji;7000
-2026-03;LIE - Laudo de Instalações Elétricas;1251;Edf Sitio Beira Rio;Edf Sitio Beira Rio;15000
-2026-03;LDC - Laudo de disponibilidade de carga;1251;Edf Sitio Beira Rio;Edf Sitio Beira Rio;15000
-2026-02;LIE - Laudo de Instalações Elétricas;1254;Empresarial Praia Guarapari;Empresarial Praia Guarapari;7000
-2025-12;LIE - Laudo de Instalações Elétricas;1257;Edf Portal do Parnamirim;Edf Portal do Parnamirim;8800
-2025-12;LDC - Laudo de disponibilidade de carga;1257;Edf Portal do Parnamirim;Edf Portal do Parnamirim;8800
-2026-02;LIE - Laudo de Instalações Elétricas;1261;Edifício Ferreira da Costa;Edifício Ferreira da Costa;6000
-2025-11;LDC - Laudo de disponibilidade de carga;1262;Edf Quinta Tereza Beltrão;Edf Quinta Tereza Beltrão;7560
-2025-12;Obras eletricas;1296;Edf Luar das Ubaias;Edf Luar das Ubaias;19700
-2026-01;LIE - Laudo de Instalações Elétricas;1300;Edf.Maria Nice negócio;Edf.Maria Nice;10350
-2026-01;LDC - Laudo de disponibilidade de carga;1300;Edf.Maria Nice negócio;Edf.Maria Nice;10350
-2025-12;PROJETOS;1301;Edf Carla Dias;Edf Carla Dias;5000
-2026-01;LIE - Laudo de Instalações Elétricas;1308;Câmara de Vereadores de Recife;Câmara de Vereadores de Recife;14450
-2026-01;LDC - Laudo de disponibilidade de carga;1308;Câmara de Vereadores de Recife;Câmara de Vereadores de Recife;14450
-2026-03;LIE - Laudo de Instalações Elétricas;1314;Edf Maria Leopoldina;Edf Maria Leopoldina;12500
-2026-03;LDC - Laudo de disponibilidade de carga;1314;Edf Maria Leopoldina;Edf Maria Leopoldina;12500
-2026-03;ICV - Inspeção de carregador veicular;1314;Edf Maria Leopoldina;Edf Maria Leopoldina;12500
-2026-01;PIE - Projeto infra.  Eletrocalha e Emergência;1316;Cond. João Heráclio negócio;Cond. João Heráclio;5000
-2026-03;LIE - Laudo de Instalações Elétricas;1319;Edificio Belize;Edificio Belize;10000
-2026-03;LDC - Laudo de disponibilidade de carga;1319;Edificio Belize;Edificio Belize;10000
-2025-12;ICV - Inspeção de carregador veicular;1320;Edf Walter Turton;Edf Walter Turton;3000
-2025-12;OBRA;1323;Edf Cid Sampaio;Edf Cid Sampaio;19000
-2026-02;LIE - Laudo de Instalações Elétricas;1324;Edf Solar do Camaragybe;Edf Solar do Camaragybe;6000
-2026-01;LIE - Laudo de Instalações Elétricas;1325;Edf Lajedo negócio;Edf Lajedo;4000
-2026-03;ICV - Inspeção de carregador veicular;1331;Edf Terra Brasilis;Edf Terra Brasilis;1400
-2026-04;Obras eletricas;1334;Enseada do Mar;Enseada do Mar;6500
-2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1335;Edf Morada Ilha Verde;Edf Morada Ilha Verde;5000
-2026-02;LDC - Laudo de disponibilidade de carga;1336;Edf Chanel;Edf Chanel;7000
-2026-01;OBRA;1337;Edf Quinta do Algarve;Edf Quinta do Algarve;17000
-2026-03;LDC - Laudo de disponibilidade de carga;1345;Edifício Lucilo Maranhão;Condominio do Edificio Lucilo Maranhao;7500
-2026-03;OBRA;1352;Quinta Tereza Beltrão;Edf Quinta Tereza Beltrão;17800
-2026-03;CDM;1352;Quinta Tereza Beltrão;Edf Quinta Tereza Beltrão;17800
-2026-02;OBRA;1355;Edf Morada Rosarinho;Edf Morada Rosarinho;6250
-2026-01;OBRA;1356;Edf Samsara;Edf Samsara;28000
-2026-01;LDC - Laudo de disponibilidade de carga;1357;Edf Samsara;Edf Samsara;2500
-2026-01;OBRA;1365;Edf Castelo de Blois;Edf Castelo de Blois;19800
-2026-02;LDC - Laudo de disponibilidade de carga;1371;Edf Venâncio Barbosa negócio;Edf Venâncio Barbosa;10500
-2026-01;PIE - Projeto infra.  Eletrocalha e Emergência;1372;Edf Samsara;Edf Samsara;4500
-2026-04;LDC - Laudo de disponibilidade de carga;1374;Edf Domus Prof Mario Pessoa negócio;Edf Domus Prof Mario Pessoa;6500
-2026-02;LDC - Laudo de disponibilidade de carga;1375;Edf. Augusto Lins e Silva negócio;Edf. Augusto Lins e Silva;6500
-2026-05;LDC - Laudo de disponibilidade de carga;1382;Edf Alameda dos Flamboyants negócio;Edf Alameda dos Flamboyants;8800
-2026-01;OBRA;1386;Verano ADM;Verano ADM;43031.72
-2026-01;Instalação de Carregador Eletrico;1386;Verano ADM;Verano ADM;43031.72
-2026-02;LDC - Laudo de disponibilidade de carga;1391;Edf Cidade do Recife;Edf Cidade do Recife;5500
-2026-02;LDC - Laudo de disponibilidade de carga;1393;Edf Ébano;Edf Ébano;4000
-2026-02;LDC - Laudo de disponibilidade de carga;1410;Edf Porto dos Corais;Edf Porto dos Corais;6500
-2026-04;LIE - Laudo de Instalações Elétricas;1418;Edf. Villa Pasárgada;Edf. Villa Pasárgada;10000
-2026-04;LDC - Laudo de disponibilidade de carga;1418;Edf. Villa Pasárgada;Edf. Villa Pasárgada;10000
-2026-02;LDC - Laudo de disponibilidade de carga;1420;Empório Muro Alto;Empório Muro Alto;4500
-2026-02;OBRA;1423;Cond. Melo Barbosa;Cond. Melo Barbosa;13500
-2026-03;LIE - Laudo de Instalações Elétricas;1425;Edf Nazaré;Edf Nazaré;4000
-2026-03;LGR - Laudo de Gerenciamento de Risco;1425;Edf Nazaré;Edf Nazaré;4000
-2026-03;LDC - Laudo de disponibilidade de carga;1426;Edf Jardim das Orquídeas;Edf Jardim das Orquídeas;10000
-2026-04;LDC - Laudo de disponibilidade de carga;1427;Condomínio Jardins da Ilha;Condomínio Jardins da Ilha;18000
-2026-03;LDC - Laudo de disponibilidade de carga;1429;Edf Costa Atlântica  negócio;Condominio do Edificio Costa Atlantica;7000
-2026-03;PROJETOS;1432;Edf Jardins do Rosarinho;Edf Jardins do Rosarinho;6750
-2026-03;LDC - Laudo de disponibilidade de carga;1435;Edf Rita de Cássia negócio;Edf Rita de Cássia;6000
-2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1435;Edf Rita de Cássia negócio;Edf Rita de Cássia;6000
-2026-03;OBRA;1436;Edf Reserva do Poço;Edf Reserva do Poço;83500
-2026-03;PROJETOS;1443;Edf Reserva do Poço;Edf Reserva do Poço;8500
-2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1443;Edf Reserva do Poço;Edf Reserva do Poço;8500
-2026-02;OBRA;1444;Edf Villa Casa Forte;Edf Villa Casa Forte;4500
-2026-04;ICV - Inspeção de carregador veicular;1446;Cond Saint Eduardo;Cond Saint Eduardo;4200
-2026-03;LDC - Laudo de disponibilidade de carga;1459;Edf Morada Apipucos;Edf Morada Apipucos;4500
-2026-03;LIE - Laudo de Instalações Elétricas;1461;Edifício Fernando Perez negócio;Edifício Fernando Perez;4000
-2026-04;LDC - Laudo de disponibilidade de carga;1464;Edf Jardins das Acácias;Edf Jardins das Acácias;10000
-2026-05;LDC - Laudo de disponibilidade de carga;1473;condomínio Saint Sebastien;condomínio Saint Sebastien;8500
-2026-04;LIE - Laudo de Instalações Elétricas;1474;Edifício Ana Cristina;Edifício Ana Cristina;2700
-2026-04;LGR - Laudo de Gerenciamento de Risco;1474;Edifício Ana Cristina;Edifício Ana Cristina;2700
-2026-05;PROJETOS;1490;Edifício União;Edifício União;10000
-2026-06;LDC - Laudo de disponibilidade de carga;1507;Cond. The Plaza;Cond. The Plaza;2700
-2026-03;PROJETOS;1514;Edf Sobrado do Capibaribe;Edf Sobrado do Capibaribe;5000
-2026-04;LDC - Laudo de disponibilidade de carga;1522;Condomínio Carmen Costa;Condomínio Carmen Costa;7000
-2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1532;Edf Hilson Macedo;Edf Hilson Macedo;5000
-2026-05;LDC - Laudo de disponibilidade de carga;1544;Edf. Príncipe de Navarra;Edf. Príncipe de Navarra;6000
-2026-05;ICV - Inspeção de carregador veicular;1544;Edf. Príncipe de Navarra;Edf. Príncipe de Navarra;6000
-2026-04;LDC - Laudo de disponibilidade de carga;1561;Edifício Lá Maison;Edifício Lá Maison;6500
-2026-05;LIE - Laudo de Instalações Elétricas;1563;EDF VILLA CLÁUDIA;EDF VILLA CLÁUDIA;5000
-2026-05;LIE - Laudo de Instalações Elétricas;1566;EDIFICIOS MARIA JULIA E MARIA DA GRACA;EDIFICIOS MARIA JULIA E MARIA DA GRACA;19500
-2026-05;LCC - Laudo Carregador Coletivo;1566;EDIFICIOS MARIA JULIA E MARIA DA GRACA;EDIFICIOS MARIA JULIA E MARIA DA GRACA;19500
-2026-05;PIE - Projeto infra.  Eletrocalha e Emergência;1566;EDIFICIOS MARIA JULIA E MARIA DA GRACA;EDIFICIOS MARIA JULIA E MARIA DA GRACA;19500
-2026-04;LIE - Laudo de Instalações Elétricas;1579;Edf Sagarana;Edf Sagarana;12000
-2026-04;LDC - Laudo de disponibilidade de carga;1579;Edf Sagarana;Edf Sagarana;12000
-2026-05;LDC - Laudo de disponibilidade de carga;1600;Jardim do Mar;Jardim do Mar;14000
-2026-05;ICV - Inspeção de carregador veicular;1600;Jardim do Mar;Jardim do Mar;14000
-2026-04;PROJETOS;1601;Edf Turmalina;Edf Turmalina;8000
-2026-04;CDM;1609;Edf Madalena Colonial;Edf Madalena Colonial;45000
-2026-04;LDC - Laudo de disponibilidade de carga;1617;Edf Miriam Dubeux;Edf Miriam Dubeux;5500
-2026-05;PROJETOS;1620;Edf Cidade do Recife;Edf Cidade do Recife;5000
-2026-05;LDC - Laudo de disponibilidade de carga;1643;EMPRESARIAL. CASA FORTE;EMPRESARIAL. CASA FORTE;9000
-2026-06;LDC - Laudo de disponibilidade de carga;1655;Edf. Cine Torre;Edf. Cine Torre;7800
-2026-05;LDC - Laudo de disponibilidade de carga;1663;Edf TAMARINEIRA PRINCE VANGARD;Edf TAMARINEIRA PRINCE VANGARD;8500
-2026-05;PROJETOS;1666;Rotterdam negócio;Rotterdam;5000
-2026-05;PIE - Projeto infra.  Eletrocalha e Emergência;1672;Condominio do Edificio Lucilo Maranhao;Condominio do Edificio Lucilo Maranhao;6000
-2026-06;OBRA;1718;Rio Araguaia melhoria elétrica;Sindico Profi;950
-2026-06;ICV - Inspeção de carregador veicular;1774;Condomínio Carmen Costa;Condomínio Carmen Costa;9200
+month;type;dealId;dealTitle;organization;value;fullValue;typeCount;allocationSharePct;labels;isMultiBusinessType
+2025-06;LDC - Laudo de disponibilidade de carga;423;Negócio Cond Saint Eduardo;Cond Saint Eduardo;7000;7000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-05;LIE - Laudo de Instalações Elétricas;505;Negócio Cond. Solar das Palmeiras;Cond. Solar das Palmeiras;6750;13500;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-05;LDC - Laudo de disponibilidade de carga;505;Negócio Cond. Solar das Palmeiras;Cond. Solar das Palmeiras;6750;13500;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-02;PROJETOS;625;Negócio Edf. Aderbal Jurema;Edf. Aderbal Jurema;4207.5;8415;2;50;"PROJETOS, PIE - Projeto infra.  Eletrocalha e Emergência";true
+2026-02;PIE - Projeto infra.  Eletrocalha e Emergência;625;Negócio Edf. Aderbal Jurema;Edf. Aderbal Jurema;4207.5;8415;2;50;"PROJETOS, PIE - Projeto infra.  Eletrocalha e Emergência";true
+2025-02;LIE - Laudo de Instalações Elétricas;662;Negócio Cond. João Heráclio;Cond. João Heráclio;5400;16200;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-02;LDC - Laudo de disponibilidade de carga;662;Negócio Cond. João Heráclio;Cond. João Heráclio;5400;16200;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-02;ICV - Inspeção de carregador veicular;662;Negócio Cond. João Heráclio;Cond. João Heráclio;5400;16200;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-12;Laudos e consultoria condominial;665;Negócio Edf Villa Casa Forte;Edf Villa Casa Forte;5000;5000;1;100;Laudos e consultoria condominial;false
+2025-07;LDC - Laudo de disponibilidade de carga;667;Negócio Edf Tignanello;Edf Tignanelo;5500;5500;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-07;LDC - Laudo de disponibilidade de carga;669;Negócio Edf Carla Dias;Edf Carla Dias;5000;5000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-09;LDC - Laudo de disponibilidade de carga;673;Negócio Jardins do Capibaribe;Jardins do Capibaribe;9900;9900;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-04;LIE - Laudo de Instalações Elétricas;681;Negócio Cond. Montendre;Cond. Montendre;5866.666666666667;17600;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, PROJETOS, LSPDA";true
+2025-04;PROJETOS;681;Negócio Cond. Montendre;Cond. Montendre;5866.666666666667;17600;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, PROJETOS, LSPDA";true
+2025-04;LSPDA;681;Negócio Cond. Montendre;Cond. Montendre;5866.666666666667;17600;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, PROJETOS, LSPDA";true
+2025-08;LIE - Laudo de Instalações Elétricas;682;Negócio Cond. The Plaza;Cond. The Plaza;5000;10000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-08;LDC - Laudo de disponibilidade de carga;682;Negócio Cond. The Plaza;Cond. The Plaza;5000;10000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-01;LIE - Laudo de Instalações Elétricas;685;Negócio Edf. Ara Pacis;Edf. Ara Pacis;6500;13000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-01;LDC - Laudo de disponibilidade de carga;685;Negócio Edf. Ara Pacis;Edf. Ara Pacis;6500;13000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-09;LDC - Laudo de disponibilidade de carga;692;Negócio Hilson Macedo;Hilson Macedo;5300;10600;2;50;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-09;ICV - Inspeção de carregador veicular;692;Negócio Hilson Macedo;Hilson Macedo;5300;10600;2;50;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-09;LDC - Laudo de disponibilidade de carga;699;Negócio Edf Samsara;Edf Samsara;5000;5000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-02;LSPDA;745;Le Parc;Edificio Le Parc;13800;13800;1;100;LSPDA;false
+2026-03;LDC - Laudo de disponibilidade de carga;752;Negócio Cond. Hilson de Azevedo Mota;Cond. Hilson de Azevedo Mota;9000;9000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-04;PIE - Projeto infra.  Eletrocalha e Emergência;770;Negócio Edf. Maria João;Pe no condominio;9500;9500;1;100;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2025-01;LIE - Laudo de Instalações Elétricas;791;Negócio Ed. Rio Araguaia;Ed. Rio Araguaia;5000;5000;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-01;LDC - Laudo de disponibilidade de carga;793;Negócio Edf Solar das Acácios;Edf Solar das Acácios;5700;5700;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-04;LDC - Laudo de disponibilidade de carga;799;Negócio Edf Praça do Mar;Edf Praça do Mar;6000;6000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-01;LDC - Laudo de disponibilidade de carga;804;Negócio Maison Monet;Maison Monet;7700;7700;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-05;LDC - Laudo de disponibilidade de carga;819;Negócio Edf Guimarães Rosa;Edf Guimarães Rosa;4000;4000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-05;LDC - Laudo de disponibilidade de carga;822;Negócio Edf Quebra Mar;Edf Quebra Mar;7000;7000;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-01;PIE - Projeto infra.  Eletrocalha e Emergência;823;Negócio Verano ADM;Verano ADM;7500;7500;1;100;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2025-06;LDC - Laudo de disponibilidade de carga;826;Negócio Edf Margarida Renda Colonial;Edf Margarida Renda Colonial;6000;6000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-12;Laudos e consultoria condominial;868;Negócio Edf Giulia Priori;Edf Giulia Priori;7800;7800;1;100;Laudos e consultoria condominial;false
+2025-07;PROJETOS;937;Negócio Edf Delmar;Edf Delmar;4500;4500;1;100;PROJETOS;false
+2025-05;PROJETOS;944;Negócio Edf Duas Naçoes;Edf Duas Naçoes;14000;14000;1;100;PROJETOS;false
+2026-05;LIE - Laudo de Instalações Elétricas;946;Negócio Edf Santorini;Edf Santorini;6500;13000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-05;LDC - Laudo de disponibilidade de carga;946;Negócio Edf Santorini;Edf Santorini;6500;13000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-05;LDC - Laudo de disponibilidade de carga;952;Negócio Edf Praia de Grauna;Edf Praia de Grauna;9500;9500;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-04;LIE - Laudo de Instalações Elétricas;955;Edf. Maria Teresa Coelho;;5966.666666666667;17900;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-04;LDC - Laudo de disponibilidade de carga;955;Edf. Maria Teresa Coelho;;5966.666666666667;17900;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-04;ICV - Inspeção de carregador veicular;955;Edf. Maria Teresa Coelho;;5966.666666666667;17900;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-07;LIE - Laudo de Instalações Elétricas;959;Negócio Edf Praia de Imbituba;Edf Praia de Imbituba;5333.333333333333;16000;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-07;LDC - Laudo de disponibilidade de carga;959;Negócio Edf Praia de Imbituba;Edf Praia de Imbituba;5333.333333333333;16000;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-07;ICV - Inspeção de carregador veicular;959;Negócio Edf Praia de Imbituba;Edf Praia de Imbituba;5333.333333333333;16000;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-07;LDC - Laudo de disponibilidade de carga;962;Negócio Edf Splendid Rosarinho;Edf Splendid Rosarinho;6700;6700;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-06;LIE - Laudo de Instalações Elétricas;963;Negócio Edf Praia de Japaratinga;Edf Praia de Japaratinga;5500;5500;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-05;LDC - Laudo de disponibilidade de carga;971;Negócio Edf Morada Rosarinho;Edf Morada Rosarinho;5000;5000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-04;OBRA;973;Negócio Enseada do Mar;Enseada do Mar;21000;21000;1;100;OBRA;false
+2025-04;PIE - Projeto infra.  Eletrocalha e Emergência;974;Negócio Edf Brunello Di Montalcino;Edf Brunello Di Montalcino;3800;3800;1;100;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2025-05;LDC - Laudo de disponibilidade de carga;975;Edf Luar das Ubaias negócio;Edf Luar das Ubaias;5580;11160;2;50;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência";true
+2025-05;PIE - Projeto infra.  Eletrocalha e Emergência;975;Edf Luar das Ubaias negócio;Edf Luar das Ubaias;5580;11160;2;50;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência";true
+2025-02;PIE - Projeto infra.  Eletrocalha e Emergência;1005;Negócio Enseada do Mar;Enseada do Mar;3750;7500;2;50;"PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS";true
+2025-02;PROJETOS;1005;Negócio Enseada do Mar;Enseada do Mar;3750;7500;2;50;"PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS";true
+2025-03;PROJETOS;1006;Negócio Rio Ave;Rio Ave;10500;10500;1;100;PROJETOS;false
+2025-06;PROJETOS;1007;Negócio Postos Pichilau - caruaru;Postos Pichilau - caruaru;17500;17500;1;100;PROJETOS;false
+2025-06;PROJETOS;1008;Negócio Pichilaue Abasteça;Pichilau Vila Esperança;5500;5500;1;100;PROJETOS;false
+2025-06;PROJETOS;1009;Negócio Pichilau Abasteça;Pichilau Vila Esperança;3500;3500;1;100;PROJETOS;false
+2025-06;PROJETOS;1021;Negócio Ed Portal do Capibaribe;Ed Portal do Capibaribe;5000;5000;1;100;PROJETOS;false
+2025-06;LDC - Laudo de disponibilidade de carga;1022;Negócio Edf Ilha do Retiro;Edf Ilha do Retiro;4000;4000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-06;LDC - Laudo de disponibilidade de carga;1023;Negócio Edf Hockenheim;Edf Hockeneim;5000;5000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-06;LIE - Laudo de Instalações Elétricas;1025;Edf Maria Carolina negócio;Edf Maria Carolina;5000;5000;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-08;LDC - Laudo de disponibilidade de carga;1030;Negócio Edf Sirius e Antares;condomínio Residencial Estrela;8300;8300;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-06;LDC - Laudo de disponibilidade de carga;1031;Negócio Edf Boa Viagem;Edf Boa Viagem;8000;8000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-06;LDC - Laudo de disponibilidade de carga;1035;Negócio Edf Villa das Pedras;Edf Villa das Pedras;5000;5000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-08;LDC - Laudo de disponibilidade de carga;1036;Edf Principe de Toscana;Edificio Principe de Toscana;4000;4000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-10;LIE - Laudo de Instalações Elétricas;1040;Negócio Edf Morada dos Agapanthus;Edf Morada dos Agapanthus;4500;4500;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-08;LIE - Laudo de Instalações Elétricas;1043;Negócio Edf Morada Rosarinho;Edf Morada Rosarinho;5750;11500;2;50;"LIE - Laudo de Instalações Elétricas, PROJETOS";true
+2025-08;PROJETOS;1043;Negócio Edf Morada Rosarinho;Edf Morada Rosarinho;5750;11500;2;50;"LIE - Laudo de Instalações Elétricas, PROJETOS";true
+2025-08;LDC - Laudo de disponibilidade de carga;1052;Negócio Edf Turmalina;Edf Turmalina;8000;8000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-11;LDC - Laudo de disponibilidade de carga;1055;Negócio Edf Walter Turton;Edf Walter Turton;6000;6000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-11;LIE - Laudo de Instalações Elétricas;1062;Negócio Cond Casa da Montanha;Cond Casa da Montanha;5100;10200;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-11;LDC - Laudo de disponibilidade de carga;1062;Negócio Cond Casa da Montanha;Cond Casa da Montanha;5100;10200;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-08;LDC - Laudo de disponibilidade de carga;1071;Edf Terra Brasilis;Edf Terra Brasilis;17000;17000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-07;LDC - Laudo de disponibilidade de carga;1073;Negócio Edf Morada Ilha Verde;Edf Morada Ilha Verde;8000;8000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-10;LIE - Laudo de Instalações Elétricas;1074;Negócio Edf Piedade Prince;Edf Piedade Prince;4666.666666666667;14000;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-10;LDC - Laudo de disponibilidade de carga;1074;Negócio Edf Piedade Prince;Edf Piedade Prince;4666.666666666667;14000;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-10;ICV - Inspeção de carregador veicular;1074;Negócio Edf Piedade Prince;Edf Piedade Prince;4666.666666666667;14000;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-10;LDC - Laudo de disponibilidade de carga;1076;Negócio Edf Nicolau II;Edf Nicolau II;7700;7700;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-11;LIE - Laudo de Instalações Elétricas;1077;Negócio Edf Maria Clarice;Edf Maria Clarice;5000;5000;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-08;LDC - Laudo de disponibilidade de carga;1081;Edf Praia dos Jardins;Edf Praia dos Jardins;6000;6000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-08;LDC - Laudo de disponibilidade de carga;1083;Negócio Edf Sainte Daniela;Edf Sainte Daniela;7200;7200;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-09;LDC - Laudo de disponibilidade de carga;1084;Negócio Edf Quinta do Algarve;Edf Quinta do Algarve;4800;4800;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-08;LDC - Laudo de disponibilidade de carga;1085;Edf Luis Dias lins;Edf Luis dias lins;9500;9500;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-08;LDC - Laudo de disponibilidade de carga;1089;Negócio Edf Píer Mauricio de Nassau;Edf Píer Mauricio de Nassau;5000;5000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-08;LIE - Laudo de Instalações Elétricas;1092;Edf FICUS negócio;Edf FICUS;5250;10500;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-08;LDC - Laudo de disponibilidade de carga;1092;Edf FICUS negócio;Edf FICUS;5250;10500;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-07;LDC - Laudo de disponibilidade de carga;1093;Negócio Edf Cristiano;Edf Cristiano;4000;4000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-07;LDC - Laudo de disponibilidade de carga;1101;Negócio Edf MIllennium;Edf MIllennium;7000;7000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-11;LIE - Laudo de Instalações Elétricas;1102;Negócio Edf Sobrado do Capibaribe;Edf Sobrado do Capibaribe;5500;11000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-11;LDC - Laudo de disponibilidade de carga;1102;Negócio Edf Sobrado do Capibaribe;Edf Sobrado do Capibaribe;5500;11000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-07;OBRA;1111;Negócio Edf Praia de Japaratinga;Edf Praia de Japaratinga;10540;10540;1;100;OBRA;false
+2025-07;LIE - Laudo de Instalações Elétricas;1112;Negócio Edf Villa das Pedras;Edf Villa das Pedras;2400;2400;1;100;LIE - Laudo de Instalações Elétricas;false
+2026-04;LIE - Laudo de Instalações Elétricas;1119;Negócio Edf Maria Ines;Condominio do Edificio Maria Ines;7000;7000;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-08;PROJETOS;1124;Negócio Edf Maison Monet;Edf Maison Monet;5300;5300;1;100;PROJETOS;false
+2025-10;LDC - Laudo de disponibilidade de carga;1129;Negócio Paraíso Eco Resort Campina Grande;Paraíso Eco Resort Campina Grande;31350;31350;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-09;OBRA;1130;Negócio Edf Casa Rosada;Edf Manoella Vilaça;16493.98;16493.98;1;100;OBRA;false
+2025-09;LDC - Laudo de disponibilidade de carga;1134;Edf Luar da Praia;Edf Luar da Praia;12420;12420;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-09;LIE - Laudo de Instalações Elétricas;1136;Negócio Edf PARADOR DE GALICIA;Edf PARADOR DE GALICIA;5500;5500;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-08;ICV - Inspeção de carregador veicular;1139;Negócio condomínio Residencial Estrela Sirius e Antares;condomínio Residencial Estrela;1300;1300;1;100;ICV - Inspeção de carregador veicular;false
+2025-08;ICV - Inspeção de carregador veicular;1140;Negócio Edf Praça do Mar;Edf Praça do Mar;1600;1600;1;100;ICV - Inspeção de carregador veicular;false
+2025-09;PROJETOS;1141;Negócio Edf MIllennium;Edf MIllennium;5000;5000;1;100;PROJETOS;false
+2025-09;LIE - Laudo de Instalações Elétricas;1142;Edf Castelo de Blois negócio;Edf Castelo de Blois;6000;6000;1;100;LIE - Laudo de Instalações Elétricas;false
+2026-02;LDC - Laudo de disponibilidade de carga;1152;Negócio Edificio Le Parc;Edificio Le Parc;102000;102000;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-01;PROJETOS;1156;Negócio Edf Itaqua Vilage;Edf Itaqua Vilage;6000;6000;1;100;PROJETOS;false
+2025-11;LIE - Laudo de Instalações Elétricas;1162;Negócio Edf Maria Regina;Edf Maria Regina;5500;11000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-11;LDC - Laudo de disponibilidade de carga;1162;Negócio Edf Maria Regina;Edf Maria Regina;5500;11000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-10;LIE - Laudo de Instalações Elétricas;1172;Negócio edifício Morada das Palmeiras;edifício Morada das Palmeiras;6800;6800;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-10;LDC - Laudo de disponibilidade de carga;1179;Negócio Edf Madalena Colonial;Edf Madalena Colonial;8300;8300;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-10;LDC - Laudo de disponibilidade de carga;1180;Negócio Edf Reserva do Poço;Edf Reserva do Poço;6500;13000;2;50;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-10;ICV - Inspeção de carregador veicular;1180;Negócio Edf Reserva do Poço;Edf Reserva do Poço;6500;13000;2;50;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2025-09;PIE - Projeto infra.  Eletrocalha e Emergência;1183;Edf Luis dias lins negócio;Edf Luis dias lins;4000;4000;1;100;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2025-09;LDC - Laudo de disponibilidade de carga;1184;Negócio Edf Cristiano;Edf Cristiano;2600;2600;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-11;PIE - Projeto infra.  Eletrocalha e Emergência;1188;Edf Terra Brasilis;Edf Terra Brasilis;9000;9000;1;100;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2025-12;LDC - Laudo de disponibilidade de carga;1191;Edf Novo Jardim;Edf Novo Jardim;9900;9900;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-01;LIE - Laudo de Instalações Elétricas;1195;Edf Roraima;Edf nao informado;5000;5000;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-11;LDC - Laudo de disponibilidade de carga;1202;Edf. Cap d'Antibes;Edf. Cap d'Antibes;7700;7700;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-10;LDC - Laudo de disponibilidade de carga;1204;Edf Principe de Toscana;Edf Principe de Toscana;2000;2000;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-11;OBRA;1206;Edf Terra Brasilis;Edf Terra Brasilis;9700;9700;1;100;OBRA;false
+2025-11;LIE - Laudo de Instalações Elétricas;1211;Edf Porto dos Corais;Edf Porto dos Corais;4500;4500;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-12;Obras eletricas;1220;Edf Maria Carolina negócio;Edf Maria Carolina;19440;19440;1;100;Obras eletricas;false
+2025-12;OBRA;1221;Cond. Montendre;Cond. Montendre;33649.29;33649.29;1;100;OBRA;false
+2025-10;PIE - Projeto infra.  Eletrocalha e Emergência;1225;Edf Cristiano;Edf Cristiano;4500;4500;1;100;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2025-11;LDC - Laudo de disponibilidade de carga;1231;Edf Muçambê;Edf Muçambê;7800;7800;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-10;OBRA;1232;Edf Cristiano;Edf Cristiano;20000;20000;1;100;OBRA;false
+2025-11;LIE - Laudo de Instalações Elétricas;1236;Conjunto Portinari;Conjunto Portinari;6000;6000;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-11;LDC - Laudo de disponibilidade de carga;1238;Geraldo Posto Geração;Geraldo Posto Geração;4000;4000;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-04;LIE - Laudo de Instalações Elétricas;1245;Edf Ilha de Millos;Edf Ilha de Millos;6700;6700;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-12;LIE - Laudo de Instalações Elétricas;1246;Edf Rio Siriji;Edf Rio Siriji;7000;7000;1;100;LIE - Laudo de Instalações Elétricas;false
+2026-03;LIE - Laudo de Instalações Elétricas;1251;Edf Sitio Beira Rio;Edf Sitio Beira Rio;7500;15000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-03;LDC - Laudo de disponibilidade de carga;1251;Edf Sitio Beira Rio;Edf Sitio Beira Rio;7500;15000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-02;LIE - Laudo de Instalações Elétricas;1254;Empresarial Praia Guarapari;Empresarial Praia Guarapari;7000;7000;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-12;LIE - Laudo de Instalações Elétricas;1257;Edf Portal do Parnamirim;Edf Portal do Parnamirim;4400;8800;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-12;LDC - Laudo de disponibilidade de carga;1257;Edf Portal do Parnamirim;Edf Portal do Parnamirim;4400;8800;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-02;LIE - Laudo de Instalações Elétricas;1261;Edifício Ferreira da Costa;Edifício Ferreira da Costa;6000;6000;1;100;LIE - Laudo de Instalações Elétricas;false
+2025-11;LDC - Laudo de disponibilidade de carga;1262;Edf Quinta Tereza Beltrão;Edf Quinta Tereza Beltrão;7560;7560;1;100;LDC - Laudo de disponibilidade de carga;false
+2025-12;Obras eletricas;1296;Edf Luar das Ubaias;Edf Luar das Ubaias;19700;19700;1;100;Obras eletricas;false
+2026-01;LIE - Laudo de Instalações Elétricas;1300;Edf.Maria Nice negócio;Edf.Maria Nice;5175;10350;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-01;LDC - Laudo de disponibilidade de carga;1300;Edf.Maria Nice negócio;Edf.Maria Nice;5175;10350;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-12;PROJETOS;1301;Edf Carla Dias;Edf Carla Dias;5000;5000;1;100;PROJETOS;false
+2026-01;LIE - Laudo de Instalações Elétricas;1308;Câmara de Vereadores de Recife;Câmara de Vereadores de Recife;7225;14450;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-01;LDC - Laudo de disponibilidade de carga;1308;Câmara de Vereadores de Recife;Câmara de Vereadores de Recife;7225;14450;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-03;LIE - Laudo de Instalações Elétricas;1314;Edf Maria Leopoldina;Edf Maria Leopoldina;4166.666666666667;12500;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2026-03;LDC - Laudo de disponibilidade de carga;1314;Edf Maria Leopoldina;Edf Maria Leopoldina;4166.666666666667;12500;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2026-03;ICV - Inspeção de carregador veicular;1314;Edf Maria Leopoldina;Edf Maria Leopoldina;4166.666666666667;12500;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2026-01;PIE - Projeto infra.  Eletrocalha e Emergência;1316;Cond. João Heráclio negócio;Cond. João Heráclio;5000;5000;1;100;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2026-03;LIE - Laudo de Instalações Elétricas;1319;Edificio Belize;Edificio Belize;5000;10000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-03;LDC - Laudo de disponibilidade de carga;1319;Edificio Belize;Edificio Belize;5000;10000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2025-12;ICV - Inspeção de carregador veicular;1320;Edf Walter Turton;Edf Walter Turton;3000;3000;1;100;ICV - Inspeção de carregador veicular;false
+2025-12;OBRA;1323;Edf Cid Sampaio;Edf Cid Sampaio;19000;19000;1;100;OBRA;false
+2026-02;LIE - Laudo de Instalações Elétricas;1324;Edf Solar do Camaragybe;Edf Solar do Camaragybe;6000;6000;1;100;LIE - Laudo de Instalações Elétricas;false
+2026-01;LIE - Laudo de Instalações Elétricas;1325;Edf Lajedo negócio;Edf Lajedo;4000;4000;1;100;LIE - Laudo de Instalações Elétricas;false
+2026-03;ICV - Inspeção de carregador veicular;1331;Edf Terra Brasilis;Edf Terra Brasilis;1400;1400;1;100;ICV - Inspeção de carregador veicular;false
+2026-04;Obras eletricas;1334;Enseada do Mar;Enseada do Mar;6500;6500;1;100;Obras eletricas;false
+2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1335;Edf Morada Ilha Verde;Edf Morada Ilha Verde;5000;5000;1;100;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2026-02;LDC - Laudo de disponibilidade de carga;1336;Edf Chanel;Edf Chanel;7000;7000;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-01;OBRA;1337;Edf Quinta do Algarve;Edf Quinta do Algarve;17000;17000;1;100;OBRA;false
+2026-03;LDC - Laudo de disponibilidade de carga;1345;Edifício Lucilo Maranhão;Condominio do Edificio Lucilo Maranhao;7500;7500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-03;OBRA;1352;Quinta Tereza Beltrão;Edf Quinta Tereza Beltrão;8900;17800;2;50;"OBRA, CDM";true
+2026-03;CDM;1352;Quinta Tereza Beltrão;Edf Quinta Tereza Beltrão;8900;17800;2;50;"OBRA, CDM";true
+2026-02;OBRA;1355;Edf Morada Rosarinho;Edf Morada Rosarinho;6250;6250;1;100;OBRA;false
+2026-01;OBRA;1356;Edf Samsara;Edf Samsara;28000;28000;1;100;OBRA;false
+2026-01;LDC - Laudo de disponibilidade de carga;1357;Edf Samsara;Edf Samsara;2500;2500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-01;OBRA;1365;Edf Castelo de Blois;Edf Castelo de Blois;19800;19800;1;100;OBRA;false
+2026-02;LDC - Laudo de disponibilidade de carga;1371;Edf Venâncio Barbosa negócio;Edf Venâncio Barbosa;10500;10500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-01;PIE - Projeto infra.  Eletrocalha e Emergência;1372;Edf Samsara;Edf Samsara;4500;4500;1;100;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2026-04;LDC - Laudo de disponibilidade de carga;1374;Edf Domus Prof Mario Pessoa negócio;Edf Domus Prof Mario Pessoa;6500;6500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-02;LDC - Laudo de disponibilidade de carga;1375;Edf. Augusto Lins e Silva negócio;Edf. Augusto Lins e Silva;6500;6500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-05;LDC - Laudo de disponibilidade de carga;1382;Edf Alameda dos Flamboyants negócio;Edf Alameda dos Flamboyants;8800;8800;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-01;OBRA;1386;Verano ADM;Verano ADM;21515.86;43031.72;2;50;"OBRA, Instalação de Carregador Eletrico";true
+2026-01;Instalação de Carregador Eletrico;1386;Verano ADM;Verano ADM;21515.86;43031.72;2;50;"OBRA, Instalação de Carregador Eletrico";true
+2026-02;LDC - Laudo de disponibilidade de carga;1391;Edf Cidade do Recife;Edf Cidade do Recife;5500;5500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-02;LDC - Laudo de disponibilidade de carga;1393;Edf Ébano;Edf Ébano;4000;4000;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-02;LDC - Laudo de disponibilidade de carga;1410;Edf Porto dos Corais;Edf Porto dos Corais;6500;6500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-04;LIE - Laudo de Instalações Elétricas;1418;Edf. Villa Pasárgada;Edf. Villa Pasárgada;5000;10000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-04;LDC - Laudo de disponibilidade de carga;1418;Edf. Villa Pasárgada;Edf. Villa Pasárgada;5000;10000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-02;LDC - Laudo de disponibilidade de carga;1420;Empório Muro Alto;Empório Muro Alto;4500;4500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-02;OBRA;1423;Cond. Melo Barbosa;Cond. Melo Barbosa;13500;13500;1;100;OBRA;false
+2026-03;LIE - Laudo de Instalações Elétricas;1425;Edf Nazaré;Edf Nazaré;2000;4000;2;50;"LIE - Laudo de Instalações Elétricas, LGR - Laudo de Gerenciamento de Risco";true
+2026-03;LGR - Laudo de Gerenciamento de Risco;1425;Edf Nazaré;Edf Nazaré;2000;4000;2;50;"LIE - Laudo de Instalações Elétricas, LGR - Laudo de Gerenciamento de Risco";true
+2026-03;LDC - Laudo de disponibilidade de carga;1426;Edf Jardim das Orquídeas;Edf Jardim das Orquídeas;10000;10000;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-04;LDC - Laudo de disponibilidade de carga;1427;Condomínio Jardins da Ilha;Condomínio Jardins da Ilha;18000;18000;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-03;LDC - Laudo de disponibilidade de carga;1429;Edf Costa Atlântica  negócio;Condominio do Edificio Costa Atlantica;7000;7000;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-03;PROJETOS;1432;Edf Jardins do Rosarinho;Edf Jardins do Rosarinho;6750;6750;1;100;PROJETOS;false
+2026-03;LDC - Laudo de disponibilidade de carga;1435;Edf Rita de Cássia negócio;Edf Rita de Cássia;3000;6000;2;50;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência";true
+2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1435;Edf Rita de Cássia negócio;Edf Rita de Cássia;3000;6000;2;50;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência";true
+2026-03;OBRA;1436;Edf Reserva do Poço;Edf Reserva do Poço;83500;83500;1;100;OBRA;false
+2026-03;PROJETOS;1443;Edf Reserva do Poço;Edf Reserva do Poço;4250;8500;2;50;"PROJETOS, PIE - Projeto infra.  Eletrocalha e Emergência";true
+2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1443;Edf Reserva do Poço;Edf Reserva do Poço;4250;8500;2;50;"PROJETOS, PIE - Projeto infra.  Eletrocalha e Emergência";true
+2026-02;OBRA;1444;Edf Villa Casa Forte;Edf Villa Casa Forte;4500;4500;1;100;OBRA;false
+2026-04;ICV - Inspeção de carregador veicular;1446;Cond Saint Eduardo;Cond Saint Eduardo;4200;4200;1;100;ICV - Inspeção de carregador veicular;false
+2026-03;LDC - Laudo de disponibilidade de carga;1459;Edf Morada Apipucos;Edf Morada Apipucos;4500;4500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-03;LIE - Laudo de Instalações Elétricas;1461;Edifício Fernando Perez negócio;Edifício Fernando Perez;4000;4000;1;100;LIE - Laudo de Instalações Elétricas;false
+2026-04;LDC - Laudo de disponibilidade de carga;1464;Edf Jardins das Acácias;Edf Jardins das Acácias;10000;10000;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-05;LDC - Laudo de disponibilidade de carga;1473;condomínio Saint Sebastien;condomínio Saint Sebastien;8500;8500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-04;LIE - Laudo de Instalações Elétricas;1474;Edifício Ana Cristina;Edifício Ana Cristina;1350;2700;2;50;"LIE - Laudo de Instalações Elétricas, LGR - Laudo de Gerenciamento de Risco";true
+2026-04;LGR - Laudo de Gerenciamento de Risco;1474;Edifício Ana Cristina;Edifício Ana Cristina;1350;2700;2;50;"LIE - Laudo de Instalações Elétricas, LGR - Laudo de Gerenciamento de Risco";true
+2026-05;PROJETOS;1490;Edifício União;Edifício União;10000;10000;1;100;PROJETOS;false
+2026-06;LDC - Laudo de disponibilidade de carga;1507;Cond. The Plaza;Cond. The Plaza;2700;2700;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-03;PROJETOS;1514;Edf Sobrado do Capibaribe;Edf Sobrado do Capibaribe;5000;5000;1;100;PROJETOS;false
+2026-04;LDC - Laudo de disponibilidade de carga;1522;Condomínio Carmen Costa;Condomínio Carmen Costa;7000;7000;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1532;Edf Hilson Macedo;Edf Hilson Macedo;5000;5000;1;100;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2026-05;LDC - Laudo de disponibilidade de carga;1544;Edf. Príncipe de Navarra;Edf. Príncipe de Navarra;3000;6000;2;50;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2026-05;ICV - Inspeção de carregador veicular;1544;Edf. Príncipe de Navarra;Edf. Príncipe de Navarra;3000;6000;2;50;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2026-04;LDC - Laudo de disponibilidade de carga;1561;Edifício Lá Maison;Edifício Lá Maison;6500;6500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-05;LIE - Laudo de Instalações Elétricas;1563;EDF VILLA CLÁUDIA;EDF VILLA CLÁUDIA;5000;5000;1;100;LIE - Laudo de Instalações Elétricas;false
+2026-05;LIE - Laudo de Instalações Elétricas;1566;EDIFICIOS MARIA JULIA E MARIA DA GRACA;EDIFICIOS MARIA JULIA E MARIA DA GRACA;6500;19500;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LCC - Laudo Carregador Coletivo, PIE - Projeto infra.  Eletrocalha e Emergência";true
+2026-05;LCC - Laudo Carregador Coletivo;1566;EDIFICIOS MARIA JULIA E MARIA DA GRACA;EDIFICIOS MARIA JULIA E MARIA DA GRACA;6500;19500;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LCC - Laudo Carregador Coletivo, PIE - Projeto infra.  Eletrocalha e Emergência";true
+2026-05;PIE - Projeto infra.  Eletrocalha e Emergência;1566;EDIFICIOS MARIA JULIA E MARIA DA GRACA;EDIFICIOS MARIA JULIA E MARIA DA GRACA;6500;19500;3;33.333333333333336;"LIE - Laudo de Instalações Elétricas, LCC - Laudo Carregador Coletivo, PIE - Projeto infra.  Eletrocalha e Emergência";true
+2026-04;LIE - Laudo de Instalações Elétricas;1579;Edf Sagarana;Edf Sagarana;6000;12000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-04;LDC - Laudo de disponibilidade de carga;1579;Edf Sagarana;Edf Sagarana;6000;12000;2;50;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-05;LDC - Laudo de disponibilidade de carga;1600;Jardim do Mar;Jardim do Mar;7000;14000;2;50;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2026-05;ICV - Inspeção de carregador veicular;1600;Jardim do Mar;Jardim do Mar;7000;14000;2;50;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
+2026-04;PROJETOS;1601;Edf Turmalina;Edf Turmalina;8000;8000;1;100;PROJETOS;false
+2026-04;CDM;1609;Edf Madalena Colonial;Edf Madalena Colonial;45000;45000;1;100;CDM;false
+2026-04;LDC - Laudo de disponibilidade de carga;1617;Edf Miriam Dubeux;Edf Miriam Dubeux;5500;5500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-05;PROJETOS;1620;Edf Cidade do Recife;Edf Cidade do Recife;5000;5000;1;100;PROJETOS;false
+2026-05;LDC - Laudo de disponibilidade de carga;1643;EMPRESARIAL. CASA FORTE;EMPRESARIAL. CASA FORTE;9000;9000;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-06;LDC - Laudo de disponibilidade de carga;1655;Edf. Cine Torre;Edf. Cine Torre;7800;7800;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-05;LDC - Laudo de disponibilidade de carga;1663;Edf TAMARINEIRA PRINCE VANGARD;Edf TAMARINEIRA PRINCE VANGARD;8500;8500;1;100;LDC - Laudo de disponibilidade de carga;false
+2026-05;PROJETOS;1666;Rotterdam negócio;Rotterdam;5000;5000;1;100;PROJETOS;false
+2026-05;PIE - Projeto infra.  Eletrocalha e Emergência;1672;Condominio do Edificio Lucilo Maranhao;Condominio do Edificio Lucilo Maranhao;6000;6000;1;100;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2026-06;OBRA;1718;Rio Araguaia melhoria elétrica;Sindico Profi;950;950;1;100;OBRA;false
+2026-06;ICV - Inspeção de carregador veicular;1774;Condomínio Carmen Costa;Condomínio Carmen Costa;9200;9200;1;100;ICV - Inspeção de carregador veicular;false

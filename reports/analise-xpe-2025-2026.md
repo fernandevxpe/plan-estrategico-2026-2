@@ -1,6 +1,6 @@
 # Analise comercial e projetos - XPE Consultoria
 
-Gerado em: 25/06/2026, 17:49:23
+Gerado em: 25/06/2026, 18:23:45
 
 ## Resumo executivo
 
@@ -81,33 +81,40 @@ Gerado em: 25/06/2026, 17:49:23
 
 | Mes | Tipo | Fechamentos | Receita | Ticket medio | Cresc. receita MoM | Cresc. receita YoY |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| 2026-01 | OBRA | 4 | R$ 107.832 | R$ 26.958 | +104,8% | n/a |
-| 2026-01 | LDC - Laudo de disponibilidade de carga | 4 | R$ 40.300 | R$ 10.075 | +115,5% | +200,7% |
+| 2026-01 | OBRA | 4 | R$ 86.316 | R$ 21.579 | +63,9% | n/a |
+| 2026-01 | LIE - Laudo de Instalações Elétricas | 5 | R$ 27.900 | R$ 5.580 | +144,7% | +458% |
+| 2026-01 | Instalação de Carregador Eletrico | 1 | R$ 21.516 | R$ 21.516 | n/a | n/a |
+| 2026-01 | LDC - Laudo de disponibilidade de carga | 4 | R$ 21.400 | R$ 5.350 | +49,7% | +59,7% |
 | 2026-01 | PIE - Projeto infra.  Eletrocalha e Emergência | 3 | R$ 17.000 | R$ 5.667 | n/a | n/a |
-| 2026-01 | LIE - Laudo de Instalações Elétricas | 2 | R$ 9.000 | R$ 4.500 | +28,6% | +80% |
 | 2026-01 | PROJETOS | 1 | R$ 6.000 | R$ 6.000 | +20% | n/a |
-| 2026-02 | LDC - Laudo de disponibilidade de carga | 8 | R$ 146.500 | R$ 18.313 | +263,5% | +804,3% |
-| 2026-02 | OBRA | 3 | R$ 24.250 | R$ 8.083 | -77,5% | n/a |
-| 2026-02 | LIE - Laudo de Instalações Elétricas | 3 | R$ 19.000 | R$ 6.333 | +111,1% | n/a |
-| 2026-02 | PIE - Projeto infra.  Eletrocalha e Emergência | 1 | R$ 8.415 | R$ 8.415 | -50,5% | +12,2% |
-| 2026-03 | OBRA | 2 | R$ 101.300 | R$ 50.650 | +317,7% | n/a |
-| 2026-03 | LDC - Laudo de disponibilidade de carga | 8 | R$ 75.500 | R$ 9.438 | -48,5% | n/a |
-| 2026-03 | PIE - Projeto infra.  Eletrocalha e Emergência | 4 | R$ 24.500 | R$ 6.125 | +191,1% | n/a |
-| 2026-03 | PROJETOS | 2 | R$ 11.750 | R$ 5.875 | n/a | +11,9% |
-| 2026-03 | LIE - Laudo de Instalações Elétricas | 2 | R$ 8.000 | R$ 4.000 | -57,9% | n/a |
-| 2026-03 | ICV - Inspeção de carregador veicular | 1 | R$ 1.400 | R$ 1.400 | n/a | n/a |
-| 2026-04 | LDC - Laudo de disponibilidade de carga | 8 | R$ 75.500 | R$ 9.438 | +0% | +215,9% |
-| 2026-04 | CDM | 1 | R$ 45.000 | R$ 45.000 | n/a | n/a |
-| 2026-04 | LIE - Laudo de Instalações Elétricas | 3 | R$ 16.400 | R$ 5.467 | +105% | -6,8% |
-| 2026-04 | PROJETOS | 1 | R$ 8.000 | R$ 8.000 | -31,9% | n/a |
+| 2026-02 | LDC - Laudo de disponibilidade de carga | 8 | R$ 146.500 | R$ 18.313 | +584,6% | +2.613% |
+| 2026-02 | OBRA | 3 | R$ 24.250 | R$ 8.083 | -71,9% | n/a |
+| 2026-02 | LIE - Laudo de Instalações Elétricas | 3 | R$ 19.000 | R$ 6.333 | -31,9% | +251,9% |
+| 2026-02 | PROJETOS | 1 | R$ 4.208 | R$ 4.208 | -29,9% | +12,2% |
+| 2026-02 | PIE - Projeto infra.  Eletrocalha e Emergência | 1 | R$ 4.208 | R$ 4.208 | -75,3% | +12,2% |
+| 2026-03 | OBRA | 2 | R$ 92.400 | R$ 46.200 | +281% | n/a |
+| 2026-03 | LDC - Laudo de disponibilidade de carga | 9 | R$ 57.667 | R$ 6.407 | -60,6% | n/a |
+| 2026-03 | LIE - Laudo de Instalações Elétricas | 5 | R$ 22.667 | R$ 4.533 | +19,3% | n/a |
+| 2026-03 | PIE - Projeto infra.  Eletrocalha e Emergência | 4 | R$ 17.250 | R$ 4.313 | +310% | n/a |
+| 2026-03 | PROJETOS | 3 | R$ 16.000 | R$ 5.333 | +280,3% | +52,4% |
+| 2026-03 | CDM | 1 | R$ 8.900 | R$ 8.900 | n/a | n/a |
+| 2026-03 | ICV - Inspeção de carregador veicular | 2 | R$ 5.567 | R$ 2.783 | n/a | n/a |
+| 2026-03 | LGR - Laudo de Gerenciamento de Risco | 1 | R$ 2.000 | R$ 2.000 | n/a | n/a |
+| 2026-04 | LDC - Laudo de disponibilidade de carga | 8 | R$ 64.500 | R$ 8.063 | +11,8% | +439% |
+| 2026-04 | CDM | 1 | R$ 45.000 | R$ 45.000 | +405,6% | n/a |
+| 2026-04 | LIE - Laudo de Instalações Elétricas | 5 | R$ 26.050 | R$ 5.210 | +14,9% | +120,1% |
+| 2026-04 | PROJETOS | 1 | R$ 8.000 | R$ 8.000 | -50% | +36,4% |
 | 2026-04 | Obras eletricas | 1 | R$ 6.500 | R$ 6.500 | n/a | n/a |
-| 2026-04 | ICV - Inspeção de carregador veicular | 1 | R$ 4.200 | R$ 4.200 | +200% | n/a |
-| 2026-05 | LDC - Laudo de disponibilidade de carga | 7 | R$ 67.800 | R$ 9.686 | -10,2% | +73,8% |
-| 2026-05 | PIE - Projeto infra.  Eletrocalha e Emergência | 2 | R$ 25.500 | R$ 12.750 | n/a | +128,5% |
+| 2026-04 | ICV - Inspeção de carregador veicular | 1 | R$ 4.200 | R$ 4.200 | -24,6% | -29,6% |
+| 2026-04 | LGR - Laudo de Gerenciamento de Risco | 1 | R$ 1.350 | R$ 1.350 | -32,5% | n/a |
+| 2026-05 | LDC - Laudo de disponibilidade de carga | 7 | R$ 51.300 | R$ 7.329 | -20,5% | +35,6% |
 | 2026-05 | PROJETOS | 3 | R$ 20.000 | R$ 6.667 | +150% | +42,9% |
-| 2026-05 | LIE - Laudo de Instalações Elétricas | 1 | R$ 5.000 | R$ 5.000 | -69,5% | n/a |
-| 2026-06 | LDC - Laudo de disponibilidade de carga | 2 | R$ 10.500 | R$ 5.250 | -84,5% | -70% |
-| 2026-06 | ICV - Inspeção de carregador veicular | 1 | R$ 9.200 | R$ 9.200 | n/a | n/a |
+| 2026-05 | LIE - Laudo de Instalações Elétricas | 3 | R$ 18.000 | R$ 6.000 | -30,9% | +166,7% |
+| 2026-05 | PIE - Projeto infra.  Eletrocalha e Emergência | 2 | R$ 12.500 | R$ 6.250 | n/a | +124% |
+| 2026-05 | ICV - Inspeção de carregador veicular | 2 | R$ 10.000 | R$ 5.000 | +138,1% | n/a |
+| 2026-05 | LCC - Laudo Carregador Coletivo | 1 | R$ 6.500 | R$ 6.500 | n/a | n/a |
+| 2026-06 | LDC - Laudo de disponibilidade de carga | 2 | R$ 10.500 | R$ 5.250 | -79,5% | -70% |
+| 2026-06 | ICV - Inspeção de carregador veicular | 1 | R$ 9.200 | R$ 9.200 | -8% | n/a |
 | 2026-06 | OBRA | 1 | R$ 950 | R$ 950 | n/a | n/a |
 
 ## Pos-venda e recorrencia

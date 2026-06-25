@@ -1,6 +1,6 @@
 # Áreas estratégicas — XPE Consultoria
 
-Gerado em: 25/06/2026, 17:49:23
+Gerado em: 25/06/2026, 18:23:44
 
 Todas as 11 áreas em um único documento. Para conversar sobre uma área específica, referencie a seção pelo nome.
 
@@ -80,12 +80,12 @@ Hub de entrega técnica — projetos de engenharia e laudos regulatórios.
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 639.665** (71,4% do total)
-- Contratos fechados: **66**
-- Ticket médio: **R$ 9.692**
+- Receita: **R$ 634.398** (70,9% do total)
+- Contratos fechados: **83**
+- Ticket médio: **R$ 7.643**
 
 ### Destaques
-- Projetos: 18 contratos · Laudos: 48 contratos
+- Projetos: 21 contratos · Laudos: 62 contratos
 - 5 projetistas (era 3) + automação
 - 71% da receita 2026 YTD
 
@@ -114,12 +114,12 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 166.165** (18,6% do total)
-- Contratos fechados: **18**
-- Ticket médio: **R$ 9.231**
+- Receita: **R$ 159.065** (17,8% do total)
+- Contratos fechados: **21**
+- Ticket médio: **R$ 7.575**
 
 ### Destaques
-- Principal tipo: PIE (R$ 75.415)
+- Principal tipo: PROJETOS (R$ 54.208)
 
 ## Notas estratégicas
 
@@ -185,9 +185,9 @@ _Nenhum risco cadastrado._
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| PIE | 10 | R$ 75.415 |
-| PROJETOS | 7 | R$ 45.750 |
-| CDM | 1 | R$ 45.000 |
+| PROJETOS | 9 | R$ 54.208 |
+| CDM | 2 | R$ 53.900 |
+| PIE | 10 | R$ 50.958 |
 
 ---
 
@@ -198,12 +198,12 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 473.500** (52,9% do total)
-- Contratos fechados: **48**
-- Ticket médio: **R$ 9.865**
+- Receita: **R$ 475.333** (53,1% do total)
+- Contratos fechados: **62**
+- Ticket médio: **R$ 7.667**
 
 ### Destaques
-- Principal tipo: LDC (R$ 416.100)
+- Principal tipo: LDC (R$ 351.867)
 
 ## Notas estratégicas
 
@@ -274,8 +274,10 @@ _Nenhum risco cadastrado._
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| LDC | 37 | R$ 416.100 |
-| LIE | 11 | R$ 57.400 |
+| LDC | 38 | R$ 351.867 |
+| LIE | 21 | R$ 113.617 |
+| LCC | 1 | R$ 6.500 |
+| LGR | 2 | R$ 3.350 |
 
 ---
 
@@ -286,12 +288,12 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 521.563** (58,3% do total)
+- Receita: **R$ 491.148** (54,9% do total)
 - Contratos fechados: **23**
-- Ticket médio: **R$ 22.677**
+- Ticket médio: **R$ 21.354**
 
 ### Destaques
-- Principal tipo: OBRA (R$ 234.332)
+- Principal tipo: OBRA (R$ 203.916)
 
 ## Notas estratégicas
 
@@ -337,7 +339,7 @@ _Nenhum risco cadastrado._
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| OBRA | 10 | R$ 234.332 |
+| OBRA | 10 | R$ 203.916 |
 
 ---
 
@@ -442,12 +444,12 @@ Presença em feiras, networking e geração de pipeline presencial.
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 14.800** (1,7% do total)
-- Contratos fechados: **3**
-- Ticket médio: **R$ 4.933**
+- Receita: **R$ 56.983** (6,4% do total)
+- Contratos fechados: **8**
+- Ticket médio: **R$ 7.123**
 
 ### Destaques
-- Principal tipo: ICV (R$ 14.800)
+- Principal tipo: ICV (R$ 28.967)
 
 ## Notas estratégicas
 
@@ -489,7 +491,9 @@ Presença em feiras, networking e geração de pipeline presencial.
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| ICV | 3 | R$ 14.800 |
+| ICV | 6 | R$ 28.967 |
+| Instalação de Carregador Eletrico | 1 | R$ 21.516 |
+| LCC | 1 | R$ 6.500 |
 
 ---
 

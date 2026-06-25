@@ -408,6 +408,10 @@ const commercialFunnel = monthly.map((row) => {
 const businessTypeDeals = [];
 const businessTypeMultiDeals = [];
 for (const deal of wonDeals) {
+  const types = deal.businessTypes?.length ? deal.businessTypes : [deal.primaryBusinessType];
+  const typeCount = types.length;
+  const allocatedValue = typeCount ? deal.value / typeCount : deal.value;
+
   businessTypeDeals.push({
     month: deal.wonMonth,
     type: deal.primaryBusinessType,
@@ -419,19 +423,25 @@ for (const deal of wonDeals) {
     isMultiBusinessType: deal.isMultiBusinessType
   });
 
-  for (const type of deal.businessTypes) {
+  for (const type of types) {
     businessTypeMultiDeals.push({
       month: deal.wonMonth,
       type,
       dealId: deal.id,
       dealTitle: deal.title,
       organization: deal.organization,
-      value: deal.value
+      value: allocatedValue,
+      fullValue: deal.value,
+      typeCount,
+      allocationSharePct: typeCount ? 100 / typeCount : 100,
+      labels: deal.businessTypes.join(', '),
+      isMultiBusinessType: deal.isMultiBusinessType
     });
   }
 }
 
-const businessTypeSummary = groupBy(businessTypeDeals, (item) => `${item.month}|||${item.type}`)
+// Mix e participação por tipo: cada etiqueta conta no escopo; receita rateada igualmente.
+const businessTypeSummary = groupBy(businessTypeMultiDeals, (item) => `${item.month}|||${item.type}`)
   .map(([key, items]) => {
     const [month, type] = key.split('|||');
     return {

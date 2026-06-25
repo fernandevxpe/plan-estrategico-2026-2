@@ -312,7 +312,7 @@ export function MixSections({ analysis, year }: Props) {
             <div className="card-title">
               <div>
                 <h2>Ranking por produto · {periodSummary.label}</h2>
-                <span>Volume financeiro, quantidade e participação relativa</span>
+                <span>Volume financeiro (rateado), quantidade e participação relativa · múltiplas etiquetas contam em cada escopo com receita dividida igualmente</span>
               </div>
               <LayoutGrid size={18} />
             </div>

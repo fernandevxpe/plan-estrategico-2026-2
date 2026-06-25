@@ -1,6 +1,6 @@
 # Clientes e recorrência
 
-Gerado em: 25/06/2026, 17:49:23
+Gerado em: 25/06/2026, 18:23:44
 
 ## Recorrência
 

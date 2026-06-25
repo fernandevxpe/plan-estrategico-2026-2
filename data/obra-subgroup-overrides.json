@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "updatedAt": "2026-06-22T00:00:00.000Z",
+  "overrides": {
+    "1331": {
+      "subgroup": "ICV - inspeção de carregador veicular",
+      "confidence": "confirmed",
+      "note": "Confirmado: ICV é inspeção de carregador."
+    },
+    "1337": {
+      "subgroup": "CDM - obra/ampliação de centro de medição",
+      "confidence": "high",
+      "note": "ClickUp indica ampliação de CDM para Quinta do Algarve/Algarvia."
+    },
+    "1352": {
+      "subgroup": "CDM - obra/ampliação de centro de medição",
+      "confidence": "confirmed",
+      "note": "Confirmado: OBRA + Ampliação de CDM deve entrar como CDM obra/ampliação."
+    },
+    "1365": {
+      "subgroup": "Obras elétricas gerais/indefinidas",
+      "confidence": "low",
+      "note": "Sem escopo confirmado para subgrupo de obra."
+    },
+    "1423": {
+      "subgroup": "Obras elétricas gerais/indefinidas",
+      "confidence": "low",
+      "note": "Sem escopo confirmado para subgrupo de obra."
+    },
+    "1436": {
+      "subgroup": "Infraestrutura de carregamento veicular",
+      "confidence": "confirmed",
+      "note": "Confirmado: Reserva do Poço foi obra de infraestrutura de carregamento veicular."
+    },
+    "1444": {
+      "subgroup": "Infraestrutura de carregamento veicular",
+      "confidence": "high",
+      "note": "ClickUp indica controle de carga para 4 carregadores."
+    },
+    "1609": {
+      "subgroup": "CDM - obra/ampliação de centro de medição",
+      "confidence": "probable",
+      "note": "Madalena Colonial provavelmente foi ampliação de CDM."
+    }
+  }
+}

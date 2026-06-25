@@ -618,6 +618,166 @@ a {
   font-size: 24px;
 }
 
+.obra-toolbar {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.obra-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.obra-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f3fbf7;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.obra-action-btn.subtle {
+  background: #fbfcfc;
+  color: var(--muted);
+}
+
+.obra-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.obra-filter-note,
+.obra-save-note {
+  margin: 0;
+}
+
+.obra-summary-card-interactive {
+  position: relative;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.obra-summary-card-interactive:hover,
+.obra-summary-card-interactive:focus-visible {
+  border-color: #b8e6d4;
+  box-shadow: 0 8px 24px rgba(33, 166, 122, 0.12);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.obra-summary-card-interactive.is-active {
+  border-color: #21a67a;
+  box-shadow: 0 0 0 2px rgba(33, 166, 122, 0.18);
+}
+
+.obra-card-popover {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  display: none;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(23, 33, 38, 0.14);
+  pointer-events: none;
+}
+
+.obra-summary-card-interactive:hover .obra-card-popover,
+.obra-summary-card-interactive:focus-within .obra-card-popover {
+  display: block;
+}
+
+.obra-card-popover-list {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.obra-card-popover-list li {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.obra-card-popover-list li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.obra-popover-client {
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.obra-popover-meta,
+.obra-popover-title,
+.obra-popover-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.obra-deals-panel {
+  margin-top: 14px;
+}
+
+.obra-deals-table .obra-inline-select,
+.obra-deals-table .obra-inline-note {
+  width: 100%;
+  min-width: 140px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12px;
+  background: #fff;
+}
+
+.obra-deals-table .obra-inline-note {
+  min-width: 180px;
+  resize: vertical;
+}
+
+.obra-row-dirty {
+  background: #fffdf5;
+}
+
+.obra-row-actions {
+  white-space: nowrap;
+}
+
+.obra-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.obra-empty-note {
+  padding: 12px;
+}
+
 .mini-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

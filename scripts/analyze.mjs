@@ -618,16 +618,13 @@ const projectCandidateTasks = tasks.filter((task) => {
 const projectCandidates = projectCandidateTasks.map(({ description, textContent, ...task }) => task);
 
 const obraTypeLabels = new Set(['OBRA', 'CDM', 'Instalação de Carregador Eletrico']);
-const manualObraSubgroups = new Map([
-  [1436, { subgroup: 'Infraestrutura de carregamento veicular', confidence: 'confirmed', note: 'Confirmado: Reserva do Poço foi obra de infraestrutura de carregamento veicular.' }],
-  [1609, { subgroup: 'CDM - obra/ampliação de centro de medição', confidence: 'probable', note: 'Madalena Colonial provavelmente foi ampliação de CDM.' }],
-  [1331, { subgroup: 'ICV - inspeção de carregador veicular', confidence: 'confirmed', note: 'Confirmado: ICV é inspeção de carregador.' }],
-  [1352, { subgroup: 'CDM - obra/ampliação de centro de medição', confidence: 'confirmed', note: 'Confirmado: OBRA + Ampliação de CDM deve entrar como CDM obra/ampliação.' }],
-  [1337, { subgroup: 'CDM - obra/ampliação de centro de medição', confidence: 'high', note: 'ClickUp indica ampliação de CDM para Quinta do Algarve/Algarvia.' }],
-  [1444, { subgroup: 'Infraestrutura de carregamento veicular', confidence: 'high', note: 'ClickUp indica controle de carga para 4 carregadores.' }],
-  [1423, { subgroup: 'Obras elétricas gerais/indefinidas', confidence: 'low', note: 'Sem escopo confirmado para subgrupo de obra.' }],
-  [1365, { subgroup: 'Obras elétricas gerais/indefinidas', confidence: 'low', note: 'Sem escopo confirmado para subgrupo de obra.' }]
-]);
+
+const obraOverridesRaw = JSON.parse(
+  await readFile(new URL('../data/obra-subgroup-overrides.json', import.meta.url), 'utf8')
+);
+const manualObraSubgroups = new Map(
+  Object.entries(obraOverridesRaw.overrides ?? {}).map(([dealId, override]) => [Number(dealId), override])
+);
 
 function tokenSet(value) {
   return new Set(

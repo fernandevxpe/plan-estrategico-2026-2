@@ -18,6 +18,7 @@ import {
   StackedRevenueMixChart,
   YearComparisonChart
 } from "@/components/charts";
+import { ObraSubgroupsPanel } from "@/components/mix/ObraSubgroupsPanel";
 import type { Analysis, BusinessTypeMonthly, ExecutiveKpis, PlanningFilters } from "@/lib/analysis/types";
 import { filterBusinessTypes, filterFunnel, filterWonDeals } from "@/lib/analysis/metrics";
 import {
@@ -69,14 +70,6 @@ function revenueShare(revenue: number, total: number) {
   return `${number.format((revenue / total) * 100)}%`;
 }
 
-function confidenceLabel(value: string) {
-  if (value === "confirmed") return "confirmado";
-  if (value === "probable") return "provável";
-  if (value === "high") return "alta";
-  if (value === "medium") return "média";
-  return "baixa";
-}
-
 export function DashboardSections({ analysis, filters, kpis, view = "all" }: Props) {
   const funnelRows = filterFunnel(analysis, filters);
   const businessTypes = filterBusinessTypes(analysis, filters);
@@ -120,7 +113,6 @@ export function DashboardSections({ analysis, filters, kpis, view = "all" }: Pro
   }));
   const typeLeaders = topTypes(businessTypes);
   const postSalesConfidence = analysis.postSalesConfidence;
-  const obraSummary = analysis.obraSubgroups?.summary ?? [];
   const obraDeals = analysis.obraSubgroups?.deals ?? [];
 
   useEffect(() => {
@@ -448,62 +440,8 @@ export function DashboardSections({ analysis, filters, kpis, view = "all" }: Pro
         </div>
       </section>
 
-      {obraSummary.length ? (
-        <section className="obra-subgroups">
-          <div className="section-title subsection-title">
-            <div>
-              <h3>Subgrupos de obras 2026</h3>
-              <p>OBRA como macrogrupo, com subgrupos quando há evidência suficiente em Pipedrive/ClickUp.</p>
-            </div>
-            <span className="pill amber">Triagem em evolução</span>
-          </div>
-
-          <div className="obra-summary-grid">
-            {obraSummary.map((item) => (
-              <article className="card obra-summary-card" key={item.subgroup}>
-                <span className="metric-label">{item.wonDeals} fechamento(s)</span>
-                <h3>{item.subgroup}</h3>
-                <p className="metric">{brl.format(item.revenue)}</p>
-                <p className="metric-note">
-                  Ticket {brl.format(item.averageTicket)} · confiança: {item.confidenceBreakdown.confirmed} confirm.,{" "}
-                  {item.confidenceBreakdown.high} alta, {item.confidenceBreakdown.medium} média, {item.confidenceBreakdown.low} baixa
-                </p>
-              </article>
-            ))}
-          </div>
-
-          <details className="appendix-details compact-details">
-            <summary>Detalhe dos negócios classificados como obras</summary>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Mês</th>
-                    <th>Negócio</th>
-                    <th>Subgrupo</th>
-                    <th>Confiança</th>
-                    <th className="right">Valor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {obraDeals.map((deal) => (
-                    <tr key={deal.id}>
-                      <td><strong>{deal.month}</strong></td>
-                      <td>
-                        <strong>{deal.title}</strong>
-                        <span className="muted table-sub">{deal.organization ?? "Sem organização"} · {deal.businessTypes.join(", ")}</span>
-                        <span className="muted table-sub">{deal.note}</span>
-                      </td>
-                      <td>{deal.subgroup}</td>
-                      <td><span className={`pill ${deal.confidence === "low" ? "amber" : "green"}`}>{confidenceLabel(deal.confidence)}</span></td>
-                      <td className="right"><strong>{brl.format(deal.value)}</strong></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </details>
-        </section>
+      {obraDeals.length ? (
+        <ObraSubgroupsPanel deals={obraDeals} />
       ) : null}
 
       <details className="appendix-details compact-details">

@@ -25,7 +25,7 @@ export function HomePage({ analysis, generatedAt }: Props) {
   const quickLinks = [
     { href: "/planejamento", title: "Planejamento", desc: "Cenários, gráficos e tabela mês a mês" },
     { href: "/comercial", title: "Comercial", desc: "Funil, conversão e pipeline" },
-    { href: "/mix", title: "Mix de vendas", desc: "Tipos, participação e filtros" },
+    { href: "/mix", title: "Mix de vendas", desc: "Receita, esforço e participação por produto" },
     { href: "/metas", title: "Metas 2x/3x", desc: "Projeções e plano operacional" },
     { href: "/areas", title: "Áreas", desc: "Planejamento por área de negócio" },
     { href: "/investigacao", title: "Investigação", desc: "Alertas, recordes e funil profundo" }

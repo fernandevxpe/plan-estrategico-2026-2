@@ -1,6 +1,6 @@
 # Projeções operacionais 2x e 3x
 
-Gerado em: 25/06/2026, 17:34:44
+Gerado em: 25/06/2026, 17:49:23
 
 Compare os dois cenários de crescimento usados no dashboard.
 
@@ -27,7 +27,7 @@ Executar cenário Realista com H1 ajustado para R$ 1M, 2 comerciais e 5 projetis
 | Set | R$ 167.106 | 14,5 | R$ 11.509 | 82 | 17,6% | R$ 2.500 | 7,3 |
 | Out | R$ 227.676 | 19,8 | R$ 11.509 | 112 | 17,6% | R$ 2.500 | 9,9 |
 | Nov | R$ 201.914 | 17,5 | R$ 11.509 | 100 | 17,6% | R$ 2.500 | 8,8 |
-| Dez | R$ 280.742 | 24,4 | R$ 11.509 | 138 | 17,6% | R$ 2.500 | 12,2 |
+| Dez | R$ 280.742 | 24,4 | R$ 11.509 | 139 | 17,6% | R$ 2.500 | 12,2 |
 
 ---
 

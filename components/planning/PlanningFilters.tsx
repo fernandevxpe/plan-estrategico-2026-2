@@ -17,6 +17,8 @@ type Props = {
   onScenarioChange: (value: ScenarioName) => void;
   onYearChange: (value: YearFilter) => void;
   onPeriodChange: (value: PeriodFilter) => void;
+  hideScenario?: boolean;
+  hidePeriod?: boolean;
 };
 
 export function PlanningFilters({
@@ -27,10 +29,13 @@ export function PlanningFilters({
   partialMonth,
   onScenarioChange,
   onYearChange,
-  onPeriodChange
+  onPeriodChange,
+  hideScenario = false,
+  hidePeriod = false
 }: Props) {
   return (
     <div className="filter-bar" id="planejamento">
+      {!hideScenario ? (
       <div className="filter-group">
         <label htmlFor="scenario">Cenário</label>
         <select
@@ -46,6 +51,7 @@ export function PlanningFilters({
           ))}
         </select>
       </div>
+      ) : null}
 
       <div className="filter-group">
         <span className="filter-label">Ano</span>
@@ -63,6 +69,7 @@ export function PlanningFilters({
         </div>
       </div>
 
+      {!hidePeriod ? (
       <div className="filter-group">
         <span className="filter-label">Agregação</span>
         <div className="filter-toggle">
@@ -85,6 +92,7 @@ export function PlanningFilters({
           ))}
         </div>
       </div>
+      ) : null}
 
       <div className="filter-meta">
         <span>Dados de {generatedAt}</span>

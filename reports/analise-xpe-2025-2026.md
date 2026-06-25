@@ -1,6 +1,6 @@
 # Analise comercial e projetos - XPE Consultoria
 
-Gerado em: 25/06/2026, 17:34:45
+Gerado em: 25/06/2026, 17:49:23
 
 ## Resumo executivo
 
@@ -20,8 +20,8 @@ Gerado em: 25/06/2026, 17:34:45
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 2026-01 | 59 | R$ 795.638 | 14 | R$ 180.132 | 20 | +28,8% | 517 | R$ 2.254.714 |
 | 2026-02 | 59 | R$ 486.790 | 15 | R$ 198.165 | 17 | +27,1% | 544 | R$ 2.405.609 |
-| 2026-03 | 82 | R$ 385.485 | 17 | R$ 210.700 | 29 | +11% | 580 | R$ 2.356.474 |
-| 2026-04 | 75 | R$ 776.875 | 17 | R$ 167.350 | 28 | +14,7% | 610 | R$ 2.769.899 |
+| 2026-03 | 83 | R$ 390.485 | 19 | R$ 222.450 | 30 | +12% | 578 | R$ 2.340.924 |
+| 2026-04 | 74 | R$ 771.875 | 15 | R$ 155.600 | 27 | +13,5% | 610 | R$ 2.769.899 |
 | 2026-05 | 92 | R$ 796.205 | 13 | R$ 118.300 | 22 | +6,5% | 667 | R$ 3.248.604 |
 | 2026-06 | 77 | R$ 522.530 | 4 | R$ 20.650 | 22 | +1,3% | 718 | R$ 3.509.084 |
 
@@ -31,9 +31,9 @@ Gerado em: 25/06/2026, 17:34:45
 | --- | ---: | ---: | ---: | ---: | ---: |
 | 2026-01 | 59 | 14 | R$ 180.132 | R$ 12.867 | +30,3% |
 | 2026-02 | 59 | 15 | R$ 198.165 | R$ 13.211 | +10% |
-| 2026-03 | 82 | 17 | R$ 210.700 | R$ 12.394 | +6,3% |
-| 2026-04 | 75 | 17 | R$ 167.350 | R$ 9.844 | -20,6% |
-| 2026-05 | 92 | 13 | R$ 118.300 | R$ 9.100 | -29,3% |
+| 2026-03 | 83 | 19 | R$ 222.450 | R$ 11.708 | +12,3% |
+| 2026-04 | 74 | 15 | R$ 155.600 | R$ 10.373 | -30,1% |
+| 2026-05 | 92 | 13 | R$ 118.300 | R$ 9.100 | -24% |
 | 2026-06 | 77 | 4 | R$ 20.650 | R$ 5.163 | -82,5% |
 
 ## Leitura de crescimento em 2026
@@ -51,9 +51,9 @@ Gerado em: 25/06/2026, 17:34:45
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Jan | R$ 18.400 | R$ 180.132 | +879% | 24 | 59 | 3 | 14 | +30,3% |
 | Fev | R$ 37.500 | R$ 198.165 | +428,4% | 110 | 59 | 3 | 15 | +10% |
-| Mar | R$ 10.500 | R$ 210.700 | +1.906,7% | 12 | 82 | 1 | 17 | +6,3% |
-| Abr | R$ 75.800 | R$ 167.350 | +120,8% | 29 | 75 | 6 | 17 | -20,6% |
-| Mai | R$ 64.160 | R$ 118.300 | +84,4% | 28 | 92 | 7 | 13 | -29,3% |
+| Mar | R$ 10.500 | R$ 222.450 | +2.018,6% | 13 | 83 | 1 | 19 | +12,3% |
+| Abr | R$ 75.800 | R$ 155.600 | +105,3% | 28 | 74 | 6 | 15 | -30,1% |
+| Mai | R$ 64.160 | R$ 118.300 | +84,4% | 28 | 92 | 7 | 13 | -24% |
 | Jun | R$ 77.000 | R$ 20.650 | -73,2% | 22 | 77 | 12 | 4 | -82,5% |
 
 ## Projecao 2026.2 com base historica
@@ -92,20 +92,19 @@ Gerado em: 25/06/2026, 17:34:45
 | 2026-02 | PIE - Projeto infra.  Eletrocalha e Emergência | 1 | R$ 8.415 | R$ 8.415 | -50,5% | +12,2% |
 | 2026-03 | OBRA | 2 | R$ 101.300 | R$ 50.650 | +317,7% | n/a |
 | 2026-03 | LDC - Laudo de disponibilidade de carga | 8 | R$ 75.500 | R$ 9.438 | -48,5% | n/a |
-| 2026-03 | PIE - Projeto infra.  Eletrocalha e Emergência | 3 | R$ 19.500 | R$ 6.500 | +131,7% | n/a |
+| 2026-03 | PIE - Projeto infra.  Eletrocalha e Emergência | 4 | R$ 24.500 | R$ 6.125 | +191,1% | n/a |
+| 2026-03 | PROJETOS | 2 | R$ 11.750 | R$ 5.875 | n/a | +11,9% |
 | 2026-03 | LIE - Laudo de Instalações Elétricas | 2 | R$ 8.000 | R$ 4.000 | -57,9% | n/a |
-| 2026-03 | PROJETOS | 1 | R$ 5.000 | R$ 5.000 | n/a | -52,4% |
 | 2026-03 | ICV - Inspeção de carregador veicular | 1 | R$ 1.400 | R$ 1.400 | n/a | n/a |
 | 2026-04 | LDC - Laudo de disponibilidade de carga | 8 | R$ 75.500 | R$ 9.438 | +0% | +215,9% |
 | 2026-04 | CDM | 1 | R$ 45.000 | R$ 45.000 | n/a | n/a |
 | 2026-04 | LIE - Laudo de Instalações Elétricas | 3 | R$ 16.400 | R$ 5.467 | +105% | -6,8% |
-| 2026-04 | PROJETOS | 2 | R$ 14.750 | R$ 7.375 | +195% | n/a |
+| 2026-04 | PROJETOS | 1 | R$ 8.000 | R$ 8.000 | -31,9% | n/a |
 | 2026-04 | Obras eletricas | 1 | R$ 6.500 | R$ 6.500 | n/a | n/a |
-| 2026-04 | PIE - Projeto infra.  Eletrocalha e Emergência | 1 | R$ 5.000 | R$ 5.000 | -74,4% | -62,4% |
 | 2026-04 | ICV - Inspeção de carregador veicular | 1 | R$ 4.200 | R$ 4.200 | +200% | n/a |
 | 2026-05 | LDC - Laudo de disponibilidade de carga | 7 | R$ 67.800 | R$ 9.686 | -10,2% | +73,8% |
-| 2026-05 | PIE - Projeto infra.  Eletrocalha e Emergência | 2 | R$ 25.500 | R$ 12.750 | +410% | +128,5% |
-| 2026-05 | PROJETOS | 3 | R$ 20.000 | R$ 6.667 | +35,6% | +42,9% |
+| 2026-05 | PIE - Projeto infra.  Eletrocalha e Emergência | 2 | R$ 25.500 | R$ 12.750 | n/a | +128,5% |
+| 2026-05 | PROJETOS | 3 | R$ 20.000 | R$ 6.667 | +150% | +42,9% |
 | 2026-05 | LIE - Laudo de Instalações Elétricas | 1 | R$ 5.000 | R$ 5.000 | -69,5% | n/a |
 | 2026-06 | LDC - Laudo de disponibilidade de carga | 2 | R$ 10.500 | R$ 5.250 | -84,5% | -70% |
 | 2026-06 | ICV - Inspeção de carregador veicular | 1 | R$ 9.200 | R$ 9.200 | n/a | n/a |
@@ -154,7 +153,7 @@ Gerado em: 25/06/2026, 17:34:45
 ## Servicos com queda no 2o trimestre de 2026 vs 1o trimestre
 
 - Obras eletricas: R$ 234.782 no 1T para R$ 52.450 no 2T (-R$ 182.332).
-- Laudos e consultoria condominial: R$ 354.215 no 1T para R$ 253.850 no 2T (-R$ 100.365).
+- Laudos e consultoria condominial: R$ 365.965 no 1T para R$ 242.100 no 2T (-R$ 123.865).
 
 ## Projetos fechados em 2026
 
@@ -200,24 +199,24 @@ Gerado em: 25/06/2026, 17:34:45
 | 2026-03 | Edf Nazaré | Edf Nazaré | Laudos e consultoria condominial | R$ 4.000 |
 | 2026-03 | Edf Jardim das Orquídeas | Edf Jardim das Orquídeas | Laudos e consultoria condominial | R$ 10.000 |
 | 2026-03 | Edf Costa Atlântica  negócio | Condominio do Edificio Costa Atlantica | Laudos e consultoria condominial | R$ 7.000 |
+| 2026-03 | Edf Jardins do Rosarinho | Edf Jardins do Rosarinho | Laudos e consultoria condominial | R$ 6.750 |
 | 2026-03 | Edf Rita de Cássia negócio | Edf Rita de Cássia | Laudos e consultoria condominial | R$ 6.000 |
 | 2026-03 | Edf Reserva do Poço | Edf Reserva do Poço | Obras eletricas | R$ 83.500 |
 | 2026-03 | Edf Reserva do Poço | Edf Reserva do Poço | Laudos e consultoria condominial | R$ 8.500 |
 | 2026-03 | Edf Morada Apipucos | Edf Morada Apipucos | Laudos e consultoria condominial | R$ 4.500 |
 | 2026-03 | Edifício Fernando Perez negócio | Edifício Fernando Perez | Laudos e consultoria condominial | R$ 4.000 |
 | 2026-03 | Edf Sobrado do Capibaribe | Edf Sobrado do Capibaribe | Laudos e consultoria condominial | R$ 5.000 |
+| 2026-03 | Edf Hilson Macedo | Edf Hilson Macedo | Laudos e consultoria condominial | R$ 5.000 |
 | 2026-04 | Negócio Edf Maria Ines | Condominio do Edificio Maria Ines | Laudos e consultoria condominial | R$ 7.000 |
 | 2026-04 | Edf Ilha de Millos | Edf Ilha de Millos | Laudos e consultoria condominial | R$ 6.700 |
 | 2026-04 | Enseada do Mar | Enseada do Mar | Obras eletricas | R$ 6.500 |
 | 2026-04 | Edf Domus Prof Mario Pessoa negócio | Edf Domus Prof Mario Pessoa | Laudos e consultoria condominial | R$ 6.500 |
 | 2026-04 | Edf. Villa Pasárgada | Edf. Villa Pasárgada | Laudos e consultoria condominial | R$ 10.000 |
 | 2026-04 | Condomínio Jardins da Ilha | Condomínio Jardins da Ilha | Laudos e consultoria condominial | R$ 18.000 |
-| 2026-04 | Edf Jardins do Rosarinho | Edf Jardins do Rosarinho | Laudos e consultoria condominial | R$ 6.750 |
 | 2026-04 | Cond Saint Eduardo | Cond Saint Eduardo | Laudos e consultoria condominial | R$ 4.200 |
 | 2026-04 | Edf Jardins das Acácias | Edf Jardins das Acácias | Laudos e consultoria condominial | R$ 10.000 |
 | 2026-04 | Edifício Ana Cristina | Edifício Ana Cristina | Laudos e consultoria condominial | R$ 2.700 |
 | 2026-04 | Condomínio Carmen Costa | Condomínio Carmen Costa | Laudos e consultoria condominial | R$ 7.000 |
-| 2026-04 | Edf Hilson Macedo | Edf Hilson Macedo | Laudos e consultoria condominial | R$ 5.000 |
 | 2026-04 | Edifício Lá Maison | Edifício Lá Maison | Laudos e consultoria condominial | R$ 6.500 |
 | 2026-04 | Edf Sagarana | Edf Sagarana | Laudos e consultoria condominial | R$ 12.000 |
 | 2026-04 | Edf Turmalina | Edf Turmalina | Laudos e consultoria condominial | R$ 8.000 |

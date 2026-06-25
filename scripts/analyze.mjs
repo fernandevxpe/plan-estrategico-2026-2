@@ -22,10 +22,36 @@ async function readOptionalJson(name, fallback = []) {
 const PLANNING_REALIZED_PIPELINES = new Set(['[Exec] Laudos - Condo', 'Obras']);
 const BUSINESS_TIMEZONE = 'America/Recife';
 
-function monthKey(value) {
+function parsePipedriveDate(value) {
   if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(raw)) {
+    const date = new Date(raw);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const date = new Date(`${raw}T12:00:00.000Z`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const normalized = raw.includes('T') ? `${raw}Z` : `${raw.replace(' ', 'T')}Z`;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function monthKeyFromLocalDate(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}/.test(raw)) return null;
+  return raw.slice(0, 7);
+}
+
+function monthKey(value) {
+  const date = parsePipedriveDate(value);
+  if (!date) return null;
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: BUSINESS_TIMEZONE,
     year: 'numeric',
@@ -255,9 +281,9 @@ const deals = dealsRaw.map((deal) => {
     wonTime: deal.won_time,
     closeTime: deal.close_time,
     createdMonth: monthKey(deal.add_time),
-    wonMonth: monthKey(deal.won_time),
-    lostMonth: monthKey(deal.lost_time),
-    closedMonth: monthKey(deal.close_time),
+    wonMonth: monthKeyFromLocalDate(deal.local_won_date) ?? monthKey(deal.won_time),
+    lostMonth: monthKeyFromLocalDate(deal.local_lost_date) ?? monthKey(deal.lost_time),
+    closedMonth: monthKeyFromLocalDate(deal.local_close_date) ?? monthKey(deal.close_time),
     pipeline: pipeline?.name ?? null,
     pipelineId: deal.pipeline_id ?? null,
     stage: stage?.name ?? null,
@@ -2078,9 +2104,7 @@ const growthGuides = {
 const MAIN_EXEC_PIPELINE = '[Exec] Laudos - Condo';
 
 function parseDealTimestamp(value) {
-  if (!value) return null;
-  const date = new Date(String(value).replace(' ', 'T'));
-  return Number.isNaN(date.getTime()) ? null : date;
+  return parsePipedriveDate(value);
 }
 
 function countDealsInDays(dealList, timeField, days) {

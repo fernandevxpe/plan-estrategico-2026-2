@@ -470,6 +470,133 @@ a {
   height: 11px;
 }
 
+.mix-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.mix-toolbar-group {
+  display: grid;
+  gap: 8px;
+}
+
+.mix-segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mix-segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fbfcfc;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.mix-segmented button.active {
+  border-color: #b8e6d4;
+  background: #f3fbf7;
+  color: var(--ink);
+  box-shadow: 0 0 0 1px rgba(33, 166, 122, 0.12);
+}
+
+.mix-workbench-v2 {
+  grid-template-columns: minmax(280px, 0.68fr) minmax(0, 1fr);
+}
+
+.mix-panel-wide {
+  min-height: 460px;
+}
+
+.mix-kpi-grid-v2 {
+  grid-template-columns: 1fr;
+}
+
+.mix-dual-share-list {
+  display: grid;
+  gap: 16px;
+}
+
+.mix-dual-share-row {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mix-dual-share-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.mix-dual-share-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.mix-dual-bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mix-dual-bar-block {
+  display: grid;
+  gap: 6px;
+}
+
+.mix-share-bar-muted {
+  background: #eef3f4;
+}
+
+.mix-ranking-table .mix-type-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.mix-gap-alert {
+  color: #b67818;
+  font-weight: 750;
+}
+
+.mix-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.mix-effort-insight h3 {
+  font-size: 13px;
+}
+
+.mix-period-overview {
+  margin-bottom: 16px;
+}
+
+.mix-period-active {
+  background: #f3fbf7;
+}
+
+.mix-period-active td {
+  border-color: #d7efe4;
+}
+
 .obra-subgroups {
   margin: 20px 0 24px;
 }
@@ -3159,7 +3286,12 @@ tr:last-child td {
   .dashboard-grid,
   .executive-brief,
   .insights,
-  .mix-workbench {
+  .mix-workbench,
+  .mix-workbench-v2 {
+    grid-template-columns: 1fr;
+  }
+
+  .mix-dual-bars {
     grid-template-columns: 1fr;
   }
 

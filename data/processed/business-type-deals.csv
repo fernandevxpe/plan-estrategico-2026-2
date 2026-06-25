@@ -147,7 +147,7 @@ month;type;dealId;dealTitle;organization;value;labels;isMultiBusinessType
 2026-03;LDC - Laudo de disponibilidade de carga;1426;Edf Jardim das Orquídeas;Edf Jardim das Orquídeas;10000;LDC - Laudo de disponibilidade de carga;false
 2026-04;LDC - Laudo de disponibilidade de carga;1427;Condomínio Jardins da Ilha;Condomínio Jardins da Ilha;18000;LDC - Laudo de disponibilidade de carga;false
 2026-03;LDC - Laudo de disponibilidade de carga;1429;Edf Costa Atlântica  negócio;Condominio do Edificio Costa Atlantica;7000;LDC - Laudo de disponibilidade de carga;false
-2026-04;PROJETOS;1432;Edf Jardins do Rosarinho;Edf Jardins do Rosarinho;6750;PROJETOS;false
+2026-03;PROJETOS;1432;Edf Jardins do Rosarinho;Edf Jardins do Rosarinho;6750;PROJETOS;false
 2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1435;Edf Rita de Cássia negócio;Edf Rita de Cássia;6000;"LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência";true
 2026-03;OBRA;1436;Edf Reserva do Poço;Edf Reserva do Poço;83500;OBRA;false
 2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1443;Edf Reserva do Poço;Edf Reserva do Poço;8500;"PROJETOS, PIE - Projeto infra.  Eletrocalha e Emergência";true
@@ -162,7 +162,7 @@ month;type;dealId;dealTitle;organization;value;labels;isMultiBusinessType
 2026-06;LDC - Laudo de disponibilidade de carga;1507;Cond. The Plaza;Cond. The Plaza;2700;LDC - Laudo de disponibilidade de carga;false
 2026-03;PROJETOS;1514;Edf Sobrado do Capibaribe;Edf Sobrado do Capibaribe;5000;PROJETOS;false
 2026-04;LDC - Laudo de disponibilidade de carga;1522;Condomínio Carmen Costa;Condomínio Carmen Costa;7000;LDC - Laudo de disponibilidade de carga;false
-2026-04;PIE - Projeto infra.  Eletrocalha e Emergência;1532;Edf Hilson Macedo;Edf Hilson Macedo;5000;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1532;Edf Hilson Macedo;Edf Hilson Macedo;5000;PIE - Projeto infra.  Eletrocalha e Emergência;false
 2026-05;LDC - Laudo de disponibilidade de carga;1544;Edf. Príncipe de Navarra;Edf. Príncipe de Navarra;6000;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
 2026-04;LDC - Laudo de disponibilidade de carga;1561;Edifício Lá Maison;Edifício Lá Maison;6500;LDC - Laudo de disponibilidade de carga;false
 2026-05;LIE - Laudo de Instalações Elétricas;1563;EDF VILLA CLÁUDIA;EDF VILLA CLÁUDIA;5000;LIE - Laudo de Instalações Elétricas;false

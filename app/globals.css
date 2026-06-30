@@ -5982,7 +5982,8 @@ tr:last-child td {
 }
 
 .gestao-bottleneck-title {
-  flex: 1;
+  flex: 0 1 auto;
+  max-width: min(280px, 28%);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -6309,6 +6310,7 @@ tr:last-child td {
 }
 
 .gestao-bn-header-badge {
+  flex-shrink: 0;
   font-size: 12px;
   color: var(--muted);
   padding: 4px 10px;
@@ -7131,38 +7133,54 @@ tr:last-child td {
 }
 
 .gestao-bn-header-kpis {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 102px));
+  gap: 6px 8px;
+  flex: 1 1 55%;
   min-width: 0;
-  justify-content: flex-end;
-  margin: 0 8px;
+  align-items: stretch;
+  justify-content: end;
+  margin: 0 10px 0 4px;
 }
 
 .gestao-bn-header-kpi {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 4px 6px;
-  padding: 4px 8px;
+  gap: 2px 4px;
+  padding: 4px 6px;
   border-radius: 8px;
   background: var(--surface-2, rgba(0, 0, 0, 0.03));
   border: 1px solid var(--border);
   font-size: 11px;
-  max-width: 160px;
+  min-width: 0;
+  max-width: 102px;
 }
 
 .gestao-bn-header-kpi-name {
   grid-column: 1 / -1;
   color: var(--muted);
-  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.25;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .gestao-bn-header-kpi strong {
   font-size: 12px;
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.gestao-bn-header-kpi .gestao-bn-fill-dot {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+  justify-self: end;
 }
 
 .gestao-bn-fill-dot {

@@ -1,29 +1,29 @@
 # Analise comercial e projetos - XPE Consultoria
 
-Gerado em: 25/06/2026, 18:23:45
+Gerado em: 30/06/2026, 16:25:16
 
 ## Resumo executivo
 
-- Negocios analisados no Pipedrive: 998 em 2025-2026.
-- Negocios ganhos no periodo: 181, somando R$ 1.785.710.
-- Ticket medio geral dos negocios ganhos: R$ 9.866.
-- Tarefas/projetos encontrados no ClickUp: 1603; candidatos de producao ligados a projetos/operacao: 1273.
-- Junho de 2026 deve ser lido como parcial, pois a base foi extraida em 25/06/2026.
+- Negocios analisados no Pipedrive: 1013 em 2025-2026.
+- Negocios ganhos no periodo: 188, somando R$ 1.876.130.
+- Ticket medio geral dos negocios ganhos: R$ 9.979.
+- Tarefas/projetos encontrados no ClickUp: 0; candidatos de producao ligados a projetos/operacao: 0.
+- Junho de 2026 deve ser lido como parcial, pois a base foi extraida em 30/06/2026.
 - O Pipedrive nao trouxe produtos por negocio; a classificacao inicial de servico usa principalmente funil/etapa e, quando necessario, termos explicitos no titulo.
 - Para tipos de negocio, a fonte principal agora e a etiqueta comercial do Pipedrive: LIE, LDC, LCC, PIE, OBRA, PROJETOS, LSPDA, CDM, ICV e instalacao de carregador.
-- Cobertura de CNPJ nas organizacoes: 200/1595; nos ganhos analisados: 107/181.
+- Cobertura de CNPJ nas organizacoes: 206/1607; nos ganhos analisados: 109/188.
 - Arquivos tabulares gerados em `data/processed/*.csv` para revisao e uso em planilhas.
 
 ## Funil comercial mensal
 
 | Mes | Novos negocios | Valor criado | Ganhos no mes | Receita ganha | Perdidos no mes | Conversao novos neg. | Base aberta fim do mes | Valor em aberto |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2026-01 | 59 | R$ 795.638 | 14 | R$ 180.132 | 20 | +28,8% | 517 | R$ 2.254.714 |
-| 2026-02 | 59 | R$ 486.790 | 15 | R$ 198.165 | 17 | +27,1% | 544 | R$ 2.405.609 |
-| 2026-03 | 83 | R$ 390.485 | 19 | R$ 222.450 | 30 | +12% | 578 | R$ 2.340.924 |
-| 2026-04 | 74 | R$ 771.875 | 15 | R$ 155.600 | 27 | +13,5% | 610 | R$ 2.769.899 |
-| 2026-05 | 92 | R$ 796.205 | 13 | R$ 118.300 | 22 | +6,5% | 667 | R$ 3.248.604 |
-| 2026-06 | 77 | R$ 522.530 | 4 | R$ 20.650 | 22 | +1,3% | 718 | R$ 3.509.084 |
+| 2026-01 | 59 | R$ 795.638 | 14 | R$ 180.132 | 20 | +28,8% | 518 | R$ 2.281.714 |
+| 2026-02 | 59 | R$ 486.790 | 15 | R$ 198.165 | 17 | +27,1% | 545 | R$ 2.432.609 |
+| 2026-03 | 83 | R$ 429.600 | 19 | R$ 222.450 | 30 | +13,3% | 579 | R$ 2.407.039 |
+| 2026-04 | 74 | R$ 819.950 | 15 | R$ 155.600 | 27 | +14,9% | 611 | R$ 2.884.089 |
+| 2026-05 | 92 | R$ 875.705 | 13 | R$ 118.300 | 22 | +8,7% | 668 | R$ 3.442.294 |
+| 2026-06 | 92 | R$ 681.250 | 11 | R$ 111.070 | 38 | +4,3% | 711 | R$ 3.571.474 |
 
 ## 2026 mes a mes
 
@@ -34,7 +34,7 @@ Gerado em: 25/06/2026, 18:23:45
 | 2026-03 | 83 | 19 | R$ 222.450 | R$ 11.708 | +12,3% |
 | 2026-04 | 74 | 15 | R$ 155.600 | R$ 10.373 | -30,1% |
 | 2026-05 | 92 | 13 | R$ 118.300 | R$ 9.100 | -24% |
-| 2026-06 | 77 | 4 | R$ 20.650 | R$ 5.163 | -82,5% |
+| 2026-06 | 92 | 11 | R$ 111.070 | R$ 10.097 | -6,1% |
 
 ## Leitura de crescimento em 2026
 
@@ -54,7 +54,7 @@ Gerado em: 25/06/2026, 18:23:45
 | Mar | R$ 10.500 | R$ 222.450 | +2.018,6% | 13 | 83 | 1 | 19 | +12,3% |
 | Abr | R$ 75.800 | R$ 155.600 | +105,3% | 28 | 74 | 6 | 15 | -30,1% |
 | Mai | R$ 64.160 | R$ 118.300 | +84,4% | 28 | 92 | 7 | 13 | -24% |
-| Jun | R$ 77.000 | R$ 20.650 | -73,2% | 22 | 77 | 12 | 4 | -82,5% |
+| Jun | R$ 77.000 | R$ 111.070 | +44,2% | 22 | 92 | 12 | 11 | -6,1% |
 
 ## Projecao 2026.2 com base historica
 
@@ -84,7 +84,7 @@ Gerado em: 25/06/2026, 18:23:45
 | 2026-01 | OBRA | 4 | R$ 86.316 | R$ 21.579 | +63,9% | n/a |
 | 2026-01 | LIE - Laudo de Instalações Elétricas | 5 | R$ 27.900 | R$ 5.580 | +144,7% | +458% |
 | 2026-01 | Instalação de Carregador Eletrico | 1 | R$ 21.516 | R$ 21.516 | n/a | n/a |
-| 2026-01 | LDC - Laudo de disponibilidade de carga | 4 | R$ 21.400 | R$ 5.350 | +49,7% | +59,7% |
+| 2026-01 | LDC - Laudo de disponibilidade de carga | 4 | R$ 21.400 | R$ 5.350 | +10,9% | +59,7% |
 | 2026-01 | PIE - Projeto infra.  Eletrocalha e Emergência | 3 | R$ 17.000 | R$ 5.667 | n/a | n/a |
 | 2026-01 | PROJETOS | 1 | R$ 6.000 | R$ 6.000 | +20% | n/a |
 | 2026-02 | LDC - Laudo de disponibilidade de carga | 8 | R$ 146.500 | R$ 18.313 | +584,6% | +2.613% |
@@ -92,19 +92,17 @@ Gerado em: 25/06/2026, 18:23:45
 | 2026-02 | LIE - Laudo de Instalações Elétricas | 3 | R$ 19.000 | R$ 6.333 | -31,9% | +251,9% |
 | 2026-02 | PROJETOS | 1 | R$ 4.208 | R$ 4.208 | -29,9% | +12,2% |
 | 2026-02 | PIE - Projeto infra.  Eletrocalha e Emergência | 1 | R$ 4.208 | R$ 4.208 | -75,3% | +12,2% |
-| 2026-03 | OBRA | 2 | R$ 92.400 | R$ 46.200 | +281% | n/a |
+| 2026-03 | OBRA | 2 | R$ 101.300 | R$ 50.650 | +317,7% | n/a |
 | 2026-03 | LDC - Laudo de disponibilidade de carga | 9 | R$ 57.667 | R$ 6.407 | -60,6% | n/a |
 | 2026-03 | LIE - Laudo de Instalações Elétricas | 5 | R$ 22.667 | R$ 4.533 | +19,3% | n/a |
 | 2026-03 | PIE - Projeto infra.  Eletrocalha e Emergência | 4 | R$ 17.250 | R$ 4.313 | +310% | n/a |
 | 2026-03 | PROJETOS | 3 | R$ 16.000 | R$ 5.333 | +280,3% | +52,4% |
-| 2026-03 | CDM | 1 | R$ 8.900 | R$ 8.900 | n/a | n/a |
 | 2026-03 | ICV - Inspeção de carregador veicular | 2 | R$ 5.567 | R$ 2.783 | n/a | n/a |
 | 2026-03 | LGR - Laudo de Gerenciamento de Risco | 1 | R$ 2.000 | R$ 2.000 | n/a | n/a |
 | 2026-04 | LDC - Laudo de disponibilidade de carga | 8 | R$ 64.500 | R$ 8.063 | +11,8% | +439% |
-| 2026-04 | CDM | 1 | R$ 45.000 | R$ 45.000 | +405,6% | n/a |
+| 2026-04 | OBRA | 2 | R$ 51.500 | R$ 25.750 | -49,2% | +145,2% |
 | 2026-04 | LIE - Laudo de Instalações Elétricas | 5 | R$ 26.050 | R$ 5.210 | +14,9% | +120,1% |
 | 2026-04 | PROJETOS | 1 | R$ 8.000 | R$ 8.000 | -50% | +36,4% |
-| 2026-04 | Obras eletricas | 1 | R$ 6.500 | R$ 6.500 | n/a | n/a |
 | 2026-04 | ICV - Inspeção de carregador veicular | 1 | R$ 4.200 | R$ 4.200 | -24,6% | -29,6% |
 | 2026-04 | LGR - Laudo de Gerenciamento de Risco | 1 | R$ 1.350 | R$ 1.350 | -32,5% | n/a |
 | 2026-05 | LDC - Laudo de disponibilidade de carga | 7 | R$ 51.300 | R$ 7.329 | -20,5% | +35,6% |
@@ -113,45 +111,46 @@ Gerado em: 25/06/2026, 18:23:45
 | 2026-05 | PIE - Projeto infra.  Eletrocalha e Emergência | 2 | R$ 12.500 | R$ 6.250 | n/a | +124% |
 | 2026-05 | ICV - Inspeção de carregador veicular | 2 | R$ 10.000 | R$ 5.000 | +138,1% | n/a |
 | 2026-05 | LCC - Laudo Carregador Coletivo | 1 | R$ 6.500 | R$ 6.500 | n/a | n/a |
-| 2026-06 | LDC - Laudo de disponibilidade de carga | 2 | R$ 10.500 | R$ 5.250 | -79,5% | -70% |
-| 2026-06 | ICV - Inspeção de carregador veicular | 1 | R$ 9.200 | R$ 9.200 | -8% | n/a |
-| 2026-06 | OBRA | 1 | R$ 950 | R$ 950 | n/a | n/a |
+| 2026-06 | OBRA | 5 | R$ 69.970 | R$ 13.994 | n/a | n/a |
+| 2026-06 | LDC - Laudo de disponibilidade de carga | 4 | R$ 22.700 | R$ 5.675 | -55,8% | -35,1% |
+| 2026-06 | ICV - Inspeção de carregador veicular | 2 | R$ 13.700 | R$ 6.850 | +37% | n/a |
+| 2026-06 | LCC - Laudo Carregador Coletivo | 1 | R$ 4.700 | R$ 4.700 | -27,7% | n/a |
 
 ## Pos-venda e recorrencia
 
-- Contas com mais de um fechamento no mesmo CNPJ: 25.
-- Contas com mais de um fechamento por organizacao normalizada: 36.
-- Receita de repeticao por organizacao no periodo: R$ 644.311.
+- Contas com mais de um fechamento no mesmo CNPJ: 27.
+- Contas com mais de um fechamento por organizacao normalizada: 39.
+- Receita de repeticao por organizacao no periodo: R$ 713.331.
 
 | Conta/CNPJ | Cliente | Fechamentos | Receita total | Receita repetida | Primeiro ganho | Ultimo ganho | Tipos |
 | --- | --- | ---: | ---: | ---: | --- | --- | --- |
 | 11419309000137 | Cond. João Heráclio | 5 | R$ 126.200 | R$ 110.000 | 2025-02 | 2026-03 | LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular, PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA |
 | org:le parc | Edificio Le Parc | 2 | R$ 115.800 | R$ 102.000 | 2025-02 | 2026-02 | LSPDA, LDC - Laudo de disponibilidade de carga |
-| 10383770000114 | Edf Madalena Colonial | 2 | R$ 53.300 | R$ 45.000 | 2025-10 | 2026-04 | LDC - Laudo de disponibilidade de carga, CDM |
+| 10383770000114 | Edf Madalena Colonial | 2 | R$ 53.300 | R$ 45.000 | 2025-10 | 2026-04 | LDC - Laudo de disponibilidade de carga, OBRA |
 | org:verano adm | Verano ADM | 2 | R$ 50.532 | R$ 43.032 | 2026-01 | 2026-01 | PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, Instalação de Carregador Eletrico |
+| org:parador galicia | Edf PARADOR DE GALICIA | 3 | R$ 46.020 | R$ 40.520 | 2025-09 | 2026-06 | LIE - Laudo de Instalações Elétricas, OBRA |
 | org:montendre | Cond. Montendre | 2 | R$ 51.249 | R$ 33.649 | 2025-04 | 2025-12 | LIE - Laudo de Instalações Elétricas, PROJETOS, LSPDA, OBRA |
 | 10395888000162 | Edf Samsara | 3 | R$ 37.500 | R$ 32.500 | 2025-09 | 2026-01 | LDC - Laudo de disponibilidade de carga, OBRA, PIE - Projeto infra.  Eletrocalha e Emergência |
-| 14006221000181 | Enseada do Mar | 3 | R$ 35.000 | R$ 27.500 | 2025-02 | 2026-04 | PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA, Obras eletricas |
+| 14006221000181 | Enseada do Mar | 3 | R$ 35.000 | R$ 27.500 | 2025-02 | 2026-04 | PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA |
+| 00942145000101 | Edf Rio Siriji | 2 | R$ 31.000 | R$ 24.000 | 2025-12 | 2026-06 | LIE - Laudo de Instalações Elétricas, OBRA |
 | 04239390000108 | Edf Terra Brasilis | 4 | R$ 37.100 | R$ 20.100 | 2025-08 | 2026-03 | LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, ICV - Inspeção de carregador veicular |
 | org:cristiano | Edf Cristiano | 2 | R$ 24.500 | R$ 20.000 | 2025-10 | 2025-10 | PIE - Projeto infra.  Eletrocalha e Emergência, OBRA |
 | org:castelo blois | Edf Castelo de Blois | 2 | R$ 25.800 | R$ 19.800 | 2025-09 | 2026-01 | LIE - Laudo de Instalações Elétricas, OBRA |
 | 11467141000135 | Edf Luar das Ubaias | 2 | R$ 30.860 | R$ 19.700 | 2025-05 | 2025-12 | LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, Obras eletricas |
 | org:maria carolina | Edf Maria Carolina | 2 | R$ 24.440 | R$ 19.440 | 2025-06 | 2025-12 | LIE - Laudo de Instalações Elétricas, Obras eletricas |
-| 15066354000106 | Edf Quinta Tereza Beltrão | 2 | R$ 25.360 | R$ 17.800 | 2025-11 | 2026-03 | LDC - Laudo de disponibilidade de carga, OBRA, CDM |
+| 15066354000106 | Edf Quinta Tereza Beltrão | 2 | R$ 25.360 | R$ 17.800 | 2025-11 | 2026-03 | LDC - Laudo de disponibilidade de carga, OBRA |
 | 11236467000151 | Edf Morada Rosarinho | 3 | R$ 22.750 | R$ 17.750 | 2025-05 | 2026-02 | LDC - Laudo de disponibilidade de carga, LIE - Laudo de Instalações Elétricas, PROJETOS, OBRA |
 | 10528059000100 | Edf Quinta do Algarve | 2 | R$ 21.800 | R$ 17.000 | 2025-09 | 2026-01 | LDC - Laudo de disponibilidade de carga, OBRA |
 | org:praia japaratinga | Edf Praia de Japaratinga | 2 | R$ 16.040 | R$ 10.540 | 2025-06 | 2025-07 | LIE - Laudo de Instalações Elétricas, OBRA |
 | org:carmen costa | Condomínio Carmen Costa | 2 | R$ 16.200 | R$ 9.200 | 2026-04 | 2026-06 | LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular |
 | 04113342000179 | Edf Turmalina | 2 | R$ 16.000 | R$ 8.000 | 2025-08 | 2026-04 | LDC - Laudo de disponibilidade de carga, PROJETOS |
-| 03034724000144 | Edf Porto dos Corais | 2 | R$ 11.000 | R$ 6.500 | 2025-11 | 2026-02 | LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga |
-| 17570372000156 | Condominio do Edificio Lucilo Maranhao | 2 | R$ 13.500 | R$ 6.000 | 2026-03 | 2026-05 | LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência |
 
 ## Servicos mais fechados
 
 | Servico | Projetos ganhos | Receita | Ticket medio | Primeiro fechamento | Ultimo fechamento |
 | --- | ---: | ---: | ---: | --- | --- |
-| Laudos e consultoria condominial | 159 | R$ 1.328.955 | R$ 8.358 | 2025-01 | 2026-06 |
-| Obras eletricas | 22 | R$ 456.755 | R$ 20.762 | 2025-04 | 2026-06 |
+| Laudos e consultoria condominial | 162 | R$ 1.350.355 | R$ 8.336 | 2025-01 | 2026-06 |
+| Obras eletricas | 26 | R$ 525.775 | R$ 20.222 | 2025-04 | 2026-06 |
 
 ## Servicos que apareceram em 2026
 
@@ -159,8 +158,8 @@ Gerado em: 25/06/2026, 18:23:45
 
 ## Servicos com queda no 2o trimestre de 2026 vs 1o trimestre
 
-- Obras eletricas: R$ 234.782 no 1T para R$ 52.450 no 2T (-R$ 182.332).
-- Laudos e consultoria condominial: R$ 365.965 no 1T para R$ 242.100 no 2T (-R$ 123.865).
+- Obras eletricas: R$ 234.782 no 1T para R$ 121.470 no 2T (-R$ 113.312).
+- Laudos e consultoria condominial: R$ 365.965 no 1T para R$ 263.500 no 2T (-R$ 102.465).
 
 ## Projetos fechados em 2026
 
@@ -243,12 +242,19 @@ Gerado em: 25/06/2026, 18:23:45
 | 2026-05 | Rotterdam negócio | Rotterdam | Laudos e consultoria condominial | R$ 5.000 |
 | 2026-05 | Condominio do Edificio Lucilo Maranhao | Condominio do Edificio Lucilo Maranhao | Laudos e consultoria condominial | R$ 6.000 |
 | 2026-06 | Cond. The Plaza | Cond. The Plaza | Laudos e consultoria condominial | R$ 2.700 |
+| 2026-06 | Edf Rio Siriji | Edf Rio Siriji | Obras eletricas | R$ 24.000 |
+| 2026-06 | Edf PARADOR DE GALICIA | Edf PARADOR DE GALICIA | Obras eletricas | R$ 24.330 |
 | 2026-06 | Edf. Cine Torre | Edf. Cine Torre | Laudos e consultoria condominial | R$ 7.800 |
 | 2026-06 | Rio Araguaia melhoria elétrica | Sindico Profi | Obras eletricas | R$ 950 |
+| 2026-06 | Edf  Castelo de Blois | Edf PARADOR DE GALICIA | Obras eletricas | R$ 16.190 |
+| 2026-06 | Edf Saint Martin | Edf Saint Martin | Laudos e consultoria condominial | R$ 7.500 |
+| 2026-06 | Empresarial Antonio de Albuquerque Galvão | Empresarial Antonio de Albuquerque Galvão | Laudos e consultoria condominial | R$ 9.400 |
+| 2026-06 | Cond Chácara Santa Rosa | Cond Chácara Santa Rosa | Laudos e consultoria condominial | R$ 4.500 |
 | 2026-06 | Condomínio Carmen Costa | Condomínio Carmen Costa | Laudos e consultoria condominial | R$ 9.200 |
+| 2026-06 | Edf. Cap d'Antibes | Edf. Cap d'Antibes | Obras eletricas | R$ 4.500 |
 
 ## Pontos de atencao para cruzamento Pipedrive x ClickUp
 
-- Ha 92 negocio(s) ganhos sem correspondencia simples por nome em tarefas candidatas de producao do ClickUp.
+- Ha 188 negocio(s) ganhos sem correspondencia simples por nome em tarefas candidatas de producao do ClickUp.
 - Listas de teste/dev/copia foram excluidas da contagem de projetos candidatos do ClickUp.
 - Para granularidade fina de servicos, o ideal e padronizar um campo obrigatorio no Pipedrive ou preencher produtos por negocio; hoje o CRM separa com confianca principalmente "Laudos e consultoria condominial" vs "Obras eletricas".

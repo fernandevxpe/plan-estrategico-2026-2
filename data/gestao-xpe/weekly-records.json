@@ -1,0 +1,527 @@
+{
+  "version": 1,
+  "semanas": {
+    "2026-W27": {
+      "weekKey": "2026-W27",
+      "weekStart": "2026-06-29",
+      "weekEnd": "2026-07-05",
+      "label": "29/06 – 05/07",
+      "status": "fechado",
+      "updatedAt": "2026-06-30T17:44:26.929Z",
+      "valores": {
+        "indicacoes": {
+          "meta": "≥ 3",
+          "realizado": null
+        },
+        "visitas-total": {
+          "meta": "≥ 6",
+          "realizado": null
+        },
+        "visitas-sindico": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "propostas-novas": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "propostas-apresentadas": {
+          "meta": "≥ 2",
+          "realizado": null
+        },
+        "assembleias": {
+          "meta": "≥ 1",
+          "realizado": null
+        },
+        "followups": {
+          "meta": "≥ 15",
+          "realizado": null
+        },
+        "fechamentos-qtd": {
+          "meta": "≥ 2",
+          "realizado": null
+        },
+        "fechamentos-valor": {
+          "meta": null,
+          "realizado": null
+        },
+        "fechamentos-servicos": {
+          "meta": null,
+          "realizado": null
+        },
+        "tempo-visita-proposta": {
+          "meta": "≤ 3",
+          "realizado": null
+        },
+        "tempo-visita-apresentacao": {
+          "meta": "≤ 7",
+          "realizado": null
+        },
+        "propostas-paradas": {
+          "meta": "0",
+          "realizado": null
+        },
+        "horas-nobre": {
+          "meta": "≥ 20",
+          "realizado": null
+        },
+        "horas-admin": {
+          "meta": "≤ 8",
+          "realizado": null
+        },
+        "pct-nobre": {
+          "meta": "≥ 70",
+          "realizado": null
+        },
+        "crm-atualizado": {
+          "meta": "Sim",
+          "realizado": null
+        },
+        "conversao-real": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "receita-hora-nobre": {
+          "meta": null,
+          "realizado": null
+        }
+      }
+    },
+    "2026-W25": {
+      "weekKey": "2026-W25",
+      "weekStart": "2026-06-15",
+      "weekEnd": "2026-06-21",
+      "label": "15/06 – 21/06",
+      "status": "rascunho",
+      "updatedAt": "2026-06-30T17:44:39.763Z",
+      "valores": {
+        "indicacoes": {
+          "meta": "≥ 3",
+          "realizado": null
+        },
+        "visitas-total": {
+          "meta": "≥ 6",
+          "realizado": null
+        },
+        "visitas-sindico": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "propostas-novas": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "propostas-apresentadas": {
+          "meta": "≥ 2",
+          "realizado": null
+        },
+        "assembleias": {
+          "meta": "≥ 1",
+          "realizado": null
+        },
+        "followups": {
+          "meta": "≥ 15",
+          "realizado": null
+        },
+        "fechamentos-qtd": {
+          "meta": "≥ 2",
+          "realizado": null
+        },
+        "fechamentos-valor": {
+          "meta": null,
+          "realizado": null
+        },
+        "fechamentos-servicos": {
+          "meta": null,
+          "realizado": null
+        },
+        "tempo-visita-proposta": {
+          "meta": "≤ 3",
+          "realizado": null
+        },
+        "tempo-visita-apresentacao": {
+          "meta": "≤ 7",
+          "realizado": null
+        },
+        "propostas-paradas": {
+          "meta": "0",
+          "realizado": null
+        },
+        "horas-nobre": {
+          "meta": "≥ 20",
+          "realizado": null
+        },
+        "horas-admin": {
+          "meta": "≤ 8",
+          "realizado": null
+        },
+        "pct-nobre": {
+          "meta": "≥ 70",
+          "realizado": null
+        },
+        "crm-atualizado": {
+          "meta": "Sim",
+          "realizado": null
+        },
+        "conversao-real": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "receita-hora-nobre": {
+          "meta": null,
+          "realizado": null
+        }
+      }
+    },
+    "2026-W23": {
+      "weekKey": "2026-W23",
+      "weekStart": "2026-06-01",
+      "weekEnd": "2026-06-07",
+      "label": "01/06 – 07/06",
+      "status": "rascunho",
+      "updatedAt": "2026-06-30T19:43:44.694Z",
+      "valores": {
+        "indicacoes": {
+          "meta": "≥ 3",
+          "realizado": null
+        },
+        "visitas-total": {
+          "meta": "≥ 8",
+          "realizado": null
+        },
+        "visitas-sindico": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "propostas-novas": {
+          "meta": "≥ 6",
+          "realizado": null
+        },
+        "propostas-pendentes": {
+          "meta": "≤ 0",
+          "realizado": null
+        },
+        "propostas-apresentadas": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "assembleias": {
+          "meta": "≥ 1",
+          "realizado": null
+        },
+        "followups": {
+          "meta": "≥ 20",
+          "realizado": null
+        },
+        "fechamentos-qtd": {
+          "meta": "≥ 2",
+          "realizado": null
+        },
+        "fechamentos-valor": {
+          "meta": null,
+          "realizado": null
+        },
+        "tempo-elaborar-proposta": {
+          "meta": "≤ 5",
+          "realizado": null
+        },
+        "propostas-paradas": {
+          "meta": "0",
+          "realizado": null
+        },
+        "conversao-real": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "conversao-ritmo": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "tempo-medio-conversao": {
+          "meta": "≤ 45",
+          "realizado": null
+        }
+      }
+    },
+    "2026-W21": {
+      "weekKey": "2026-W21",
+      "weekStart": "2026-05-18",
+      "weekEnd": "2026-05-24",
+      "label": "18/05 – 24/05",
+      "status": "rascunho",
+      "updatedAt": "2026-06-30T19:43:46.905Z",
+      "valores": {
+        "indicacoes": {
+          "meta": "≥ 3",
+          "realizado": null
+        },
+        "visitas-total": {
+          "meta": "≥ 8",
+          "realizado": null
+        },
+        "visitas-sindico": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "propostas-novas": {
+          "meta": "≥ 6",
+          "realizado": null
+        },
+        "propostas-pendentes": {
+          "meta": "≤ 0",
+          "realizado": null
+        },
+        "propostas-apresentadas": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "assembleias": {
+          "meta": "≥ 1",
+          "realizado": null
+        },
+        "followups": {
+          "meta": "≥ 20",
+          "realizado": null
+        },
+        "fechamentos-qtd": {
+          "meta": "≥ 2",
+          "realizado": null
+        },
+        "fechamentos-valor": {
+          "meta": null,
+          "realizado": null
+        },
+        "tempo-elaborar-proposta": {
+          "meta": "≤ 5",
+          "realizado": null
+        },
+        "propostas-paradas": {
+          "meta": "0",
+          "realizado": null
+        },
+        "conversao-real": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "conversao-ritmo": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "tempo-medio-conversao": {
+          "meta": "≤ 45",
+          "realizado": null
+        }
+      }
+    },
+    "2026-W19": {
+      "weekKey": "2026-W19",
+      "weekStart": "2026-05-04",
+      "weekEnd": "2026-05-10",
+      "label": "04/05 – 10/05",
+      "status": "rascunho",
+      "updatedAt": "2026-06-30T19:43:48.286Z",
+      "valores": {
+        "indicacoes": {
+          "meta": "≥ 3",
+          "realizado": null
+        },
+        "visitas-total": {
+          "meta": "≥ 8",
+          "realizado": null
+        },
+        "visitas-sindico": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "propostas-novas": {
+          "meta": "≥ 6",
+          "realizado": null
+        },
+        "propostas-pendentes": {
+          "meta": "≤ 0",
+          "realizado": null
+        },
+        "propostas-apresentadas": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "assembleias": {
+          "meta": "≥ 1",
+          "realizado": null
+        },
+        "followups": {
+          "meta": "≥ 20",
+          "realizado": null
+        },
+        "fechamentos-qtd": {
+          "meta": "≥ 2",
+          "realizado": null
+        },
+        "fechamentos-valor": {
+          "meta": null,
+          "realizado": null
+        },
+        "tempo-elaborar-proposta": {
+          "meta": "≤ 5",
+          "realizado": null
+        },
+        "propostas-paradas": {
+          "meta": "0",
+          "realizado": null
+        },
+        "conversao-real": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "conversao-ritmo": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "tempo-medio-conversao": {
+          "meta": "≤ 45",
+          "realizado": null
+        }
+      }
+    },
+    "2026-W17": {
+      "weekKey": "2026-W17",
+      "weekStart": "2026-04-20",
+      "weekEnd": "2026-04-26",
+      "label": "20/04 – 26/04",
+      "status": "rascunho",
+      "updatedAt": "2026-06-30T19:43:49.643Z",
+      "valores": {
+        "indicacoes": {
+          "meta": "≥ 3",
+          "realizado": null
+        },
+        "visitas-total": {
+          "meta": "≥ 8",
+          "realizado": null
+        },
+        "visitas-sindico": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "propostas-novas": {
+          "meta": "≥ 6",
+          "realizado": null
+        },
+        "propostas-pendentes": {
+          "meta": "≤ 0",
+          "realizado": null
+        },
+        "propostas-apresentadas": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "assembleias": {
+          "meta": "≥ 1",
+          "realizado": null
+        },
+        "followups": {
+          "meta": "≥ 20",
+          "realizado": null
+        },
+        "fechamentos-qtd": {
+          "meta": "≥ 2",
+          "realizado": null
+        },
+        "fechamentos-valor": {
+          "meta": null,
+          "realizado": null
+        },
+        "tempo-elaborar-proposta": {
+          "meta": "≤ 5",
+          "realizado": null
+        },
+        "propostas-paradas": {
+          "meta": "0",
+          "realizado": null
+        },
+        "conversao-real": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "conversao-ritmo": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "tempo-medio-conversao": {
+          "meta": "≤ 45",
+          "realizado": null
+        }
+      }
+    },
+    "2026-W15": {
+      "weekKey": "2026-W15",
+      "weekStart": "2026-04-06",
+      "weekEnd": "2026-04-12",
+      "label": "06/04 – 12/04",
+      "status": "rascunho",
+      "updatedAt": "2026-06-30T19:43:50.849Z",
+      "valores": {
+        "indicacoes": {
+          "meta": "≥ 3",
+          "realizado": null
+        },
+        "visitas-total": {
+          "meta": "≥ 8",
+          "realizado": null
+        },
+        "visitas-sindico": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "propostas-novas": {
+          "meta": "≥ 6",
+          "realizado": null
+        },
+        "propostas-pendentes": {
+          "meta": "≤ 0",
+          "realizado": null
+        },
+        "propostas-apresentadas": {
+          "meta": "≥ 4",
+          "realizado": null
+        },
+        "assembleias": {
+          "meta": "≥ 1",
+          "realizado": null
+        },
+        "followups": {
+          "meta": "≥ 20",
+          "realizado": null
+        },
+        "fechamentos-qtd": {
+          "meta": "≥ 2",
+          "realizado": null
+        },
+        "fechamentos-valor": {
+          "meta": null,
+          "realizado": null
+        },
+        "tempo-elaborar-proposta": {
+          "meta": "≤ 5",
+          "realizado": null
+        },
+        "propostas-paradas": {
+          "meta": "0",
+          "realizado": null
+        },
+        "conversao-real": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "conversao-ritmo": {
+          "meta": "≥ 25",
+          "realizado": null
+        },
+        "tempo-medio-conversao": {
+          "meta": "≤ 45",
+          "realizado": null
+        }
+      }
+    }
+  }
+}

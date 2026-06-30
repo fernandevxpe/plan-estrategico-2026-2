@@ -44,15 +44,17 @@ async function fetchPipedriveCollection(path, params = {}) {
 }
 
 async function syncPipedrive() {
-  const [deals, dealFields, orgFields, organizations, pipelines, stages, users] = await Promise.all([
-    fetchPipedriveCollection('deals', { status: 'all_not_deleted' }),
-    fetchPipedriveCollection('dealFields'),
-    fetchPipedriveCollection('organizationFields'),
-    fetchPipedriveCollection('organizations'),
-    fetchPipedriveCollection('pipelines'),
-    fetchPipedriveCollection('stages'),
-    fetchPipedriveCollection('users')
-  ]);
+  const [deals, dealFields, orgFields, organizations, pipelines, stages, users, activities] =
+    await Promise.all([
+      fetchPipedriveCollection('deals', { status: 'all_not_deleted' }),
+      fetchPipedriveCollection('dealFields'),
+      fetchPipedriveCollection('organizationFields'),
+      fetchPipedriveCollection('organizations'),
+      fetchPipedriveCollection('pipelines'),
+      fetchPipedriveCollection('stages'),
+      fetchPipedriveCollection('users'),
+      fetchPipedriveCollection('activities')
+    ]);
 
   await writeJson('pipedrive-deals.json', deals);
   await writeJson('pipedrive-deal-fields.json', dealFields);
@@ -61,6 +63,7 @@ async function syncPipedrive() {
   await writeJson('pipedrive-pipelines.json', pipelines);
   await writeJson('pipedrive-stages.json', stages);
   await writeJson('pipedrive-users.json', users);
+  await writeJson('pipedrive-activities.json', activities);
 
   return {
     deals: deals.length,
@@ -68,7 +71,9 @@ async function syncPipedrive() {
     orgFields: orgFields.length,
     organizations: organizations.length,
     pipelines: pipelines.length,
-    stages: stages.length
+    stages: stages.length,
+    users: users.length,
+    activities: activities.length
   };
 }
 

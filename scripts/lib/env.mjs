@@ -1,9 +1,13 @@
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 export function loadEnv(file = '.env.local') {
-  const path = resolve(file);
-  if (!existsSync(path)) return {};
+  const candidates = [resolve(process.cwd(), file), resolve(projectRoot, file)];
+  const path = candidates.find((p) => existsSync(p));
+  if (!path) return {};
 
   const env = {};
   const lines = readFileSync(path, 'utf8').split(/\r?\n/);

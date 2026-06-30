@@ -3,7 +3,7 @@ month;type;dealId;dealTitle;organization;value;labels;isMultiBusinessType
 2025-05;LDC - Laudo de disponibilidade de carga;505;Negócio Cond. Solar das Palmeiras;Cond. Solar das Palmeiras;13500;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
 2026-02;PIE - Projeto infra.  Eletrocalha e Emergência;625;Negócio Edf. Aderbal Jurema;Edf. Aderbal Jurema;8415;"PROJETOS, PIE - Projeto infra.  Eletrocalha e Emergência";true
 2025-02;LDC - Laudo de disponibilidade de carga;662;Negócio Cond. João Heráclio;Cond. João Heráclio;16200;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
-2025-12;Laudos e consultoria condominial;665;Negócio Edf Villa Casa Forte;Edf Villa Casa Forte;5000;Laudos e consultoria condominial;false
+2025-12;LDC - Laudo de disponibilidade de carga;665;Negócio Edf Villa Casa Forte;Edf Villa Casa Forte;5000;LDC - Laudo de disponibilidade de carga;false
 2025-07;LDC - Laudo de disponibilidade de carga;667;Negócio Edf Tignanello;Edf Tignanelo;5500;LDC - Laudo de disponibilidade de carga;false
 2025-07;LDC - Laudo de disponibilidade de carga;669;Negócio Edf Carla Dias;Edf Carla Dias;5000;LDC - Laudo de disponibilidade de carga;false
 2025-09;LDC - Laudo de disponibilidade de carga;673;Negócio Jardins do Capibaribe;Jardins do Capibaribe;9900;LDC - Laudo de disponibilidade de carga;false
@@ -121,12 +121,12 @@ month;type;dealId;dealTitle;organization;value;labels;isMultiBusinessType
 2026-02;LIE - Laudo de Instalações Elétricas;1324;Edf Solar do Camaragybe;Edf Solar do Camaragybe;6000;LIE - Laudo de Instalações Elétricas;false
 2026-01;LIE - Laudo de Instalações Elétricas;1325;Edf Lajedo negócio;Edf Lajedo;4000;LIE - Laudo de Instalações Elétricas;false
 2026-03;ICV - Inspeção de carregador veicular;1331;Edf Terra Brasilis;Edf Terra Brasilis;1400;ICV - Inspeção de carregador veicular;false
-2026-04;Obras eletricas;1334;Enseada do Mar;Enseada do Mar;6500;Obras eletricas;false
+2026-04;OBRA;1334;Enseada do Mar;Enseada do Mar;6500;OBRA;false
 2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1335;Edf Morada Ilha Verde;Edf Morada Ilha Verde;5000;PIE - Projeto infra.  Eletrocalha e Emergência;false
 2026-02;LDC - Laudo de disponibilidade de carga;1336;Edf Chanel;Edf Chanel;7000;LDC - Laudo de disponibilidade de carga;false
 2026-01;OBRA;1337;Edf Quinta do Algarve;Edf Quinta do Algarve;17000;OBRA;false
 2026-03;LDC - Laudo de disponibilidade de carga;1345;Edifício Lucilo Maranhão;Condominio do Edificio Lucilo Maranhao;7500;LDC - Laudo de disponibilidade de carga;false
-2026-03;OBRA;1352;Quinta Tereza Beltrão;Edf Quinta Tereza Beltrão;17800;"OBRA, CDM";true
+2026-03;OBRA;1352;Quinta Tereza Beltrão;Edf Quinta Tereza Beltrão;17800;OBRA;false
 2026-02;OBRA;1355;Edf Morada Rosarinho;Edf Morada Rosarinho;6250;OBRA;false
 2026-01;OBRA;1356;Edf Samsara;Edf Samsara;28000;OBRA;false
 2026-01;LDC - Laudo de disponibilidade de carga;1357;Edf Samsara;Edf Samsara;2500;LDC - Laudo de disponibilidade de carga;false
@@ -160,6 +160,7 @@ month;type;dealId;dealTitle;organization;value;labels;isMultiBusinessType
 2026-04;LIE - Laudo de Instalações Elétricas;1474;Edifício Ana Cristina;Edifício Ana Cristina;2700;"LIE - Laudo de Instalações Elétricas, LGR - Laudo de Gerenciamento de Risco";true
 2026-05;PROJETOS;1490;Edifício União;Edifício União;10000;PROJETOS;false
 2026-06;LDC - Laudo de disponibilidade de carga;1507;Cond. The Plaza;Cond. The Plaza;2700;LDC - Laudo de disponibilidade de carga;false
+2026-06;OBRA;1512;Edf Rio Siriji;Edf Rio Siriji;24000;OBRA;false
 2026-03;PROJETOS;1514;Edf Sobrado do Capibaribe;Edf Sobrado do Capibaribe;5000;PROJETOS;false
 2026-04;LDC - Laudo de disponibilidade de carga;1522;Condomínio Carmen Costa;Condomínio Carmen Costa;7000;LDC - Laudo de disponibilidade de carga;false
 2026-03;PIE - Projeto infra.  Eletrocalha e Emergência;1532;Edf Hilson Macedo;Edf Hilson Macedo;5000;PIE - Projeto infra.  Eletrocalha e Emergência;false
@@ -170,7 +171,8 @@ month;type;dealId;dealTitle;organization;value;labels;isMultiBusinessType
 2026-04;LDC - Laudo de disponibilidade de carga;1579;Edf Sagarana;Edf Sagarana;12000;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
 2026-05;LDC - Laudo de disponibilidade de carga;1600;Jardim do Mar;Jardim do Mar;14000;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
 2026-04;PROJETOS;1601;Edf Turmalina;Edf Turmalina;8000;PROJETOS;false
-2026-04;CDM;1609;Edf Madalena Colonial;Edf Madalena Colonial;45000;CDM;false
+2026-06;OBRA;1603;Edf PARADOR DE GALICIA;Edf PARADOR DE GALICIA;24330;OBRA;false
+2026-04;OBRA;1609;Edf Madalena Colonial;Edf Madalena Colonial;45000;OBRA;false
 2026-04;LDC - Laudo de disponibilidade de carga;1617;Edf Miriam Dubeux;Edf Miriam Dubeux;5500;LDC - Laudo de disponibilidade de carga;false
 2026-05;PROJETOS;1620;Edf Cidade do Recife;Edf Cidade do Recife;5000;PROJETOS;false
 2026-05;LDC - Laudo de disponibilidade de carga;1643;EMPRESARIAL. CASA FORTE;EMPRESARIAL. CASA FORTE;9000;LDC - Laudo de disponibilidade de carga;false
@@ -179,4 +181,9 @@ month;type;dealId;dealTitle;organization;value;labels;isMultiBusinessType
 2026-05;PROJETOS;1666;Rotterdam negócio;Rotterdam;5000;PROJETOS;false
 2026-05;PIE - Projeto infra.  Eletrocalha e Emergência;1672;Condominio do Edificio Lucilo Maranhao;Condominio do Edificio Lucilo Maranhao;6000;PIE - Projeto infra.  Eletrocalha e Emergência;false
 2026-06;OBRA;1718;Rio Araguaia melhoria elétrica;Sindico Profi;950;OBRA;false
+2026-06;OBRA;1721;Edf  Castelo de Blois;Edf PARADOR DE GALICIA;16190;OBRA;false
+2026-06;LDC - Laudo de disponibilidade de carga;1733;Edf Saint Martin;Edf Saint Martin;7500;LDC - Laudo de disponibilidade de carga;false
+2026-06;LDC - Laudo de disponibilidade de carga;1748;Empresarial Antonio de Albuquerque Galvão;Empresarial Antonio de Albuquerque Galvão;9400;"LDC - Laudo de disponibilidade de carga, LCC - Laudo Carregador Coletivo";true
+2026-06;ICV - Inspeção de carregador veicular;1759;Cond Chácara Santa Rosa;Cond Chácara Santa Rosa;4500;ICV - Inspeção de carregador veicular;false
 2026-06;ICV - Inspeção de carregador veicular;1774;Condomínio Carmen Costa;Condomínio Carmen Costa;9200;ICV - Inspeção de carregador veicular;false
+2026-06;OBRA;1819;Edf. Cap d'Antibes;Edf. Cap d'Antibes;4500;OBRA;false

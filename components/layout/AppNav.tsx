@@ -12,7 +12,8 @@ const links = [
   { href: "/pos-venda", label: "Pós-venda" },
   { href: "/metas", label: "Metas 2x/3x" },
   { href: "/areas", label: "Áreas" },
-  { href: "/investigacao", label: "Investigação" }
+  { href: "/investigacao", label: "Investigação" },
+  { href: "/gestao-xpe", label: "Gestão XPE" }
 ];
 
 export function AppNav() {

@@ -1,6 +1,6 @@
 # Áreas estratégicas — XPE Consultoria
 
-Gerado em: 25/06/2026, 18:23:44
+Gerado em: 30/06/2026, 16:25:16
 
 Todas as 11 áreas em um único documento. Para conversar sobre uma área específica, referencie a seção pelo nome.
 
@@ -12,13 +12,13 @@ Funil comercial, fechamentos, conversão e capacidade da equipe de 2 comerciais.
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 895.297** (100% do total)
-- Contratos fechados: **80**
-- Ticket médio: **R$ 11.191**
+- Receita: **R$ 985.717** (100% do total)
+- Contratos fechados: **87**
+- Ticket médio: **R$ 11.330**
 
 ### Destaques
 - 2 comerciais · 8.9 fech./pessoa meta H2
-- Pipeline aberto: 718 negócios (R$ 3.509.084)
+- Pipeline aberto: 711 negócios (R$ 3.571.474)
 - Recomendado: 3 comerciais no cenário 2x
 
 ## Notas estratégicas
@@ -80,14 +80,14 @@ Hub de entrega técnica — projetos de engenharia e laudos regulatórios.
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 634.398** (70,9% do total)
-- Contratos fechados: **83**
-- Ticket médio: **R$ 7.643**
+- Receita: **R$ 597.398** (60,6% do total)
+- Contratos fechados: **84**
+- Ticket médio: **R$ 7.112**
 
 ### Destaques
-- Projetos: 21 contratos · Laudos: 62 contratos
+- Projetos: 19 contratos · Laudos: 65 contratos
 - 5 projetistas (era 3) + automação
-- 71% da receita 2026 YTD
+- 61% da receita 2026 YTD
 
 ## Notas estratégicas
 
@@ -114,9 +114,9 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 159.065** (17,8% do total)
-- Contratos fechados: **21**
-- Ticket médio: **R$ 7.575**
+- Receita: **R$ 105.165** (10,7% do total)
+- Contratos fechados: **19**
+- Ticket médio: **R$ 5.535**
 
 ### Destaques
 - Principal tipo: PROJETOS (R$ 54.208)
@@ -186,7 +186,6 @@ _Nenhum risco cadastrado._
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
 | PROJETOS | 9 | R$ 54.208 |
-| CDM | 2 | R$ 53.900 |
 | PIE | 10 | R$ 50.958 |
 
 ---
@@ -198,12 +197,12 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 475.333** (53,1% do total)
-- Contratos fechados: **62**
-- Ticket médio: **R$ 7.667**
+- Receita: **R$ 492.233** (49,9% do total)
+- Contratos fechados: **65**
+- Ticket médio: **R$ 7.573**
 
 ### Destaques
-- Principal tipo: LDC (R$ 351.867)
+- Principal tipo: LDC (R$ 364.067)
 
 ## Notas estratégicas
 
@@ -274,9 +273,9 @@ _Nenhum risco cadastrado._
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| LDC | 38 | R$ 351.867 |
+| LDC | 40 | R$ 364.067 |
 | LIE | 21 | R$ 113.617 |
-| LCC | 1 | R$ 6.500 |
+| LCC | 2 | R$ 11.200 |
 | LGR | 2 | R$ 3.350 |
 
 ---
@@ -288,12 +287,12 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 491.148** (54,9% do total)
-- Contratos fechados: **23**
-- Ticket médio: **R$ 21.354**
+- Receita: **R$ 689.588** (70% do total)
+- Contratos fechados: **33**
+- Ticket médio: **R$ 20.897**
 
 ### Destaques
-- Principal tipo: OBRA (R$ 203.916)
+- Principal tipo: OBRA (R$ 333.336)
 
 ## Notas estratégicas
 
@@ -339,7 +338,7 @@ _Nenhum risco cadastrado._
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| OBRA | 10 | R$ 203.916 |
+| OBRA | 16 | R$ 333.336 |
 
 ---
 
@@ -444,12 +443,12 @@ Presença em feiras, networking e geração de pipeline presencial.
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 56.983** (6,4% do total)
-- Contratos fechados: **8**
-- Ticket médio: **R$ 7.123**
+- Receita: **R$ 66.183** (6,7% do total)
+- Contratos fechados: **10**
+- Ticket médio: **R$ 6.618**
 
 ### Destaques
-- Principal tipo: ICV (R$ 28.967)
+- Principal tipo: ICV (R$ 33.467)
 
 ## Notas estratégicas
 
@@ -491,9 +490,9 @@ Presença em feiras, networking e geração de pipeline presencial.
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| ICV | 6 | R$ 28.967 |
+| ICV | 7 | R$ 33.467 |
 | Instalação de Carregador Eletrico | 1 | R$ 21.516 |
-| LCC | 1 | R$ 6.500 |
+| LCC | 2 | R$ 11.200 |
 
 ---
 
@@ -510,8 +509,8 @@ CRM, ClickUp, automações internas e produtividade da operação.
 
 
 ### Destaques
-- 1.603 tarefas ClickUp
-- 1.662 negócios no Pipedrive
+- 0 tarefas ClickUp
+- 1.677 negócios no Pipedrive
 - 4 alerta(s) de qualidade de dados
 
 ## Notas estratégicas

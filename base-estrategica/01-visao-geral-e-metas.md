@@ -1,26 +1,26 @@
 # Visão geral e metas — XPE Consultoria
 
-Gerado em: 25/06/2026, 18:23:44
+Gerado em: 30/06/2026, 16:25:16
 
 ## Escopo dos dados
 
 - Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus
-- Negócios analisados: **998**
-- Negócios ganhos no período: **181**
-- Foco 2026: **464** negócios
-- Pipedrive total: **1662** negócios
-- ClickUp: **1603** tarefas
-- Organizações no CRM: **1595**
+- Negócios analisados: **1013**
+- Negócios ganhos no período: **188**
+- Foco 2026: **479** negócios
+- Pipedrive total: **1677** negócios
+- ClickUp: **0** tarefas
+- Organizações no CRM: **1607**
 
 ## Receita e volume
 
 | Período | Receita | Fechamentos | Novos negócios | Ticket médio |
 | --- | ---: | ---: | ---: | ---: |
 | 2025 (ano) | R$ 890.413 | 101 | 467 | R$ 8.816 |
-| 2026 YTD (parcial) | R$ 895.297 | 80 | 444 | R$ 11.191 |
+| 2026 YTD (parcial) | R$ 985.717 | 87 | 459 | R$ 11.330 |
 | H1/2025 realizado | R$ 283.360 | 32 | 225 | R$ 8.855 |
 | H2/2025 realizado | R$ 607.053 | 69 | 242 | R$ 8.798 |
-| H1/2026 realizado | R$ 895.297 | 80 | 444 | R$ 11.191 |
+| H1/2026 realizado | R$ 985.717 | 87 | 459 | R$ 11.330 |
 | H1/2026 projetado | R$ 1.049.576 | 91 | 367 | R$ 11.534 |
 
 ## Run rate (jan–mai/2026)
@@ -60,7 +60,7 @@ Gerado em: 25/06/2026, 18:23:44
 | 2025-Q3 | R$ 257.154 | 35 | 125 | R$ 7.347 |
 | 2025-Q4 | R$ 349.899 | 34 | 117 | R$ 10.291 |
 | 2026-Q1 | R$ 600.747 | 48 | 201 | R$ 12.516 |
-| 2026-Q2 | R$ 294.550 | 32 | 243 | R$ 9.205 |
+| 2026-Q2 | R$ 384.970 | 39 | 258 | R$ 9.871 |
 
 ## Timeline 2026 (mês a mês)
 
@@ -71,7 +71,7 @@ Gerado em: 25/06/2026, 18:23:44
 | 2026-03 | actual | R$ 222.450 | 19 | 83 | - |
 | 2026-04 | actual | R$ 155.600 | 15 | 74 | - |
 | 2026-05 | actual | R$ 118.300 | 13 | 92 | - |
-| 2026-06 | partial | R$ 20.650 | 4 | 77 | R$ 174.929 |
+| 2026-06 | partial | R$ 111.070 | 11 | 92 | R$ 174.929 |
 | 2026-07 | projected | R$ 0 | 0 | 0 | R$ 141.377 |
 | 2026-08 | projected | R$ 0 | 0 | 0 | R$ 213.567 |
 | 2026-09 | projected | R$ 0 | 0 | 0 | R$ 167.106 |
@@ -96,7 +96,7 @@ Gerado em: 25/06/2026, 18:23:44
 | Mar | R$ 10.500 | R$ 222.450 | +2.018,6% | 1 | 19 | +12,3% |
 | Abr | R$ 75.800 | R$ 155.600 | +105,3% | 6 | 15 | -30,1% |
 | Mai | R$ 64.160 | R$ 118.300 | +84,4% | 7 | 13 | -24% |
-| Jun | R$ 77.000 | R$ 20.650 | -73,2% | 12 | 4 | -82,5% |
+| Jun | R$ 77.000 | R$ 111.070 | +44,2% | 12 | 11 | -6,1% |
 | Jul | R$ 69.640 | - | -100% | 10 | - | n/a |
 | Ago | R$ 105.200 | - | -100% | 14 | - | n/a |
 | Set | R$ 82.314 | - | -100% | 11 | - | n/a |
@@ -106,12 +106,12 @@ Gerado em: 25/06/2026, 18:23:44
 
 ## Qualidade de dados
 
-- **Cobertura de CNPJ parcial**: 200/1595 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
-- **Negócios ganhos sem etiqueta comercial explícita**: 5/181 ganhos usam fallback de serviço/funil como tipo principal.
+- **Cobertura de CNPJ parcial**: 206/1607 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
+- **Negócios ganhos sem etiqueta comercial explícita**: 3/188 ganhos usam fallback de serviço/funil como tipo principal.
 - **Negócios com múltiplas etiquetas**: 36 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
-- **Base aberta contém negócios antigos**: 144 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.
+- **Base aberta contém negócios antigos**: 151 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.
 
 ## Cobertura CNPJ
 
-- Organizações com CNPJ: **200/1595**
-- Ganhos com CNPJ: **107/181**
+- Organizações com CNPJ: **206/1607**
+- Ganhos com CNPJ: **109/188**

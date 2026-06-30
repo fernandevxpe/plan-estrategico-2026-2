@@ -1,0 +1,233 @@
+{
+  "version": 3,
+  "updatedAt": "2026-06-30",
+  "escopos": [
+    {
+      "id": "comercial-nobre",
+      "tipo": "gargalo",
+      "nome": "Capacidade comercial nobre",
+      "resumo": "Indicadores comerciais alimentados pelo Pipedrive (negócios + atividades). Metas do ritual semanal diretor comercial.",
+      "definicaoNobre": "Tempo nobre na agenda. Propostas via atividade Elaborar/Solicito proposta. Conversão cohort = ganho no negócio após proposta elaborada.",
+      "grupos": [
+        {
+          "id": "volume",
+          "titulo": "Volume da semana",
+          "descricao": "Contagens do funil — Pipedrive automático onde possível.",
+          "indicadorIds": [
+            "fechamentos-valor",
+            "fechamentos-qtd",
+            "propostas-apresentadas",
+            "assembleias",
+            "propostas-novas",
+            "propostas-pendentes",
+            "visitas-total",
+            "visitas-sindico",
+            "followups",
+            "indicacoes"
+          ]
+        },
+        {
+          "id": "velocidade",
+          "titulo": "Velocidade e fila",
+          "descricao": "Lead time e estoque invisível comercial.",
+          "indicadorIds": [
+            "tempo-elaborar-proposta",
+            "propostas-paradas"
+          ]
+        },
+        {
+          "id": "analise",
+          "titulo": "Análise automática",
+          "descricao": "Calculado do CRM — cohort (conversão real) e ritmo semanal.",
+          "indicadorIds": ["conversao-real", "conversao-ritmo", "tempo-medio-conversao"]
+        }
+      ]
+    }
+  ],
+  "indicators": {
+    "indicacoes": {
+      "id": "indicacoes",
+      "nome": "Indicações colhidas",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "contagem",
+      "fonte": "Pipedrive canal",
+      "origemDado": "crm_parcial",
+      "metaReferencia": "≥ 3",
+      "agregacaoMensal": "soma"
+    },
+    "visitas-total": {
+      "id": "visitas-total",
+      "nome": "Visitas realizadas",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "contagem",
+      "fonte": "Pipedrive — Pesquisa/Qualificação e visita diagnóstico",
+      "origemDado": "crm",
+      "metaReferencia": "≥ 8",
+      "agregacaoMensal": "soma",
+      "destaque": true
+    },
+    "visitas-sindico": {
+      "id": "visitas-sindico",
+      "nome": "Visitas com síndico",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "contagem",
+      "fonte": "Manual",
+      "origemDado": "manual",
+      "metaReferencia": "≥ 4",
+      "agregacaoMensal": "soma"
+    },
+    "propostas-novas": {
+      "id": "propostas-novas",
+      "nome": "Propostas elaboradas",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "contagem",
+      "fonte": "Atividade Elaborar/Solicito proposta",
+      "origemDado": "crm",
+      "metaReferencia": "≥ 6",
+      "agregacaoMensal": "soma",
+      "destaque": true
+    },
+    "propostas-pendentes": {
+      "id": "propostas-pendentes",
+      "nome": "Propostas a elaborar",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "contagem",
+      "fonte": "Atividade pendente no CRM",
+      "origemDado": "crm_snapshot",
+      "metaReferencia": "≤ 0",
+      "agregacaoMensal": "max",
+      "destaque": true
+    },
+    "propostas-apresentadas": {
+      "id": "propostas-apresentadas",
+      "nome": "Propostas apresentadas",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "contagem",
+      "fonte": "Pipedrive — atividade Reunião concluída (exclui agendamentos e diagnóstico)",
+      "origemDado": "crm",
+      "metaReferencia": "≥ 4",
+      "agregacaoMensal": "soma",
+      "destaque": true
+    },
+    "assembleias": {
+      "id": "assembleias",
+      "nome": "Assembleias participadas",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "contagem",
+      "fonte": "Pipedrive — reunião com assembleia no assunto",
+      "origemDado": "crm",
+      "metaReferencia": "≥ 1",
+      "agregacaoMensal": "soma"
+    },
+    "followups": {
+      "id": "followups",
+      "nome": "Follow-ups realizados",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "contagem",
+      "fonte": "Pipedrive — ligação/e-mail em negociação+",
+      "origemDado": "crm",
+      "metaReferencia": "≥ 20",
+      "agregacaoMensal": "soma"
+    },
+    "fechamentos-qtd": {
+      "id": "fechamentos-qtd",
+      "nome": "Fechamentos (quantidade)",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "contagem",
+      "fonte": "Pipedrive ganhos",
+      "origemDado": "crm",
+      "metaReferencia": "≥ 2",
+      "agregacaoMensal": "soma",
+      "destaque": true
+    },
+    "fechamentos-valor": {
+      "id": "fechamentos-valor",
+      "nome": "Fechamentos (R$)",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "moeda",
+      "unidade": "R$",
+      "fonte": "Pipedrive valor ganho",
+      "origemDado": "crm",
+      "metaReferencia": null,
+      "agregacaoMensal": "soma"
+    },
+    "tempo-elaborar-proposta": {
+      "id": "tempo-elaborar-proposta",
+      "nome": "Tempo para elaborar proposta",
+      "escopoId": "comercial-nobre",
+      "grupoId": "velocidade",
+      "tipo": "dias",
+      "unidade": "dias",
+      "fonte": "Atividade proposta concluída",
+      "origemDado": "crm",
+      "metaReferencia": "≤ 5",
+      "agregacaoMensal": "media"
+    },
+    "propostas-paradas": {
+      "id": "propostas-paradas",
+      "nome": "Propostas paradas >48h",
+      "escopoId": "comercial-nobre",
+      "grupoId": "velocidade",
+      "tipo": "contagem",
+      "fonte": "Pipedrive SLA Diagnóstico",
+      "origemDado": "crm_snapshot",
+      "metaReferencia": "0",
+      "agregacaoMensal": "max"
+    },
+    "conversao-real": {
+      "id": "conversao-real",
+      "nome": "Conversão real (cohort)",
+      "escopoId": "comercial-nobre",
+      "grupoId": "analise",
+      "tipo": "percentual",
+      "unidade": "%",
+      "fonte": "CRM cohort",
+      "origemDado": "analise",
+      "calculado": true,
+      "formula": "ganhos da cohort ÷ propostas elaboradas no período",
+      "metaReferencia": "≥ 25",
+      "agregacaoMensal": "media",
+      "destaque": true
+    },
+    "conversao-ritmo": {
+      "id": "conversao-ritmo",
+      "nome": "Conversão ritmo (semana)",
+      "escopoId": "comercial-nobre",
+      "grupoId": "analise",
+      "tipo": "percentual",
+      "unidade": "%",
+      "fonte": "CRM ritmo",
+      "origemDado": "analise",
+      "calculado": true,
+      "formula": "ganhos no período ÷ propostas elaboradas no período",
+      "metaReferencia": "≥ 25",
+      "agregacaoMensal": "media",
+      "destaque": true
+    },
+    "tempo-medio-conversao": {
+      "id": "tempo-medio-conversao",
+      "nome": "Tempo médio até ganho",
+      "escopoId": "comercial-nobre",
+      "grupoId": "analise",
+      "tipo": "dias",
+      "unidade": "dias",
+      "fonte": "CRM cohort",
+      "origemDado": "analise",
+      "calculado": true,
+      "formula": "média dias: proposta elaborada → won",
+      "metaReferencia": "≤ 45",
+      "agregacaoMensal": "media",
+      "destaque": true
+    }
+  }
+}

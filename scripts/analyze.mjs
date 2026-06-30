@@ -206,7 +206,7 @@ const [dealsRaw, fieldsRaw, orgFieldsRaw, organizationsRaw, pipelinesRaw, stages
   readOptionalJson('pipedrive-organizations.json'),
   readJson('pipedrive-pipelines.json'),
   readJson('pipedrive-stages.json'),
-  readJson('clickup-tasks.json')
+  readOptionalJson('clickup-tasks.json', [])
 ]);
 
 const fieldsByKey = Object.fromEntries(fieldsRaw.map((field) => [field.key, field]));

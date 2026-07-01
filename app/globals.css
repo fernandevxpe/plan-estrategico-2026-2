@@ -1486,6 +1486,169 @@ tr:last-child td {
   margin-bottom: 18px;
 }
 
+/* --- Planejamento por metas do Pipedrive --- */
+.planning-source-note {
+  margin: -6px 0 18px;
+}
+
+.goal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+  margin-bottom: 26px;
+}
+
+.goal-card {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border, #dce5e8);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.goal-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.goal-card.is-selected {
+  border-color: #21a67a;
+  box-shadow: 0 0 0 2px rgba(33, 166, 122, 0.25);
+}
+
+.goal-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.goal-card-head strong {
+  display: block;
+  font-size: 0.98rem;
+}
+
+.goal-card-meta {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.goal-card-values {
+  display: flex;
+  gap: 20px;
+}
+
+.goal-card-values .goal-card-label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+
+.goal-card-values strong {
+  font-size: 1.05rem;
+}
+
+.goal-progress-track {
+  position: relative;
+  height: 10px;
+  border-radius: 6px;
+  background: #e8eef1;
+  overflow: hidden;
+}
+
+.goal-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #21a67a;
+  border-radius: 6px;
+  z-index: 2;
+}
+
+.goal-progress-projected {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: repeating-linear-gradient(45deg, #b6781833, #b6781833 4px, transparent 4px, transparent 8px);
+  border-radius: 6px;
+  z-index: 1;
+}
+
+.goal-progress-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  opacity: 0.72;
+  margin-top: 5px;
+}
+
+.goal-card-projection {
+  font-size: 0.82rem;
+  opacity: 0.85;
+}
+
+.goal-card-pace {
+  opacity: 0.7;
+}
+
+.goal-pill {
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.goal-pill-acima {
+  background: #d8f3e6;
+  color: #0f6b45;
+}
+
+.goal-pill-no_alvo {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.goal-pill-abaixo {
+  background: #fef3c7;
+  color: #92600a;
+}
+
+.goal-pill-em_risco {
+  background: #fee2e2;
+  color: #b42318;
+}
+
+.goal-card.goal-status-acima {
+  border-left: 3px solid #21a67a;
+}
+
+.goal-card.goal-status-em_risco {
+  border-left: 3px solid #e5484d;
+}
+
+.goal-card.goal-status-abaixo {
+  border-left: 3px solid #d9a406;
+}
+
+.planning-goal-table .num {
+  text-align: right;
+}
+
+.planning-goal-table tr.is-future {
+  opacity: 0.5;
+}
+
+.planning-goal-table tr.is-current {
+  background: rgba(33, 166, 122, 0.08);
+}
+
+.planning-goal-table tfoot td {
+  font-weight: 600;
+  border-top: 2px solid var(--border, #dce5e8);
+}
+
 .chart-box-tall {
   min-height: 320px;
 }

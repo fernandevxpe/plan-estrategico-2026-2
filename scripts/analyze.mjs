@@ -199,14 +199,15 @@ function monthlyRows(deals) {
   });
 }
 
-const [dealsRaw, fieldsRaw, orgFieldsRaw, organizationsRaw, pipelinesRaw, stagesRaw, clickupTasksRaw] = await Promise.all([
+const [dealsRaw, fieldsRaw, orgFieldsRaw, organizationsRaw, pipelinesRaw, stagesRaw, clickupTasksRaw, goalsRaw] = await Promise.all([
   readJson('pipedrive-deals.json'),
   readJson('pipedrive-deal-fields.json'),
   readOptionalJson('pipedrive-organization-fields.json'),
   readOptionalJson('pipedrive-organizations.json'),
   readJson('pipedrive-pipelines.json'),
   readJson('pipedrive-stages.json'),
-  readOptionalJson('clickup-tasks.json', [])
+  readOptionalJson('clickup-tasks.json', []),
+  readOptionalJson('pipedrive-goals.json', [])
 ]);
 
 const fieldsByKey = Object.fromEntries(fieldsRaw.map((field) => [field.key, field]));
@@ -2152,6 +2153,130 @@ const commercialDirector = {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Planejamento 2026 a partir das METAS REAIS do Pipedrive (Goals API)
+// Cada meta traz seasonality.intervals (target por período) + progress (realizado).
+// A projeção de fechamento do ano usa o ritmo real (realizado ÷ meses decorridos).
+// ---------------------------------------------------------------------------
+const pipelineNameById = Object.fromEntries(pipelinesRaw.map((p) => [p.id, p.name]));
+
+const GOAL_METRIC_LABELS = {
+  deals_won: 'Contratos ganhos',
+  deals_started: 'Potencial criado',
+  activities_completed: 'Atividades concluídas'
+};
+
+function goalUnit(goal) {
+  const metric = goal.type?.name;
+  if (metric === 'activities_completed') return 'count';
+  const tracking = goal.seasonality?.tracking_metric ?? goal.expected_outcome?.tracking_metric;
+  return tracking === 'quantity' ? 'count' : 'currency';
+}
+
+function monthKeyFromISO(dateStr) {
+  return typeof dateStr === 'string' && /^\d{4}-\d{2}/.test(dateStr) ? dateStr.slice(0, 7) : null;
+}
+
+// Mês corrente (parcial) e nº de meses decorridos, com base na data de geração.
+const currentMonthKey = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TIMEZONE,
+  year: 'numeric',
+  month: '2-digit'
+}).format(generatedAt);
+
+function buildGoalPlan(goal) {
+  const metric = goal.type?.name;
+  const unit = goalUnit(goal);
+  const pipelineIds = goal.type?.params?.pipeline_id ?? [];
+  const pipelines = pipelineIds.map((id) => pipelineNameById[id] ?? `Pipeline ${id}`);
+  const intervals = (goal.intervalResults ?? goal.seasonality?.intervals ?? []).map((interval) => {
+    const target = Number(interval.target ?? 0);
+    const progress = interval.progress != null ? Number(interval.progress) : null;
+    return {
+      start: interval.start,
+      end: interval.end,
+      monthKey: monthKeyFromISO(interval.start),
+      target,
+      realized: progress,
+      attainmentPct: target && progress != null ? (progress / target) * 100 : null
+    };
+  });
+
+  const totalTarget = intervals.reduce((acc, i) => acc + (i.target ?? 0), 0)
+    || Number(goal.expected_outcome?.target ?? 0);
+  const totalRealized = goal.totalProgress != null
+    ? Number(goal.totalProgress)
+    : intervals.reduce((acc, i) => acc + (i.realized ?? 0), 0);
+
+  // Intervalos já concluídos (fim < mês corrente) para medir ritmo.
+  const elapsed = intervals.filter((i) => (monthKeyFromISO(i.end) ?? '0000-00') < currentMonthKey);
+  const elapsedTarget = elapsed.reduce((acc, i) => acc + (i.target ?? 0), 0);
+  const elapsedRealized = elapsed.reduce((acc, i) => acc + (i.realized ?? 0), 0);
+  const paceRatio = elapsedTarget ? elapsedRealized / elapsedTarget : null;
+
+  // Projeção de fechamento do ano: realizado acumulado + (metas restantes × ritmo atual).
+  const remaining = intervals.filter((i) => (monthKeyFromISO(i.end) ?? '0000-00') >= currentMonthKey);
+  const remainingTarget = remaining.reduce((acc, i) => acc + (i.target ?? 0), 0);
+  const projectedYearEnd = paceRatio != null
+    ? elapsedRealized + remainingTarget * paceRatio
+    : totalRealized;
+
+  return {
+    id: goal.id,
+    title: (goal.title ?? '').trim(),
+    metric,
+    metricLabel: GOAL_METRIC_LABELS[metric] ?? metric,
+    unit,
+    interval: goal.interval,
+    isActive: goal.is_active === true,
+    pipelineIds,
+    pipelines,
+    durationStart: goal.duration?.start ?? null,
+    durationEnd: goal.duration?.end ?? null,
+    totalTarget,
+    totalRealized,
+    attainmentPct: totalTarget ? (totalRealized / totalTarget) * 100 : null,
+    elapsedTarget,
+    elapsedRealized,
+    paceRatio,
+    remainingTarget,
+    projectedYearEnd,
+    projectedAttainmentPct: totalTarget ? (projectedYearEnd / totalTarget) * 100 : null,
+    intervals
+  };
+}
+
+const goals2026 = goalsRaw
+  .filter((goal) => monthKeyFromISO(goal.duration?.start)?.startsWith('2026'))
+  .map(buildGoalPlan);
+
+function findGoalByTitle(pattern) {
+  return goals2026.find((goal) => pattern.test(goal.title)) ?? null;
+}
+
+const globalGoal = findGoalByTitle(/global/i);
+const consultoriaGoal = findGoalByTitle(/consultoria/i);
+const obrasGoal = findGoalByTitle(/obras/i);
+const potencialGoal = findGoalByTitle(/potencial/i);
+const reuniaoGoal = findGoalByTitle(/reuni/i);
+const quarterGoal = findGoalByTitle(/quarter/i);
+
+const planning2026 = {
+  currentMonth: currentMonthKey,
+  timezone: BUSINESS_TIMEZONE,
+  source: 'Pipedrive Goals API (metas reais) + results (realizado)',
+  primaryGoalId: globalGoal?.id ?? null,
+  goals: goals2026,
+  highlights: {
+    global: globalGoal,
+    consultoria: consultoriaGoal,
+    obras: obrasGoal,
+    potencial: potencialGoal,
+    reuniao: reuniaoGoal,
+    quarter: quarterGoal
+  }
+};
+
 const report = {
   generatedAt: new Date().toISOString(),
   scope: 'Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus',
@@ -2167,6 +2292,7 @@ const report = {
   growthComparison,
   projection2026H2,
   planningSummary,
+  planning2026,
   indicatorHighlights,
   deepAnalysis,
   commercialDirector,
@@ -2219,6 +2345,22 @@ await writeCsv(
     totalProjected: row.totalProjected,
     wonDealsEstimated: row.wonDealsEstimated
   }))
+);
+await writeCsv(
+  'planning-goals-2026.csv',
+  goals2026.flatMap((goal) =>
+    goal.intervals.map((interval) => ({
+      goal: goal.title,
+      metric: goal.metricLabel,
+      unit: goal.unit,
+      interval: goal.interval,
+      periodStart: interval.start,
+      periodEnd: interval.end,
+      target: interval.target,
+      realized: interval.realized,
+      attainmentPct: interval.attainmentPct
+    }))
+  )
 );
 await writeCsv('business-type-monthly.csv', businessTypeTrend);
 await writeCsv('business-type-deals.csv', businessTypeDeals);

@@ -255,6 +255,58 @@ export type PlanningSummary = {
   baseYearTotal2026: number;
 };
 
+export type GoalMetric = "deals_won" | "deals_started" | "activities_completed";
+export type GoalUnit = "currency" | "count";
+
+export type GoalInterval = {
+  start: string;
+  end: string;
+  monthKey: string | null;
+  target: number;
+  realized: number | null;
+  attainmentPct: number | null;
+};
+
+export type GoalPlan = {
+  id: string;
+  title: string;
+  metric: GoalMetric | string;
+  metricLabel: string;
+  unit: GoalUnit;
+  interval: "weekly" | "monthly" | "quarterly" | string;
+  isActive: boolean;
+  pipelineIds: number[];
+  pipelines: string[];
+  durationStart: string | null;
+  durationEnd: string | null;
+  totalTarget: number;
+  totalRealized: number;
+  attainmentPct: number | null;
+  elapsedTarget: number;
+  elapsedRealized: number;
+  paceRatio: number | null;
+  remainingTarget: number;
+  projectedYearEnd: number;
+  projectedAttainmentPct: number | null;
+  intervals: GoalInterval[];
+};
+
+export type Planning2026 = {
+  currentMonth: string;
+  timezone: string;
+  source: string;
+  primaryGoalId: string | null;
+  goals: GoalPlan[];
+  highlights: {
+    global: GoalPlan | null;
+    consultoria: GoalPlan | null;
+    obras: GoalPlan | null;
+    potencial: GoalPlan | null;
+    reuniao: GoalPlan | null;
+    quarter: GoalPlan | null;
+  };
+};
+
 export type CommercialDirectorMetrics = {
   mainPipeline: string;
   snapshot: {
@@ -307,6 +359,7 @@ export type Analysis = {
     months: ProjectionMonth[];
   };
   planningSummary: PlanningSummary;
+  planning2026?: Planning2026;
   indicatorHighlights: IndicatorHighlights;
   deepAnalysis: DeepAnalysis;
   commercialDirector?: CommercialDirectorMetrics;

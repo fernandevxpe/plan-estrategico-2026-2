@@ -2,7 +2,9 @@ import type {
   Analysis,
   BridgeItem,
   ExecutiveKpis,
+  GoalPlan,
   MonthDetail,
+  Planning2026,
   PlanningFilters,
   QuarterlySeriesItem,
   ScenarioName,
@@ -11,6 +13,52 @@ import type {
   YearFilter
 } from "./types";
 import { monthLabel, quarterLabel, semesterLabel } from "./format";
+
+export type GoalStatus = "acima" | "no_alvo" | "abaixo" | "em_risco";
+
+export function goalStatus(attainmentPct: number | null): GoalStatus {
+  if (attainmentPct == null) return "no_alvo";
+  if (attainmentPct >= 100) return "acima";
+  if (attainmentPct >= 90) return "no_alvo";
+  if (attainmentPct >= 70) return "abaixo";
+  return "em_risco";
+}
+
+const GOAL_DISPLAY_ORDER = ["global", "consultoria", "obras", "potencial", "quarter", "reuniao"] as const;
+
+export function getPlanning(analysis: Analysis): Planning2026 | null {
+  return analysis.planning2026 ?? null;
+}
+
+/** Metas na ordem de exibição preferida: consolidada primeiro, apoio depois. */
+export function getOrderedGoals(planning: Planning2026): GoalPlan[] {
+  const byKey = planning.highlights;
+  const ordered: GoalPlan[] = [];
+  const seen = new Set<string>();
+  for (const key of GOAL_DISPLAY_ORDER) {
+    const goal = byKey[key];
+    if (goal && !seen.has(goal.id)) {
+      ordered.push(goal);
+      seen.add(goal.id);
+    }
+  }
+  for (const goal of planning.goals) {
+    if (!seen.has(goal.id)) {
+      ordered.push(goal);
+      seen.add(goal.id);
+    }
+  }
+  return ordered;
+}
+
+/** Só os intervalos já iniciados (realizado disponível) para gráficos meta x realizado. */
+export function goalIntervalsWithProgress(goal: GoalPlan, currentMonth: string) {
+  return goal.intervals.map((interval) => ({
+    ...interval,
+    isFuture: (interval.monthKey ?? "0000-00") > currentMonth,
+    isCurrent: interval.monthKey === currentMonth
+  }));
+}
 
 function getScenarioProjection(analysis: Analysis, scenario: ScenarioName) {
   return (

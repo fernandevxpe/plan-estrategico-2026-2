@@ -43,8 +43,51 @@ async function fetchPipedriveCollection(path, params = {}) {
   return all;
 }
 
+async function fetchPipedriveGoals() {
+  const token = process.env.PIPEDRIVE_API_KEY;
+  const url = new URL('https://api.pipedrive.com/v1/goals/find');
+  url.searchParams.set('api_token', token);
+  const json = await getJson(url);
+  return json.data?.goals ?? [];
+}
+
+async function fetchGoalProgress(goalId, start, end) {
+  const token = process.env.PIPEDRIVE_API_KEY;
+  const url = new URL(`https://api.pipedrive.com/v1/goals/${goalId}/results`);
+  url.searchParams.set('api_token', token);
+  url.searchParams.set('period.start', start);
+  url.searchParams.set('period.end', end);
+  try {
+    const json = await getJson(url);
+    return json.data?.progress ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Para cada meta, busca o realizado (progress) agregado do período completo e por
+// cada intervalo de sazonalidade (mês/trimestre/semana), permitindo comparar meta x realizado.
+async function enrichGoalsWithResults(goals) {
+  const enriched = [];
+  for (const goal of goals) {
+    const start = goal.duration?.start;
+    const end = goal.duration?.end;
+    const totalProgress = start && end ? await fetchGoalProgress(goal.id, start, end) : null;
+
+    const intervals = goal.seasonality?.intervals ?? [];
+    const intervalResults = [];
+    for (const interval of intervals) {
+      const progress = await fetchGoalProgress(goal.id, interval.start, interval.end);
+      intervalResults.push({ start: interval.start, end: interval.end, target: interval.target, progress });
+    }
+
+    enriched.push({ ...goal, totalProgress, intervalResults });
+  }
+  return enriched;
+}
+
 async function syncPipedrive() {
-  const [deals, dealFields, orgFields, organizations, pipelines, stages, users, activities] =
+  const [deals, dealFields, orgFields, organizations, pipelines, stages, users, activities, goalsRaw] =
     await Promise.all([
       fetchPipedriveCollection('deals', { status: 'all_not_deleted' }),
       fetchPipedriveCollection('dealFields'),
@@ -53,8 +96,11 @@ async function syncPipedrive() {
       fetchPipedriveCollection('pipelines'),
       fetchPipedriveCollection('stages'),
       fetchPipedriveCollection('users'),
-      fetchPipedriveCollection('activities')
+      fetchPipedriveCollection('activities'),
+      fetchPipedriveGoals()
     ]);
+
+  const goals = await enrichGoalsWithResults(goalsRaw);
 
   await writeJson('pipedrive-deals.json', deals);
   await writeJson('pipedrive-deal-fields.json', dealFields);
@@ -64,6 +110,7 @@ async function syncPipedrive() {
   await writeJson('pipedrive-stages.json', stages);
   await writeJson('pipedrive-users.json', users);
   await writeJson('pipedrive-activities.json', activities);
+  await writeJson('pipedrive-goals.json', goals);
 
   return {
     deals: deals.length,
@@ -73,7 +120,8 @@ async function syncPipedrive() {
     pipelines: pipelines.length,
     stages: stages.length,
     users: users.length,
-    activities: activities.length
+    activities: activities.length,
+    goals: goals.length
   };
 }
 

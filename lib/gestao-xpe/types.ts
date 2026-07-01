@@ -60,6 +60,8 @@ export type GestaoGargalo = {
   rank: number;
   nome: string;
   area: string;
+  /** Agrupa visualmente gargalos relacionados (ex.: obras) */
+  grupo?: string;
   descricao: string;
   sintomas: string[];
   /** Lista plana — gargalos sem painel agrupado */
@@ -84,20 +86,26 @@ export type GestaoMotor = {
   indicadores: GestaoIndicador[];
 };
 
-export type GestaoEstoqueInvisivel = {
+export type GestaoInventarioItem = {
   id: string;
-  tipo: string;
-  area: string;
-  quantidade: string | null;
-  impacto: string | null;
-  responsavel: string;
-  acao: string;
+  nome: string;
+  capacidadeAtual: string | null;
+  potencial: string | null;
+  utilizacao: string | null;
+  retorno: string | null;
+  observacao: string;
 };
 
-export type GestaoBoletimSecao = {
+export type GestaoInventarioCategoria = {
   id: string;
-  titulo: string;
-  itens: string[];
+  nome: string;
+  descricao: string;
+  itens: GestaoInventarioItem[];
+};
+
+export type GestaoInventario = {
+  descricao: string;
+  categorias: GestaoInventarioCategoria[];
 };
 
 export type GestaoTocPasso = {
@@ -136,12 +144,7 @@ export type GestaoDashboard = {
   };
   gargalos: GestaoGargalo[];
   motores: GestaoMotor[];
-  estoquesInvisiveis: GestaoEstoqueInvisivel[];
-  boletim: {
-    semana: string;
-    responsavel: string;
-    secoes: GestaoBoletimSecao[];
-  };
+  inventario: GestaoInventario;
   toc: {
     regras: string[];
     passos: GestaoTocPasso[];

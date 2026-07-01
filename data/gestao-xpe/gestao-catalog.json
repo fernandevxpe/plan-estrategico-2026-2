@@ -5,7 +5,7 @@
     {
       "id": "comercial-nobre",
       "tipo": "gargalo",
-      "nome": "Capacidade comercial nobre",
+      "nome": "Capacidade Comercial de Vendas",
       "resumo": "Indicadores comerciais alimentados pelo Pipedrive (negócios + atividades). Metas do ritual semanal diretor comercial.",
       "definicaoNobre": "Tempo nobre na agenda. Propostas via atividade Elaborar/Solicito proposta. Conversão cohort = ganho no negócio após proposta elaborada.",
       "grupos": [
@@ -20,6 +20,8 @@
             "assembleias",
             "propostas-novas",
             "propostas-pendentes",
+            "negocios-abertos-funil",
+            "capacidade-apresentacao-agenda",
             "visitas-total",
             "visitas-sindico",
             "followups",
@@ -102,6 +104,31 @@
       "metaReferencia": "≤ 0",
       "agregacaoMensal": "max",
       "destaque": true
+    },
+    "negocios-abertos-funil": {
+      "id": "negocios-abertos-funil",
+      "nome": "Negócios abertos no funil",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "contagem",
+      "fonte": "Pipedrive — negócios abertos [Exec] Laudos - Condo",
+      "origemDado": "crm_snapshot",
+      "metaReferencia": "≥ 15",
+      "agregacaoMensal": "ultimo",
+      "destaque": false
+    },
+    "capacidade-apresentacao-agenda": {
+      "id": "capacidade-apresentacao-agenda",
+      "nome": "Capacidade de apresentação (% agenda)",
+      "escopoId": "comercial-nobre",
+      "grupoId": "volume",
+      "tipo": "percentual",
+      "unidade": "%",
+      "fonte": "Calendário 18h–22h — até 2 assembleias/noite por pessoa",
+      "origemDado": "manual",
+      "metaReferencia": "≤ 85",
+      "agregacaoMensal": "media",
+      "destaque": false
     },
     "propostas-apresentadas": {
       "id": "propostas-apresentadas",

@@ -5944,6 +5944,33 @@ tr:last-child td {
   gap: 10px;
 }
 
+.gestao-bottleneck-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.gestao-bottleneck-group-header h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.gestao-bottleneck-group-header p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.gestao-bottleneck-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .gestao-bottleneck-card {
   padding: 0;
   overflow: hidden;

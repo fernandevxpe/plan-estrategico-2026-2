@@ -37,7 +37,7 @@
     {
       "id": "comercial-nobre",
       "rank": 1,
-      "nome": "Capacidade comercial nobre",
+      "nome": "Capacidade Comercial de Vendas",
       "area": "Vendas",
       "descricao": "O vendedor possui tempo limitado. Se esse tempo é consumido por tarefas operacionais, a empresa perde capacidade de conversão.",
       "sintomas": [
@@ -143,7 +143,28 @@
         { "id": "cn-10", "titulo": "Incluir a venda de novos produtos", "responsavel": "", "prazo": "", "status": "pendente" },
         { "id": "cn-11", "titulo": "Reunião com Obras para compreensão e aprendizagem comercial", "responsavel": "", "prazo": "", "status": "pendente" },
         { "id": "cn-12", "titulo": "Reunião com Consultoria para compreensão e aprendizagem comercial", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "cn-13", "titulo": "Reunião de acompanhamento e monitoramento da meta e planos de ação", "responsavel": "", "prazo": "", "status": "pendente" }
+        { "id": "cn-13", "titulo": "Reunião de acompanhamento e monitoramento da meta e planos de ação", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "cn-14", "titulo": "Meta semanal de negócios abertos no funil (encher pipeline antes de otimizar conversão)", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "cn-15", "titulo": "Calendário de capacidade de apresentação (18h–22h, até 2 assembleias/noite por pessoa)", "responsavel": "", "prazo": "", "status": "pendente" }
+      ],
+      "indicadores": [
+        {
+          "id": "negocios-abertos-funil",
+          "nome": "Volume de negócios abertos no funil",
+          "meta": null,
+          "valor": null,
+          "fonte": "Pipedrive — negócios abertos [Exec] Laudos - Condo",
+          "tipo": "contagem"
+        },
+        {
+          "id": "capacidade-apresentacao-agenda",
+          "nome": "Capacidade de apresentação (% agenda 18h–22h)",
+          "meta": null,
+          "valor": null,
+          "unidade": "%",
+          "fonte": "Calendário — slots nobres ocupados ÷ disponíveis (2 assembleias/noite por pessoa)",
+          "tipo": "percentual"
+        }
       ],
       "metricasUniversais": {
         "capacidade": null,
@@ -157,32 +178,141 @@
     {
       "id": "assembleias",
       "rank": 2,
-      "nome": "Capacidade de apresentação e assembleias",
-      "area": "Vendas",
-      "descricao": "Assembleias são eventos raros e valiosos. Oportunidade mal preparada gera perda de receita presente e futura.",
+      "nome": "Capacidade de Pós-venda",
+      "area": "Consultoria",
+      "descricao": "Ao longo da jornada do cliente levantamos mais orçamentos do que viram negócios no funil. O gargalo não é só converter o que está aberto — é registrar a carteira de oportunidades mapeadas, priorizar o que apresentar (síndico, assembleia, reunião), transformar volume mapeado em negócios abertos e expandir a base (ex-motor Expansão). Mais propostas no funil pode baixar a taxa de conversão nominal, mas aumenta fechamentos e a receita por cliente.",
       "sintomas": [
-        "Proposta pronta sem reunião",
-        "Oportunidades perdidas por falta de preparo",
-        "Assembleias sem orçamentos complementares",
-        "Cliente demora a decidir",
-        "Pós-venda não explorado"
+        "Orçamentos retidos em slides, blocos de notas e e-mails — fora do CRM",
+        "Muito esforço de precificação com poucos negócios abertos no Pipedrive",
+        "Cliente visto só pelo deal atual, não como carteira de potencial",
+        "Taxa de conversão ok, mas volume fechado baixo por falta de propostas no funil",
+        "Consultoria e obras geram oportunidades que não viram registro compartilhado",
+        "Vários responsáveis (comercial, consultoria, obras) sem base única de informação",
+        "Assembleia e reunião com síndico sem material mapeado e priorizado",
+        "Cliente sobrecarregado quando muitas propostas sem filtro de prioridade",
+        "Laudo entregue sem reunião de devolutiva",
+        "Cliente da base sem contato ou follow-up",
+        "Obra ou expansão identificada e não registrada na carteira"
       ],
       "indicadores": [
-        { "nome": "Assembleias/mês", "meta": null, "valor": null },
-        { "nome": "Assembleias por vendedor", "meta": null, "valor": null },
-        { "nome": "Conversão por assembleia", "meta": null, "valor": null, "unidade": "%" },
-        { "nome": "Ticket por assembleia", "meta": null, "valor": null },
-        { "nome": "Receita pós-venda por assembleia", "meta": null, "valor": null },
-        { "nome": "Propostas complementares apresentadas", "meta": null, "valor": null },
-        { "nome": "Oportunidades geradas por assembleia", "meta": null, "valor": null }
+        {
+          "id": "assembleias-mes",
+          "nome": "Assembleias/mês",
+          "meta": null,
+          "valor": null,
+          "fonte": "Pipedrive — reuniões com assembleia no assunto",
+          "tipo": "contagem"
+        },
+        {
+          "id": "conversao-por-assembleia",
+          "nome": "Conversão por assembleia",
+          "meta": null,
+          "valor": null,
+          "unidade": "%",
+          "fonte": "Ganhos pós-assembleia ÷ assembleias realizadas",
+          "tipo": "percentual"
+        },
+        {
+          "id": "ticket-apresentado-assembleia",
+          "nome": "Ticket apresentado por assembleia",
+          "meta": null,
+          "valor": null,
+          "unidade": "R$",
+          "fonte": "Soma valor propostas apresentadas na assembleia ÷ assembleias",
+          "tipo": "moeda"
+        },
+        {
+          "id": "receita-pos-venda",
+          "nome": "Receita pós-venda",
+          "meta": null,
+          "valor": null,
+          "unidade": "R$",
+          "fonte": "Ganhos classificados como pós-venda / expansão na carteira",
+          "tipo": "moeda"
+        },
+        {
+          "id": "carteira-mapeada-cliente",
+          "nome": "Carteira mapeada por cliente",
+          "meta": null,
+          "valor": null,
+          "unidade": "qtd",
+          "fonte": "Oportunidades registradas (consultoria, obra, serviço) por CNPJ",
+          "tipo": "contagem"
+        },
+        {
+          "id": "orcamentos-levantados-registrados",
+          "nome": "Orçamentos levantados e registrados por cliente",
+          "meta": null,
+          "valor": null,
+          "fonte": "Orçamentos internos formalizados ÷ orçamentos levantados (por cliente)",
+          "tipo": "contagem"
+        },
+        {
+          "id": "capacidade-apresentacao-agenda",
+          "nome": "Capacidade de apresentação (% agenda 18h–22h)",
+          "meta": null,
+          "valor": null,
+          "unidade": "%",
+          "fonte": "Slots nobres ocupados ÷ disponíveis (até 2 assembleias/noite por pessoa) — compartilhado com Comercial",
+          "tipo": "percentual"
+        },
+        {
+          "id": "receita-cliente-fechado",
+          "nome": "Receita por cliente fechado",
+          "meta": null,
+          "valor": null,
+          "unidade": "R$",
+          "fonte": "Receita ganha 12m vs potencial mapeado na carteira do cliente",
+          "tipo": "moeda"
+        },
+        {
+          "id": "conversao-consultoria-obra",
+          "nome": "Conversão consultoria → obra",
+          "meta": null,
+          "valor": null,
+          "unidade": "%",
+          "fonte": "Ganhos de obra originados da base ÷ oportunidades mapeadas",
+          "tipo": "percentual"
+        },
+        {
+          "id": "ltv-receita-base",
+          "nome": "LTV / receita da base",
+          "meta": null,
+          "valor": null,
+          "unidade": "R$",
+          "fonte": "Receita acumulada clientes com entrega prévia",
+          "tipo": "moeda"
+        },
+        {
+          "id": "clientes-sem-followup",
+          "nome": "Clientes sem follow-up",
+          "meta": null,
+          "valor": null,
+          "fonte": "Base com entrega e sem atividade comercial recente",
+          "tipo": "contagem"
+        },
+        {
+          "id": "entregaveis-apresentados",
+          "nome": "Entregáveis apresentados (devolutiva)",
+          "meta": null,
+          "valor": null,
+          "fonte": "Reuniões de devolutiva pós-entrega registradas",
+          "tipo": "contagem"
+        }
       ],
       "acoes": [
-        { "id": "as-1", "titulo": "Checklist de assembleia", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "as-2", "titulo": "Proposta principal revisada com cenários alternativos", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "as-3", "titulo": "Mapear pós-venda antes da assembleia", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "as-4", "titulo": "Roteiros de objeções e materiais para síndicos", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "as-5", "titulo": "Follow-up pós-assembleia em até 24h", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "as-6", "titulo": "Classificação de alterações solicitadas", "responsavel": "", "prazo": "", "status": "pendente" }
+        { "id": "pv-1", "titulo": "Definir sistema de gestão de orçamentos por cliente (Pipedrive vs plataforma interna) — pauta sexta", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "pv-2", "titulo": "Modelar carteira de oportunidades: mapeada → priorizada → negócio aberto → apresentada → fechada", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "pv-3", "titulo": "Padrão mínimo de registro pós-diagnóstico (consultoria e obras) com responsável e valor estimado", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "pv-4", "titulo": "RACI comercial × consultoria × obras para orçamentos e abertura de negócios", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "pv-5", "titulo": "Automação: rascunho de negócio ou atividade no CRM ao concluir orçamento interno", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "pv-6", "titulo": "Regra de priorização antes de apresentar ao síndico/assembleia (top N por cliente)", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "pv-7", "titulo": "Painel carteira por CNPJ: potencial mapeado, em funil, fechado e \"folego\" do cliente", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "pv-8", "titulo": "Checklist assembleia/síndico com oportunidades mapeadas e complementares", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "pv-9", "titulo": "Follow-up pós-apresentação em até 24h com status na carteira", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "pv-10", "titulo": "Reunião obrigatória de devolutiva pós-entrega de laudo/projeto", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "pv-11", "titulo": "Rotina semanal de expansão da base (pós-venda comercial)", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "pv-12", "titulo": "Materiais de recomendação para síndico e conselho", "responsavel": "", "prazo": "", "status": "pendente" }
       ],
       "metricasUniversais": {
         "capacidade": null,
@@ -196,34 +326,39 @@
     {
       "id": "revisao-tecnica",
       "rank": 3,
-      "nome": "Revisão técnica e tempo de especialista",
+      "nome": "Capacidade de entrega técnica (revisão e industrialização)",
       "area": "Consultoria",
-      "descricao": "O especialista não pode virar executor operacional. Correção de trabalho de estagiário consome capacidade de decisão e revisão.",
+      "descricao": "Industrializar a entrega: processo desenhado de trás pra frente, camadas de verificação antes do especialista, medição de tempo por serviço e fase, e descentralização da revisão. Depende de coleta estruturada (#4) e processos mapeados. Margem e ganho de processo ficam no motor Consultoria e em campo — não neste gargalo.",
       "sintomas": [
-        "Especialista corrigindo trabalho de estagiário",
-        "Revisão tarde",
-        "Pouco feedback",
-        "Retrabalho",
-        "Fila de projetos",
-        "Dependência técnica"
+        "Especialista corrigindo trabalho de estagiário ou analista",
+        "Fila longa aguardando revisão do especialista",
+        "Retrabalho recorrente no escritório",
+        "Pouco feedback estruturado entre camadas",
+        "Dependência de poucos revisores",
+        "Tempo de entrega varia muito por tipo de serviço sem visibilidade",
+        "Projetos parados na fila de revisão"
       ],
       "indicadores": [
-        { "nome": "Horas do especialista por entrega", "meta": null, "valor": null, "unidade": "h" },
-        { "nome": "Itens aguardando revisão", "meta": null, "valor": null },
-        { "nome": "Revisões tardias", "meta": null, "valor": null },
-        { "nome": "Retrabalho por tipo", "meta": null, "valor": null },
-        { "nome": "Devoluções para estagiário", "meta": null, "valor": null },
-        { "nome": "Erros recorrentes", "meta": null, "valor": null },
-        { "nome": "Lead time de revisão", "meta": null, "valor": null, "unidade": "dias" }
+        { "id": "horas-especialista-entrega", "nome": "Horas do especialista por entrega", "meta": null, "valor": null, "unidade": "h", "tipo": "duracao" },
+        { "id": "tempo-por-tipo-servico", "nome": "Tempo de execução por tipo de serviço", "meta": null, "valor": null, "unidade": "h", "tipo": "duracao" },
+        { "id": "tempo-por-fase-projeto", "nome": "Tempo por fase do projeto", "meta": null, "valor": null, "unidade": "h", "tipo": "duracao" },
+        { "id": "fila-revisao-especialista", "nome": "Fila aguardando revisão do especialista", "meta": null, "valor": null, "unidade": "dias", "tipo": "duracao" },
+        { "id": "aprovacao-primeira-revisao", "nome": "% aprovado na 1ª revisão formal", "meta": null, "valor": null, "unidade": "%", "tipo": "percentual" },
+        { "id": "horas-estagiario-analista", "nome": "Horas estagiário/analista por entrega", "meta": null, "valor": null, "unidade": "h", "tipo": "duracao" },
+        { "id": "revisoes-por-analistas", "nome": "% revisões realizadas por analistas", "meta": null, "valor": null, "unidade": "%", "tipo": "percentual" },
+        { "id": "projetos-ativos-por-membro", "nome": "Projetos ativos por membro", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Plataforma — carga por pessoa" },
+        { "id": "mix-tipos-por-membro", "nome": "Tipos de serviço distintos por membro", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Plataforma — diversidade de tipos na carteira individual" }
       ],
       "acoes": [
-        { "id": "rt-1", "titulo": "Checklist pré-revisão", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "rt-2", "titulo": "Revisão intermediária", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "rt-3", "titulo": "Biblioteca de erros recorrentes", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "rt-4", "titulo": "Treinamento dos estagiários", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "rt-5", "titulo": "IA para validações básicas", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "rt-6", "titulo": "Critérios mínimos antes de revisar", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "rt-7", "titulo": "Formar novos revisores", "responsavel": "", "prazo": "", "status": "pendente" }
+        { "id": "rt-1", "titulo": "Mapear fluxo reverso por tipo de serviço (entrega → coleta)", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "rt-2", "titulo": "Gates de qualidade: auto → analista → revisor → especialista", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "rt-3", "titulo": "Biblioteca de erros recorrentes e critérios mínimos pré-revisão", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "rt-4", "titulo": "Formar novos revisores e treinar estagiários/analistas", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "rt-5", "titulo": "Painel de performance individual na plataforma (projetos, tipos, velocidade)", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "rt-6", "titulo": "Programa de job rotation — matriz pessoas × tipos de serviço", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "rt-7", "titulo": "Retrospectiva quinzenal por membro com base no painel individual", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "rt-8", "titulo": "IA para validações básicas antes da fila do especialista", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "rt-9", "titulo": "Alinhar processos escritório com XPE OS (#4)", "responsavel": "", "prazo": "", "status": "pendente" }
       ],
       "metricasUniversais": {
         "capacidade": null,
@@ -237,32 +372,31 @@
     {
       "id": "coleta-campo",
       "rank": 4,
-      "nome": "Coleta de campo",
+      "nome": "Coleta e execução em campo",
       "area": "Operações",
-      "descricao": "Campo alimenta vendas, consultoria e obras. Dados incompletos geram retrabalho, atrasos e decisões ruins.",
+      "descricao": "Campo alimenta vendas, consultoria e obras via XPE OS. Foco em completude na 1ª visita, tempo×qualidade da coleta e execução de serviços em campo — mapeamento de processos fica no gargalo #7.",
       "sintomas": [
-        "Foto faltante",
-        "Dado incompleto",
-        "Retorno ao local",
-        "Projeto parado",
-        "Orçamento errado",
-        "Revisão encontra falha",
-        "Obra descobre problema tarde"
+        "Foto ou dado obrigatório faltante",
+        "Retorno ao local por coleta incompleta",
+        "Projeto parado aguardando informação de campo",
+        "Orçamento ou projeto com premissa errada por dado de campo",
+        "Revisão técnica encontra falha originada em campo",
+        "Obra descobre problema tarde por levantamento insuficiente",
+        "App de campo ignorado ou checklist incompleto"
       ],
       "indicadores": [
-        { "nome": "% coletas completas na primeira visita", "meta": null, "valor": null, "unidade": "%" },
-        { "nome": "Retornos a campo", "meta": null, "valor": null },
-        { "nome": "Pendências de informação", "meta": null, "valor": null },
-        { "nome": "Retrabalho por dado faltante", "meta": null, "valor": null },
-        { "nome": "Tempo perdido por campo", "meta": null, "valor": null, "unidade": "h" },
-        { "nome": "Uso do app/checklist", "meta": null, "valor": null, "unidade": "%" }
+        { "id": "coletas-completas-primeira-visita", "nome": "% coletas completas na 1ª visita", "meta": null, "valor": null, "unidade": "%", "tipo": "percentual" },
+        { "id": "retornos-campo", "nome": "Retornos a campo", "meta": null, "valor": null, "tipo": "contagem" },
+        { "id": "pendencias-informacao-campo", "nome": "Pendências de informação de campo", "meta": null, "valor": null, "tipo": "contagem" },
+        { "id": "uso-app-checklist-campo", "nome": "% uso do app/checklist em campo", "meta": null, "valor": null, "unidade": "%", "tipo": "percentual" },
+        { "id": "tempo-coleta-por-tipo", "nome": "Tempo de coleta por tipo de serviço", "meta": null, "valor": null, "unidade": "h", "tipo": "duracao" }
       ],
       "acoes": [
-        { "id": "cc-1", "titulo": "App de campo com checklist por tipo de serviço", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "cc-2", "titulo": "Fotos obrigatórias e validação antes de encerrar visita", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "cc-3", "titulo": "Responsável pela qualidade da coleta", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "cc-4", "titulo": "Painel de coletas incompletas", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "cc-5", "titulo": "Integração com proposta/projeto", "responsavel": "", "prazo": "", "status": "pendente" }
+        { "id": "cc-1", "titulo": "XPE OS: checklist por tipo de serviço e fotos obrigatórias", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "cc-2", "titulo": "Validação antes de encerrar visita (bloqueio se incompleto)", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "cc-3", "titulo": "Responsável pela qualidade da coleta e painel de incompletas", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "cc-4", "titulo": "Integração coleta → proposta/projeto na plataforma", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "cc-5", "titulo": "Meta tempo×qualidade por tipo de visita (1ª visita completa)", "responsavel": "", "prazo": "", "status": "pendente" }
       ],
       "metricasUniversais": {
         "capacidade": null,
@@ -278,29 +412,28 @@
       "rank": 5,
       "nome": "Escopo fechado de obras",
       "area": "Obras",
-      "descricao": "Obra não é flexível como consultoria. Escopo define material, prazo, equipe, custo e entrega física.",
+      "grupo": "obras",
+      "descricao": "Obra não é flexível como consultoria. Escopo define material, prazo, equipe, custo e entrega física. Mudanças passam por aditivo; divergências são rastreadas via diário de obras (#6).",
       "sintomas": [
         "Mudança em assembleia sem aditivo",
         "Execução diferente da proposta",
         "Material insuficiente",
         "Cliente espera algo diferente",
-        "Perda de margem",
-        "Conflito na entrega"
+        "Conflito na entrega",
+        "Atividades não planejadas sem registro no diário"
       ],
       "indicadores": [
-        { "nome": "Obras com alteração de escopo", "meta": null, "valor": null },
-        { "nome": "Aditivos emitidos", "meta": null, "valor": null },
-        { "nome": "Alterações sem cobrança", "meta": null, "valor": null },
-        { "nome": "Retrabalho por escopo", "meta": null, "valor": null },
-        { "nome": "Divergência proposta x execução", "meta": null, "valor": null },
-        { "nome": "Margem perdida", "meta": null, "valor": null }
+        { "id": "obras-alteracao-escopo", "nome": "Obras com alteração de escopo", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Diário de obras / gestão de obra" },
+        { "id": "aditivos-emitidos", "nome": "Aditivos emitidos", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Contratos e aditivos" },
+        { "id": "retrabalho-escopo", "nome": "Retrabalho por escopo", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Diário de obras" },
+        { "id": "divergencia-proposta-execucao", "nome": "Divergência proposta x execução", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Checklist escopo fechado" }
       ],
       "acoes": [
-        { "id": "eo-1", "titulo": "Checklist de escopo fechado", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "eo-2", "titulo": "Critérios de entrega, exclusões e premissas explícitas", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "eo-3", "titulo": "Modelo de termo aditivo", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "eo-4", "titulo": "Aprovação formal antes da execução de mudanças", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "eo-5", "titulo": "Caderno técnico de execução", "responsavel": "", "prazo": "", "status": "pendente" }
+        { "id": "eo-1", "titulo": "Checklist de escopo fechado antes da mobilização", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "eo-2", "titulo": "Critérios de entrega, exclusões e premissas explícitas na proposta", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "eo-3", "titulo": "Modelo de termo aditivo e fluxo de aprovação", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "eo-4", "titulo": "Aprovação formal antes de executar mudança de escopo", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "eo-5", "titulo": "Caderno técnico de execução vinculado ao diário de obras", "responsavel": "", "prazo": "", "status": "pendente" }
       ],
       "metricasUniversais": {
         "capacidade": null,
@@ -316,30 +449,40 @@
       "rank": 6,
       "nome": "Capacidade de execução de obras",
       "area": "Obras",
-      "descricao": "A equipe de obras é limitada por tempo útil. Capacidade real é menor que a teórica devido a chuva, feriados, acesso e material.",
+      "grupo": "obras",
+      "descricao": "Capacidade real da equipe de obras: planejamento semanal, execução em campo e diário de obras. Medir tempo, equipe, custos não planejados e desvios para melhorar o processo — sem motor separado.",
       "sintomas": [
-        "Obras acumuladas",
-        "Atraso por chuva",
-        "Atraso por material",
-        "Atraso por acesso",
-        "Equipe parada",
-        "Execução em cima da hora"
+        "Obras acumuladas na fila",
+        "Atraso por chuva, material ou acesso",
+        "Equipe parada ou remanejada sem registro",
+        "Execução em cima da hora",
+        "Atividades extras não previstas no planejamento",
+        "Reagendamentos e cancelamentos frequentes"
       ],
       "indicadores": [
-        { "nome": "Obras simultâneas", "meta": null, "valor": null },
-        { "nome": "Obras concluídas/mês", "meta": null, "valor": null },
-        { "nome": "Dias úteis disponíveis", "meta": null, "valor": null },
-        { "nome": "Dias perdidos por chuva", "meta": null, "valor": null },
-        { "nome": "Dias perdidos por material", "meta": null, "valor": null },
-        { "nome": "Produtividade por equipe", "meta": null, "valor": null },
-        { "nome": "Capacidade teórica vs efetiva", "meta": null, "valor": null, "unidade": "%" }
+        { "id": "obras-simultaneas", "nome": "Obras simultâneas", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Gestão de obras" },
+        { "id": "obras-concluidas-mes", "nome": "Obras concluídas/mês", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Gestão de obras" },
+        { "id": "obras-entregues-semana", "nome": "Obras entregues na semana", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Diário de obras" },
+        { "id": "faturamento-obras-semana", "nome": "Faturamento de obras na semana", "meta": null, "valor": null, "unidade": "R$", "tipo": "moeda", "fonte": "Financeiro / medições" },
+        { "id": "agendamentos-obras-semana", "nome": "Agendamentos de obra na semana", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Calendário de obras" },
+        { "id": "tempo-execucao-obra", "nome": "Tempo de execução da obra", "meta": null, "valor": null, "unidade": "dias", "tipo": "dias", "fonte": "Início mobilização → entrega" },
+        { "id": "dias-campo-cliente", "nome": "Dias em campo no cliente (execução)", "meta": null, "valor": null, "unidade": "dias", "tipo": "dias", "fonte": "Diário de obras" },
+        { "id": "reagendamentos-cancelamentos", "nome": "Reagendamentos ou cancelamentos", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Calendário de obras" },
+        { "id": "equipe-envolvida-qtd", "nome": "Quantidade da equipe envolvida", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Diário de obras por obra" },
+        { "id": "custo-excedido-nao-planejado", "nome": "R$ custo excedido não planejado", "meta": null, "valor": null, "unidade": "R$", "tipo": "moeda", "fonte": "Planejado vs realizado (diário)" },
+        { "id": "dias-atividades-nao-planejadas", "nome": "Dias a mais de atividades não planejadas", "meta": null, "valor": null, "unidade": "dias", "tipo": "dias", "fonte": "Diário de obras vs cronograma" },
+        { "id": "dias-uteis-disponiveis", "nome": "Dias úteis disponíveis", "meta": null, "valor": null, "unidade": "dias", "tipo": "dias", "fonte": "Planejamento semanal" },
+        { "id": "dias-perdidos-chuva", "nome": "Dias perdidos por chuva", "meta": null, "valor": null, "unidade": "dias", "tipo": "dias", "fonte": "Diário de obras" },
+        { "id": "dias-perdidos-material", "nome": "Dias perdidos por material", "meta": null, "valor": null, "unidade": "dias", "tipo": "dias", "fonte": "Diário de obras" }
       ],
       "acoes": [
-        { "id": "co-1", "titulo": "Planejamento semanal por dias úteis", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "co-2", "titulo": "Buffer climático e plano B para chuva", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "co-3", "titulo": "Material conferido antes da mobilização", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "co-4", "titulo": "Confirmação de acesso com cliente", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "co-5", "titulo": "Equipe backup e terceirização controlada em picos", "responsavel": "", "prazo": "", "status": "pendente" }
+        { "id": "co-1", "titulo": "Diário de obras obrigatório (planejado vs realizado, equipe, custos)", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "co-2", "titulo": "Planejamento semanal por dias úteis e obras agendadas", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "co-3", "titulo": "Buffer climático e plano B para chuva", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "co-4", "titulo": "Material conferido antes da mobilização", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "co-5", "titulo": "Confirmação de acesso com cliente antes da visita", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "co-6", "titulo": "Revisão semanal: desvios, custos extras e lições para próximo planejamento", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "co-7", "titulo": "Equipe backup e terceirização controlada em picos", "responsavel": "", "prazo": "", "status": "pendente" }
       ],
       "metricasUniversais": {
         "capacidade": null,
@@ -351,70 +494,32 @@
       }
     },
     {
-      "id": "pos-venda",
+      "id": "mapa-processos",
       "rank": 7,
-      "nome": "Pós-venda técnico",
-      "area": "Pós-venda",
-      "descricao": "A consultoria precisa gerar novas oportunidades. Sem processo de expansão, consultoria não vira obra.",
+      "nome": "Gestão de processos, ferramentas e atividades",
+      "area": "Operações",
+      "descricao": "Mapear onde cada atividade acontece (web, app, automação, manual), qual ferramenta deveria ser usada e como integrar sistemas. Foco em melhoria operacional, qualidade das entregas e mapa mental do fluxo — não apenas % de adoção de CRM.",
       "sintomas": [
-        "Laudo entregue sem reunião",
-        "Oportunidade identificada sem proposta",
-        "Cliente da base sem contato",
-        "Obra potencial esquecida",
-        "Baixa conversão da base"
+        "Atividade feita no canal errado (WhatsApp em vez de app/web)",
+        "Mesmo processo executado de formas diferentes por pessoa",
+        "Ferramenta existe mas não está no fluxo desenhado",
+        "Automação possível mas não implementada",
+        "Dados duplicados entre CRM, plataforma e campo",
+        "Não sabemos quais atividades deveriam ser app vs web"
       ],
       "indicadores": [
-        { "nome": "Entregáveis apresentados", "meta": null, "valor": null },
-        { "nome": "Oportunidades por cliente", "meta": null, "valor": null },
-        { "nome": "Propostas pós-venda", "meta": null, "valor": null },
-        { "nome": "Conversão consultoria → obra", "meta": null, "valor": null, "unidade": "%" },
-        { "nome": "Receita da base", "meta": null, "valor": null },
-        { "nome": "LTV", "meta": null, "valor": null },
-        { "nome": "Clientes sem follow-up", "meta": null, "valor": null }
+        { "id": "uso-plataforma-web", "nome": "% atividades registradas na plataforma web", "meta": null, "valor": null, "unidade": "%", "tipo": "percentual", "fonte": "Log de atividades por canal" },
+        { "id": "uso-aplicativo", "nome": "% atividades registradas no aplicativo", "meta": null, "valor": null, "unidade": "%", "tipo": "percentual", "fonte": "Log de atividades por canal" },
+        { "id": "atividades-canal-errado", "nome": "Atividades no canal inadequado", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Auditoria: canal usado vs canal ideal do mapa" },
+        { "id": "tipos-atividade-mapeados", "nome": "Tipos de atividade com fluxo documentado", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Mapa de processos" },
+        { "id": "integracoes-ativas", "nome": "Integrações ativas (CRM ↔ plataforma ↔ app)", "meta": null, "valor": null, "tipo": "contagem", "fonte": "Checklist técnico" }
       ],
       "acoes": [
-        { "id": "pv-1", "titulo": "Reunião obrigatória de devolutiva", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "pv-2", "titulo": "Checklist de oportunidades", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "pv-3", "titulo": "Carteira da base e funil de expansão", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "pv-4", "titulo": "Rotina de pós-venda semanal", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "pv-5", "titulo": "Materiais de recomendação para síndico/conselho", "responsavel": "", "prazo": "", "status": "pendente" }
-      ],
-      "metricasUniversais": {
-        "capacidade": null,
-        "demanda": null,
-        "fila": null,
-        "leadTime": null,
-        "retrabalho": null,
-        "impactoFinanceiro": null
-      }
-    },
-    {
-      "id": "adocao-ferramentas",
-      "rank": 8,
-      "nome": "Adoção de ferramentas e padronização",
-      "area": "Tecnologia",
-      "descricao": "Ferramenta não usada não vira capacidade. Ferramentas existem, mas nem sempre viram rotina operacional.",
-      "sintomas": [
-        "Informação no WhatsApp",
-        "Tarefa fora do ClickUp",
-        "App ignorado",
-        "Automação disponível mas não usada",
-        "Retrabalho por falta de registro"
-      ],
-      "indicadores": [
-        { "nome": "% uso do CRM", "meta": null, "valor": null, "unidade": "%" },
-        { "nome": "% uso do ClickUp", "meta": null, "valor": null, "unidade": "%" },
-        { "nome": "% checklists completos", "meta": null, "valor": null, "unidade": "%" },
-        { "nome": "% propostas geradas por automação", "meta": null, "valor": null, "unidade": "%" },
-        { "nome": "Tarefas fora do sistema", "meta": null, "valor": null },
-        { "nome": "Retrabalho por falta de registro", "meta": null, "valor": null }
-      ],
-      "acoes": [
-        { "id": "af-1", "titulo": "Medir uso por ferramenta e equipe", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "af-2", "titulo": "Treinar equipe e simplificar interface", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "af-3", "titulo": "Definir processo obrigatório e responsáveis por módulo", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "af-4", "titulo": "Revisão semanal de adesão e pendências fora do sistema", "responsavel": "", "prazo": "", "status": "pendente" },
-        { "id": "af-5", "titulo": "Integrar ferramentas (CRM, ClickUp, app)", "responsavel": "", "prazo": "", "status": "pendente" }
+        { "id": "mp-1", "titulo": "Mapa mental de atividades: o quê, onde, ferramenta ideal e integração", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "mp-2", "titulo": "Auditoria semanal: canal usado vs canal esperado por tipo de serviço", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "mp-3", "titulo": "Definir para cada atividade: app, web, automação ou exceção manual", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "mp-4", "titulo": "Painel de atividades por canal (web, app, CRM, manual)", "responsavel": "", "prazo": "", "status": "pendente" },
+        { "id": "mp-5", "titulo": "Roadmap de integrações e automações priorizadas por impacto", "responsavel": "", "prazo": "", "status": "pendente" }
       ],
       "metricasUniversais": {
         "capacidade": null,
@@ -429,149 +534,66 @@
   "motores": [
     {
       "id": "aquisicao",
-      "nome": "Aquisição",
-      "objetivo": "Trazer novos clientes para a base.",
-      "componentes": ["Marketing", "Indicações", "SDR", "Vendas", "Visitas", "Propostas", "Apresentações", "Fechamento"],
+      "nome": "Aquisição (tráfego → lead → visita → proposta)",
+      "objetivo": "Do investimento em mídia à proposta gerada, com qualificação de lead e tempos entre etapas. Outros canais entram depois.",
+      "componentes": [
+        "Tráfego pago",
+        "Site e WhatsApp",
+        "Qualificação de lead",
+        "Visita diagnóstico",
+        "Apresentação de proposta",
+        "Indicações e outros canais (futuro)"
+      ],
       "indicadores": [
-        { "nome": "Leads", "meta": null, "valor": null },
-        { "nome": "Visitas", "meta": null, "valor": null },
-        { "nome": "Propostas prontas", "meta": null, "valor": null },
-        { "nome": "Propostas apresentadas", "meta": null, "valor": null },
-        { "nome": "Contratos fechados", "meta": null, "valor": null },
-        { "nome": "Conversão operacional do funil", "meta": null, "valor": null, "unidade": "%" },
-        { "nome": "Conversão real (contratos / apresentações)", "meta": null, "valor": null, "unidade": "%" },
-        { "nome": "Ticket médio", "meta": null, "valor": null },
-        { "nome": "Receita nova", "meta": null, "valor": null }
-      ]
-    },
-    {
-      "id": "consultoria",
-      "nome": "Consultoria",
-      "objetivo": "Entregar valor técnico, gerar confiança e criar base para expansão.",
-      "componentes": ["Laudos", "Projetos", "Diagnósticos", "Revisões", "Apresentação dos entregáveis", "Recomendações técnicas"],
-      "indicadores": [
-        { "nome": "Laudos em andamento", "meta": null, "valor": null },
-        { "nome": "Projetos em andamento", "meta": null, "valor": null },
-        { "nome": "Entregas concluídas", "meta": null, "valor": null },
-        { "nome": "Lead time contrato → entrega", "meta": null, "valor": null, "unidade": "dias" },
-        { "nome": "Retrabalho", "meta": null, "valor": null },
-        { "nome": "Entregáveis apresentados", "meta": null, "valor": null },
-        { "nome": "Oportunidades identificadas", "meta": null, "valor": null }
-      ]
-    },
-    {
-      "id": "expansao",
-      "nome": "Expansão da base",
-      "objetivo": "Transformar consultoria em novas vendas, principalmente obras e serviços complementares.",
-      "componentes": ["Pós-venda técnico", "Propostas de obras", "Reuniões com síndicos", "Assembleias", "Novas consultorias"],
-      "indicadores": [
-        { "nome": "Oportunidades por cliente", "meta": null, "valor": null },
-        { "nome": "Propostas de obras", "meta": null, "valor": null },
-        { "nome": "Conversão da base", "meta": null, "valor": null, "unidade": "%" },
-        { "nome": "Faturamento da base", "meta": null, "valor": null },
-        { "nome": "LTV", "meta": null, "valor": null },
-        { "nome": "Tempo consultoria → proposta de obra", "meta": null, "valor": null, "unidade": "dias" }
-      ]
-    },
-    {
-      "id": "execucao",
-      "nome": "Execução (Obras)",
-      "objetivo": "Executar obras com margem, qualidade, prazo e previsibilidade.",
-      "componentes": ["Escopo fechado", "Material", "Equipe", "Planejamento", "Execução", "Relatório", "Entrega"],
-      "indicadores": [
-        { "nome": "Obras em andamento", "meta": null, "valor": null },
-        { "nome": "Obras concluídas", "meta": null, "valor": null },
-        { "nome": "Capacidade por equipe", "meta": null, "valor": null },
-        { "nome": "Dias úteis", "meta": null, "valor": null },
-        { "nome": "Atrasos", "meta": null, "valor": null },
-        { "nome": "Material faltante", "meta": null, "valor": null },
-        { "nome": "Alterações de escopo", "meta": null, "valor": null },
-        { "nome": "Aditivos", "meta": null, "valor": null },
-        { "nome": "Margem", "meta": null, "valor": null, "unidade": "%" }
+        { "id": "investimento-trafego", "nome": "R$ investido em tráfego pago", "meta": null, "valor": null, "unidade": "R$", "tipo": "moeda" },
+        { "id": "cliques-whatsapp", "nome": "Cliques em conversa WhatsApp", "meta": null, "valor": null, "tipo": "contagem" },
+        { "id": "cliques-site", "nome": "Cliques de acesso ao site", "meta": null, "valor": null, "tipo": "contagem" },
+        { "id": "conversas-iniciadas", "nome": "Conversas iniciadas", "meta": null, "valor": null, "tipo": "contagem" },
+        { "id": "leads-moradores", "nome": "Leads qualificados — moradores", "meta": null, "valor": null, "tipo": "contagem" },
+        { "id": "leads-sindicos", "nome": "Leads qualificados — síndicos", "meta": null, "valor": null, "tipo": "contagem" },
+        { "id": "leads-conselheiros", "nome": "Leads qualificados — conselheiros", "meta": null, "valor": null, "tipo": "contagem" },
+        { "id": "contatos-dados-salvos", "nome": "Contatos com dados salvos (nome, tel., prédio)", "meta": null, "valor": null, "tipo": "contagem" },
+        { "id": "visitas-diagnostico-agendadas", "nome": "Visitas diagnóstico agendadas", "meta": null, "valor": null, "tipo": "contagem" },
+        { "id": "apresentacoes-proposta-agendadas", "nome": "Apresentações de proposta agendadas", "meta": null, "valor": null, "tipo": "contagem" },
+        { "id": "tempo-lead-visita", "nome": "Tempo lead → visita diagnóstico", "meta": null, "valor": null, "unidade": "dias", "tipo": "dias" },
+        { "id": "tempo-visita-apresentacao", "nome": "Tempo visita → apresentação proposta", "meta": null, "valor": null, "unidade": "dias", "tipo": "dias" },
+        { "id": "valor-propostas-geradas", "nome": "Valor total em propostas geradas", "meta": null, "valor": null, "unidade": "R$", "tipo": "moeda" },
+        { "id": "servicos-mapeados-propostas", "nome": "Serviços mapeados nas propostas", "meta": null, "valor": null, "tipo": "contagem" }
       ]
     }
   ],
-  "estoquesInvisiveis": [
-    { "id": "ei-1", "tipo": "Proposta parada", "area": "Vendas", "quantidade": null, "impacto": null, "responsavel": "", "acao": "" },
-    { "id": "ei-2", "tipo": "Dado faltante de campo", "area": "Operações", "quantidade": null, "impacto": null, "responsavel": "", "acao": "" },
-    { "id": "ei-3", "tipo": "Retrabalho técnico", "area": "Consultoria", "quantidade": null, "impacto": null, "responsavel": "", "acao": "" },
-    { "id": "ei-4", "tipo": "Escopo extra sem aditivo", "area": "Obras", "quantidade": null, "impacto": null, "responsavel": "", "acao": "" },
-    { "id": "ei-5", "tipo": "Material faltante", "area": "Obras", "quantidade": null, "impacto": null, "responsavel": "", "acao": "" },
-    { "id": "ei-6", "tipo": "Aprovação externa pendente", "area": "Comercial", "quantidade": null, "impacto": null, "responsavel": "", "acao": "" },
-    { "id": "ei-7", "tipo": "Cliente sem follow-up", "area": "Pós-venda", "quantidade": null, "impacto": null, "responsavel": "", "acao": "" },
-    { "id": "ei-8", "tipo": "Conhecimento não documentado", "area": "Consultoria", "quantidade": null, "impacto": null, "responsavel": "", "acao": "" },
-    { "id": "ei-9", "tipo": "Ferramenta não usada", "area": "Tecnologia", "quantidade": null, "impacto": null, "responsavel": "", "acao": "" }
-  ],
-  "boletim": {
-    "semana": "",
-    "responsavel": "",
-    "secoes": [
+  "inventario": {
+    "descricao": "Mapa do potencial e capital real da empresa: processos, capacidade técnica, ferramentas, infraestrutura e tecnologias — como estão sendo usados em termos de capacidade e retorno.",
+    "categorias": [
       {
-        "id": "resumo",
-        "titulo": "1. Resumo Executivo",
-        "itens": ["Principal conclusão da semana", "Principal restrição da semana", "Risco principal"]
+        "id": "processos",
+        "nome": "Processos",
+        "descricao": "Fluxos documentados, maturidade e gargalos conhecidos.",
+        "itens": []
       },
       {
-        "id": "faturamento",
-        "titulo": "2. Faturamento e Meta",
-        "itens": ["Faturamento da semana", "Faturamento acumulado do mês", "Meta mensal", "% da meta", "Forecast", "Pipeline ponderado"]
+        "id": "capacidade-tecnica",
+        "nome": "Capacidade técnica",
+        "descricao": "Pessoas, especialização, job rotation e filas.",
+        "itens": []
       },
       {
-        "id": "funil",
-        "titulo": "3. Funil Comercial",
-        "itens": ["Leads", "Visitas", "Diagnósticos", "Propostas prontas", "Propostas apresentadas", "Assembleias", "Fechamentos", "Conversões por etapa", "Propostas paradas"]
+        "id": "ferramentas",
+        "nome": "Ferramentas e sistemas",
+        "descricao": "CRM, plataforma web, app, automações e integrações.",
+        "itens": []
       },
       {
-        "id": "capacidade-comercial",
-        "titulo": "4. Capacidade Comercial",
-        "itens": ["Apresentações por vendedor", "Assembleias", "Negociações", "Receita", "Tempo nobre"]
+        "id": "infraestrutura",
+        "nome": "Infraestrutura",
+        "descricao": "Escritório, frota, equipamentos de campo.",
+        "itens": []
       },
       {
-        "id": "consultoria",
-        "titulo": "5. Consultoria",
-        "itens": ["Laudos em andamento/entregues", "Projetos em andamento/entregues", "Fila de revisão", "Retrabalho", "Tempo do especialista"]
-      },
-      {
-        "id": "pos-venda",
-        "titulo": "6. Pós-venda",
-        "itens": ["Entregáveis apresentados", "Oportunidades mapeadas", "Propostas de obras", "Clientes sem follow-up"]
-      },
-      {
-        "id": "obras",
-        "titulo": "7. Obras",
-        "itens": ["Obras em execução", "Aguardando escopo/material", "Dias úteis e perdidos", "Alterações de escopo", "Aditivos"]
-      },
-      {
-        "id": "operacoes",
-        "titulo": "8. Operações e Campo",
-        "itens": ["Coletas realizadas/completas", "Retornos a campo", "Pendências", "Uso de checklists e app"]
-      },
-      {
-        "id": "estoques",
-        "titulo": "9. Estoques Invisíveis",
-        "itens": ["Ranking por impacto", "Responsável e ação por item"]
-      },
-      {
-        "id": "planos",
-        "titulo": "10. Planos de Ação",
-        "itens": ["Ação", "Gargalo", "Responsável", "Prazo", "Status", "Impacto esperado"]
-      },
-      {
-        "id": "decisoes",
-        "titulo": "11. Decisões Necessárias",
-        "itens": ["Decisão 1", "Decisão 2", "Decisão 3"]
-      },
-      {
-        "id": "ia",
-        "titulo": "12. Perguntas para IA",
-        "itens": [
-          "Qual gargalo mais limita o Throughput esta semana?",
-          "O volume comercial está compatível com capacidade de apresentação?",
-          "A consultoria está gerando oportunidades para obras?",
-          "Obras estão dentro da capacidade real?",
-          "Qual estoque invisível deve ser atacado primeiro?",
-          "Qual ação tem maior impacto sistêmico?"
-        ]
+        "id": "tecnologias",
+        "nome": "Tecnologias e ativos",
+        "descricao": "IoT, medidores, know-how e propriedade intelectual.",
+        "itens": []
       }
     ]
   },

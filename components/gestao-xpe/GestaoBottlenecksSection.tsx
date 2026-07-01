@@ -22,27 +22,57 @@ export function GestaoBottlenecksSection({
 }: Props) {
   const [openId, setOpenId] = useState<string | null>(gargalos[0]?.id ?? null);
 
+  function renderPanel(gargalo: GestaoGargalo) {
+    return (
+      <GestaoBottleneckPanel
+        activeWeekKey={activeWeekKey}
+        catalog={catalog}
+        chartSelectedIds={chartSelectedIds}
+        gargalo={gargalo}
+        isOpen={openId === gargalo.id}
+        key={gargalo.id}
+        onToggle={() => setOpenId(openId === gargalo.id ? null : gargalo.id)}
+        onToggleChartIndicator={onToggleChartIndicator}
+      />
+    );
+  }
+
+  const listItems: React.ReactNode[] = [];
+  let index = 0;
+
+  while (index < gargalos.length) {
+    const current = gargalos[index];
+
+    if (current.grupo === "obras") {
+      const obrasGargalos: GestaoGargalo[] = [];
+      while (index < gargalos.length && gargalos[index].grupo === "obras") {
+        obrasGargalos.push(gargalos[index]);
+        index += 1;
+      }
+
+      listItems.push(
+        <div className="gestao-bottleneck-group" key="grupo-obras">
+          <div className="gestao-bottleneck-group-header">
+            <h3>Obras</h3>
+            <p>Escopo fechado (#5) e capacidade de execução (#6) — diário de obras como fonte única.</p>
+          </div>
+          <div className="gestao-bottleneck-group-list">{obrasGargalos.map(renderPanel)}</div>
+        </div>
+      );
+    } else {
+      listItems.push(renderPanel(current));
+      index += 1;
+    }
+  }
+
   return (
     <div className="gestao-bottlenecks">
       <div className="section-title subsection-title">
         <h2>Mapa de gargalos</h2>
-        <p>8 gargalos ranqueados — clique em um indicador na tabela para abrir a análise histórica.</p>
+        <p>7 gargalos ranqueados — clique em um indicador na tabela para abrir a análise histórica.</p>
       </div>
 
-      <div className="gestao-bottleneck-list">
-        {gargalos.map((gargalo) => (
-          <GestaoBottleneckPanel
-            activeWeekKey={activeWeekKey}
-            catalog={catalog}
-            chartSelectedIds={chartSelectedIds}
-            gargalo={gargalo}
-            isOpen={openId === gargalo.id}
-            key={gargalo.id}
-            onToggle={() => setOpenId(openId === gargalo.id ? null : gargalo.id)}
-            onToggleChartIndicator={onToggleChartIndicator}
-          />
-        ))}
-      </div>
+      <div className="gestao-bottleneck-list">{listItems}</div>
     </div>
   );
 }

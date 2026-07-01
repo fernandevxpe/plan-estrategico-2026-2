@@ -9,8 +9,7 @@ import { GestaoExecutiveBlock } from "@/components/gestao-xpe/GestaoExecutiveBlo
 import { GestaoValueFlow } from "@/components/gestao-xpe/GestaoValueFlow";
 import { GestaoBottlenecksSection } from "@/components/gestao-xpe/GestaoBottlenecksSection";
 import { GestaoMotorsSection } from "@/components/gestao-xpe/GestaoMotorsSection";
-import { GestaoInvisibleInventory } from "@/components/gestao-xpe/GestaoInvisibleInventory";
-import { GestaoWeeklyBulletin } from "@/components/gestao-xpe/GestaoWeeklyBulletin";
+import { GestaoInventarioSection } from "@/components/gestao-xpe/GestaoInventario";
 import { GestaoTocReference } from "@/components/gestao-xpe/GestaoTocReference";
 import { GestaoPeriodBar, type GestaoSeller } from "@/components/gestao-xpe/GestaoPeriodBar";
 import { GestaoLancamentosTab } from "@/components/gestao-xpe/GestaoLancamentosTab";
@@ -238,10 +237,9 @@ export function GestaoXpeShell({ dashboard, catalog: initialCatalog }: Props) {
             <GestaoMotorsSection motores={dashboard.motores} conversao={dashboard.conversao} />
           </section>
           <section className="page-zone">
-            <GestaoInvisibleInventory estoques={dashboard.estoquesInvisiveis} />
+            <GestaoInventarioSection inventario={dashboard.inventario} />
           </section>
-          <section className="page-zone gestao-bottom-grid">
-            <GestaoWeeklyBulletin boletim={dashboard.boletim} />
+          <section className="page-zone">
             <GestaoTocReference toc={dashboard.toc} />
           </section>
         </div>

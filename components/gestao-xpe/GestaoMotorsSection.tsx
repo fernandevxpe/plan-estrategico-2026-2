@@ -16,7 +16,7 @@ export function GestaoMotorsSection({ motores, conversao }: Props) {
     <div className="gestao-motors">
       <div className="section-title subsection-title">
         <h2>Motores e indicadores por área</h2>
-        <p>Quatro motores de receita e entrega — indicadores-chave para monitoramento semanal.</p>
+        <p>Motor de aquisição (tráfego → proposta) e gargalos para consultoria, obras e operações. Indicadores de execução de obras serão unificados nos gargalos #5 e #6.</p>
       </div>
 
       <div className="gestao-conversao-note card">

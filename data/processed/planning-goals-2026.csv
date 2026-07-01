@@ -1,0 +1,105 @@
+goal;metric;unit;interval;periodStart;periodEnd;target;realized;attainmentPct
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-01-01;2026-01-31;63373.6;72300;114.08536046555665
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-02-01;2026-02-28;86400;173915;201.29050925925927
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-03-01;2026-03-31;115200;108000;93.75
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-04-01;2026-04-30;140800;115850;82.27982954545455
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-05-01;2026-05-31;153600;130800;85.15625
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-06-01;2026-06-30;183040;41100;22.45410839160839
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-07-01;2026-07-31;197120;0;0
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-08-01;2026-08-31;230400;0;0
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-09-01;2026-09-30;245760;0;0
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-10-01;2026-10-31;253440;0;0
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-11-01;2026-11-30;230400;0;0
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-12-01;2026-12-31;230400;0;0
+Meta Contrato / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-01-01;2026-03-31;337427;588996.72;174.55530233205997
+Meta Contrato / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-04-01;2026-06-30;587264;409220;69.68245967741935
+Meta Contrato / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-07-01;2026-09-30;810560;0;0
+Meta Contrato / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-10-01;2026-12-31;856096;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-01-01;2026-01-03;0;0;
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-01-04;2026-01-10;0;0;
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-01-11;2026-01-17;3;4;133.33333333333331
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-01-18;2026-01-24;15;18;120
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-01-25;2026-01-31;20;24;120
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-02-01;2026-02-07;20;12;60
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-02-08;2026-02-14;20;11;55.00000000000001
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-02-15;2026-02-21;0;1;
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-02-22;2026-02-28;15;20;133.33333333333331
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-03-01;2026-03-07;20;21;105
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-03-08;2026-03-14;20;18;90
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-03-15;2026-03-21;20;19;95
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-03-22;2026-03-28;20;13;65
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-03-29;2026-04-04;20;12;60
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-04-05;2026-04-11;20;26;130
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-04-12;2026-04-18;20;21;105
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-04-19;2026-04-25;22;16;72.72727272727273
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-04-26;2026-05-02;22;12;54.54545454545454
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-05-03;2026-05-09;22;5;22.727272727272727
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-05-10;2026-05-16;22;6;27.27272727272727
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-05-17;2026-05-23;24;5;20.833333333333336
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-05-24;2026-05-30;24;15;62.5
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-05-31;2026-06-06;24;7;29.166666666666668
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-06-07;2026-06-13;24;13;54.166666666666664
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-06-14;2026-06-20;20;5;25
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-06-21;2026-06-27;20;11;55.00000000000001
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-06-28;2026-07-04;24;3;12.5
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-07-05;2026-07-11;24;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-07-12;2026-07-18;24;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-07-19;2026-07-25;24;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-07-26;2026-08-01;24;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-08-02;2026-08-08;26;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-08-09;2026-08-15;26;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-08-16;2026-08-22;26;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-08-23;2026-08-29;26;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-08-30;2026-09-05;26;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-09-06;2026-09-12;26;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-09-13;2026-09-19;28;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-09-20;2026-09-26;28;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-09-27;2026-10-03;28;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-10-04;2026-10-10;28;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-10-11;2026-10-17;15;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-10-18;2026-10-24;28;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-10-25;2026-10-31;30;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-11-01;2026-11-07;30;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-11-08;2026-11-14;30;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-11-15;2026-11-21;30;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-11-22;2026-11-28;30;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-11-29;2026-12-05;28;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-12-06;2026-12-12;26;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-12-13;2026-12-19;20;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-12-20;2026-12-26;20;0;0
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-01-01;2026-01-31;198000;795637.72;401.8372323232323
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-02-01;2026-02-28;270000;486790;180.29259259259257
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-03-01;2026-03-31;360000;424600;117.94444444444446
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-04-01;2026-04-30;440000;824950;187.48863636363637
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-05-01;2026-05-31;480000;882205;183.79270833333334
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-06-01;2026-06-30;572000;718900;125.68181818181819
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-07-01;2026-07-31;616000;0;0
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-08-01;2026-08-31;720000;0;0
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-09-01;2026-09-30;760000;0;0
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-10-01;2026-10-31;780000;0;0
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-11-01;2026-11-30;720000;0;0
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-12-01;2026-12-31;700000;0;0
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-01-01;2026-01-31;82440.27;180131.72;218.49967255080557
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-02-01;2026-02-28;109280;198165;181.3369326500732
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-03-01;2026-03-31;145706.67;210700;144.6055969846816
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-04-01;2026-04-30;174357.33;167350;95.98105224483537
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-05-01;2026-05-31;190208;130800;68.76682368775235
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-06-01;2026-06-30;222698.67;111070;49.87456817770847
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-07-01;2026-07-31;239829.33;0;0
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-08-01;2026-08-31;276160;0;0
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-09-01;2026-09-30;294570.67;0;0
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-10-01;2026-10-31;303776;0;0
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-11-01;2026-11-30;276160;0;0
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-12-01;2026-12-31;276160;0;0
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-01-01;2026-01-31;19066.67;107831.72;565.5508801484475
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-02-01;2026-02-28;22880;24250;105.98776223776223
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-03-01;2026-03-31;30506.67;102700;336.6476904886702
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-04-01;2026-04-30;33557.33;51500;153.46870564493656
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-05-01;2026-05-31;36608;0;0
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-06-01;2026-06-30;39658.67;69970;176.4305257841476
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-07-01;2026-07-31;42709.33;0;0
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-08-01;2026-08-31;45760;0;0
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-09-01;2026-09-30;48810.67;0;0
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-10-01;2026-10-31;50336;0;0
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-11-01;2026-11-30;45760;0;0
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-12-01;2026-12-31;45760;0;0

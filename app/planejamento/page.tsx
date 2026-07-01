@@ -3,11 +3,11 @@ import { PlanningPage } from "@/components/pages/PlanningPage";
 import { loadDashboardData } from "@/lib/data/load-dashboard";
 
 export default async function PlanejamentoPage() {
-  const { analysis, generatedAt } = await loadDashboardData();
+  const { analysis } = await loadDashboardData();
 
   return (
     <AppShell>
-      <PlanningPage analysis={analysis} generatedAt={generatedAt} />
+      <PlanningPage analysis={analysis} />
     </AppShell>
   );
 }

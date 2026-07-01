@@ -18,10 +18,12 @@ function fmtValue(value: number, unit: GoalPlan["unit"]) {
 type Props = {
   goal: GoalPlan;
   selected: boolean;
-  onSelect: (id: string) => void;
+  selectionColor?: string;
+  selectionOrder?: number;
+  onToggle: (id: string) => void;
 };
 
-export function GoalCard({ goal, selected, onSelect }: Props) {
+export function GoalCard({ goal, selected, selectionColor, selectionOrder, onToggle }: Props) {
   const status = goalStatus(goal.attainmentPct);
   const attainment = goal.attainmentPct ?? 0;
   const projected = goal.projectedAttainmentPct ?? 0;
@@ -32,8 +34,16 @@ export function GoalCard({ goal, selected, onSelect }: Props) {
     <button
       type="button"
       className={`card goal-card ${selected ? "is-selected" : ""} goal-status-${status}`}
-      onClick={() => onSelect(goal.id)}
+      onClick={() => onToggle(goal.id)}
+      style={selected && selectionColor ? { borderColor: selectionColor, boxShadow: `0 0 0 2px ${selectionColor}40` } : undefined}
     >
+      <span
+        className={`goal-card-check ${selected ? "is-checked" : ""}`}
+        style={selected && selectionColor ? { borderColor: selectionColor, background: selectionColor } : undefined}
+        aria-hidden
+      >
+        {selected && selectionOrder != null ? selectionOrder + 1 : null}
+      </span>
       <div className="goal-card-head">
         <div>
           <strong>{goal.title.replace(/\s*-\s*2026$/, "").trim()}</strong>

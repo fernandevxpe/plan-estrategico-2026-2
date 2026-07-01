@@ -60,6 +60,165 @@ export function goalIntervalsWithProgress(goal: GoalPlan, currentMonth: string) 
   }));
 }
 
+export const GOAL_COMPARE_COLORS = [
+  "#2368a0",
+  "#21a67a",
+  "#b67818",
+  "#7c3aed",
+  "#e5484d",
+  "#0f766e"
+] as const;
+
+export type GoalHighlightKey = keyof Planning2026["highlights"];
+
+export const GOAL_COMPARISON_PRESETS: {
+  id: string;
+  label: string;
+  keys: GoalHighlightKey[];
+}[] = [
+  { id: "funnel", label: "Funil: Potencial → Global", keys: ["potencial", "global"] },
+  { id: "execution", label: "Consultoria + Obras", keys: ["consultoria", "obras"] },
+  { id: "all-revenue", label: "Todas em R$", keys: ["global", "consultoria", "obras", "potencial"] }
+];
+
+export function goalShortTitle(goal: GoalPlan) {
+  return goal.title.replace(/\s*-\s*2026$/, "").trim();
+}
+
+export function canCompareGoalValues(goals: GoalPlan[]) {
+  if (goals.length < 2) return false;
+  const unit = goals[0]?.unit;
+  return goals.every((goal) => goal.unit === unit);
+}
+
+export type GoalCompareRow = {
+  label: string;
+  monthKey: string;
+  isFuture: boolean;
+  [key: string]: string | number | boolean | null;
+};
+
+/** Alinha metas (mensal, trimestral ou semanal) em meses de 2026 para gráficos comparativos. */
+function goalMonthlyMap(goal: GoalPlan) {
+  const map = new Map<string, { target: number; realized: number | null; attainmentPct: number | null }>();
+
+  if (goal.interval === "monthly") {
+    for (const interval of goal.intervals) {
+      const key = interval.monthKey ?? interval.start.slice(0, 7);
+      map.set(key, {
+        target: interval.target,
+        realized: interval.realized,
+        attainmentPct: interval.attainmentPct
+      });
+    }
+    return map;
+  }
+
+  if (goal.interval === "quarterly") {
+    for (const interval of goal.intervals) {
+      const [, rawMonth] = interval.start.split("-");
+      const monthIndex = Number(rawMonth) - 1;
+      const startMonth = Math.floor(monthIndex / 3) * 3 + 1;
+      const monthlyTarget = interval.target / 3;
+      const monthlyRealized = interval.realized != null ? interval.realized / 3 : null;
+      for (let offset = 0; offset < 3; offset += 1) {
+        const mk = `2026-${String(startMonth + offset).padStart(2, "0")}`;
+        map.set(mk, {
+          target: monthlyTarget,
+          realized: monthlyRealized,
+          attainmentPct:
+            monthlyTarget > 0 && monthlyRealized != null
+              ? (monthlyRealized / monthlyTarget) * 100
+              : interval.attainmentPct
+        });
+      }
+    }
+    return map;
+  }
+
+  for (const interval of goal.intervals) {
+    const key = interval.monthKey ?? interval.start.slice(0, 7);
+    const existing = map.get(key) ?? { target: 0, realized: 0, attainmentPct: null };
+    const realized = interval.realized ?? 0;
+    const nextRealized = (existing.realized ?? 0) + realized;
+    const nextTarget = existing.target + interval.target;
+    map.set(key, {
+      target: nextTarget,
+      realized: nextRealized,
+      attainmentPct: nextTarget > 0 ? (nextRealized / nextTarget) * 100 : null
+    });
+  }
+  return map;
+}
+
+const COMPARE_MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+export function buildGoalCompareRows(goals: GoalPlan[], currentMonth: string): GoalCompareRow[] {
+  const monthKeys = Array.from({ length: 12 }, (_, index) => `2026-${String(index + 1).padStart(2, "0")}`);
+  const seriesByGoal = goals.map((goal) => goalMonthlyMap(goal));
+  const cumRealized = goals.map(() => 0);
+  const cumTarget = goals.map(() => 0);
+
+  return monthKeys.map((monthKey, index) => {
+    const isFuture = monthKey > currentMonth;
+    const row: GoalCompareRow = {
+      label: COMPARE_MONTH_LABELS[index] ?? monthKey,
+      monthKey,
+      isFuture,
+      metaRef: 100
+    };
+
+    goals.forEach((goal, goalIndex) => {
+      const prefix = `g${goalIndex}`;
+      const point = seriesByGoal[goalIndex]?.get(monthKey);
+      const target = point?.target ?? 0;
+      const realized = isFuture ? null : (point?.realized ?? 0);
+      const attainmentPct =
+        isFuture || !point
+          ? null
+          : (point.attainmentPct ??
+            (target > 0 && realized != null ? (realized / target) * 100 : null));
+
+      cumTarget[goalIndex] = (cumTarget[goalIndex] ?? 0) + target;
+
+      row[`target_${prefix}`] = target;
+      row[`realized_${prefix}`] = realized;
+      row[`attainment_${prefix}`] = attainmentPct;
+      row[`cumTarget_${prefix}`] = cumTarget[goalIndex] ?? 0;
+      row[`unit_${prefix}`] = goal.unit;
+
+      if (!isFuture && realized != null) {
+        cumRealized[goalIndex] = (cumRealized[goalIndex] ?? 0) + realized;
+      }
+      row[`cumRealized_${prefix}`] = isFuture ? null : cumRealized[goalIndex] ?? 0;
+    });
+
+    if (goals.length === 2 && goals[0]?.unit === "currency" && goals[1]?.unit === "currency") {
+      const potencialIdx = goals.findIndex((g) => /potencial/i.test(g.title));
+      const globalIdx = goals.findIndex((g) => /global/i.test(g.title));
+      if (potencialIdx >= 0 && globalIdx >= 0) {
+        const pot = row[`realized_g${potencialIdx}`] as number | null;
+        const glob = row[`realized_g${globalIdx}`] as number | null;
+        row.conversionPct = pot && glob != null && pot > 0 ? (glob / pot) * 100 : null;
+      }
+    }
+
+    return row;
+  });
+}
+
+export function resolvePresetGoalIds(
+  planning: Planning2026,
+  keys: GoalHighlightKey[]
+): string[] {
+  const ids: string[] = [];
+  for (const key of keys) {
+    const goal = planning.highlights[key];
+    if (goal && !ids.includes(goal.id)) ids.push(goal.id);
+  }
+  return ids;
+}
+
 function getScenarioProjection(analysis: Analysis, scenario: ScenarioName) {
   return (
     analysis.planningSummary.yearProjectionByScenario.find((item) => item.scenario === scenario) ??

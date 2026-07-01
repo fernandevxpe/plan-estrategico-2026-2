@@ -23,12 +23,11 @@ export function HomePage({ analysis, generatedAt }: Props) {
   const mainInsight = analysis.planningSummary.insights[0];
 
   const quickLinks = [
-    { href: "/planejamento", title: "Planejamento", desc: "Cenários, gráficos e tabela mês a mês" },
-    { href: "/comercial", title: "Comercial", desc: "Funil, conversão e pipeline" },
+    { href: "/planejamento", title: "Planejamento", desc: "Metas Pipedrive, gráficos e comparação" },
     { href: "/mix", title: "Mix de vendas", desc: "Receita, esforço e participação por produto" },
-    { href: "/metas", title: "Metas 2x/3x", desc: "Projeções e plano operacional" },
     { href: "/areas", title: "Áreas", desc: "Planejamento por área de negócio" },
-    { href: "/investigacao", title: "Investigação", desc: "Alertas, recordes e funil profundo" }
+    { href: "/investigacao", title: "Investigação", desc: "Alertas, recordes e funil profundo" },
+    { href: "/gestao-xpe", title: "Gestão XPE", desc: "Gargalos, motores e indicadores semanais" }
   ];
 
   return (

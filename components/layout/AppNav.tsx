@@ -6,11 +6,7 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/", label: "Resumo" },
   { href: "/planejamento", label: "Planejamento" },
-  { href: "/plano-pro", label: "Plano PRO" },
-  { href: "/comercial", label: "Comercial" },
   { href: "/mix", label: "Mix" },
-  { href: "/pos-venda", label: "Pós-venda" },
-  { href: "/metas", label: "Metas 2x/3x" },
   { href: "/areas", label: "Áreas" },
   { href: "/investigacao", label: "Investigação" },
   { href: "/gestao-xpe", label: "Gestão XPE" }

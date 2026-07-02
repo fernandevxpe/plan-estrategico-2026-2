@@ -75,8 +75,9 @@ function goalIntervalForMonth(goal: GoalPlan | null, month: string) {
   };
 }
 
-function scopedRows(analysis: Analysis, scope: MixGoalScope) {
-  return (analysis.businessTypeMonthlyByScope ?? []).filter((row) => row.scope === scope);
+function scopedRowsForScopes(analysis: Analysis, scopes: MixGoalScope[]) {
+  const scopeSet = new Set(scopes);
+  return (analysis.businessTypeMonthlyByScope ?? []).filter((row) => scopeSet.has(row.scope));
 }
 
 export function getScopeMixShares(
@@ -84,8 +85,17 @@ export function getScopeMixShares(
   scope: MixGoalScope,
   untilMonth: string
 ): ScopeMixShare[] {
+  return getScopesMixShares(rows, [scope], untilMonth);
+}
+
+export function getScopesMixShares(
+  rows: BusinessTypeMonthlyByScope[],
+  scopes: MixGoalScope[],
+  untilMonth: string
+): ScopeMixShare[] {
+  const scopeSet = new Set(scopes);
   const filtered = rows.filter(
-    (row) => row.scope === scope && row.month.startsWith("2026") && row.month < untilMonth
+    (row) => scopeSet.has(row.scope) && row.month.startsWith("2026") && row.month < untilMonth
   );
   const totalRevenue = filtered.reduce((acc, row) => acc + row.revenue, 0);
   const totalDeals = filtered.reduce((acc, row) => acc + row.wonDeals, 0);
@@ -123,11 +133,65 @@ function realizedForMonth(rows: BusinessTypeMonthlyByScope[], month: string) {
   return map;
 }
 
+function mergeCompositionMonths(monthRows: ScopeCompositionMonth[]): ScopeCompositionMonth {
+  const typesMap = new Map<string, CompositionTypeValue>();
+
+  for (const row of monthRows) {
+    for (const item of row.types) {
+      const current = typesMap.get(item.type) ?? {
+        type: item.type,
+        realizedRevenue: 0,
+        realizedDeals: 0,
+        projectedRevenue: 0,
+        projectedDeals: 0
+      };
+      current.realizedRevenue += item.realizedRevenue;
+      current.realizedDeals += item.realizedDeals;
+      current.projectedRevenue += item.projectedRevenue;
+      current.projectedDeals += item.projectedDeals;
+      typesMap.set(item.type, current);
+    }
+  }
+
+  const types = [...typesMap.values()];
+  const totalRealizedRevenue = types.reduce((acc, item) => acc + item.realizedRevenue, 0);
+  const totalRealizedDeals = types.reduce((acc, item) => acc + item.realizedDeals, 0);
+  const totalProjectedRevenue = types.reduce((acc, item) => acc + item.projectedRevenue, 0);
+  const totalProjectedDeals = types.reduce((acc, item) => acc + item.projectedDeals, 0);
+  const base = monthRows[0];
+
+  return {
+    month: base.month,
+    label: base.label,
+    isProjected: base.isProjected,
+    metaTarget: monthRows.reduce((acc, row) => acc + (row.metaTarget ?? 0), 0) || null,
+    metaRealized: monthRows.reduce((acc, row) => acc + (row.metaRealized ?? 0), 0) || null,
+    types,
+    totalRealizedRevenue,
+    totalRealizedDeals,
+    totalProjectedRevenue,
+    totalProjectedDeals,
+    totalRevenue: totalRealizedRevenue + totalProjectedRevenue,
+    totalDeals: totalRealizedDeals + totalProjectedDeals
+  };
+}
+
+export function buildScopesCompositionRows(
+  analysis: Analysis,
+  scopes: MixGoalScope[]
+): ScopeCompositionMonth[] {
+  if (!scopes.length) return [];
+  if (scopes.length === 1) return buildScopeCompositionRows(analysis, scopes[0]);
+
+  const perScope = scopes.map((scope) => buildScopeCompositionRows(analysis, scope));
+  return MONTHS_2026.map((_, index) => mergeCompositionMonths(perScope.map((rows) => rows[index])));
+}
+
 export function buildScopeCompositionRows(analysis: Analysis, scope: MixGoalScope): ScopeCompositionMonth[] {
   const planning = analysis.planning2026;
   const currentMonth = planning?.currentMonth ?? "2026-12";
   const goal = planning ? getGoalForScope(planning, scope) : null;
-  const rows = scopedRows(analysis, scope);
+  const rows = scopedRowsForScopes(analysis, [scope]);
   const shares = getScopeMixShares(rows, scope, currentMonth);
   const shareByType = new Map(shares.map((item) => [item.type, item]));
   const allTypes = [...new Set([...shares.map((item) => item.type), ...rows.map((item) => item.type)])];
@@ -179,6 +243,31 @@ export function buildScopeCompositionRows(analysis: Analysis, scope: MixGoalScop
       totalDeals: totalRealizedDeals + totalProjectedDeals
     };
   });
+}
+
+export function getScopesCompositionSummary(
+  planning: Analysis["planning2026"],
+  scopes: MixGoalScope[],
+  rows: ScopeCompositionMonth[]
+): ScopeCompositionSummary {
+  const goals = scopes
+    .map((scope) => (planning ? getGoalForScope(planning, scope) : null))
+    .filter((goal): goal is GoalPlan => Boolean(goal));
+  const annualTarget =
+    goals.reduce((acc, goal) => acc + goal.totalTarget, 0) ||
+    rows.reduce((acc, row) => acc + (row.metaTarget ?? 0), 0);
+  const realizedYtd = rows
+    .filter((row) => !row.isProjected)
+    .reduce((acc, row) => acc + row.totalRealizedRevenue, 0);
+  const projectedYearEnd = rows.reduce((acc, row) => acc + row.totalRevenue, 0);
+
+  return {
+    annualTarget,
+    realizedYtd,
+    projectedYearEnd,
+    gapToTarget: annualTarget - projectedYearEnd,
+    baselineUntilMonth: rows.find((row) => row.isProjected)?.month ?? null
+  };
 }
 
 export function getScopeCompositionSummary(
@@ -311,7 +400,13 @@ export function buildScopeCompositionTable(rows: ScopeCompositionMonth[]) {
   }));
 }
 
-export function getMixGoalBaselineLabel(analysis: Analysis) {
+export function getMixGoalScopeLabel(scopes: MixGoalScope[]) {
+  if (scopes.length === 2) return "Consultoria + Obras";
+  if (scopes[0] === "consultoria") return "Consultoria";
+  return "Obras";
+}
+
+export function getMixGoalBaselineLabel(analysis: Analysis, scopes?: MixGoalScope[]) {
   const currentMonth = analysis.planning2026?.currentMonth;
   if (!currentMonth) return "histórico 2026";
   const previous = new Date(`${currentMonth}-01T00:00:00.000Z`);

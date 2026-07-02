@@ -1014,11 +1014,16 @@ a {
   font-size: 12px;
 }
 
-.mix-goal-toolbar {
+.mix-goal-toolbar-simple {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 14px 20px;
   margin-bottom: 14px;
+}
+
+.mix-goal-toolbar-group {
+  display: grid;
+  gap: 8px;
 }
 
 .mix-goal-kpis {

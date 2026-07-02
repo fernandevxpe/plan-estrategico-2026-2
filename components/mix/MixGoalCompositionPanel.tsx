@@ -5,16 +5,16 @@ import { BarChart3, Layers3, Target, TrendingUp } from "lucide-react";
 import type { Analysis, MixGoalScope, YearFilter } from "@/lib/analysis/types";
 import {
   buildScopeCompositionChartData,
-  buildScopeCompositionRows,
   buildScopeCompositionTable,
+  buildScopesCompositionRows,
   getMixGoalBaselineLabel,
-  getScopeCompositionSummary,
+  getMixGoalScopeLabel,
+  getScopesCompositionSummary,
+  getScopesMixShares,
   getScopeCompositionTypes,
-  getScopeMixShares,
   type MixGoalMetric,
   type MixGoalViewMode
 } from "@/lib/analysis/mix-goal-composition";
-import { getGoalForScope } from "@/lib/analysis/planning-pipedrive";
 import { MixGoalCompositionChart } from "@/components/mix/MixGoalCompositionChart";
 import { mixColors } from "@/components/charts";
 import { brl, number } from "@/lib/analysis/format";
@@ -24,53 +24,38 @@ type Props = {
   year: YearFilter;
 };
 
-const SCOPES: { id: MixGoalScope; label: string }[] = [
+const ALL_SCOPES: MixGoalScope[] = ["consultoria", "obras"];
+
+const SCOPE_OPTIONS: { id: MixGoalScope; label: string }[] = [
   { id: "consultoria", label: "Consultoria" },
   { id: "obras", label: "Obras" }
 ];
 
-function SegmentedControl<T extends string>({
-  value,
-  options,
-  onChange
-}: {
-  value: T;
-  options: { id: T; label: string }[];
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="segmented-control compact">
-      {options.map((option) => (
-        <button
-          key={option.id}
-          type="button"
-          className={value === option.id ? "active" : ""}
-          onClick={() => onChange(option.id)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
+function scopesEqual(a: MixGoalScope[], b: MixGoalScope[]) {
+  return a.length === b.length && ALL_SCOPES.every((scope) => a.includes(scope) === b.includes(scope));
 }
 
 export function MixGoalCompositionPanel({ analysis, year }: Props) {
-  const [scope, setScope] = useState<MixGoalScope>("consultoria");
+  const [scopes, setScopes] = useState<MixGoalScope[]>(ALL_SCOPES);
   const [metric, setMetric] = useState<MixGoalMetric>("revenue");
   const [mode, setMode] = useState<MixGoalViewMode>("monthly");
 
   const planning = analysis.planning2026;
-  const goal = planning ? getGoalForScope(planning, scope) : null;
-  const compositionRows = useMemo(() => buildScopeCompositionRows(analysis, scope), [analysis, scope]);
+  const compositionRows = useMemo(
+    () => buildScopesCompositionRows(analysis, scopes),
+    [analysis, scopes]
+  );
   const scopedRows = useMemo(
-    () => (analysis.businessTypeMonthlyByScope ?? []).filter((row) => row.scope === scope),
-    [analysis.businessTypeMonthlyByScope, scope]
+    () => (analysis.businessTypeMonthlyByScope ?? []).filter((row) => scopes.includes(row.scope)),
+    [analysis.businessTypeMonthlyByScope, scopes]
   );
   const currentMonth = planning?.currentMonth ?? null;
-  const baselineLabel = getMixGoalBaselineLabel(analysis);
+  const baselineLabel = getMixGoalBaselineLabel(analysis, scopes);
+  const scopeLabel = getMixGoalScopeLabel(scopes);
+
   const shares = useMemo(
-    () => (currentMonth ? getScopeMixShares(scopedRows, scope, currentMonth) : []),
-    [scopedRows, scope, currentMonth]
+    () => (currentMonth ? getScopesMixShares(scopedRows, scopes, currentMonth) : []),
+    [scopedRows, scopes, currentMonth]
   );
   const scopeAvgTicket = useMemo(() => {
     const revenue = shares.reduce((acc, item) => acc + item.revenue, 0);
@@ -79,8 +64,8 @@ export function MixGoalCompositionPanel({ analysis, year }: Props) {
   }, [shares]);
 
   const summary = useMemo(
-    () => getScopeCompositionSummary(goal, compositionRows),
-    [goal, compositionRows]
+    () => getScopesCompositionSummary(planning, scopes, compositionRows),
+    [planning, scopes, compositionRows]
   );
 
   const productTypes = useMemo(() => getScopeCompositionTypes(compositionRows), [compositionRows]);
@@ -100,12 +85,24 @@ export function MixGoalCompositionPanel({ analysis, year }: Props) {
 
   const tableRows = useMemo(() => buildScopeCompositionTable(compositionRows), [compositionRows]);
 
+  function toggleScope(scope: MixGoalScope) {
+    setScopes((current) => {
+      if (current.includes(scope)) {
+        const next = current.filter((item) => item !== scope);
+        return next.length ? next : current;
+      }
+      return [...current, scope];
+    });
+  }
+
   if (!planning || !analysis.businessTypeMonthlyByScope?.length) return null;
 
   const yearNote =
     year !== "all" && year !== "2026"
       ? "Esta seção usa dados e metas de 2026, independente do filtro de ano acima."
       : null;
+
+  const bothActive = scopesEqual(scopes, ALL_SCOPES);
 
   return (
     <section className="mix-goal-section" aria-label="Composição por meta">
@@ -121,25 +118,70 @@ export function MixGoalCompositionPanel({ analysis, year }: Props) {
         <Target size={20} />
       </div>
 
-      <div className="mix-goal-toolbar">
-        <SegmentedControl value={scope} options={SCOPES} onChange={setScope} />
-        <SegmentedControl
-          value={metric}
-          options={[
-            { id: "revenue" as const, label: "R$" },
-            { id: "deals" as const, label: "Qtd" }
-          ]}
-          onChange={setMetric}
-        />
-        <SegmentedControl
-          value={mode}
-          options={[
-            { id: "monthly" as const, label: "Mensal" },
-            { id: "accumulated" as const, label: "Acumulado" }
-          ]}
-          onChange={setMode}
-        />
-      </div>
+      <section className="mix-goal-toolbar-simple" aria-label="Opções de visualização da composição">
+        <div className="mix-goal-toolbar-group">
+          <span className="filter-label">Meta</span>
+          <div className="mix-segmented">
+            <button
+              type="button"
+              className={bothActive ? "active" : ""}
+              onClick={() => setScopes(ALL_SCOPES)}
+            >
+              Ambos
+            </button>
+            {SCOPE_OPTIONS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={scopes.includes(item.id) ? "active" : ""}
+                onClick={() => toggleScope(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mix-goal-toolbar-group">
+          <span className="filter-label">Medida</span>
+          <div className="mix-segmented">
+            <button
+              type="button"
+              className={metric === "revenue" ? "active" : ""}
+              onClick={() => setMetric("revenue")}
+            >
+              R$
+            </button>
+            <button
+              type="button"
+              className={metric === "deals" ? "active" : ""}
+              onClick={() => setMetric("deals")}
+            >
+              Qtd
+            </button>
+          </div>
+        </div>
+
+        <div className="mix-goal-toolbar-group">
+          <span className="filter-label">Visão</span>
+          <div className="mix-segmented">
+            <button
+              type="button"
+              className={mode === "monthly" ? "active" : ""}
+              onClick={() => setMode("monthly")}
+            >
+              Mensal
+            </button>
+            <button
+              type="button"
+              className={mode === "accumulated" ? "active" : ""}
+              onClick={() => setMode("accumulated")}
+            >
+              Acumulado
+            </button>
+          </div>
+        </div>
+      </section>
 
       <div className="mix-goal-kpis">
         <article className="card mix-goal-kpi">
@@ -164,8 +206,8 @@ export function MixGoalCompositionPanel({ analysis, year }: Props) {
         <div className="card-title">
           <div>
             <h3>
-              {scope === "consultoria" ? "Meta consultoria" : "Meta obras"} ·{" "}
-              {metric === "revenue" ? "receita" : "quantidade"} · {mode === "monthly" ? "mensal" : "acumulado"}
+              {scopeLabel} · {metric === "revenue" ? "receita" : "quantidade"} ·{" "}
+              {mode === "monthly" ? "mensal" : "acumulado"}
             </h3>
             <span>
               Barras = composição por produto · linha = meta {mode === "monthly" ? "mensal" : "acumulada"}

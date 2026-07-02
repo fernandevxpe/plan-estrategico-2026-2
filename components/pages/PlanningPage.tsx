@@ -15,12 +15,22 @@ import {
 } from "@/lib/analysis/metrics";
 import { brl, number } from "@/lib/analysis/format";
 import { GoalCard } from "@/components/planning/GoalCard";
+import { PlanningKpiStrip } from "@/components/planning/PlanningKpiStrip";
 import {
+  Funnel2026Chart,
   GoalCumulativeChart,
   GoalProgressChart,
+  GoalsAttainmentOverviewChart,
   GoalsCompareChart,
+  PipelineSnapshotChart,
   type GoalCompareMode
 } from "@/components/planning/planning-charts";
+import {
+  getFunnel2026Rows,
+  getGoalsAttainmentRows,
+  getPipelineStageRows,
+  getPlanningKpis
+} from "@/lib/analysis/planning-pipedrive";
 
 type Props = {
   analysis: Analysis;
@@ -49,6 +59,17 @@ export function PlanningPage({ analysis }: Props) {
   const defaultId = planning?.primaryGoalId ?? planning?.highlights.global?.id ?? goals[0]?.id ?? "";
   const [selectedIds, setSelectedIds] = useState<string[]>([defaultId]);
   const [compareMode, setCompareMode] = useState<GoalCompareMode>("values");
+
+  const planningKpis = useMemo(
+    () => (planning ? getPlanningKpis(planning, analysis) : []),
+    [planning, analysis]
+  );
+  const pipelineStages = useMemo(() => getPipelineStageRows(analysis), [analysis]);
+  const funnel2026 = useMemo(() => getFunnel2026Rows(analysis), [analysis]);
+  const goalsAttainment = useMemo(
+    () => (planning ? getGoalsAttainmentRows(planning) : []),
+    [planning]
+  );
 
   if (!planning || !goals.length) {
     return (
@@ -120,6 +141,34 @@ export function PlanningPage({ analysis }: Props) {
           {currentMonth}
         </p>
       </header>
+
+      <PlanningKpiStrip items={planningKpis} pipelineName={analysis.commercialDirector?.mainPipeline} />
+
+      <div className="chart-grid planning-pipedrive-grid">
+        <article className="card">
+          <h3>Funil principal — estágios atuais</h3>
+          <p className="chart-caption">Negócios abertos por etapa no pipeline de consultoria</p>
+          <div className="chart-box chart-box-tall">
+            <PipelineSnapshotChart data={pipelineStages} />
+          </div>
+        </article>
+
+        <article className="card">
+          <h3>Funil comercial 2026</h3>
+          <p className="chart-caption">Valor criado, ganho e pipeline aberto por mês (Pipedrive)</p>
+          <div className="chart-box chart-box-tall">
+            <Funnel2026Chart data={funnel2026} />
+          </div>
+        </article>
+
+        <article className="card span-2">
+          <h3>Panorama das metas 2026</h3>
+          <p className="chart-caption">% realizado YTD vs projeção de fechamento — todas as metas do Pipedrive Goals</p>
+          <div className="chart-box chart-box-tall">
+            <GoalsAttainmentOverviewChart data={goalsAttainment} />
+          </div>
+        </article>
+      </div>
 
       <div className="goal-compare-presets">
         <span className="goal-compare-presets-label">Atalhos:</span>

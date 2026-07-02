@@ -16,6 +16,7 @@ import {
   YAxis
 } from "recharts";
 import type { BridgeItem, GoalPlan, QuarterlySeriesItem, Timeline2026Item } from "@/lib/analysis/types";
+import type { FunnelMonthRow, GoalAttainmentRow, PipelineStageRow } from "@/lib/analysis/planning-pipedrive";
 import {
   buildGoalCompareRows,
   goalShortTitle,
@@ -403,6 +404,117 @@ function GoalsCompareTooltip({
         ) : null}
       </ul>
     </div>
+  );
+}
+
+/** Estágios do funil principal no Pipedrive (snapshot atual). */
+export function PipelineSnapshotChart({ data }: { data: PipelineStageRow[] }) {
+  if (!data.length) return null;
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 0 }}>
+        <CartesianGrid stroke="#dce5e8" horizontal={false} />
+        <XAxis type="number" tickLine={false} axisLine={false} allowDecimals={false} />
+        <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={108} />
+        <Tooltip formatter={(value) => [count.format(Number(value)), "Negócios"]} />
+        <Bar dataKey="deals" name="Negócios" fill="#2368a0" radius={[0, 4, 4, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/** Funil comercial 2026: criado x ganho x pipeline aberto. */
+export function Funnel2026Chart({ data }: { data: FunnelMonthRow[] }) {
+  if (!data.length) return null;
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+        <CartesianGrid stroke="#dce5e8" vertical={false} />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} />
+        <YAxis
+          yAxisId="left"
+          tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
+          tickLine={false}
+          axisLine={false}
+          width={48}
+        />
+        <YAxis
+          yAxisId="right"
+          orientation="right"
+          tickFormatter={(value) => `${Math.round(Number(value))}%`}
+          tickLine={false}
+          axisLine={false}
+          width={40}
+          domain={[0, "auto"]}
+        />
+        <Tooltip
+          formatter={(value, name) => {
+            if (name === "Conversão") return [`${Number(value).toFixed(1)}%`, name];
+            return [brl.format(Number(value)), name];
+          }}
+        />
+        <Legend />
+        <Bar yAxisId="left" dataKey="wonValue" name="Ganho (R$)" fill="#21a67a" radius={[4, 4, 0, 0]} />
+        <Bar yAxisId="left" dataKey="createdValue" name="Criado (R$)" fill="#9fb2bd" radius={[4, 4, 0, 0]} />
+        <Line
+          yAxisId="left"
+          type="monotone"
+          dataKey="openValue"
+          name="Pipeline aberto"
+          stroke="#b67818"
+          strokeWidth={2.5}
+          dot={{ r: 3 }}
+        />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="conversionPct"
+          name="Conversão"
+          stroke="#7c3aed"
+          strokeWidth={2}
+          strokeDasharray="4 3"
+          dot={{ r: 2 }}
+        />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+/** % da meta YTD e projeção de fechamento para todas as metas. */
+export function GoalsAttainmentOverviewChart({ data }: { data: GoalAttainmentRow[] }) {
+  if (!data.length) return null;
+
+  const chartData = data.map((row) => ({
+    ...row,
+    attainmentCap: Math.min(row.attainmentPct, 150),
+    projectedCap: Math.min(row.projectedPct, 150)
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
+        <CartesianGrid stroke="#dce5e8" horizontal={false} />
+        <XAxis
+          type="number"
+          domain={[0, 150]}
+          tickFormatter={(value) => `${value}%`}
+          tickLine={false}
+          axisLine={false}
+        />
+        <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={148} />
+        <Tooltip
+          formatter={(value, name) => [
+            `${Number(value).toFixed(1)}%`,
+            name === "attainmentCap" ? "% realizado YTD" : "Projeção fim de ano"
+          ]}
+        />
+        <Legend />
+        <Bar dataKey="attainmentCap" name="% realizado YTD" fill="#2368a0" radius={[0, 4, 4, 0]} />
+        <Bar dataKey="projectedCap" name="Projeção fim de ano" fill="#21a67a" radius={[0, 4, 4, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
 

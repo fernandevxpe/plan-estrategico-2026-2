@@ -1919,6 +1919,64 @@ tr:last-child td {
   font-weight: 500;
 }
 
+.planning-kpi-strip {
+  margin-bottom: 20px;
+}
+
+.planning-kpi-pipeline {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  opacity: 0.75;
+}
+
+.planning-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.planning-kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-left: 3px solid #dce5e8;
+}
+
+.planning-kpi-card.tone-good {
+  border-left-color: #21a67a;
+}
+
+.planning-kpi-card.tone-warn {
+  border-left-color: #d9a406;
+}
+
+.planning-kpi-card.tone-risk {
+  border-left-color: #e5484d;
+}
+
+.planning-kpi-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+}
+
+.planning-kpi-value {
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.planning-kpi-detail {
+  font-size: 0.76rem;
+  opacity: 0.72;
+  line-height: 1.35;
+}
+
+.planning-pipedrive-grid {
+  margin-bottom: 24px;
+}
+
 .chart-box-tall {
   min-height: 360px;
 }

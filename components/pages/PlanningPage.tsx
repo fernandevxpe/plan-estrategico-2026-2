@@ -16,6 +16,7 @@ import {
 import { brl, number } from "@/lib/analysis/format";
 import { GoalCard } from "@/components/planning/GoalCard";
 import { PlanningKpiStrip } from "@/components/planning/PlanningKpiStrip";
+import { FunnelStageHistoryPanel } from "@/components/planning/FunnelStageHistoryPanel";
 import {
   Funnel2026Chart,
   GoalCumulativeChart,
@@ -169,6 +170,8 @@ export function PlanningPage({ analysis }: Props) {
           </div>
         </article>
       </div>
+
+      <FunnelStageHistoryPanel analysis={analysis} defaultMonth={currentMonth} />
 
       <div className="goal-compare-presets">
         <span className="goal-compare-presets-label">Atalhos:</span>

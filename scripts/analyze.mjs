@@ -1,4 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { buildFunnelStageHistory } from './lib/funnel-stage-history.mjs';
 
 const rawDir = new URL('../data/raw/', import.meta.url);
 const processedDir = new URL('../data/processed/', import.meta.url);
@@ -2277,6 +2278,15 @@ const planning2026 = {
   }
 };
 
+const flowsPayload = await readOptionalJson('pipedrive-deal-flows.json', { flows: {} });
+const funnelStageHistory = buildFunnelStageHistory(
+  dealsRaw,
+  flowsPayload.flows ?? {},
+  stagesRaw,
+  '2025-01',
+  currentMonthKey
+);
+
 const report = {
   generatedAt: new Date().toISOString(),
   scope: 'Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus',
@@ -2293,6 +2303,7 @@ const report = {
   projection2026H2,
   planningSummary,
   planning2026,
+  funnelStageHistory,
   indicatorHighlights,
   deepAnalysis,
   commercialDirector,

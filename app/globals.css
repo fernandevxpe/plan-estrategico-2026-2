@@ -1703,6 +1703,82 @@ tr:last-child td {
   border-color: #b8c8d0;
 }
 
+.goal-preset-btn.is-active {
+  background: #e8f5f0;
+  border-color: #21a67a;
+  font-weight: 600;
+}
+
+.funnel-stage-panel {
+  margin-bottom: 28px;
+}
+
+.funnel-stage-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.funnel-pipeline-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.funnel-stage-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.funnel-stage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  border: 1px solid #dce5e8;
+  background: #fff;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.funnel-stage-chip.is-active {
+  font-weight: 600;
+}
+
+.funnel-stage-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.funnel-month-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.funnel-stage-chart {
+  cursor: pointer;
+}
+
+.chart-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  opacity: 0.65;
+  font-size: 0.9rem;
+}
+
 .planning-compare-panel {
   margin-bottom: 28px;
 }

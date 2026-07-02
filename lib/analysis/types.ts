@@ -329,6 +329,28 @@ export type CommercialDirectorMetrics = {
   };
 };
 
+export type FunnelStageMonthlyRow = {
+  month: string;
+  pipelineId: number;
+  pipeline: string;
+  stageId: number;
+  stage: string;
+  stageOrder: number;
+  deals: number;
+  value: number;
+};
+
+export type FunnelStageHistory = {
+  pipelines: {
+    id: number;
+    name: string;
+    stages: { id: number; name: string; order: number }[];
+  }[];
+  months: { month: string; label: string }[];
+  entries: FunnelStageMonthlyRow[];
+  stock: FunnelStageMonthlyRow[];
+};
+
 export type Analysis = {
   generatedAt: string;
   totals: {
@@ -360,6 +382,7 @@ export type Analysis = {
   };
   planningSummary: PlanningSummary;
   planning2026?: Planning2026;
+  funnelStageHistory?: FunnelStageHistory;
   indicatorHighlights: IndicatorHighlights;
   deepAnalysis: DeepAnalysis;
   commercialDirector?: CommercialDirectorMetrics;

@@ -112,6 +112,33 @@ async function syncPipedrive() {
   await writeJson('pipedrive-activities.json', activities);
   await writeJson('pipedrive-goals.json', goals);
 
+  const funnelPipelineIds = [11, 14];
+  const funnelDeals = deals.filter((deal) => funnelPipelineIds.includes(deal.pipeline_id));
+  const dealFlows = {};
+  if (process.env.SKIP_DEAL_FLOWS === '1') {
+    console.log('SKIP_DEAL_FLOWS=1 — histórico de etapas não atualizado.');
+  } else {
+    console.log(`Buscando flow de ${funnelDeals.length} negócios (pipelines consultoria + obras)...`);
+    let index = 0;
+    for (const deal of funnelDeals) {
+      index += 1;
+      if (index % 25 === 0 || index === funnelDeals.length) {
+        console.log(`  flow ${index}/${funnelDeals.length}`);
+      }
+      const token = process.env.PIPEDRIVE_API_KEY;
+      const url = new URL(`https://api.pipedrive.com/v1/deals/${deal.id}/flow`);
+      url.searchParams.set('api_token', token);
+      try {
+        const json = await getJson(url);
+        dealFlows[String(deal.id)] = json.data ?? [];
+      } catch {
+        dealFlows[String(deal.id)] = [];
+      }
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+  }
+  await writeJson('pipedrive-deal-flows.json', { pipelineIds: funnelPipelineIds, flows: dealFlows });
+
   return {
     deals: deals.length,
     dealFields: dealFields.length,
@@ -121,7 +148,8 @@ async function syncPipedrive() {
     stages: stages.length,
     users: users.length,
     activities: activities.length,
-    goals: goals.length
+    goals: goals.length,
+    dealFlows: Object.keys(dealFlows).length
   };
 }
 

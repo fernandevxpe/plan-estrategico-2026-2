@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-07-01T17:45:50.347Z",
+  "generatedAt": "2026-07-02T15:56:00.309Z",
   "scope": "Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus",
   "totals": {
-    "pipedriveDealsAll": 1679,
+    "pipedriveDealsAll": 1683,
     "clickupTasksAll": 1419,
-    "analysisDeals": 1015,
-    "wonDeals": 189,
-    "focus2026Deals": 482
+    "analysisDeals": 1019,
+    "wonDeals": 192,
+    "focus2026Deals": 486
   },
   "monthly": [
     {
@@ -148,14 +148,14 @@
     {
       "month": "2026-06",
       "createdDeals": 93,
-      "wonDeals": 11,
-      "wonRevenue": 111070,
-      "averageTicket": 10097.272727272728,
-      "revenueGrowthPct": -15.084097859327217
+      "wonDeals": 14,
+      "wonRevenue": 139490,
+      "averageTicket": 9963.57142857143,
+      "revenueGrowthPct": 6.643730886850154
     },
     {
       "month": "2026-07",
-      "createdDeals": 1,
+      "createdDeals": 5,
       "wonDeals": 0,
       "wonRevenue": 0,
       "averageTicket": 0,
@@ -173,7 +173,7 @@
       "cohortConversionPct": 16.666666666666664,
       "cohortLossPct": 62.5,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 516,
+      "cohortAgeDays": 517,
       "isMatureCohort": true,
       "matureConversionPct": 16.666666666666664,
       "closedConversionPct": 21.052631578947366,
@@ -195,7 +195,7 @@
       "cohortConversionPct": 5.454545454545454,
       "cohortLossPct": 92.72727272727272,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 488,
+      "cohortAgeDays": 489,
       "isMatureCohort": true,
       "matureConversionPct": 5.454545454545454,
       "closedConversionPct": 5.555555555555555,
@@ -210,14 +210,14 @@
     {
       "month": "2025-03",
       "createdDeals": 13,
-      "createdValue": 83000,
+      "createdValue": 78600,
       "createdWonDeals": 2,
       "createdLostDeals": 9,
       "createdStillOpenDeals": 2,
       "cohortConversionPct": 15.384615384615385,
       "cohortLossPct": 69.23076923076923,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 457,
+      "cohortAgeDays": 458,
       "isMatureCohort": true,
       "matureConversionPct": 15.384615384615385,
       "closedConversionPct": 18.181818181818183,
@@ -226,7 +226,7 @@
       "wonValue": 10500,
       "lostDeals": 18,
       "openBaseDealsEndOfMonth": 472,
-      "openBaseValueEndOfMonth": 1028030.98,
+      "openBaseValueEndOfMonth": 1023630.98,
       "averageWonTicket": 10500
     },
     {
@@ -239,7 +239,7 @@
       "cohortConversionPct": 32.142857142857146,
       "cohortLossPct": 39.285714285714285,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 427,
+      "cohortAgeDays": 428,
       "isMatureCohort": true,
       "matureConversionPct": 32.142857142857146,
       "closedConversionPct": 45,
@@ -248,7 +248,7 @@
       "wonValue": 75800,
       "lostDeals": 39,
       "openBaseDealsEndOfMonth": 455,
-      "openBaseValueEndOfMonth": 1176640.98,
+      "openBaseValueEndOfMonth": 1172240.98,
       "averageWonTicket": 12633.333333333334
     },
     {
@@ -261,7 +261,7 @@
       "cohortConversionPct": 17.857142857142858,
       "cohortLossPct": 60.71428571428571,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 396,
+      "cohortAgeDays": 397,
       "isMatureCohort": true,
       "matureConversionPct": 17.857142857142858,
       "closedConversionPct": 22.727272727272727,
@@ -270,7 +270,7 @@
       "wonValue": 64160,
       "lostDeals": 61,
       "openBaseDealsEndOfMonth": 413,
-      "openBaseValueEndOfMonth": 1197705.98,
+      "openBaseValueEndOfMonth": 1193305.98,
       "averageWonTicket": 9165.714285714286
     },
     {
@@ -283,7 +283,7 @@
       "cohortConversionPct": 40.909090909090914,
       "cohortLossPct": 40.909090909090914,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 366,
+      "cohortAgeDays": 367,
       "isMatureCohort": true,
       "matureConversionPct": 40.909090909090914,
       "closedConversionPct": 50,
@@ -292,7 +292,7 @@
       "wonValue": 77000,
       "lostDeals": 20,
       "openBaseDealsEndOfMonth": 403,
-      "openBaseValueEndOfMonth": 1191055.98,
+      "openBaseValueEndOfMonth": 1186655.98,
       "averageWonTicket": 6416.666666666667
     },
     {
@@ -305,7 +305,7 @@
       "cohortConversionPct": 40.816326530612244,
       "cohortLossPct": 48.97959183673469,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 335,
+      "cohortAgeDays": 336,
       "isMatureCohort": true,
       "matureConversionPct": 40.816326530612244,
       "closedConversionPct": 45.45454545454545,
@@ -314,7 +314,7 @@
       "wonValue": 69640,
       "lostDeals": 30,
       "openBaseDealsEndOfMonth": 412,
-      "openBaseValueEndOfMonth": 1328927.98,
+      "openBaseValueEndOfMonth": 1324527.98,
       "averageWonTicket": 6964
     },
     {
@@ -327,7 +327,7 @@
       "cohortConversionPct": 29.72972972972973,
       "cohortLossPct": 54.054054054054056,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 304,
+      "cohortAgeDays": 305,
       "isMatureCohort": true,
       "matureConversionPct": 29.72972972972973,
       "closedConversionPct": 35.483870967741936,
@@ -336,7 +336,7 @@
       "wonValue": 105200,
       "lostDeals": 15,
       "openBaseDealsEndOfMonth": 420,
-      "openBaseValueEndOfMonth": 1484491.96,
+      "openBaseValueEndOfMonth": 1480091.96,
       "averageWonTicket": 7514.285714285715
     },
     {
@@ -349,7 +349,7 @@
       "cohortConversionPct": 35.8974358974359,
       "cohortLossPct": 53.84615384615385,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 274,
+      "cohortAgeDays": 275,
       "isMatureCohort": true,
       "matureConversionPct": 35.8974358974359,
       "closedConversionPct": 40,
@@ -358,7 +358,7 @@
       "wonValue": 82313.98,
       "lostDeals": 6,
       "openBaseDealsEndOfMonth": 442,
-      "openBaseValueEndOfMonth": 1696597.98,
+      "openBaseValueEndOfMonth": 1692197.98,
       "averageWonTicket": 7483.08909090909
     },
     {
@@ -371,7 +371,7 @@
       "cohortConversionPct": 25,
       "cohortLossPct": 40.625,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 243,
+      "cohortAgeDays": 244,
       "isMatureCohort": true,
       "matureConversionPct": 25,
       "closedConversionPct": 38.095238095238095,
@@ -380,7 +380,7 @@
       "wonValue": 112150,
       "lostDeals": 18,
       "openBaseDealsEndOfMonth": 446,
-      "openBaseValueEndOfMonth": 1758462.27,
+      "openBaseValueEndOfMonth": 1754062.27,
       "averageWonTicket": 11215
     },
     {
@@ -393,7 +393,7 @@
       "cohortConversionPct": 13.793103448275861,
       "cohortLossPct": 29.310344827586203,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 213,
+      "cohortAgeDays": 214,
       "isMatureCohort": true,
       "matureConversionPct": 13.793103448275861,
       "closedConversionPct": 32,
@@ -402,7 +402,7 @@
       "wonValue": 99460,
       "lostDeals": 8,
       "openBaseDealsEndOfMonth": 483,
-      "openBaseValueEndOfMonth": 1927012.27,
+      "openBaseValueEndOfMonth": 1922612.27,
       "averageWonTicket": 7650.7692307692305
     },
     {
@@ -415,7 +415,7 @@
       "cohortConversionPct": 37.03703703703704,
       "cohortLossPct": 37.03703703703704,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 182,
+      "cohortAgeDays": 183,
       "isMatureCohort": true,
       "matureConversionPct": 37.03703703703704,
       "closedConversionPct": 50,
@@ -424,7 +424,7 @@
       "wonValue": 138289.29,
       "lostDeals": 6,
       "openBaseDealsEndOfMonth": 493,
-      "openBaseValueEndOfMonth": 1922607.66,
+      "openBaseValueEndOfMonth": 1918207.66,
       "averageWonTicket": 12571.753636363637
     },
     {
@@ -437,7 +437,7 @@
       "cohortConversionPct": 28.8135593220339,
       "cohortLossPct": 28.8135593220339,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 151,
+      "cohortAgeDays": 152,
       "isMatureCohort": true,
       "matureConversionPct": 28.8135593220339,
       "closedConversionPct": 50,
@@ -446,20 +446,20 @@
       "wonValue": 180131.72,
       "lostDeals": 20,
       "openBaseDealsEndOfMonth": 518,
-      "openBaseValueEndOfMonth": 2281713.66,
+      "openBaseValueEndOfMonth": 2277313.66,
       "averageWonTicket": 12866.551428571429
     },
     {
       "month": "2026-02",
       "createdDeals": 59,
-      "createdValue": 486790,
+      "createdValue": 479790,
       "createdWonDeals": 16,
       "createdLostDeals": 13,
       "createdStillOpenDeals": 30,
       "cohortConversionPct": 27.11864406779661,
       "cohortLossPct": 22.033898305084744,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 123,
+      "cohortAgeDays": 124,
       "isMatureCohort": true,
       "matureConversionPct": 27.11864406779661,
       "closedConversionPct": 55.172413793103445,
@@ -468,7 +468,7 @@
       "wonValue": 198165,
       "lostDeals": 17,
       "openBaseDealsEndOfMonth": 545,
-      "openBaseValueEndOfMonth": 2432608.66,
+      "openBaseValueEndOfMonth": 2421208.66,
       "averageWonTicket": 13211
     },
     {
@@ -481,7 +481,7 @@
       "cohortConversionPct": 13.253012048192772,
       "cohortLossPct": 32.53012048192771,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 92,
+      "cohortAgeDays": 93,
       "isMatureCohort": true,
       "matureConversionPct": 13.253012048192772,
       "closedConversionPct": 28.947368421052634,
@@ -490,20 +490,20 @@
       "wonValue": 222450,
       "lostDeals": 30,
       "openBaseDealsEndOfMonth": 579,
-      "openBaseValueEndOfMonth": 2407038.66,
+      "openBaseValueEndOfMonth": 2395638.66,
       "averageWonTicket": 11707.894736842105
     },
     {
       "month": "2026-04",
       "createdDeals": 74,
-      "createdValue": 819950,
+      "createdValue": 827950,
       "createdWonDeals": 11,
       "createdLostDeals": 18,
       "createdStillOpenDeals": 45,
       "cohortConversionPct": 14.864864864864865,
       "cohortLossPct": 24.324324324324326,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 62,
+      "cohortAgeDays": 63,
       "isMatureCohort": true,
       "matureConversionPct": 14.864864864864865,
       "closedConversionPct": 37.93103448275862,
@@ -512,73 +512,73 @@
       "wonValue": 155600,
       "lostDeals": 27,
       "openBaseDealsEndOfMonth": 611,
-      "openBaseValueEndOfMonth": 2884088.66,
+      "openBaseValueEndOfMonth": 2880688.66,
       "averageWonTicket": 10373.333333333334
     },
     {
       "month": "2026-05",
       "createdDeals": 92,
       "createdValue": 882205,
-      "createdWonDeals": 8,
+      "createdWonDeals": 9,
       "createdLostDeals": 7,
-      "createdStillOpenDeals": 77,
-      "cohortConversionPct": 8.695652173913043,
+      "createdStillOpenDeals": 76,
+      "cohortConversionPct": 9.782608695652174,
       "cohortLossPct": 7.608695652173914,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 31,
+      "cohortAgeDays": 32,
       "isMatureCohort": false,
       "matureConversionPct": null,
-      "closedConversionPct": 53.333333333333336,
-      "closedDealsFromCohort": 15,
+      "closedConversionPct": 56.25,
+      "closedDealsFromCohort": 16,
       "wonDeals": 14,
       "wonValue": 130800,
       "lostDeals": 22,
       "openBaseDealsEndOfMonth": 667,
-      "openBaseValueEndOfMonth": 3436293.66,
+      "openBaseValueEndOfMonth": 3432893.66,
       "averageWonTicket": 9342.857142857143
     },
     {
       "month": "2026-06",
       "createdDeals": 93,
-      "createdValue": 718900,
-      "createdWonDeals": 4,
+      "createdValue": 723980,
+      "createdWonDeals": 5,
       "createdLostDeals": 1,
-      "createdStillOpenDeals": 88,
-      "cohortConversionPct": 4.301075268817205,
+      "createdStillOpenDeals": 87,
+      "cohortConversionPct": 5.376344086021505,
       "cohortLossPct": 1.0752688172043012,
       "matureCohortMinAgeDays": 45,
-      "cohortAgeDays": 1,
+      "cohortAgeDays": 2,
       "isMatureCohort": false,
       "matureConversionPct": null,
-      "closedConversionPct": 80,
-      "closedDealsFromCohort": 5,
-      "wonDeals": 11,
-      "wonValue": 111070,
+      "closedConversionPct": 83.33333333333334,
+      "closedDealsFromCohort": 6,
+      "wonDeals": 14,
+      "wonValue": 139490,
       "lostDeals": 38,
-      "openBaseDealsEndOfMonth": 711,
-      "openBaseValueEndOfMonth": 3603123.66,
-      "averageWonTicket": 10097.272727272728
+      "openBaseDealsEndOfMonth": 709,
+      "openBaseValueEndOfMonth": 3584303.66,
+      "averageWonTicket": 9963.57142857143
     },
     {
       "month": "2026-07",
-      "createdDeals": 1,
-      "createdValue": 0,
-      "createdWonDeals": 0,
+      "createdDeals": 5,
+      "createdValue": 7920,
+      "createdWonDeals": 1,
       "createdLostDeals": 0,
-      "createdStillOpenDeals": 1,
-      "cohortConversionPct": 0,
+      "createdStillOpenDeals": 4,
+      "cohortConversionPct": 20,
       "cohortLossPct": 0,
       "matureCohortMinAgeDays": 45,
       "cohortAgeDays": 0,
       "isMatureCohort": false,
       "matureConversionPct": null,
-      "closedConversionPct": null,
-      "closedDealsFromCohort": 0,
+      "closedConversionPct": 100,
+      "closedDealsFromCohort": 1,
       "wonDeals": 0,
       "wonValue": 0,
       "lostDeals": 0,
-      "openBaseDealsEndOfMonth": 712,
-      "openBaseValueEndOfMonth": 3603123.66,
+      "openBaseDealsEndOfMonth": 713,
+      "openBaseValueEndOfMonth": 3584303.66,
       "averageWonTicket": 0
     }
   ],
@@ -672,18 +672,18 @@
       "monthNumber": "06",
       "label": "Jun",
       "revenue2025": 77000,
-      "revenue2026": 111070,
+      "revenue2026": 139490,
       "created2025": 22,
       "created2026": 93,
       "wonDeals2025": 12,
-      "wonDeals2026": 11,
+      "wonDeals2026": 14,
       "averageTicket2025": 6416.666666666667,
-      "averageTicket2026": 10097.272727272728,
+      "averageTicket2026": 9963.57142857143,
       "revenueMoM2025Pct": 20.012468827930174,
-      "revenueMoM2026Pct": -15.084097859327217,
-      "revenueYoYPct": 44.246753246753244,
+      "revenueMoM2026Pct": 6.643730886850154,
+      "revenueYoYPct": 81.15584415584416,
       "createdYoYPct": 322.7272727272727,
-      "wonDealsYoYPct": -8.333333333333332
+      "wonDealsYoYPct": 16.666666666666664
     },
     {
       "monthNumber": "07",
@@ -691,7 +691,7 @@
       "revenue2025": 69640,
       "revenue2026": 0,
       "created2025": 49,
-      "created2026": 1,
+      "created2026": 5,
       "wonDeals2025": 10,
       "wonDeals2026": 0,
       "averageTicket2025": 6964,
@@ -699,7 +699,7 @@
       "revenueMoM2025Pct": -9.55844155844156,
       "revenueMoM2026Pct": -100,
       "revenueYoYPct": -100,
-      "createdYoYPct": -97.95918367346938,
+      "createdYoYPct": -89.79591836734694,
       "wonDealsYoYPct": -100
     },
     {
@@ -1033,7 +1033,7 @@
       },
       {
         "month": "2026-05",
-        "createdDeals": 8,
+        "createdDeals": 9,
         "wonDeals": 14,
         "wonRevenue": 130800,
         "averageTicket": 9342.857142857143,
@@ -1041,11 +1041,19 @@
       },
       {
         "month": "2026-06",
-        "createdDeals": 4,
-        "wonDeals": 11,
-        "wonRevenue": 111070,
-        "averageTicket": 10097.272727272728,
-        "revenueGrowthPct": -15.084097859327217
+        "createdDeals": 5,
+        "wonDeals": 14,
+        "wonRevenue": 139490,
+        "averageTicket": 9963.57142857143,
+        "revenueGrowthPct": 6.643730886850154
+      },
+      {
+        "month": "2026-07",
+        "createdDeals": 1,
+        "wonDeals": 0,
+        "wonRevenue": 0,
+        "averageTicket": 0,
+        "revenueGrowthPct": -100
       }
     ],
     "annual": {
@@ -1056,9 +1064,9 @@
         "isPartial": false
       },
       "2026Ytd": {
-        "revenue": 998216.72,
-        "wonDeals": 88,
-        "createdDeals": 461,
+        "revenue": 1026636.72,
+        "wonDeals": 91,
+        "createdDeals": 465,
         "isPartial": true
       }
     },
@@ -1076,15 +1084,15 @@
         "averageTicket": 8797.87347826087
       },
       "2026-H1": {
-        "revenue": 998216.72,
-        "wonDeals": 88,
+        "revenue": 1026636.72,
+        "wonDeals": 91,
         "createdDeals": 460,
-        "averageTicket": 11343.371818181819
+        "averageTicket": 11281.722197802197
       },
       "2026-H2": {
         "revenue": 0,
         "wonDeals": 0,
-        "createdDeals": 1,
+        "createdDeals": 5,
         "averageTicket": 0
       },
       "2026-H1-projected": {
@@ -1132,23 +1140,23 @@
         "averageTicket": 12515.556666666665
       },
       "2026-Q2": {
-        "revenue": 397470,
-        "wonDeals": 40,
+        "revenue": 425890,
+        "wonDeals": 43,
         "createdDeals": 259,
         "year": 2026,
-        "averageTicket": 9936.75
+        "averageTicket": 9904.418604651162
       },
       "2026-Q3": {
         "revenue": 0,
         "wonDeals": 0,
-        "createdDeals": 1,
+        "createdDeals": 5,
         "year": 2026,
         "averageTicket": 0
       }
     },
     "h1Projection": {
       "janMayActual": 887146.72,
-      "juneActual": 111070,
+      "juneActual": 139490,
       "juneProjected": 177429.34399999998,
       "totalProjected": 1064576.064,
       "runRateMonthly": 177429.34399999998
@@ -1226,8 +1234,8 @@
         "month": "2026-06",
         "label": "Jun",
         "kind": "partial",
-        "revenue": 111070,
-        "wonDeals": 11,
+        "revenue": 139490,
+        "wonDeals": 14,
         "createdDeals": 93,
         "projectedRevenue": 177429.34399999998
       },
@@ -1335,14 +1343,14 @@
         "durationStart": "2026-01-01",
         "durationEnd": "2026-12-31",
         "totalTarget": 2129933.6,
-        "totalRealized": 641965,
-        "attainmentPct": 30.14014145793089,
+        "totalRealized": 670385,
+        "attainmentPct": 31.474455353913378,
         "elapsedTarget": 742413.6,
-        "elapsedRealized": 641965,
-        "paceRatio": 0.8646999462294334,
+        "elapsedRealized": 670385,
+        "paceRatio": 0.9029804949693809,
         "remainingTarget": 1387520,
-        "projectedYearEnd": 1841753.4693922633,
-        "projectedAttainmentPct": 86.46999462294332,
+        "projectedYearEnd": 1923288.4963799154,
+        "projectedAttainmentPct": 90.29804949693809,
         "intervals": [
           {
             "start": "2026-01-01",
@@ -1389,8 +1397,8 @@
             "end": "2026-06-30",
             "monthKey": "2026-06",
             "target": 183040,
-            "realized": 41100,
-            "attainmentPct": 22.45410839160839
+            "realized": 69520,
+            "attainmentPct": 37.980769230769226
           },
           {
             "start": "2026-07-01",
@@ -1461,14 +1469,14 @@
         "durationStart": "2026-01-01",
         "durationEnd": "2026-12-31",
         "totalTarget": 2591347,
-        "totalRealized": 998216.72,
-        "attainmentPct": 38.52115212667388,
+        "totalRealized": 1026636.72,
+        "attainmentPct": 39.617879041286244,
         "elapsedTarget": 924691,
-        "elapsedRealized": 998216.72,
-        "paceRatio": 1.0795138267810545,
+        "elapsedRealized": 1026636.72,
+        "paceRatio": 1.1102484181202152,
         "remainingTarget": 1666656,
-        "projectedYearEnd": 2797394.9164876053,
-        "projectedAttainmentPct": 107.95138267810545,
+        "projectedYearEnd": 2877038.9075505654,
+        "projectedAttainmentPct": 111.02484181202152,
         "intervals": [
           {
             "start": "2026-01-01",
@@ -1483,8 +1491,8 @@
             "end": "2026-06-30",
             "monthKey": "2026-04",
             "target": 587264,
-            "realized": 409220,
-            "attainmentPct": 69.68245967741935
+            "realized": 437640,
+            "attainmentPct": 74.52185047951177
           },
           {
             "start": "2026-07-01",
@@ -1521,8 +1529,8 @@
         "durationStart": "2026-01-01",
         "durationEnd": "2026-12-26",
         "totalTarget": 1132,
-        "totalRealized": 318,
-        "attainmentPct": 28.091872791519435,
+        "totalRealized": 322,
+        "attainmentPct": 28.4452296819788,
         "elapsedTarget": 457,
         "elapsedRealized": 315,
         "paceRatio": 0.6892778993435449,
@@ -1743,8 +1751,8 @@
             "end": "2026-07-04",
             "monthKey": "2026-06",
             "target": 24,
-            "realized": 3,
-            "attainmentPct": 12.5
+            "realized": 7,
+            "attainmentPct": 29.166666666666668
           },
           {
             "start": "2026-07-05",
@@ -1967,14 +1975,14 @@
         "durationStart": "2026-01-01",
         "durationEnd": "2026-12-31",
         "totalTarget": 6616000,
-        "totalRealized": 4133082.7199999997,
-        "attainmentPct": 62.471020556227316,
+        "totalRealized": 4147082.7199999997,
+        "attainmentPct": 62.682628778718254,
         "elapsedTarget": 2320000,
-        "elapsedRealized": 4133082.7199999997,
-        "paceRatio": 1.781501172413793,
+        "elapsedRealized": 4139162.7199999997,
+        "paceRatio": 1.7841218620689654,
         "remainingTarget": 4296000,
-        "projectedYearEnd": 11786411.756689655,
-        "projectedAttainmentPct": 178.1501172413793,
+        "projectedYearEnd": 11803750.239448275,
+        "projectedAttainmentPct": 178.41218620689654,
         "intervals": [
           {
             "start": "2026-01-01",
@@ -1989,8 +1997,8 @@
             "end": "2026-02-28",
             "monthKey": "2026-02",
             "target": 270000,
-            "realized": 486790,
-            "attainmentPct": 180.29259259259257
+            "realized": 479790,
+            "attainmentPct": 177.7
           },
           {
             "start": "2026-03-01",
@@ -2005,8 +2013,8 @@
             "end": "2026-04-30",
             "monthKey": "2026-04",
             "target": 440000,
-            "realized": 824950,
-            "attainmentPct": 187.48863636363637
+            "realized": 832950,
+            "attainmentPct": 189.3068181818182
           },
           {
             "start": "2026-05-01",
@@ -2021,16 +2029,16 @@
             "end": "2026-06-30",
             "monthKey": "2026-06",
             "target": 572000,
-            "realized": 718900,
-            "attainmentPct": 125.68181818181819
+            "realized": 723980,
+            "attainmentPct": 126.56993006993007
           },
           {
             "start": "2026-07-01",
             "end": "2026-07-31",
             "monthKey": "2026-07",
             "target": 616000,
-            "realized": 0,
-            "attainmentPct": 0
+            "realized": 7920,
+            "attainmentPct": 1.2857142857142856
           },
           {
             "start": "2026-08-01",
@@ -2093,14 +2101,14 @@
         "durationStart": "2026-01-01",
         "durationEnd": "2026-12-31",
         "totalTarget": 2591346.94,
-        "totalRealized": 998216.72,
-        "attainmentPct": 38.521153018591946,
+        "totalRealized": 1026636.72,
+        "attainmentPct": 39.617879958597904,
         "elapsedTarget": 924690.9400000001,
-        "elapsedRealized": 998216.72,
-        "paceRatio": 1.0795138968269764,
+        "elapsedRealized": 1026636.72,
+        "paceRatio": 1.1102484901603988,
         "remainingTarget": 1666656,
-        "projectedYearEnd": 2797395.033230061,
-        "projectedAttainmentPct": 107.95138968269764,
+        "projectedYearEnd": 2877039.0276167695,
+        "projectedAttainmentPct": 111.02484901603988,
         "intervals": [
           {
             "start": "2026-01-01",
@@ -2147,8 +2155,8 @@
             "end": "2026-06-30",
             "monthKey": "2026-06",
             "target": 222698.67,
-            "realized": 111070,
-            "attainmentPct": 49.87456817770847
+            "realized": 139490,
+            "attainmentPct": 62.63620703257904
           },
           {
             "start": "2026-07-01",
@@ -2345,14 +2353,14 @@
         "durationStart": "2026-01-01",
         "durationEnd": "2026-12-31",
         "totalTarget": 2591346.94,
-        "totalRealized": 998216.72,
-        "attainmentPct": 38.521153018591946,
+        "totalRealized": 1026636.72,
+        "attainmentPct": 39.617879958597904,
         "elapsedTarget": 924690.9400000001,
-        "elapsedRealized": 998216.72,
-        "paceRatio": 1.0795138968269764,
+        "elapsedRealized": 1026636.72,
+        "paceRatio": 1.1102484901603988,
         "remainingTarget": 1666656,
-        "projectedYearEnd": 2797395.033230061,
-        "projectedAttainmentPct": 107.95138968269764,
+        "projectedYearEnd": 2877039.0276167695,
+        "projectedAttainmentPct": 111.02484901603988,
         "intervals": [
           {
             "start": "2026-01-01",
@@ -2399,8 +2407,8 @@
             "end": "2026-06-30",
             "monthKey": "2026-06",
             "target": 222698.67,
-            "realized": 111070,
-            "attainmentPct": 49.87456817770847
+            "realized": 139490,
+            "attainmentPct": 62.63620703257904
           },
           {
             "start": "2026-07-01",
@@ -2469,14 +2477,14 @@
         "durationStart": "2026-01-01",
         "durationEnd": "2026-12-31",
         "totalTarget": 2129933.6,
-        "totalRealized": 641965,
-        "attainmentPct": 30.14014145793089,
+        "totalRealized": 670385,
+        "attainmentPct": 31.474455353913378,
         "elapsedTarget": 742413.6,
-        "elapsedRealized": 641965,
-        "paceRatio": 0.8646999462294334,
+        "elapsedRealized": 670385,
+        "paceRatio": 0.9029804949693809,
         "remainingTarget": 1387520,
-        "projectedYearEnd": 1841753.4693922633,
-        "projectedAttainmentPct": 86.46999462294332,
+        "projectedYearEnd": 1923288.4963799154,
+        "projectedAttainmentPct": 90.29804949693809,
         "intervals": [
           {
             "start": "2026-01-01",
@@ -2523,8 +2531,8 @@
             "end": "2026-06-30",
             "monthKey": "2026-06",
             "target": 183040,
-            "realized": 41100,
-            "attainmentPct": 22.45410839160839
+            "realized": 69520,
+            "attainmentPct": 37.980769230769226
           },
           {
             "start": "2026-07-01",
@@ -2719,14 +2727,14 @@
         "durationStart": "2026-01-01",
         "durationEnd": "2026-12-31",
         "totalTarget": 6616000,
-        "totalRealized": 4133082.7199999997,
-        "attainmentPct": 62.471020556227316,
+        "totalRealized": 4147082.7199999997,
+        "attainmentPct": 62.682628778718254,
         "elapsedTarget": 2320000,
-        "elapsedRealized": 4133082.7199999997,
-        "paceRatio": 1.781501172413793,
+        "elapsedRealized": 4139162.7199999997,
+        "paceRatio": 1.7841218620689654,
         "remainingTarget": 4296000,
-        "projectedYearEnd": 11786411.756689655,
-        "projectedAttainmentPct": 178.1501172413793,
+        "projectedYearEnd": 11803750.239448275,
+        "projectedAttainmentPct": 178.41218620689654,
         "intervals": [
           {
             "start": "2026-01-01",
@@ -2741,8 +2749,8 @@
             "end": "2026-02-28",
             "monthKey": "2026-02",
             "target": 270000,
-            "realized": 486790,
-            "attainmentPct": 180.29259259259257
+            "realized": 479790,
+            "attainmentPct": 177.7
           },
           {
             "start": "2026-03-01",
@@ -2757,8 +2765,8 @@
             "end": "2026-04-30",
             "monthKey": "2026-04",
             "target": 440000,
-            "realized": 824950,
-            "attainmentPct": 187.48863636363637
+            "realized": 832950,
+            "attainmentPct": 189.3068181818182
           },
           {
             "start": "2026-05-01",
@@ -2773,16 +2781,16 @@
             "end": "2026-06-30",
             "monthKey": "2026-06",
             "target": 572000,
-            "realized": 718900,
-            "attainmentPct": 125.68181818181819
+            "realized": 723980,
+            "attainmentPct": 126.56993006993007
           },
           {
             "start": "2026-07-01",
             "end": "2026-07-31",
             "monthKey": "2026-07",
             "target": 616000,
-            "realized": 0,
-            "attainmentPct": 0
+            "realized": 7920,
+            "attainmentPct": 1.2857142857142856
           },
           {
             "start": "2026-08-01",
@@ -2843,8 +2851,8 @@
         "durationStart": "2026-01-01",
         "durationEnd": "2026-12-26",
         "totalTarget": 1132,
-        "totalRealized": 318,
-        "attainmentPct": 28.091872791519435,
+        "totalRealized": 322,
+        "attainmentPct": 28.4452296819788,
         "elapsedTarget": 457,
         "elapsedRealized": 315,
         "paceRatio": 0.6892778993435449,
@@ -3065,8 +3073,8 @@
             "end": "2026-07-04",
             "monthKey": "2026-06",
             "target": 24,
-            "realized": 3,
-            "attainmentPct": 12.5
+            "realized": 7,
+            "attainmentPct": 29.166666666666668
           },
           {
             "start": "2026-07-05",
@@ -3289,14 +3297,14 @@
         "durationStart": "2026-01-01",
         "durationEnd": "2026-12-31",
         "totalTarget": 2591347,
-        "totalRealized": 998216.72,
-        "attainmentPct": 38.52115212667388,
+        "totalRealized": 1026636.72,
+        "attainmentPct": 39.617879041286244,
         "elapsedTarget": 924691,
-        "elapsedRealized": 998216.72,
-        "paceRatio": 1.0795138267810545,
+        "elapsedRealized": 1026636.72,
+        "paceRatio": 1.1102484181202152,
         "remainingTarget": 1666656,
-        "projectedYearEnd": 2797394.9164876053,
-        "projectedAttainmentPct": 107.95138267810545,
+        "projectedYearEnd": 2877038.9075505654,
+        "projectedAttainmentPct": 111.02484181202152,
         "intervals": [
           {
             "start": "2026-01-01",
@@ -3311,8 +3319,8 @@
             "end": "2026-06-30",
             "monthKey": "2026-04",
             "target": 587264,
-            "realized": 409220,
-            "attainmentPct": 69.68245967741935
+            "realized": 437640,
+            "attainmentPct": 74.52185047951177
           },
           {
             "start": "2026-07-01",
@@ -3333,6 +3341,2919 @@
         ]
       }
     }
+  },
+  "funnelStageHistory": {
+    "pipelines": [
+      {
+        "id": 11,
+        "name": "[Exec] Laudos - Condo",
+        "stages": [
+          {
+            "id": 84,
+            "name": "Reunião Marcada",
+            "order": 1
+          },
+          {
+            "id": 86,
+            "name": "Diagnóstico",
+            "order": 2
+          },
+          {
+            "id": 87,
+            "name": "Negociação",
+            "order": 3
+          },
+          {
+            "id": 88,
+            "name": "Fechamento",
+            "order": 4
+          },
+          {
+            "id": 89,
+            "name": "Relacionamento",
+            "order": 5
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Obras",
+        "stages": [
+          {
+            "id": 101,
+            "name": "Solicitação Orçamento",
+            "order": 1
+          },
+          {
+            "id": 102,
+            "name": "Levantamento de Dados",
+            "order": 2
+          },
+          {
+            "id": 103,
+            "name": "Elaboração Proposta",
+            "order": 3
+          },
+          {
+            "id": 104,
+            "name": "Proposta Feita",
+            "order": 4
+          },
+          {
+            "id": 105,
+            "name": "Negociações Iniciadas",
+            "order": 5
+          },
+          {
+            "id": 116,
+            "name": "Fechamento",
+            "order": 6
+          }
+        ]
+      }
+    ],
+    "months": [
+      {
+        "month": "2025-01",
+        "label": "Jan"
+      },
+      {
+        "month": "2025-02",
+        "label": "Fev"
+      },
+      {
+        "month": "2025-03",
+        "label": "Mar"
+      },
+      {
+        "month": "2025-04",
+        "label": "Abr"
+      },
+      {
+        "month": "2025-05",
+        "label": "Mai"
+      },
+      {
+        "month": "2025-06",
+        "label": "Jun"
+      },
+      {
+        "month": "2025-07",
+        "label": "Jul"
+      },
+      {
+        "month": "2025-08",
+        "label": "Ago"
+      },
+      {
+        "month": "2025-09",
+        "label": "Set"
+      },
+      {
+        "month": "2025-10",
+        "label": "Out"
+      },
+      {
+        "month": "2025-11",
+        "label": "Nov"
+      },
+      {
+        "month": "2025-12",
+        "label": "Dez"
+      },
+      {
+        "month": "2026-01",
+        "label": "Jan"
+      },
+      {
+        "month": "2026-02",
+        "label": "Fev"
+      },
+      {
+        "month": "2026-03",
+        "label": "Mar"
+      },
+      {
+        "month": "2026-04",
+        "label": "Abr"
+      },
+      {
+        "month": "2026-05",
+        "label": "Mai"
+      },
+      {
+        "month": "2026-06",
+        "label": "Jun"
+      },
+      {
+        "month": "2026-07",
+        "label": "Jul"
+      }
+    ],
+    "entries": [
+      {
+        "month": "2025-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 11,
+        "value": 80900
+      },
+      {
+        "month": "2025-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 9,
+        "value": 72800
+      },
+      {
+        "month": "2025-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 9,
+        "value": 63100
+      },
+      {
+        "month": "2025-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 4,
+        "value": 24400
+      },
+      {
+        "month": "2025-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 0
+      },
+      {
+        "month": "2025-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 7,
+        "value": 70500
+      },
+      {
+        "month": "2025-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 7,
+        "value": 70500
+      },
+      {
+        "month": "2025-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 4,
+        "value": 37200
+      },
+      {
+        "month": "2025-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 10,
+        "value": 66600
+      },
+      {
+        "month": "2025-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 5,
+        "value": 42700
+      },
+      {
+        "month": "2025-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 4,
+        "value": 50500
+      },
+      {
+        "month": "2025-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 1,
+        "value": 0
+      },
+      {
+        "month": "2025-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 20,
+        "value": 195310
+      },
+      {
+        "month": "2025-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 19,
+        "value": 209410
+      },
+      {
+        "month": "2025-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 18,
+        "value": 182150
+      },
+      {
+        "month": "2025-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 5,
+        "value": 49700
+      },
+      {
+        "month": "2025-04",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 1,
+        "value": 21000
+      },
+      {
+        "month": "2025-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 10,
+        "value": 57725
+      },
+      {
+        "month": "2025-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 4,
+        "value": 25825
+      },
+      {
+        "month": "2025-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 9,
+        "value": 83960
+      },
+      {
+        "month": "2025-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 11,
+        "value": 91160
+      },
+      {
+        "month": "2025-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 0
+      },
+      {
+        "month": "2025-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 16,
+        "value": 120950
+      },
+      {
+        "month": "2025-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 18,
+        "value": 144550
+      },
+      {
+        "month": "2025-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 17,
+        "value": 150075
+      },
+      {
+        "month": "2025-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 9,
+        "value": 53000
+      },
+      {
+        "month": "2025-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 37,
+        "value": 306600
+      },
+      {
+        "month": "2025-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 34,
+        "value": 287900
+      },
+      {
+        "month": "2025-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 25,
+        "value": 201500
+      },
+      {
+        "month": "2025-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 9,
+        "value": 77100
+      },
+      {
+        "month": "2025-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 3,
+        "value": 0
+      },
+      {
+        "month": "2025-07",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 1,
+        "value": 10540
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 20,
+        "value": 235470
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 14,
+        "value": 88920
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 10,
+        "value": 183320
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 14,
+        "value": 82000
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 1,
+        "value": 16493.98
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 16493.98
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 2,
+        "value": 34243.979999999996
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 1,
+        "value": 16493.98
+      },
+      {
+        "month": "2025-09",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 35,
+        "value": 304420
+      },
+      {
+        "month": "2025-09",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 27,
+        "value": 287770
+      },
+      {
+        "month": "2025-09",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 21,
+        "value": 245770
+      },
+      {
+        "month": "2025-09",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 7,
+        "value": 41320
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 22,
+        "value": 174500
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 26,
+        "value": 232100
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 21,
+        "value": 209700
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 16,
+        "value": 147950
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 0
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 3,
+        "value": 43700
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 0
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 1,
+        "value": 33649.29
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 4,
+        "value": 60390
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 43349.29
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 28,
+        "value": 285210
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 31,
+        "value": 273210
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 23,
+        "value": 256710
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 10,
+        "value": 89060
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 11000
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 1,
+        "value": 19700
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 18,
+        "value": 151200
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 17,
+        "value": 138230
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 20,
+        "value": 195530
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 6,
+        "value": 36450
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 1,
+        "value": 19000
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 19000
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 1,
+        "value": 19000
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 1,
+        "value": 19000
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 6,
+        "value": 112438.66
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 35,
+        "value": 250200
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 29,
+        "value": 234900
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 15,
+        "value": 113700
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 7,
+        "value": 138850
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 12,
+        "value": 298737.72
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 1,
+        "value": 35000
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 4,
+        "value": 302500
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 35000
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 7,
+        "value": 128800
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 7,
+        "value": 328831.72
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 6,
+        "value": 99281.72
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 30,
+        "value": 267150
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 31,
+        "value": 274550
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 23,
+        "value": 218100
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 12,
+        "value": 75200
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 0
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 6,
+        "value": 165940
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 6250
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 1,
+        "value": 0
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 1,
+        "value": 6250
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 4,
+        "value": 308500
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 116,
+        "stage": "Fechamento",
+        "stageOrder": 6,
+        "deals": 6,
+        "value": 115650
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 59,
+        "value": 419600
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 45,
+        "value": 382900
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 41,
+        "value": 385650
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 13,
+        "value": 105600
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 3,
+        "value": 24000
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 21500
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 116,
+        "stage": "Fechamento",
+        "stageOrder": 6,
+        "deals": 1,
+        "value": 17800
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 69,
+        "value": 570650
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 48,
+        "value": 387850
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 38,
+        "value": 336000
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 15,
+        "value": 117200
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 4,
+        "value": 252800
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 1,
+        "value": 0
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 150000
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 5,
+        "value": 135410
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 1,
+        "value": 21500
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 1,
+        "value": 45000
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 116,
+        "stage": "Fechamento",
+        "stageOrder": 6,
+        "deals": 1,
+        "value": 26954.68
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 85,
+        "value": 742850
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 56,
+        "value": 627700
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 68,
+        "value": 875550
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 15,
+        "value": 129800
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 2,
+        "value": 0
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 2,
+        "value": 31555
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 2,
+        "value": 90206
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 4,
+        "value": 85190
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 8,
+        "value": 368860
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 116,
+        "stage": "Fechamento",
+        "stageOrder": 6,
+        "deals": 3,
+        "value": 66960
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 82,
+        "value": 198400
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 71,
+        "value": 332350
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 70,
+        "value": 670650
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 16,
+        "value": 141650
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 5,
+        "value": 350020
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 40360
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 7,
+        "value": 417435
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 116,
+        "stage": "Fechamento",
+        "stageOrder": 6,
+        "deals": 6,
+        "value": 178030
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 6,
+        "value": 14620
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 6,
+        "value": 8000
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 4,
+        "value": 20700
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 3,
+        "value": 30920
+      }
+    ],
+    "stock": [
+      {
+        "month": "2025-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 1,
+        "value": 8100
+      },
+      {
+        "month": "2025-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 15700
+      },
+      {
+        "month": "2025-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 4,
+        "value": 31700
+      },
+      {
+        "month": "2025-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 0
+      },
+      {
+        "month": "2025-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 1,
+        "value": 8100
+      },
+      {
+        "month": "2025-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 4,
+        "value": 49000
+      },
+      {
+        "month": "2025-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 7,
+        "value": 61900
+      },
+      {
+        "month": "2025-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 0
+      },
+      {
+        "month": "2025-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 2,
+        "value": 8100
+      },
+      {
+        "month": "2025-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 6,
+        "value": 46700
+      },
+      {
+        "month": "2025-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 9,
+        "value": 91900
+      },
+      {
+        "month": "2025-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 0
+      },
+      {
+        "month": "2025-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 3,
+        "value": 8100
+      },
+      {
+        "month": "2025-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 7,
+        "value": 73960
+      },
+      {
+        "month": "2025-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 20,
+        "value": 197950
+      },
+      {
+        "month": "2025-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 2,
+        "value": 22000
+      },
+      {
+        "month": "2025-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 0
+      },
+      {
+        "month": "2025-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 7,
+        "value": 31900
+      },
+      {
+        "month": "2025-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 2,
+        "value": 21825
+      },
+      {
+        "month": "2025-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 19,
+        "value": 199500
+      },
+      {
+        "month": "2025-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 4,
+        "value": 34500
+      },
+      {
+        "month": "2025-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 4,
+        "value": 0
+      },
+      {
+        "month": "2025-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 3,
+        "value": 8300
+      },
+      {
+        "month": "2025-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 2,
+        "value": 8500
+      },
+      {
+        "month": "2025-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 21,
+        "value": 252675
+      },
+      {
+        "month": "2025-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 1,
+        "value": 5000
+      },
+      {
+        "month": "2025-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 4,
+        "value": 0
+      },
+      {
+        "month": "2025-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 2,
+        "value": 33000
+      },
+      {
+        "month": "2025-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 9,
+        "value": 76900
+      },
+      {
+        "month": "2025-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 31,
+        "value": 278575
+      },
+      {
+        "month": "2025-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 2,
+        "value": 28500
+      },
+      {
+        "month": "2025-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 7,
+        "value": 0
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 2,
+        "value": 64350
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 13,
+        "value": 80500
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 25,
+        "value": 327145
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 3,
+        "value": 15300
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 6,
+        "value": 0
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 1,
+        "value": 17750
+      },
+      {
+        "month": "2025-08",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 1,
+        "value": 16493.98
+      },
+      {
+        "month": "2025-09",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 11,
+        "value": 101200
+      },
+      {
+        "month": "2025-09",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 17,
+        "value": 119500
+      },
+      {
+        "month": "2025-09",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 38,
+        "value": 500695
+      },
+      {
+        "month": "2025-09",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 2,
+        "value": 10300
+      },
+      {
+        "month": "2025-09",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 6,
+        "value": 0
+      },
+      {
+        "month": "2025-09",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 1,
+        "value": 17750
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 5,
+        "value": 47000
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 16,
+        "value": 129100
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 39,
+        "value": 506720
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 8,
+        "value": 56200
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 8,
+        "value": 0
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 0
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 1,
+        "value": 17750
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 3,
+        "value": 50690
+      },
+      {
+        "month": "2025-10",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 43349.29
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 3,
+        "value": 33000
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 23,
+        "value": 174800
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 50,
+        "value": 637770
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 4,
+        "value": 33500
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 9,
+        "value": 0
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 0
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 1,
+        "value": 17750
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 4,
+        "value": 70390
+      },
+      {
+        "month": "2025-11",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 1,
+        "value": 33649.29
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 5,
+        "value": 52000
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 21,
+        "value": 125500
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 60,
+        "value": 738050
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 4,
+        "value": 28450
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 9,
+        "value": 0
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 0
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 2,
+        "value": 31250
+      },
+      {
+        "month": "2025-12",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 2,
+        "value": 44704.68
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 8,
+        "value": 27300
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 33,
+        "value": 228400
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 58,
+        "value": 561600
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 3,
+        "value": 115500
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 9,
+        "value": 0
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 4,
+        "value": 98906
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 35000
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 3,
+        "value": 69000
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 4,
+        "value": 237000
+      },
+      {
+        "month": "2026-01",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 6,
+        "value": 106436.4
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 7,
+        "value": 29400
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 41,
+        "value": 308850
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 61,
+        "value": 616670
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 3,
+        "value": 17700
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 10,
+        "value": 0
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 7,
+        "value": 170596
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 3,
+        "value": 0
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 2,
+        "value": 32500
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 6,
+        "value": 364004.68
+      },
+      {
+        "month": "2026-02",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 116,
+        "stage": "Fechamento",
+        "stageOrder": 6,
+        "deals": 3,
+        "value": 91400
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 16,
+        "value": 61000
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 46,
+        "value": 332400
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 68,
+        "value": 694600
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 3,
+        "value": 23000
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 10,
+        "value": 0
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 9,
+        "value": 173096
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 21500
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 1,
+        "value": 0
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 2,
+        "value": 32500
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 5,
+        "value": 346204.68
+      },
+      {
+        "month": "2026-03",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 116,
+        "stage": "Fechamento",
+        "stageOrder": 6,
+        "deals": 1,
+        "value": 6500
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 29,
+        "value": 194300
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 54,
+        "value": 377750
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 78,
+        "value": 790550
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 4,
+        "value": 25000
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 10,
+        "value": 0
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 4,
+        "value": 116986
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 1,
+        "value": 0
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 150000
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 6,
+        "value": 135410
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 2,
+        "value": 32500
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 4,
+        "value": 319250
+      },
+      {
+        "month": "2026-04",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 116,
+        "stage": "Fechamento",
+        "stageOrder": 6,
+        "deals": 1,
+        "value": 26954.68
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 47,
+        "value": 220250
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 53,
+        "value": 222200
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 113,
+        "value": 1339300
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 4,
+        "value": 23500
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 10,
+        "value": 0
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 3,
+        "value": 0
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 102,
+        "stage": "Levantamento de Dados",
+        "stageOrder": 2,
+        "deals": 1,
+        "value": 30605
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 3,
+        "value": 126956
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 3,
+        "value": 33450
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 10,
+        "value": 646530
+      },
+      {
+        "month": "2026-05",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 116,
+        "stage": "Fechamento",
+        "stageOrder": 6,
+        "deals": 4,
+        "value": 93914.68
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 51,
+        "value": 8000
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 63,
+        "value": 48400
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 140,
+        "value": 1472250
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 7,
+        "value": 57800
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 10,
+        "value": 0
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 2,
+        "value": 0
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 2,
+        "value": 102956
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 2,
+        "value": 32500
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 14,
+        "value": 1012295
+      },
+      {
+        "month": "2026-06",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 116,
+        "stage": "Fechamento",
+        "stageOrder": 6,
+        "deals": 5,
+        "value": 166114.68
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 84,
+        "stage": "Reunião Marcada",
+        "stageOrder": 1,
+        "deals": 49,
+        "value": 0
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 86,
+        "stage": "Diagnóstico",
+        "stageOrder": 2,
+        "deals": 66,
+        "value": 42400
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 87,
+        "stage": "Negociação",
+        "stageOrder": 3,
+        "deals": 142,
+        "value": 1469950
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 88,
+        "stage": "Fechamento",
+        "stageOrder": 4,
+        "deals": 9,
+        "value": 80800
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 11,
+        "pipeline": "[Exec] Laudos - Condo",
+        "stageId": 89,
+        "stage": "Relacionamento",
+        "stageOrder": 5,
+        "deals": 10,
+        "value": 0
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 101,
+        "stage": "Solicitação Orçamento",
+        "stageOrder": 1,
+        "deals": 2,
+        "value": 0
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 103,
+        "stage": "Elaboração Proposta",
+        "stageOrder": 3,
+        "deals": 2,
+        "value": 102956
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 104,
+        "stage": "Proposta Feita",
+        "stageOrder": 4,
+        "deals": 2,
+        "value": 32500
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 105,
+        "stage": "Negociações Iniciadas",
+        "stageOrder": 5,
+        "deals": 14,
+        "value": 1012295
+      },
+      {
+        "month": "2026-07",
+        "pipelineId": 14,
+        "pipeline": "Obras",
+        "stageId": 116,
+        "stage": "Fechamento",
+        "stageOrder": 6,
+        "deals": 5,
+        "value": 166114.68
+      }
+    ]
   },
   "indicatorHighlights": {
     "partialMonthExcludedFromRecords": "2026-06",
@@ -3684,7 +6605,7 @@
             "metric": "createdValue",
             "metricLabel": "Valor de propostas criadas",
             "month": "2026-04",
-            "value": 819950,
+            "value": 827950,
             "previousBest": 795637.72,
             "previousBestMonth": "2026-01",
             "unit": "currency",
@@ -3695,7 +6616,7 @@
             "metricLabel": "Valor de propostas criadas",
             "month": "2026-05",
             "value": 882205,
-            "previousBest": 819950,
+            "previousBest": 827950,
             "previousBestMonth": "2026-04",
             "unit": "currency",
             "isFirstRecord": false
@@ -3805,7 +6726,7 @@
         "metricLabel": "Pipeline aberto (valor)",
         "unit": "currency",
         "recordMonth": "2026-06",
-        "recordValue": 3603123.66,
+        "recordValue": 3584303.66,
         "events": [
           {
             "metric": "openBaseValueEndOfMonth",
@@ -3831,7 +6752,7 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2025-03",
-            "value": 1028030.98,
+            "value": 1023630.98,
             "previousBest": 965530.98,
             "previousBestMonth": "2025-02",
             "unit": "currency",
@@ -3841,8 +6762,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2025-04",
-            "value": 1176640.98,
-            "previousBest": 1028030.98,
+            "value": 1172240.98,
+            "previousBest": 1023630.98,
             "previousBestMonth": "2025-03",
             "unit": "currency",
             "isFirstRecord": false
@@ -3851,8 +6772,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2025-05",
-            "value": 1197705.98,
-            "previousBest": 1176640.98,
+            "value": 1193305.98,
+            "previousBest": 1172240.98,
             "previousBestMonth": "2025-04",
             "unit": "currency",
             "isFirstRecord": false
@@ -3861,8 +6782,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2025-07",
-            "value": 1328927.98,
-            "previousBest": 1197705.98,
+            "value": 1324527.98,
+            "previousBest": 1193305.98,
             "previousBestMonth": "2025-05",
             "unit": "currency",
             "isFirstRecord": false
@@ -3871,8 +6792,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2025-08",
-            "value": 1484491.96,
-            "previousBest": 1328927.98,
+            "value": 1480091.96,
+            "previousBest": 1324527.98,
             "previousBestMonth": "2025-07",
             "unit": "currency",
             "isFirstRecord": false
@@ -3881,8 +6802,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2025-09",
-            "value": 1696597.98,
-            "previousBest": 1484491.96,
+            "value": 1692197.98,
+            "previousBest": 1480091.96,
             "previousBestMonth": "2025-08",
             "unit": "currency",
             "isFirstRecord": false
@@ -3891,8 +6812,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2025-10",
-            "value": 1758462.27,
-            "previousBest": 1696597.98,
+            "value": 1754062.27,
+            "previousBest": 1692197.98,
             "previousBestMonth": "2025-09",
             "unit": "currency",
             "isFirstRecord": false
@@ -3901,8 +6822,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2025-11",
-            "value": 1927012.27,
-            "previousBest": 1758462.27,
+            "value": 1922612.27,
+            "previousBest": 1754062.27,
             "previousBestMonth": "2025-10",
             "unit": "currency",
             "isFirstRecord": false
@@ -3911,8 +6832,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2026-01",
-            "value": 2281713.66,
-            "previousBest": 1927012.27,
+            "value": 2277313.66,
+            "previousBest": 1922612.27,
             "previousBestMonth": "2025-11",
             "unit": "currency",
             "isFirstRecord": false
@@ -3921,8 +6842,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2026-02",
-            "value": 2432608.66,
-            "previousBest": 2281713.66,
+            "value": 2421208.66,
+            "previousBest": 2277313.66,
             "previousBestMonth": "2026-01",
             "unit": "currency",
             "isFirstRecord": false
@@ -3931,8 +6852,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2026-04",
-            "value": 2884088.66,
-            "previousBest": 2432608.66,
+            "value": 2880688.66,
+            "previousBest": 2421208.66,
             "previousBestMonth": "2026-02",
             "unit": "currency",
             "isFirstRecord": false
@@ -3941,8 +6862,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2026-05",
-            "value": 3436293.66,
-            "previousBest": 2884088.66,
+            "value": 3432893.66,
+            "previousBest": 2880688.66,
             "previousBestMonth": "2026-04",
             "unit": "currency",
             "isFirstRecord": false
@@ -3951,8 +6872,8 @@
             "metric": "openBaseValueEndOfMonth",
             "metricLabel": "Pipeline aberto (valor)",
             "month": "2026-06",
-            "value": 3603123.66,
-            "previousBest": 3436293.66,
+            "value": 3584303.66,
+            "previousBest": 3432893.66,
             "previousBestMonth": "2026-05",
             "unit": "currency",
             "isFirstRecord": false
@@ -4105,7 +7026,7 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2025-03",
-        "value": 1028030.98,
+        "value": 1023630.98,
         "previousBest": 965530.98,
         "previousBestMonth": "2025-02",
         "unit": "currency",
@@ -4135,8 +7056,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2025-04",
-        "value": 1176640.98,
-        "previousBest": 1028030.98,
+        "value": 1172240.98,
+        "previousBest": 1023630.98,
         "previousBestMonth": "2025-03",
         "unit": "currency",
         "isFirstRecord": false
@@ -4195,8 +7116,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2025-05",
-        "value": 1197705.98,
-        "previousBest": 1176640.98,
+        "value": 1193305.98,
+        "previousBest": 1172240.98,
         "previousBestMonth": "2025-04",
         "unit": "currency",
         "isFirstRecord": false
@@ -4235,8 +7156,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2025-07",
-        "value": 1328927.98,
-        "previousBest": 1197705.98,
+        "value": 1324527.98,
+        "previousBest": 1193305.98,
         "previousBestMonth": "2025-05",
         "unit": "currency",
         "isFirstRecord": false
@@ -4265,8 +7186,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2025-08",
-        "value": 1484491.96,
-        "previousBest": 1328927.98,
+        "value": 1480091.96,
+        "previousBest": 1324527.98,
         "previousBestMonth": "2025-07",
         "unit": "currency",
         "isFirstRecord": false
@@ -4295,8 +7216,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2025-09",
-        "value": 1696597.98,
-        "previousBest": 1484491.96,
+        "value": 1692197.98,
+        "previousBest": 1480091.96,
         "previousBestMonth": "2025-08",
         "unit": "currency",
         "isFirstRecord": false
@@ -4305,8 +7226,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2025-10",
-        "value": 1758462.27,
-        "previousBest": 1696597.98,
+        "value": 1754062.27,
+        "previousBest": 1692197.98,
         "previousBestMonth": "2025-09",
         "unit": "currency",
         "isFirstRecord": false
@@ -4325,8 +7246,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2025-11",
-        "value": 1927012.27,
-        "previousBest": 1758462.27,
+        "value": 1922612.27,
+        "previousBest": 1754062.27,
         "previousBestMonth": "2025-10",
         "unit": "currency",
         "isFirstRecord": false
@@ -4345,8 +7266,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2026-01",
-        "value": 2281713.66,
-        "previousBest": 1927012.27,
+        "value": 2277313.66,
+        "previousBest": 1922612.27,
         "previousBestMonth": "2025-11",
         "unit": "currency",
         "isFirstRecord": false
@@ -4405,8 +7326,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2026-02",
-        "value": 2432608.66,
-        "previousBest": 2281713.66,
+        "value": 2421208.66,
+        "previousBest": 2277313.66,
         "previousBestMonth": "2026-01",
         "unit": "currency",
         "isFirstRecord": false
@@ -4465,8 +7386,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2026-04",
-        "value": 2884088.66,
-        "previousBest": 2432608.66,
+        "value": 2880688.66,
+        "previousBest": 2421208.66,
         "previousBestMonth": "2026-02",
         "unit": "currency",
         "isFirstRecord": false
@@ -4475,7 +7396,7 @@
         "metric": "createdValue",
         "metricLabel": "Valor de propostas criadas",
         "month": "2026-04",
-        "value": 819950,
+        "value": 827950,
         "previousBest": 795637.72,
         "previousBestMonth": "2026-01",
         "unit": "currency",
@@ -4485,8 +7406,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2026-05",
-        "value": 3436293.66,
-        "previousBest": 2884088.66,
+        "value": 3432893.66,
+        "previousBest": 2880688.66,
         "previousBestMonth": "2026-04",
         "unit": "currency",
         "isFirstRecord": false
@@ -4496,7 +7417,7 @@
         "metricLabel": "Valor de propostas criadas",
         "month": "2026-05",
         "value": 882205,
-        "previousBest": 819950,
+        "previousBest": 827950,
         "previousBestMonth": "2026-04",
         "unit": "currency",
         "isFirstRecord": false
@@ -4505,8 +7426,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2026-06",
-        "value": 3603123.66,
-        "previousBest": 3436293.66,
+        "value": 3584303.66,
+        "previousBest": 3432893.66,
         "previousBestMonth": "2026-05",
         "unit": "currency",
         "isFirstRecord": false
@@ -4517,8 +7438,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2026-01",
-        "value": 2281713.66,
-        "previousBest": 1927012.27,
+        "value": 2277313.66,
+        "previousBest": 1922612.27,
         "previousBestMonth": "2025-11",
         "unit": "currency",
         "isFirstRecord": false
@@ -4577,8 +7498,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2026-02",
-        "value": 2432608.66,
-        "previousBest": 2281713.66,
+        "value": 2421208.66,
+        "previousBest": 2277313.66,
         "previousBestMonth": "2026-01",
         "unit": "currency",
         "isFirstRecord": false
@@ -4637,8 +7558,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2026-04",
-        "value": 2884088.66,
-        "previousBest": 2432608.66,
+        "value": 2880688.66,
+        "previousBest": 2421208.66,
         "previousBestMonth": "2026-02",
         "unit": "currency",
         "isFirstRecord": false
@@ -4647,7 +7568,7 @@
         "metric": "createdValue",
         "metricLabel": "Valor de propostas criadas",
         "month": "2026-04",
-        "value": 819950,
+        "value": 827950,
         "previousBest": 795637.72,
         "previousBestMonth": "2026-01",
         "unit": "currency",
@@ -4657,8 +7578,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2026-05",
-        "value": 3436293.66,
-        "previousBest": 2884088.66,
+        "value": 3432893.66,
+        "previousBest": 2880688.66,
         "previousBestMonth": "2026-04",
         "unit": "currency",
         "isFirstRecord": false
@@ -4668,7 +7589,7 @@
         "metricLabel": "Valor de propostas criadas",
         "month": "2026-05",
         "value": 882205,
-        "previousBest": 819950,
+        "previousBest": 827950,
         "previousBestMonth": "2026-04",
         "unit": "currency",
         "isFirstRecord": false
@@ -4677,8 +7598,8 @@
         "metric": "openBaseValueEndOfMonth",
         "metricLabel": "Pipeline aberto (valor)",
         "month": "2026-06",
-        "value": 3603123.66,
-        "previousBest": 3436293.66,
+        "value": 3584303.66,
+        "previousBest": 3432893.66,
         "previousBestMonth": "2026-05",
         "unit": "currency",
         "isFirstRecord": false
@@ -4825,9 +7746,18 @@
         "label": "Jun",
         "metric": "revenueYoY",
         "metricLabel": "Receita ganha YoY",
-        "value2026": 111070,
+        "value2026": 139490,
         "value2025": 77000,
-        "changePct": 44.246753246753244
+        "changePct": 81.15584415584416
+      },
+      {
+        "month": "2026-06",
+        "label": "Jun",
+        "metric": "wonDealsYoY",
+        "metricLabel": "Fechamentos YoY",
+        "value2026": 14,
+        "value2025": 12,
+        "changePct": 16.666666666666664
       }
     ],
     "typePeaks": [
@@ -4867,6 +7797,13 @@
         "averageTicket": 7875
       },
       {
+        "type": "ICV - Inspeção de carregador veicular",
+        "month": "2026-06",
+        "revenue": 21620,
+        "wonDeals": 3,
+        "averageTicket": 7206.666666666667
+      },
+      {
         "type": "Instalação de Carregador Eletrico",
         "month": "2026-01",
         "revenue": 21515.86,
@@ -4886,13 +7823,6 @@
         "revenue": 13800,
         "wonDeals": 1,
         "averageTicket": 13800
-      },
-      {
-        "type": "ICV - Inspeção de carregador veicular",
-        "month": "2026-06",
-        "revenue": 13700,
-        "wonDeals": 2,
-        "averageTicket": 6850
       },
       {
         "type": "Laudos e consultoria condominial",
@@ -4950,12 +7880,12 @@
         "cohortConversionPct": 14.864864864864865
       },
       {
-        "month": "2025-12",
-        "revenue": 138289.29,
-        "wonDeals": 11,
-        "createdDeals": 27,
-        "averageTicket": 12571.753636363637,
-        "cohortConversionPct": 37.03703703703704
+        "month": "2026-06",
+        "revenue": 139490,
+        "wonDeals": 14,
+        "createdDeals": 93,
+        "averageTicket": 9963.57142857143,
+        "cohortConversionPct": 5.376344086021505
       }
     ],
     "recommendations": [
@@ -5103,13 +8033,13 @@
         },
         {
           "month": "2026-06",
-          "wonDeals": 11,
-          "averageDays": 35.90909090909091,
+          "wonDeals": 13,
+          "averageDays": 34.30769230769231,
           "medianDays": 28,
-          "revenue": 111070
+          "revenue": 131570
         }
       ],
-      "overallAverageDays": 76.46524064171123,
+      "overallAverageDays": 75.92592592592592,
       "fastestMonth": {
         "month": "2025-01",
         "wonDeals": 3,
@@ -5301,19 +8231,19 @@
         },
         {
           "month": "2026-06",
-          "totalRevenue": 111070,
-          "newRevenue": 30150,
-          "repeatRevenue": 80920,
-          "newDeals": 5,
-          "repeatDeals": 6,
-          "newSharePct": 27.145043666156475,
-          "repeatSharePct": 72.85495633384352
+          "totalRevenue": 139490,
+          "newRevenue": 50650,
+          "repeatRevenue": 88840,
+          "newDeals": 7,
+          "repeatDeals": 7,
+          "newSharePct": 36.31084665567424,
+          "repeatSharePct": 63.68915334432575
         }
       ],
       "totals": {
-        "newRevenue": 1145498.98,
-        "repeatRevenue": 743131.01,
-        "newSharePct": 60.6523769115834
+        "newRevenue": 1165998.98,
+        "repeatRevenue": 751051.01,
+        "newSharePct": 60.822565195600355
       }
     },
     "funnelByStage": {
@@ -5324,9 +8254,9 @@
           "stageId": 84,
           "stage": "Reunião Marcada",
           "stageOrder": 1,
-          "deals": 47,
-          "value": 4400,
-          "averageValue": 93.61702127659575
+          "deals": 49,
+          "value": 0,
+          "averageValue": 0
         },
         {
           "pipelineId": 11,
@@ -5344,9 +8274,9 @@
           "stageId": 87,
           "stage": "Negociação",
           "stageOrder": 3,
-          "deals": 143,
-          "value": 1478950,
-          "averageValue": 10342.307692307691
+          "deals": 142,
+          "value": 1469950,
+          "averageValue": 10351.760563380281
         },
         {
           "pipelineId": 11,
@@ -5355,8 +8285,8 @@
           "stage": "Fechamento",
           "stageOrder": 4,
           "deals": 9,
-          "value": 86220,
-          "averageValue": 9580
+          "value": 80800,
+          "averageValue": 8977.777777777777
         },
         {
           "pipelineId": 11,
@@ -5778,9 +8708,9 @@
           "stageId": 88,
           "stage": "Fechamento",
           "stageOrder": 4,
-          "deals": 160,
-          "value": 1331055,
-          "averageValue": 8319.09375
+          "deals": 163,
+          "value": 1359475,
+          "averageValue": 8340.337423312883
         },
         {
           "pipelineId": 14,
@@ -5824,8 +8754,8 @@
         }
       ],
       "summary": {
-        "openDeals": 404,
-        "openValue": 3088735.6799999997,
+        "openDeals": 405,
+        "openValue": 3069915.6799999997,
         "lostDeals": 422,
         "lostValue": 2031753,
         "topOpenStage": {
@@ -5834,9 +8764,9 @@
           "stageId": 87,
           "stage": "Negociação",
           "stageOrder": 3,
-          "deals": 143,
-          "value": 1478950,
-          "averageValue": 10342.307692307691
+          "deals": 142,
+          "value": 1469950,
+          "averageValue": 10351.760563380281
         },
         "topLostStage": {
           "pipelineId": 11,
@@ -6017,7 +8947,7 @@
       "benchmarkTypes": [
         {
           "type": "LDC - Laudo de disponibilidade de carga",
-          "averageRevenue": 44687.8431372549,
+          "averageRevenue": 45893.725490196084,
           "monthsActive": 17
         },
         {
@@ -6392,84 +9322,48 @@
           {
             "metric": "newDealsConversionPct",
             "metricLabel": "Conversão dos novos negócios",
-            "currentValue": 8.695652173913043,
+            "currentValue": 9.782608695652174,
             "previousValue": 14.864864864864865,
-            "changePct": -41.501976284584984
+            "changePct": -34.18972332015811
           }
         ],
         "message": "4 indicadores caíram vs 2026-04. Revisar follow-up, propostas e conversão."
       },
       {
-        "month": "2026-06",
-        "severity": "high",
-        "declineCount": 3,
-        "metrics": [
-          {
-            "metric": "wonRevenue",
-            "metricLabel": "Receita ganha",
-            "currentValue": 111070,
-            "previousValue": 130800,
-            "changePct": -15.084097859327217
-          },
-          {
-            "metric": "wonDeals",
-            "metricLabel": "Fechamentos",
-            "currentValue": 11,
-            "previousValue": 14,
-            "changePct": -21.428571428571427
-          },
-          {
-            "metric": "newDealsConversionPct",
-            "metricLabel": "Conversão dos novos negócios",
-            "currentValue": 4.301075268817205,
-            "previousValue": 8.695652173913043,
-            "changePct": -50.53763440860214
-          }
-        ],
-        "message": "3 indicadores caíram vs 2026-05. Revisar follow-up, propostas e conversão."
-      },
-      {
         "month": "2026-07",
         "severity": "high",
-        "declineCount": 5,
+        "declineCount": 4,
         "metrics": [
           {
             "metric": "wonRevenue",
             "metricLabel": "Receita ganha",
             "currentValue": 0,
-            "previousValue": 111070,
+            "previousValue": 139490,
             "changePct": -100
           },
           {
             "metric": "wonDeals",
             "metricLabel": "Fechamentos",
             "currentValue": 0,
-            "previousValue": 11,
+            "previousValue": 14,
             "changePct": -100
           },
           {
             "metric": "createdDeals",
             "metricLabel": "Novos negócios",
-            "currentValue": 1,
+            "currentValue": 5,
             "previousValue": 93,
-            "changePct": -98.9247311827957
+            "changePct": -94.6236559139785
           },
           {
             "metric": "averageTicket",
             "metricLabel": "Ticket médio",
             "currentValue": 0,
-            "previousValue": 10097.272727272728,
-            "changePct": -100
-          },
-          {
-            "metric": "newDealsConversionPct",
-            "metricLabel": "Conversão dos novos negócios",
-            "currentValue": 0,
-            "previousValue": 4.301075268817205,
+            "previousValue": 9963.57142857143,
             "changePct": -100
           }
         ],
-        "message": "5 indicadores caíram vs 2026-06. Revisar follow-up, propostas e conversão."
+        "message": "4 indicadores caíram vs 2026-06. Revisar follow-up, propostas e conversão."
       }
     ],
     "investigationNotes": [
@@ -6486,29 +9380,29 @@
       {
         "kind": "funnel",
         "title": "Gargalo atual do funil",
-        "body": "Maior volume aberto em \"Negociação\" (143 negócios)."
+        "body": "Maior volume aberto em \"Negociação\" (142 negócios)."
       }
     ]
   },
   "commercialDirector": {
     "mainPipeline": "[Exec] Laudos - Condo",
     "snapshot": {
-      "reuniaoMarcada": 47,
+      "reuniaoMarcada": 49,
       "diagnostico": 66,
-      "negociacao": 143,
+      "negociacao": 142,
       "fechamento": 9,
       "relacionamento": 10
     },
     "sla48h": {
-      "breaches": 46,
+      "breaches": 50,
       "gateTarget": 0,
       "note": "Negócios em Diagnóstico sem avanço há >48h (update_time ou add_time). App registrará visita → proposta com SLA auditável."
     },
     "rolling": {
-      "won7d": 7,
-      "won30d": 11,
-      "created7d": 16,
-      "created30d": 94
+      "won7d": 6,
+      "won30d": 14,
+      "created7d": 17,
+      "created30d": 86
     }
   },
   "growthGuides": {
@@ -6539,8 +9433,8 @@
           "revenueTarget": 143397.09858247917,
           "wonDealsTarget": 12.44616740605308,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 67.0983293445134,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 66.32106326104912,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 69640,
           "baseProjectionRevenue": 143397.09858247917,
           "gapVsBase": 0,
@@ -6550,7 +9444,7 @@
           "perCommercial": {
             "closings": 6.22308370302654,
             "revenue": 71698.54929123959,
-            "newDeals": 33.5491646722567
+            "newDeals": 33.16053163052456
           },
           "perProjectista": {
             "activeProjects": 2.489233481210616
@@ -6604,8 +9498,8 @@
           "revenueTarget": 216619.39648013795,
           "wonDealsTarget": 18.801505041883743,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 101.36048602875947,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 100.18632761433611,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 105200,
           "baseProjectionRevenue": 216619.39648013795,
           "gapVsBase": 0,
@@ -6615,7 +9509,7 @@
           "perCommercial": {
             "closings": 9.400752520941872,
             "revenue": 108309.69824006897,
-            "newDeals": 50.680243014379734
+            "newDeals": 50.093163807168054
           },
           "perProjectista": {
             "activeProjects": 3.7603010083767487
@@ -6669,8 +9563,8 @@
           "revenueTarget": 169494.34096462117,
           "wonDealsTarget": 14.711280513189331,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 79.30974353385538,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 78.39102060380142,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 82313.98,
           "baseProjectionRevenue": 169494.34096462117,
           "gapVsBase": 0,
@@ -6680,7 +9574,7 @@
           "perCommercial": {
             "closings": 7.355640256594666,
             "revenue": 84747.17048231058,
-            "newDeals": 39.65487176692769
+            "newDeals": 39.19551030190071
           },
           "perProjectista": {
             "activeProjects": 2.942256102637866
@@ -6734,8 +9628,8 @@
           "revenueTarget": 230930.27866204822,
           "wonDealsTarget": 20.043619681057624,
           "averageTicketTarget": 11521.38597402597,
-          "createdDealsTarget": 108.05682992514615,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 106.80510115919958,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 112150,
           "baseProjectionRevenue": 230930.27866204822,
           "gapVsBase": 0,
@@ -6745,7 +9639,7 @@
           "perCommercial": {
             "closings": 10.021809840528812,
             "revenue": 115465.13933102411,
-            "newDeals": 54.02841496257307
+            "newDeals": 53.40255057959979
           },
           "perProjectista": {
             "activeProjects": 4.008723936211525
@@ -6799,8 +9693,8 @@
           "revenueTarget": 204800.04918169696,
           "wonDealsTarget": 17.77564345499769,
           "averageTicketTarget": 11521.38597402597,
-          "createdDealsTarget": 95.8299804222473,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 94.71988730534096,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 99460,
           "baseProjectionRevenue": 204800.04918169696,
           "gapVsBase": 0,
@@ -6810,7 +9704,7 @@
           "perCommercial": {
             "closings": 8.887821727498846,
             "revenue": 102400.02459084848,
-            "newDeals": 47.91499021112365
+            "newDeals": 47.35994365267048
           },
           "perProjectista": {
             "activeProjects": 3.5551286909995383
@@ -6864,8 +9758,8 @@
           "revenueTarget": 284754.20664892375,
           "wonDealsTarget": 24.715273604311058,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 133.24210691038087,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 131.6986322575469,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 138289.29,
           "baseProjectionRevenue": 284754.20664892375,
           "gapVsBase": 0,
@@ -6875,7 +9769,7 @@
           "perCommercial": {
             "closings": 12.357636802155529,
             "revenue": 142377.10332446187,
-            "newDeals": 66.62105345519043
+            "newDeals": 65.84931612877345
           },
           "perProjectista": {
             "activeProjects": 4.943054720862212
@@ -6931,7 +9825,7 @@
           "revenueTarget": 169205.11938168094,
           "wonDealsTarget": 14.686177493154046,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 79.17441105350883,
+          "createdDealsTarget": 78.25725581296358,
           "conversionTargetPct": 28.8135593220339,
           "baseline2025Revenue": 18400,
           "baseProjectionRevenue": 180131.72,
@@ -6942,7 +9836,7 @@
           "perCommercial": {
             "closings": 7.343088746577023,
             "revenue": 84602.55969084047,
-            "newDeals": 39.58720552675442
+            "newDeals": 39.12862790648179
           },
           "perProjectista": {
             "activeProjects": 2.9372354986308093
@@ -6996,7 +9890,7 @@
           "revenueTarget": 186144.5195897247,
           "wonDealsTarget": 16.156434651991727,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 87.10069035269622,
+          "createdDealsTarget": 86.09171720658597,
           "conversionTargetPct": 27.11864406779661,
           "baseline2025Revenue": 37500,
           "baseProjectionRevenue": 198165,
@@ -7007,7 +9901,7 @@
           "perCommercial": {
             "closings": 8.078217325995864,
             "revenue": 93072.25979486234,
-            "newDeals": 43.55034517634811
+            "newDeals": 43.045858603292984
           },
           "perProjectista": {
             "activeProjects": 3.2312869303983454
@@ -7061,7 +9955,7 @@
           "revenueTarget": 208956.4170400134,
           "wonDealsTarget": 18.1363958738201,
           "averageTicketTarget": 11521.38597402597,
-          "createdDealsTarget": 97.77482688142344,
+          "createdDealsTarget": 96.64220469106579,
           "conversionTargetPct": 13.253012048192772,
           "baseline2025Revenue": 10500,
           "baseProjectionRevenue": 222450,
@@ -7072,7 +9966,7 @@
           "perCommercial": {
             "closings": 9.06819793691005,
             "revenue": 104478.2085200067,
-            "newDeals": 48.88741344071172
+            "newDeals": 48.32110234553289
           },
           "perProjectista": {
             "activeProjects": 3.62727917476402
@@ -7126,7 +10020,7 @@
           "revenueTarget": 146161.4677070177,
           "wonDealsTarget": 12.68610113718322,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 68.39183215441442,
+          "createdDealsTarget": 67.59958215297746,
           "conversionTargetPct": 14.864864864864865,
           "baseline2025Revenue": 75800,
           "baseProjectionRevenue": 155600,
@@ -7137,7 +10031,7 @@
           "perCommercial": {
             "closings": 6.34305056859161,
             "revenue": 73080.73385350885,
-            "newDeals": 34.19591607720721
+            "newDeals": 33.79979107648873
           },
           "perProjectista": {
             "activeProjects": 2.537220227436644
@@ -7191,8 +10085,8 @@
           "revenueTarget": 122865.80961489661,
           "wonDealsTarget": 10.664151855678439,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 57.491334484559154,
-          "conversionTargetPct": 8.695652173913043,
+          "createdDealsTarget": 56.82535569157744,
+          "conversionTargetPct": 9.782608695652174,
           "baseline2025Revenue": 64160,
           "baseProjectionRevenue": 130800,
           "gapVsBase": -7934.190385103386,
@@ -7202,7 +10096,7 @@
           "perCommercial": {
             "closings": 5.332075927839219,
             "revenue": 61432.90480744831,
-            "newDeals": 28.745667242279577
+            "newDeals": 28.41267784578872
           },
           "perProjectista": {
             "activeProjects": 2.1328303711356877
@@ -7256,8 +10150,8 @@
           "revenueTarget": 166666.66666666666,
           "wonDealsTarget": 14.465852202365506,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 77.9866189853204,
-          "conversionTargetPct": 4.301075268817205,
+          "createdDealsTarget": 77.08322311103404,
+          "conversionTargetPct": 5.376344086021505,
           "baseline2025Revenue": 77000,
           "baseProjectionRevenue": 177429.34399999998,
           "gapVsBase": -10762.677333333326,
@@ -7267,7 +10161,7 @@
           "perCommercial": {
             "closings": 7.232926101182753,
             "revenue": 83333.33333333333,
-            "newDeals": 38.9933094926602
+            "newDeals": 38.54161155551702
           },
           "perProjectista": {
             "activeProjects": 2.893170440473101
@@ -7323,7 +10217,7 @@
           "revenueTarget": 169205.11938168094,
           "wonDealsTarget": 14.686177493154046,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 79.17441105350883,
+          "createdDealsTarget": 78.25725581296358,
           "conversionTargetPct": 28.8135593220339,
           "baseline2025Revenue": 18400,
           "baseProjectionRevenue": 180131.72,
@@ -7334,7 +10228,7 @@
           "perCommercial": {
             "closings": 7.343088746577023,
             "revenue": 84602.55969084047,
-            "newDeals": 39.58720552675442
+            "newDeals": 39.12862790648179
           },
           "perProjectista": {
             "activeProjects": 2.9372354986308093
@@ -7388,7 +10282,7 @@
           "revenueTarget": 186144.5195897247,
           "wonDealsTarget": 16.156434651991727,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 87.10069035269622,
+          "createdDealsTarget": 86.09171720658597,
           "conversionTargetPct": 27.11864406779661,
           "baseline2025Revenue": 37500,
           "baseProjectionRevenue": 198165,
@@ -7399,7 +10293,7 @@
           "perCommercial": {
             "closings": 8.078217325995864,
             "revenue": 93072.25979486234,
-            "newDeals": 43.55034517634811
+            "newDeals": 43.045858603292984
           },
           "perProjectista": {
             "activeProjects": 3.2312869303983454
@@ -7453,7 +10347,7 @@
           "revenueTarget": 208956.4170400134,
           "wonDealsTarget": 18.1363958738201,
           "averageTicketTarget": 11521.38597402597,
-          "createdDealsTarget": 97.77482688142344,
+          "createdDealsTarget": 96.64220469106579,
           "conversionTargetPct": 13.253012048192772,
           "baseline2025Revenue": 10500,
           "baseProjectionRevenue": 222450,
@@ -7464,7 +10358,7 @@
           "perCommercial": {
             "closings": 9.06819793691005,
             "revenue": 104478.2085200067,
-            "newDeals": 48.88741344071172
+            "newDeals": 48.32110234553289
           },
           "perProjectista": {
             "activeProjects": 3.62727917476402
@@ -7518,7 +10412,7 @@
           "revenueTarget": 146161.4677070177,
           "wonDealsTarget": 12.68610113718322,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 68.39183215441442,
+          "createdDealsTarget": 67.59958215297746,
           "conversionTargetPct": 14.864864864864865,
           "baseline2025Revenue": 75800,
           "baseProjectionRevenue": 155600,
@@ -7529,7 +10423,7 @@
           "perCommercial": {
             "closings": 6.34305056859161,
             "revenue": 73080.73385350885,
-            "newDeals": 34.19591607720721
+            "newDeals": 33.79979107648873
           },
           "perProjectista": {
             "activeProjects": 2.537220227436644
@@ -7583,8 +10477,8 @@
           "revenueTarget": 122865.80961489661,
           "wonDealsTarget": 10.664151855678439,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 57.491334484559154,
-          "conversionTargetPct": 8.695652173913043,
+          "createdDealsTarget": 56.82535569157744,
+          "conversionTargetPct": 9.782608695652174,
           "baseline2025Revenue": 64160,
           "baseProjectionRevenue": 130800,
           "gapVsBase": -7934.190385103386,
@@ -7594,7 +10488,7 @@
           "perCommercial": {
             "closings": 5.332075927839219,
             "revenue": 61432.90480744831,
-            "newDeals": 28.745667242279577
+            "newDeals": 28.41267784578872
           },
           "perProjectista": {
             "activeProjects": 2.1328303711356877
@@ -7648,8 +10542,8 @@
           "revenueTarget": 166666.66666666666,
           "wonDealsTarget": 14.465852202365506,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 77.9866189853204,
-          "conversionTargetPct": 4.301075268817205,
+          "createdDealsTarget": 77.08322311103404,
+          "conversionTargetPct": 5.376344086021505,
           "baseline2025Revenue": 77000,
           "baseProjectionRevenue": 177429.34399999998,
           "gapVsBase": -10762.677333333326,
@@ -7659,7 +10553,7 @@
           "perCommercial": {
             "closings": 7.232926101182753,
             "revenue": 83333.33333333333,
-            "newDeals": 38.9933094926602
+            "newDeals": 38.54161155551702
           },
           "perProjectista": {
             "activeProjects": 2.893170440473101
@@ -7713,8 +10607,8 @@
           "revenueTarget": 143397.09858247917,
           "wonDealsTarget": 12.44616740605308,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 67.0983293445134,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 66.32106326104912,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 69640,
           "baseProjectionRevenue": 143397.09858247917,
           "gapVsBase": 0,
@@ -7724,7 +10618,7 @@
           "perCommercial": {
             "closings": 6.22308370302654,
             "revenue": 71698.54929123959,
-            "newDeals": 33.5491646722567
+            "newDeals": 33.16053163052456
           },
           "perProjectista": {
             "activeProjects": 2.489233481210616
@@ -7778,8 +10672,8 @@
           "revenueTarget": 216619.39648013795,
           "wonDealsTarget": 18.801505041883743,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 101.36048602875947,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 100.18632761433611,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 105200,
           "baseProjectionRevenue": 216619.39648013795,
           "gapVsBase": 0,
@@ -7789,7 +10683,7 @@
           "perCommercial": {
             "closings": 9.400752520941872,
             "revenue": 108309.69824006897,
-            "newDeals": 50.680243014379734
+            "newDeals": 50.093163807168054
           },
           "perProjectista": {
             "activeProjects": 3.7603010083767487
@@ -7843,8 +10737,8 @@
           "revenueTarget": 169494.34096462117,
           "wonDealsTarget": 14.711280513189331,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 79.30974353385538,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 78.39102060380142,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 82313.98,
           "baseProjectionRevenue": 169494.34096462117,
           "gapVsBase": 0,
@@ -7854,7 +10748,7 @@
           "perCommercial": {
             "closings": 7.355640256594666,
             "revenue": 84747.17048231058,
-            "newDeals": 39.65487176692769
+            "newDeals": 39.19551030190071
           },
           "perProjectista": {
             "activeProjects": 2.942256102637866
@@ -7908,8 +10802,8 @@
           "revenueTarget": 230930.27866204822,
           "wonDealsTarget": 20.043619681057624,
           "averageTicketTarget": 11521.38597402597,
-          "createdDealsTarget": 108.05682992514615,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 106.80510115919958,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 112150,
           "baseProjectionRevenue": 230930.27866204822,
           "gapVsBase": 0,
@@ -7919,7 +10813,7 @@
           "perCommercial": {
             "closings": 10.021809840528812,
             "revenue": 115465.13933102411,
-            "newDeals": 54.02841496257307
+            "newDeals": 53.40255057959979
           },
           "perProjectista": {
             "activeProjects": 4.008723936211525
@@ -7973,8 +10867,8 @@
           "revenueTarget": 204800.04918169696,
           "wonDealsTarget": 17.77564345499769,
           "averageTicketTarget": 11521.38597402597,
-          "createdDealsTarget": 95.8299804222473,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 94.71988730534096,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 99460,
           "baseProjectionRevenue": 204800.04918169696,
           "gapVsBase": 0,
@@ -7984,7 +10878,7 @@
           "perCommercial": {
             "closings": 8.887821727498846,
             "revenue": 102400.02459084848,
-            "newDeals": 47.91499021112365
+            "newDeals": 47.35994365267048
           },
           "perProjectista": {
             "activeProjects": 3.5551286909995383
@@ -8038,8 +10932,8 @@
           "revenueTarget": 284754.20664892375,
           "wonDealsTarget": 24.715273604311058,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 133.24210691038087,
-          "conversionTargetPct": 18.54914649536024,
+          "createdDealsTarget": 131.6986322575469,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 138289.29,
           "baseProjectionRevenue": 284754.20664892375,
           "gapVsBase": 0,
@@ -8049,7 +10943,7 @@
           "perCommercial": {
             "closings": 12.357636802155529,
             "revenue": 142377.10332446187,
-            "newDeals": 66.62105345519043
+            "newDeals": 65.84931612877345
           },
           "perProjectista": {
             "activeProjects": 4.943054720862212
@@ -8102,20 +10996,20 @@
         "h2AverageMonthlyRevenue": 208332.56175331786,
         "h2AverageWonDeals": 18.082248283582086,
         "h2AverageTicket": 11521.385974025972,
-        "h2AverageCreatedDeals": 97.48291269415041,
-        "h2AverageConversionPct": 18.54914649536024,
+        "h2AverageCreatedDeals": 96.35367203354568,
+        "h2AverageConversionPct": 18.766537799708065,
         "currentH1": {
           "averageRevenue": 177429.34399999998,
           "averageWonDeals": 15.4,
           "averageTicket": 11521.385974025972,
           "averageCreatedDeals": 73.4,
-          "averageConversionPct": 18.54914649536024
+          "averageConversionPct": 18.766537799708065
         },
         "uplift": {
           "revenuePct": 17.417196646636917,
           "wonDealsPct": 17.417196646636917,
           "ticketPct": 0,
-          "createdDealsPct": 32.810507757698105,
+          "createdDealsPct": 31.272032743250232,
           "conversionPts": 0
         }
       },
@@ -8256,7 +11150,7 @@
           "perPersonH2": {
             "monthlyClosings": 9.041124141791043,
             "monthlyRevenue": 104166.28087665893,
-            "monthlyNewDeals": 48.74145634707521
+            "monthlyNewDeals": 48.17683601677284
           }
         },
         "deliveryTeam": {
@@ -8398,14 +11292,14 @@
             {
               "priority": "high",
               "title": "Recuperar conversão dos novos negócios",
-              "detail": "Conversão dos novos negócios em maio/2026: 6,5%. Meta H2: 18,5%.",
+              "detail": "Conversão dos novos negócios em maio/2026: 6,5%. Meta H2: 18,8%.",
               "metric": "Conv. novos neg.",
-              "target": "18,5%"
+              "target": "18,8%"
             },
             {
               "priority": "high",
               "title": "Desbloquear pipeline em negociação",
-              "detail": "143 negócios em \"Negociação\" (R$ 1.478.950).",
+              "detail": "142 negócios em \"Negociação\" (R$ 1.469.950).",
               "metric": "Pipeline aberto",
               "target": "R$ 437.498"
             }
@@ -8440,9 +11334,9 @@
             {
               "priority": "critical",
               "title": "Novos negócios qualificados",
-              "detail": "97 novos/mês (48,7/comercial).",
+              "detail": "96 novos/mês (48,2/comercial).",
               "metric": "Novos negócios/mês",
-              "target": "97 (+25)"
+              "target": "96 (+23)"
             }
           ]
         },
@@ -8597,7 +11491,7 @@
         },
         {
           "title": "Queda de conversão após fevereiro",
-          "mitigation": "Manter Conv. novos neg. acima de 18,5%."
+          "mitigation": "Manter Conv. novos neg. acima de 18,8%."
         },
         {
           "title": "2 comerciais no limite de capacidade",
@@ -8636,8 +11530,8 @@
           "revenueTarget": 229436.2074682507,
           "wonDealsTarget": 19.913941602641902,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 107.35772455958035,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 106.11409422014799,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 69640,
           "baseProjectionRevenue": 143397.09858247917,
           "gapVsBase": 86039.10888577154,
@@ -8647,7 +11541,7 @@
           "perCommercial": {
             "closings": 9.956970801320951,
             "revenue": 114718.10373412535,
-            "newDeals": 53.678862279790174
+            "newDeals": 53.057047110073995
           },
           "perProjectista": {
             "activeProjects": 3.9827883205283805
@@ -8701,8 +11595,8 @@
           "revenueTarget": 346592.31800200994,
           "wonDealsTarget": 30.082519480154048,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 162.17737828357053,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 160.29871786271636,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 105200,
           "baseProjectionRevenue": 216619.39648013795,
           "gapVsBase": 129972.92152187199,
@@ -8712,7 +11606,7 @@
           "perCommercial": {
             "closings": 15.041259740077024,
             "revenue": 173296.15900100497,
-            "newDeals": 81.08868914178527
+            "newDeals": 80.14935893135818
           },
           "perProjectista": {
             "activeProjects": 6.01650389603081
@@ -8766,8 +11660,8 @@
           "revenueTarget": 271191.9499255807,
           "wonDealsTarget": 23.538135996568545,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 126.89605962439411,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 125.42609749217945,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 82313.98,
           "baseProjectionRevenue": 169494.34096462117,
           "gapVsBase": 101697.60896095954,
@@ -8777,7 +11671,7 @@
           "perCommercial": {
             "closings": 11.769067998284273,
             "revenue": 135595.97496279035,
-            "newDeals": 63.448029812197056
+            "newDeals": 62.713048746089726
           },
           "perProjectista": {
             "activeProjects": 4.707627199313709
@@ -8831,8 +11725,8 @@
           "revenueTarget": 369489.814295869,
           "wonDealsTarget": 32.06991026330111,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 172.89156819869237,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 170.88879475573805,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 112150,
           "baseProjectionRevenue": 230930.27866204822,
           "gapVsBase": 138559.53563382075,
@@ -8842,7 +11736,7 @@
           "perCommercial": {
             "closings": 16.034955131650555,
             "revenue": 184744.9071479345,
-            "newDeals": 86.44578409934618
+            "newDeals": 85.44439737786902
           },
           "perProjectista": {
             "activeProjects": 6.413982052660222
@@ -8896,8 +11790,8 @@
           "revenueTarget": 327681.29228593066,
           "wonDealsTarget": 28.441134862130433,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 153.3285365407217,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 151.55238097553013,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 99460,
           "baseProjectionRevenue": 204800.04918169696,
           "gapVsBase": 122881.2431042337,
@@ -8907,7 +11801,7 @@
           "perCommercial": {
             "closings": 14.220567431065216,
             "revenue": 163840.64614296533,
-            "newDeals": 76.66426827036085
+            "newDeals": 75.77619048776506
           },
           "perProjectista": {
             "activeProjects": 5.6882269724260865
@@ -8961,8 +11855,8 @@
           "revenueTarget": 455608.4180223591,
           "wonDealsTarget": 39.54458422359004,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 213.18816061688582,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 210.71859202609662,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 138289.29,
           "baseProjectionRevenue": 284754.20664892375,
           "gapVsBase": 170854.21137343533,
@@ -8972,7 +11866,7 @@
           "perCommercial": {
             "closings": 19.77229211179502,
             "revenue": 227804.20901117954,
-            "newDeals": 106.59408030844291
+            "newDeals": 105.35929601304831
           },
           "perProjectista": {
             "activeProjects": 7.908916844718009
@@ -9028,7 +11922,7 @@
           "revenueTarget": 169205.11938168094,
           "wonDealsTarget": 14.686177493154046,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 79.17441105350883,
+          "createdDealsTarget": 78.25725581296358,
           "conversionTargetPct": 28.8135593220339,
           "baseline2025Revenue": 18400,
           "baseProjectionRevenue": 180131.72,
@@ -9039,7 +11933,7 @@
           "perCommercial": {
             "closings": 7.343088746577023,
             "revenue": 84602.55969084047,
-            "newDeals": 39.58720552675442
+            "newDeals": 39.12862790648179
           },
           "perProjectista": {
             "activeProjects": 2.9372354986308093
@@ -9093,7 +11987,7 @@
           "revenueTarget": 186144.5195897247,
           "wonDealsTarget": 16.156434651991727,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 87.10069035269622,
+          "createdDealsTarget": 86.09171720658597,
           "conversionTargetPct": 27.11864406779661,
           "baseline2025Revenue": 37500,
           "baseProjectionRevenue": 198165,
@@ -9104,7 +11998,7 @@
           "perCommercial": {
             "closings": 8.078217325995864,
             "revenue": 93072.25979486234,
-            "newDeals": 43.55034517634811
+            "newDeals": 43.045858603292984
           },
           "perProjectista": {
             "activeProjects": 3.2312869303983454
@@ -9158,7 +12052,7 @@
           "revenueTarget": 208956.4170400134,
           "wonDealsTarget": 18.1363958738201,
           "averageTicketTarget": 11521.38597402597,
-          "createdDealsTarget": 97.77482688142344,
+          "createdDealsTarget": 96.64220469106579,
           "conversionTargetPct": 13.253012048192772,
           "baseline2025Revenue": 10500,
           "baseProjectionRevenue": 222450,
@@ -9169,7 +12063,7 @@
           "perCommercial": {
             "closings": 9.06819793691005,
             "revenue": 104478.2085200067,
-            "newDeals": 48.88741344071172
+            "newDeals": 48.32110234553289
           },
           "perProjectista": {
             "activeProjects": 3.62727917476402
@@ -9223,7 +12117,7 @@
           "revenueTarget": 146161.4677070177,
           "wonDealsTarget": 12.68610113718322,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 68.39183215441442,
+          "createdDealsTarget": 67.59958215297746,
           "conversionTargetPct": 14.864864864864865,
           "baseline2025Revenue": 75800,
           "baseProjectionRevenue": 155600,
@@ -9234,7 +12128,7 @@
           "perCommercial": {
             "closings": 6.34305056859161,
             "revenue": 73080.73385350885,
-            "newDeals": 34.19591607720721
+            "newDeals": 33.79979107648873
           },
           "perProjectista": {
             "activeProjects": 2.537220227436644
@@ -9288,8 +12182,8 @@
           "revenueTarget": 122865.80961489661,
           "wonDealsTarget": 10.664151855678439,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 57.491334484559154,
-          "conversionTargetPct": 8.695652173913043,
+          "createdDealsTarget": 56.82535569157744,
+          "conversionTargetPct": 9.782608695652174,
           "baseline2025Revenue": 64160,
           "baseProjectionRevenue": 130800,
           "gapVsBase": -7934.190385103386,
@@ -9299,7 +12193,7 @@
           "perCommercial": {
             "closings": 5.332075927839219,
             "revenue": 61432.90480744831,
-            "newDeals": 28.745667242279577
+            "newDeals": 28.41267784578872
           },
           "perProjectista": {
             "activeProjects": 2.1328303711356877
@@ -9353,8 +12247,8 @@
           "revenueTarget": 166666.66666666666,
           "wonDealsTarget": 14.465852202365506,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 77.9866189853204,
-          "conversionTargetPct": 4.301075268817205,
+          "createdDealsTarget": 77.08322311103404,
+          "conversionTargetPct": 5.376344086021505,
           "baseline2025Revenue": 77000,
           "baseProjectionRevenue": 177429.34399999998,
           "gapVsBase": -10762.677333333326,
@@ -9364,7 +12258,7 @@
           "perCommercial": {
             "closings": 7.232926101182753,
             "revenue": 83333.33333333333,
-            "newDeals": 38.9933094926602
+            "newDeals": 38.54161155551702
           },
           "perProjectista": {
             "activeProjects": 2.893170440473101
@@ -9420,7 +12314,7 @@
           "revenueTarget": 169205.11938168094,
           "wonDealsTarget": 14.686177493154046,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 79.17441105350883,
+          "createdDealsTarget": 78.25725581296358,
           "conversionTargetPct": 28.8135593220339,
           "baseline2025Revenue": 18400,
           "baseProjectionRevenue": 180131.72,
@@ -9431,7 +12325,7 @@
           "perCommercial": {
             "closings": 7.343088746577023,
             "revenue": 84602.55969084047,
-            "newDeals": 39.58720552675442
+            "newDeals": 39.12862790648179
           },
           "perProjectista": {
             "activeProjects": 2.9372354986308093
@@ -9485,7 +12379,7 @@
           "revenueTarget": 186144.5195897247,
           "wonDealsTarget": 16.156434651991727,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 87.10069035269622,
+          "createdDealsTarget": 86.09171720658597,
           "conversionTargetPct": 27.11864406779661,
           "baseline2025Revenue": 37500,
           "baseProjectionRevenue": 198165,
@@ -9496,7 +12390,7 @@
           "perCommercial": {
             "closings": 8.078217325995864,
             "revenue": 93072.25979486234,
-            "newDeals": 43.55034517634811
+            "newDeals": 43.045858603292984
           },
           "perProjectista": {
             "activeProjects": 3.2312869303983454
@@ -9550,7 +12444,7 @@
           "revenueTarget": 208956.4170400134,
           "wonDealsTarget": 18.1363958738201,
           "averageTicketTarget": 11521.38597402597,
-          "createdDealsTarget": 97.77482688142344,
+          "createdDealsTarget": 96.64220469106579,
           "conversionTargetPct": 13.253012048192772,
           "baseline2025Revenue": 10500,
           "baseProjectionRevenue": 222450,
@@ -9561,7 +12455,7 @@
           "perCommercial": {
             "closings": 9.06819793691005,
             "revenue": 104478.2085200067,
-            "newDeals": 48.88741344071172
+            "newDeals": 48.32110234553289
           },
           "perProjectista": {
             "activeProjects": 3.62727917476402
@@ -9615,7 +12509,7 @@
           "revenueTarget": 146161.4677070177,
           "wonDealsTarget": 12.68610113718322,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 68.39183215441442,
+          "createdDealsTarget": 67.59958215297746,
           "conversionTargetPct": 14.864864864864865,
           "baseline2025Revenue": 75800,
           "baseProjectionRevenue": 155600,
@@ -9626,7 +12520,7 @@
           "perCommercial": {
             "closings": 6.34305056859161,
             "revenue": 73080.73385350885,
-            "newDeals": 34.19591607720721
+            "newDeals": 33.79979107648873
           },
           "perProjectista": {
             "activeProjects": 2.537220227436644
@@ -9680,8 +12574,8 @@
           "revenueTarget": 122865.80961489661,
           "wonDealsTarget": 10.664151855678439,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 57.491334484559154,
-          "conversionTargetPct": 8.695652173913043,
+          "createdDealsTarget": 56.82535569157744,
+          "conversionTargetPct": 9.782608695652174,
           "baseline2025Revenue": 64160,
           "baseProjectionRevenue": 130800,
           "gapVsBase": -7934.190385103386,
@@ -9691,7 +12585,7 @@
           "perCommercial": {
             "closings": 5.332075927839219,
             "revenue": 61432.90480744831,
-            "newDeals": 28.745667242279577
+            "newDeals": 28.41267784578872
           },
           "perProjectista": {
             "activeProjects": 2.1328303711356877
@@ -9745,8 +12639,8 @@
           "revenueTarget": 166666.66666666666,
           "wonDealsTarget": 14.465852202365506,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 77.9866189853204,
-          "conversionTargetPct": 4.301075268817205,
+          "createdDealsTarget": 77.08322311103404,
+          "conversionTargetPct": 5.376344086021505,
           "baseline2025Revenue": 77000,
           "baseProjectionRevenue": 177429.34399999998,
           "gapVsBase": -10762.677333333326,
@@ -9756,7 +12650,7 @@
           "perCommercial": {
             "closings": 7.232926101182753,
             "revenue": 83333.33333333333,
-            "newDeals": 38.9933094926602
+            "newDeals": 38.54161155551702
           },
           "perProjectista": {
             "activeProjects": 2.893170440473101
@@ -9810,8 +12704,8 @@
           "revenueTarget": 229436.2074682507,
           "wonDealsTarget": 19.913941602641902,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 107.35772455958035,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 106.11409422014799,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 69640,
           "baseProjectionRevenue": 143397.09858247917,
           "gapVsBase": 86039.10888577154,
@@ -9821,7 +12715,7 @@
           "perCommercial": {
             "closings": 9.956970801320951,
             "revenue": 114718.10373412535,
-            "newDeals": 53.678862279790174
+            "newDeals": 53.057047110073995
           },
           "perProjectista": {
             "activeProjects": 3.9827883205283805
@@ -9875,8 +12769,8 @@
           "revenueTarget": 346592.31800200994,
           "wonDealsTarget": 30.082519480154048,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 162.17737828357053,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 160.29871786271636,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 105200,
           "baseProjectionRevenue": 216619.39648013795,
           "gapVsBase": 129972.92152187199,
@@ -9886,7 +12780,7 @@
           "perCommercial": {
             "closings": 15.041259740077024,
             "revenue": 173296.15900100497,
-            "newDeals": 81.08868914178527
+            "newDeals": 80.14935893135818
           },
           "perProjectista": {
             "activeProjects": 6.01650389603081
@@ -9940,8 +12834,8 @@
           "revenueTarget": 271191.9499255807,
           "wonDealsTarget": 23.538135996568545,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 126.89605962439411,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 125.42609749217945,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 82313.98,
           "baseProjectionRevenue": 169494.34096462117,
           "gapVsBase": 101697.60896095954,
@@ -9951,7 +12845,7 @@
           "perCommercial": {
             "closings": 11.769067998284273,
             "revenue": 135595.97496279035,
-            "newDeals": 63.448029812197056
+            "newDeals": 62.713048746089726
           },
           "perProjectista": {
             "activeProjects": 4.707627199313709
@@ -10005,8 +12899,8 @@
           "revenueTarget": 369489.814295869,
           "wonDealsTarget": 32.06991026330111,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 172.89156819869237,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 170.88879475573805,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 112150,
           "baseProjectionRevenue": 230930.27866204822,
           "gapVsBase": 138559.53563382075,
@@ -10016,7 +12910,7 @@
           "perCommercial": {
             "closings": 16.034955131650555,
             "revenue": 184744.9071479345,
-            "newDeals": 86.44578409934618
+            "newDeals": 85.44439737786902
           },
           "perProjectista": {
             "activeProjects": 6.413982052660222
@@ -10070,8 +12964,8 @@
           "revenueTarget": 327681.29228593066,
           "wonDealsTarget": 28.441134862130433,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 153.3285365407217,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 151.55238097553013,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 99460,
           "baseProjectionRevenue": 204800.04918169696,
           "gapVsBase": 122881.2431042337,
@@ -10081,7 +12975,7 @@
           "perCommercial": {
             "closings": 14.220567431065216,
             "revenue": 163840.64614296533,
-            "newDeals": 76.66426827036085
+            "newDeals": 75.77619048776506
           },
           "perProjectista": {
             "activeProjects": 5.6882269724260865
@@ -10135,8 +13029,8 @@
           "revenueTarget": 455608.4180223591,
           "wonDealsTarget": 39.54458422359004,
           "averageTicketTarget": 11521.385974025972,
-          "createdDealsTarget": 213.18816061688582,
-          "conversionTargetPct": 18.549146495360244,
+          "createdDealsTarget": 210.71859202609662,
+          "conversionTargetPct": 18.766537799708065,
           "baseline2025Revenue": 138289.29,
           "baseProjectionRevenue": 284754.20664892375,
           "gapVsBase": 170854.21137343533,
@@ -10146,7 +13040,7 @@
           "perCommercial": {
             "closings": 19.77229211179502,
             "revenue": 227804.20901117954,
-            "newDeals": 106.59408030844291
+            "newDeals": 105.35929601304831
           },
           "perProjectista": {
             "activeProjects": 7.908916844718009
@@ -10199,21 +13093,21 @@
         "h2AverageMonthlyRevenue": 333333.3333333333,
         "h2AverageWonDeals": 28.93170440473101,
         "h2AverageTicket": 11521.385974025972,
-        "h2AverageCreatedDeals": 155.9732379706408,
-        "h2AverageConversionPct": 18.549146495360244,
+        "h2AverageCreatedDeals": 154.1664462220681,
+        "h2AverageConversionPct": 18.766537799708065,
         "currentH1": {
           "averageRevenue": 177429.34399999998,
           "averageWonDeals": 15.4,
           "averageTicket": 11521.385974025972,
           "averageCreatedDeals": 73.4,
-          "averageConversionPct": 18.54914649536024
+          "averageConversionPct": 18.766537799708065
         },
         "uplift": {
           "revenuePct": 87.86821042033122,
           "wonDealsPct": 87.86821042033124,
           "ticketPct": 0,
-          "createdDealsPct": 112.49759941504196,
-          "conversionPts": 3.552713678800501e-15
+          "createdDealsPct": 110.03603027529711,
+          "conversionPts": 0
         }
       },
       "typeMix": [
@@ -10353,7 +13247,7 @@
           "perPersonH2": {
             "monthlyClosings": 14.465852202365506,
             "monthlyRevenue": 166666.66666666666,
-            "monthlyNewDeals": 77.9866189853204
+            "monthlyNewDeals": 77.08322311103404
           }
         },
         "deliveryTeam": {
@@ -10495,14 +13389,14 @@
             {
               "priority": "high",
               "title": "Recuperar conversão dos novos negócios",
-              "detail": "Conversão dos novos negócios em maio/2026: 6,5%. Meta H2: 18,5%.",
+              "detail": "Conversão dos novos negócios em maio/2026: 6,5%. Meta H2: 18,8%.",
               "metric": "Conv. novos neg.",
-              "target": "18,5%"
+              "target": "18,8%"
             },
             {
               "priority": "high",
               "title": "Desbloquear pipeline em negociação",
-              "detail": "143 negócios em \"Negociação\" (R$ 1.478.950).",
+              "detail": "142 negócios em \"Negociação\" (R$ 1.469.950).",
               "metric": "Pipeline aberto",
               "target": "R$ 700.000"
             }
@@ -10537,9 +13431,9 @@
             {
               "priority": "critical",
               "title": "Novos negócios qualificados",
-              "detail": "156 novos/mês (78/comercial).",
+              "detail": "154 novos/mês (77,1/comercial).",
               "metric": "Novos negócios/mês",
-              "target": "156 (+83)"
+              "target": "154 (+81)"
             }
           ]
         },
@@ -10694,7 +13588,7 @@
         },
         {
           "title": "Queda de conversão após fevereiro",
-          "mitigation": "Manter Conv. novos neg. acima de 18,5%."
+          "mitigation": "Manter Conv. novos neg. acima de 18,8%."
         },
         {
           "title": "2 comerciais no limite de capacidade",
@@ -11646,22 +14540,22 @@
     {
       "month": "2026-06",
       "type": "LDC - Laudo de disponibilidade de carga",
-      "wonDeals": 4,
-      "revenue": 22700,
-      "averageTicket": 5675,
-      "revenueMoMPct": -60.55603822762815,
-      "dealsMoMPct": -50,
-      "revenueYoYPct": -35.14285714285714,
-      "dealsYoYPct": -33.33333333333333
+      "wonDeals": 6,
+      "revenue": 43200,
+      "averageTicket": 7200,
+      "revenueMoMPct": -24.934839270199827,
+      "dealsMoMPct": -25,
+      "revenueYoYPct": 23.42857142857143,
+      "dealsYoYPct": 0
     },
     {
       "month": "2026-06",
       "type": "ICV - Inspeção de carregador veicular",
-      "wonDeals": 2,
-      "revenue": 13700,
-      "averageTicket": 6850,
-      "revenueMoMPct": 37,
-      "dealsMoMPct": 0,
+      "wonDeals": 3,
+      "revenue": 21620,
+      "averageTicket": 7206.666666666667,
+      "revenueMoMPct": 116.19999999999999,
+      "dealsMoMPct": 50,
       "revenueYoYPct": null,
       "dealsYoYPct": null
     },
@@ -13500,6 +16394,16 @@
     },
     {
       "month": "2026-06",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "dealId": 1696,
+      "dealTitle": "Edf Mirante",
+      "organization": "Edf Mirante",
+      "value": 6500,
+      "labels": "LDC - Laudo de disponibilidade de carga",
+      "isMultiBusinessType": false
+    },
+    {
+      "month": "2026-06",
       "type": "OBRA",
       "dealId": 1718,
       "dealTitle": "Rio Araguaia melhoria elétrica",
@@ -13540,6 +16444,16 @@
     },
     {
       "month": "2026-06",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "dealId": 1755,
+      "dealTitle": "Edf Varanda do Parque",
+      "organization": "Edf Varanda do Parque",
+      "value": 14000,
+      "labels": "LDC - Laudo de disponibilidade de carga",
+      "isMultiBusinessType": false
+    },
+    {
+      "month": "2026-06",
       "type": "ICV - Inspeção de carregador veicular",
       "dealId": 1759,
       "dealTitle": "Cond Chácara Santa Rosa",
@@ -13566,6 +16480,16 @@
       "organization": "Edf. Cap d'Antibes",
       "value": 4500,
       "labels": "OBRA",
+      "isMultiBusinessType": false
+    },
+    {
+      "month": "2026-06",
+      "type": "ICV - Inspeção de carregador veicular",
+      "dealId": 1832,
+      "dealTitle": "Edf Varanda do Parque",
+      "organization": "Edf Varanda do Parque",
+      "value": 7920,
+      "labels": "ICV - Inspeção de carregador veicular",
       "isMultiBusinessType": false
     }
   ],
@@ -16497,6 +19421,19 @@
     },
     {
       "month": "2026-06",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "dealId": 1696,
+      "dealTitle": "Edf Mirante",
+      "organization": "Edf Mirante",
+      "value": 6500,
+      "fullValue": 6500,
+      "typeCount": 1,
+      "allocationSharePct": 100,
+      "labels": "LDC - Laudo de disponibilidade de carga",
+      "isMultiBusinessType": false
+    },
+    {
+      "month": "2026-06",
       "type": "OBRA",
       "dealId": 1718,
       "dealTitle": "Rio Araguaia melhoria elétrica",
@@ -16562,6 +19499,19 @@
     },
     {
       "month": "2026-06",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "dealId": 1755,
+      "dealTitle": "Edf Varanda do Parque",
+      "organization": "Edf Varanda do Parque",
+      "value": 14000,
+      "fullValue": 14000,
+      "typeCount": 1,
+      "allocationSharePct": 100,
+      "labels": "LDC - Laudo de disponibilidade de carga",
+      "isMultiBusinessType": false
+    },
+    {
+      "month": "2026-06",
       "type": "ICV - Inspeção de carregador veicular",
       "dealId": 1759,
       "dealTitle": "Cond Chácara Santa Rosa",
@@ -16597,6 +19547,19 @@
       "typeCount": 1,
       "allocationSharePct": 100,
       "labels": "OBRA",
+      "isMultiBusinessType": false
+    },
+    {
+      "month": "2026-06",
+      "type": "ICV - Inspeção de carregador veicular",
+      "dealId": 1832,
+      "dealTitle": "Edf Varanda do Parque",
+      "organization": "Edf Varanda do Parque",
+      "value": 7920,
+      "fullValue": 7920,
+      "typeCount": 1,
+      "allocationSharePct": 100,
+      "labels": "ICV - Inspeção de carregador veicular",
       "isMultiBusinessType": false
     }
   ],
@@ -17407,10 +20370,10 @@
     ]
   },
   "cnpjCoverage": {
-    "organizations": 1608,
-    "organizationsWithCnpj": 211,
+    "organizations": 1611,
+    "organizationsWithCnpj": 210,
     "wonDealsWithCnpj": 109,
-    "wonDeals": 189
+    "wonDeals": 192
   },
   "postSalesByCnpj": [
     {
@@ -19139,6 +22102,39 @@
       ]
     },
     {
+      "key": "org:varanda parque",
+      "keyType": "organization_name",
+      "organization": "Edf Varanda do Parque",
+      "cnpj": null,
+      "wonDeals": 2,
+      "repeatDeals": 1,
+      "totalRevenue": 21920,
+      "repeatRevenue": 7920,
+      "firstWonMonth": "2026-06",
+      "lastWonMonth": "2026-06",
+      "types": "LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular",
+      "deals": [
+        {
+          "id": 1755,
+          "title": "Edf Varanda do Parque",
+          "month": "2026-06",
+          "value": 14000,
+          "types": [
+            "LDC - Laudo de disponibilidade de carga"
+          ]
+        },
+        {
+          "id": 1832,
+          "title": "Edf Varanda do Parque",
+          "month": "2026-06",
+          "value": 7920,
+          "types": [
+            "ICV - Inspeção de carregador veicular"
+          ]
+        }
+      ]
+    },
+    {
       "key": "cnpj:03034724000144",
       "keyType": "organization_name",
       "organization": "Edf Porto dos Corais",
@@ -20079,6 +23075,39 @@
       ]
     },
     {
+      "key": "org:varanda parque",
+      "keyType": "account_name",
+      "organization": "Edf Varanda do Parque",
+      "cnpj": null,
+      "wonDeals": 2,
+      "repeatDeals": 1,
+      "totalRevenue": 21920,
+      "repeatRevenue": 7920,
+      "firstWonMonth": "2026-06",
+      "lastWonMonth": "2026-06",
+      "types": "LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular",
+      "deals": [
+        {
+          "id": 1755,
+          "title": "Edf Varanda do Parque",
+          "month": "2026-06",
+          "value": 14000,
+          "types": [
+            "LDC - Laudo de disponibilidade de carga"
+          ]
+        },
+        {
+          "id": 1832,
+          "title": "Edf Varanda do Parque",
+          "month": "2026-06",
+          "value": 7920,
+          "types": [
+            "ICV - Inspeção de carregador veicular"
+          ]
+        }
+      ]
+    },
+    {
       "key": "org:pichilau vila esperanca",
       "keyType": "account_name",
       "organization": "Pichilau Vila Esperança",
@@ -20276,6 +23305,30 @@
       ]
     },
     {
+      "key": "org:varanda parque",
+      "month": "2026-06",
+      "confidence": "same_month_multi_service",
+      "organization": "Edf Varanda do Parque",
+      "cnpj": null,
+      "wonDeals": 2,
+      "revenue": 21920,
+      "types": "LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular",
+      "deals": [
+        {
+          "id": 1755,
+          "title": "Edf Varanda do Parque",
+          "value": 14000,
+          "primaryBusinessType": "LDC - Laudo de disponibilidade de carga"
+        },
+        {
+          "id": 1832,
+          "title": "Edf Varanda do Parque",
+          "value": 7920,
+          "primaryBusinessType": "ICV - Inspeção de carregador veicular"
+        }
+      ]
+    },
+    {
       "key": "cnpj:04239390000108",
       "month": "2025-11",
       "confidence": "same_month_multi_service",
@@ -20331,13 +23384,13 @@
       "confidence": "high"
     },
     "accountName": {
-      "accounts": 12,
-      "repeatRevenue": 313181.01,
+      "accounts": 13,
+      "repeatRevenue": 321101.01,
       "confidence": "medium"
     },
     "sameMonthMultiService": {
-      "accounts": 6,
-      "revenue": 227831.72,
+      "accounts": 7,
+      "revenue": 249751.72,
       "confidence": "medium"
     }
   },
@@ -20516,11 +23569,11 @@
       "month": "2026-06",
       "postSalesDealsByCnpj": 3,
       "postSalesRevenueByCnpj": 31200,
-      "repeatDealsByAccount": 6,
-      "repeatRevenueByAccount": 80920,
-      "wonDeals": 11,
-      "wonRevenue": 111070,
-      "repeatShareByAccountPct": 54.54545454545454
+      "repeatDealsByAccount": 7,
+      "repeatRevenueByAccount": 88840,
+      "wonDeals": 14,
+      "wonRevenue": 139490,
+      "repeatShareByAccountPct": 50
     },
     {
       "month": "2026-07",
@@ -20538,14 +23591,14 @@
       "id": "cnpj_coverage",
       "severity": "high",
       "title": "Cobertura de CNPJ parcial",
-      "message": "211/1608 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.",
-      "count": 1397
+      "message": "210/1611 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.",
+      "count": 1401
     },
     {
       "id": "missing_business_type",
       "severity": "medium",
       "title": "Negócios ganhos sem etiqueta comercial explícita",
-      "message": "3/189 ganhos usam fallback de serviço/funil como tipo principal.",
+      "message": "3/192 ganhos usam fallback de serviço/funil como tipo principal.",
       "count": 3
     },
     {
@@ -20559,16 +23612,16 @@
       "id": "old_open_deals",
       "severity": "high",
       "title": "Base aberta contém negócios antigos",
-      "message": "150 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.",
-      "count": 150
+      "message": "151 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.",
+      "count": 151
     }
   ],
   "serviceSummary": [
     {
       "service": "Laudos e consultoria condominial",
-      "wonDeals": 163,
-      "revenue": 1362855,
-      "averageTicket": 8361.073619631901,
+      "wonDeals": 166,
+      "revenue": 1391275,
+      "averageTicket": 8381.174698795181,
       "firstWonMonth": "2025-01",
       "lastWonMonth": "2026-06"
     },
@@ -20612,8 +23665,8 @@
         },
         {
           "month": "2026-06",
-          "wonDeals": 6,
-          "revenue": 41100
+          "wonDeals": 9,
+          "revenue": 69520
         },
         {
           "month": "2026-07",
@@ -28771,6 +31824,50 @@
       "salesCycleDays": 39
     },
     {
+      "id": 1696,
+      "title": "Edf Mirante",
+      "status": "won",
+      "value": 6500,
+      "currency": "BRL",
+      "addTime": "2026-05-20 21:38:33",
+      "updateTime": "2026-07-01 18:50:41",
+      "wonTime": "2026-06-30 03:00:00",
+      "closeTime": "2026-06-30 03:00:00",
+      "createdMonth": "2026-05",
+      "wonMonth": "2026-06",
+      "lostMonth": null,
+      "closedMonth": "2026-06",
+      "pipeline": "[Exec] Laudos - Condo",
+      "pipelineId": 11,
+      "stage": "Fechamento",
+      "stageId": 88,
+      "stageOrder": 4,
+      "organizationId": 1552,
+      "organization": "Edf Mirante",
+      "accountKey": "org:mirante",
+      "accountKeyType": "organization_name",
+      "cnpj": null,
+      "channel": "Sind. Profissional Base",
+      "origin": "Criado manualmente",
+      "labels": [
+        "IGOR",
+        "LDC - Laudo de disponibilidade de carga"
+      ],
+      "businessTypes": [
+        "LDC - Laudo de disponibilidade de carga"
+      ],
+      "primaryBusinessType": "LDC - Laudo de disponibilidade de carga",
+      "hasExplicitBusinessType": true,
+      "isMultiBusinessType": false,
+      "person": "Ancelmo Jr",
+      "service": "Laudos e consultoria condominial",
+      "isPostSaleByAccount": false,
+      "previousAccountWonDeals": 0,
+      "isPostSaleByCnpj": false,
+      "previousCnpjWonDeals": 0,
+      "salesCycleDays": 40
+    },
+    {
       "id": 1718,
       "title": "Rio Araguaia melhoria elétrica",
       "status": "won",
@@ -28950,6 +32047,50 @@
       "salesCycleDays": 23
     },
     {
+      "id": 1755,
+      "title": "Edf Varanda do Parque",
+      "status": "won",
+      "value": 14000,
+      "currency": "BRL",
+      "addTime": "2026-06-04 17:46:49",
+      "updateTime": "2026-07-01 19:05:29",
+      "wonTime": "2026-06-16 03:00:00",
+      "closeTime": "2026-06-16 03:00:00",
+      "createdMonth": "2026-06",
+      "wonMonth": "2026-06",
+      "lostMonth": null,
+      "closedMonth": "2026-06",
+      "pipeline": "[Exec] Laudos - Condo",
+      "pipelineId": 11,
+      "stage": "Fechamento",
+      "stageId": 88,
+      "stageOrder": 4,
+      "organizationId": 1599,
+      "organization": "Edf Varanda do Parque",
+      "accountKey": "org:varanda parque",
+      "accountKeyType": "organization_name",
+      "cnpj": null,
+      "channel": "Sind. Profissional Base",
+      "origin": "Criado manualmente",
+      "labels": [
+        "IGOR",
+        "LDC - Laudo de disponibilidade de carga"
+      ],
+      "businessTypes": [
+        "LDC - Laudo de disponibilidade de carga"
+      ],
+      "primaryBusinessType": "LDC - Laudo de disponibilidade de carga",
+      "hasExplicitBusinessType": true,
+      "isMultiBusinessType": false,
+      "person": "Angelia",
+      "service": "Laudos e consultoria condominial",
+      "isPostSaleByAccount": false,
+      "previousAccountWonDeals": 0,
+      "isPostSaleByCnpj": false,
+      "previousCnpjWonDeals": 0,
+      "salesCycleDays": 11
+    },
+    {
       "id": 1759,
       "title": "Cond Chácara Santa Rosa",
       "status": "won",
@@ -29080,6 +32221,50 @@
       "isPostSaleByCnpj": true,
       "previousCnpjWonDeals": 1,
       "salesCycleDays": 0
+    },
+    {
+      "id": 1832,
+      "title": "Edf Varanda do Parque",
+      "status": "won",
+      "value": 7920,
+      "currency": "BRL",
+      "addTime": "2026-07-01 19:00:56",
+      "updateTime": "2026-07-01 19:05:46",
+      "wonTime": "2026-06-20 03:00:00",
+      "closeTime": "2026-06-20 03:00:00",
+      "createdMonth": "2026-07",
+      "wonMonth": "2026-06",
+      "lostMonth": null,
+      "closedMonth": "2026-06",
+      "pipeline": "[Exec] Laudos - Condo",
+      "pipelineId": 11,
+      "stage": "Fechamento",
+      "stageId": 88,
+      "stageOrder": 4,
+      "organizationId": 1599,
+      "organization": "Edf Varanda do Parque",
+      "accountKey": "org:varanda parque",
+      "accountKeyType": "organization_name",
+      "cnpj": null,
+      "channel": "Sind. Profissional Base",
+      "origin": "Criado manualmente",
+      "labels": [
+        "IGOR",
+        "ICV - Inspeção de carregador veicular"
+      ],
+      "businessTypes": [
+        "ICV - Inspeção de carregador veicular"
+      ],
+      "primaryBusinessType": "ICV - Inspeção de carregador veicular",
+      "hasExplicitBusinessType": true,
+      "isMultiBusinessType": false,
+      "person": "Angelia",
+      "service": "Laudos e consultoria condominial",
+      "isPostSaleByAccount": true,
+      "previousAccountWonDeals": 1,
+      "isPostSaleByCnpj": false,
+      "previousCnpjWonDeals": 0,
+      "salesCycleDays": -12
     }
   ],
   "clickupProjectCandidates": [
@@ -42906,6 +46091,14 @@
       "service": "Laudos e consultoria condominial"
     },
     {
+      "id": 1696,
+      "title": "Edf Mirante",
+      "organization": "Edf Mirante",
+      "wonMonth": "2026-06",
+      "value": 6500,
+      "service": "Laudos e consultoria condominial"
+    },
+    {
       "id": 1718,
       "title": "Rio Araguaia melhoria elétrica",
       "organization": "Sindico Profi",
@@ -42930,6 +46123,14 @@
       "service": "Laudos e consultoria condominial"
     },
     {
+      "id": 1755,
+      "title": "Edf Varanda do Parque",
+      "organization": "Edf Varanda do Parque",
+      "wonMonth": "2026-06",
+      "value": 14000,
+      "service": "Laudos e consultoria condominial"
+    },
+    {
       "id": 1759,
       "title": "Cond Chácara Santa Rosa",
       "organization": "Cond Chácara Santa Rosa",
@@ -42944,6 +46145,14 @@
       "wonMonth": "2026-06",
       "value": 4500,
       "service": "Obras eletricas"
+    },
+    {
+      "id": 1832,
+      "title": "Edf Varanda do Parque",
+      "organization": "Edf Varanda do Parque",
+      "wonMonth": "2026-06",
+      "value": 7920,
+      "service": "Laudos e consultoria condominial"
     }
   ]
 }

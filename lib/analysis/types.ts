@@ -82,6 +82,7 @@ export type CommercialFunnel = {
   createdStillOpenDeals: number;
   cohortConversionPct: number | null;
   cohortLossPct: number | null;
+  cohortPendingPct: number | null;
   matureCohortMinAgeDays?: number;
   cohortAgeDays?: number;
   isMatureCohort?: boolean;
@@ -91,9 +92,57 @@ export type CommercialFunnel = {
   wonDeals: number;
   wonValue: number;
   lostDeals: number;
+  lostValue: number;
   openBaseDealsEndOfMonth: number;
   openBaseValueEndOfMonth: number;
   averageWonTicket: number;
+};
+
+export type CommercialFunnelScope = "collective" | "consultoria" | "obras";
+
+export type CommercialFunnelByPipeline = Record<CommercialFunnelScope, CommercialFunnel[]>;
+
+export type WinVintageSlice = {
+  originMonth: string;
+  deals: number;
+  sharePct: number | null;
+};
+
+export type ConversionMonthRow = {
+  month: string;
+  label: string;
+  wonDeals: number;
+  averageDaysToWin: number | null;
+  winVintage: WinVintageSlice[];
+  winLagM0Deals: number;
+  winLagM1Deals: number;
+  winLagM2Deals: number;
+  winLagM3Deals: number;
+  winLagM4PlusDeals: number;
+  winLagM0Pct: number | null;
+  winLagM1Pct: number | null;
+  winLagM2Pct: number | null;
+  winLagM3Pct: number | null;
+  winLagM4PlusPct: number | null;
+  ganhosAntigosSharePct: number | null;
+  stageCohortEntered: number;
+  stageCohortWon: number;
+  stageCohortLost: number;
+  stageCohortOpen: number;
+  stageCohortConversionPct: number | null;
+  stageCohortPendingPct: number | null;
+  createdDeals: number;
+  winToCreateRatio: number | null;
+  closedConversionPct: number | null;
+};
+
+export type ConversionAnalytics = {
+  lagMaturityDays: number;
+  anchorStages: {
+    consultoria: string[];
+    obras: string[];
+  };
+  byScope: Record<CommercialFunnelScope, { months: ConversionMonthRow[] }>;
 };
 
 export type BusinessTypeMonthly = {
@@ -307,6 +356,23 @@ export type Planning2026 = {
   };
 };
 
+export type PipelineDirectorMetrics = {
+  pipelineId: number;
+  pipelineName: string;
+  snapshot: Record<string, number>;
+  rolling: {
+    won7d: number;
+    won30d: number;
+    created7d: number;
+    created30d: number;
+  };
+  sla48h?: {
+    breaches: number;
+    gateTarget: number;
+    note: string;
+  };
+};
+
 export type CommercialDirectorMetrics = {
   mainPipeline: string;
   snapshot: {
@@ -326,6 +392,10 @@ export type CommercialDirectorMetrics = {
     won30d: number;
     created7d: number;
     created30d: number;
+  };
+  byPipeline?: {
+    consultoria: PipelineDirectorMetrics;
+    obras: PipelineDirectorMetrics;
   };
 };
 
@@ -362,6 +432,7 @@ export type Analysis = {
   };
   monthly: Monthly[];
   commercialFunnel: CommercialFunnel[];
+  commercialFunnelByPipeline?: CommercialFunnelByPipeline;
   growthComparison: GrowthComparison[];
   projection2026H2: {
     basis: {
@@ -383,6 +454,7 @@ export type Analysis = {
   planningSummary: PlanningSummary;
   planning2026?: Planning2026;
   funnelStageHistory?: FunnelStageHistory;
+  conversionAnalytics?: ConversionAnalytics;
   indicatorHighlights: IndicatorHighlights;
   deepAnalysis: DeepAnalysis;
   commercialDirector?: CommercialDirectorMetrics;

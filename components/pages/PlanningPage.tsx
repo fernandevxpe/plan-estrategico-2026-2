@@ -16,22 +16,20 @@ import {
 import { brl, number } from "@/lib/analysis/format";
 import { GoalCard } from "@/components/planning/GoalCard";
 import { PlanningKpiStrip } from "@/components/planning/PlanningKpiStrip";
+import { CommercialFunnelChart } from "@/components/planning/CommercialFunnelChart";
 import { FunnelStageHistoryPanel } from "@/components/planning/FunnelStageHistoryPanel";
 import {
-  Funnel2026Chart,
   GoalCumulativeChart,
   GoalProgressChart,
-  GoalsAttainmentOverviewChart,
   GoalsCompareChart,
-  PipelineSnapshotChart,
   type GoalCompareMode
 } from "@/components/planning/planning-charts";
 import {
-  getFunnel2026Rows,
-  getGoalsAttainmentRows,
-  getPipelineStageRows,
-  getPlanningKpis
+  buildCommercialFunnelChartRows,
+  getFunnelByScope,
+  getPlanningKpiGroups
 } from "@/lib/analysis/planning-pipedrive";
+import type { CommercialFunnelScope } from "@/lib/analysis/types";
 
 type Props = {
   analysis: Analysis;
@@ -60,17 +58,17 @@ export function PlanningPage({ analysis }: Props) {
   const defaultId = planning?.primaryGoalId ?? planning?.highlights.global?.id ?? goals[0]?.id ?? "";
   const [selectedIds, setSelectedIds] = useState<string[]>([defaultId]);
   const [compareMode, setCompareMode] = useState<GoalCompareMode>("values");
+  const [funnelScope, setFunnelScope] = useState<CommercialFunnelScope>("collective");
 
-  const planningKpis = useMemo(
-    () => (planning ? getPlanningKpis(planning, analysis) : []),
+  const planningKpiGroups = useMemo(
+    () => (planning ? getPlanningKpiGroups(planning, analysis) : []),
     [planning, analysis]
   );
-  const pipelineStages = useMemo(() => getPipelineStageRows(analysis), [analysis]);
-  const funnel2026 = useMemo(() => getFunnel2026Rows(analysis), [analysis]);
-  const goalsAttainment = useMemo(
-    () => (planning ? getGoalsAttainmentRows(planning) : []),
-    [planning]
-  );
+  const commercialFunnelChart = useMemo(() => {
+    if (!planning) return [];
+    const funnelRows = getFunnelByScope(analysis, funnelScope);
+    return buildCommercialFunnelChartRows(planning, funnelRows, funnelScope, analysis);
+  }, [planning, analysis, funnelScope]);
 
   if (!planning || !goals.length) {
     return (
@@ -133,43 +131,27 @@ export function PlanningPage({ analysis }: Props) {
     <section className="page-stack">
       <header className="page-header">
         <h1>Planejamento 2026</h1>
-        <p>
-          Metas oficiais do Pipedrive (Goals) com realizado, ritmo e projeção de fechamento. Clique nos cards para
-          comparar 2 ou mais metas no mesmo gráfico.
-        </p>
         <p className="planning-source-note">
           Fonte: Pipedrive Goals · atualizado em {analysis.generatedAt?.slice(0, 10) ?? "—"} · mês corrente:{" "}
           {currentMonth}
         </p>
       </header>
 
-      <PlanningKpiStrip items={planningKpis} pipelineName={analysis.commercialDirector?.mainPipeline} />
+      <PlanningKpiStrip groups={planningKpiGroups} />
 
-      <div className="chart-grid planning-pipedrive-grid">
-        <article className="card">
-          <h3>Funil principal — estágios atuais</h3>
-          <p className="chart-caption">Negócios abertos por etapa no pipeline de consultoria</p>
-          <div className="chart-box chart-box-tall">
-            <PipelineSnapshotChart data={pipelineStages} />
-          </div>
-        </article>
-
-        <article className="card">
-          <h3>Funil comercial 2026</h3>
-          <p className="chart-caption">Valor criado, ganho e pipeline aberto por mês (Pipedrive)</p>
-          <div className="chart-box chart-box-tall">
-            <Funnel2026Chart data={funnel2026} />
-          </div>
-        </article>
-
-        <article className="card span-2">
-          <h3>Panorama das metas 2026</h3>
-          <p className="chart-caption">% realizado YTD vs projeção de fechamento — todas as metas do Pipedrive Goals</p>
-          <div className="chart-box chart-box-tall">
-            <GoalsAttainmentOverviewChart data={goalsAttainment} />
-          </div>
-        </article>
-      </div>
+      <article className="card span-2">
+        <h3>Funil comercial 2026</h3>
+        <p className="chart-caption">
+          Meta, realizado, criado, ganho, perdido, aberto e conversão por cohort — séries configuráveis.
+        </p>
+        <div className="chart-box chart-box-tall commercial-funnel-chart-box">
+          <CommercialFunnelChart
+            data={commercialFunnelChart}
+            scope={funnelScope}
+            onScopeChange={setFunnelScope}
+          />
+        </div>
+      </article>
 
       <FunnelStageHistoryPanel analysis={analysis} defaultMonth={currentMonth} />
 

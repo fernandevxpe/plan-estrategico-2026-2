@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { buildFunnelStageHistory } from './lib/funnel-stage-history.mjs';
+import { buildConversionAnalytics } from './lib/conversion-analytics.mjs';
 
 const rawDir = new URL('../data/raw/', import.meta.url);
 const processedDir = new URL('../data/processed/', import.meta.url);
@@ -366,46 +367,65 @@ for (const deal of allWonDeals) {
   }
 }
 
-const commercialFunnel = monthly.map((row) => {
-  const created = deals.filter((deal) => deal.createdMonth === row.month);
-  const createdWon = created.filter((deal) => deal.status === 'won');
-  const createdLost = created.filter((deal) => deal.status === 'lost');
-  const createdClosed = createdWon.length + createdLost.length;
-  const wonInMonth = deals.filter((deal) => deal.wonMonth === row.month);
-  const lostInMonth = deals.filter((deal) => deal.lostMonth === row.month);
-  const cohortAgeDays = Math.max(0, daysBetween(monthEnd(row.month), generatedAt) ?? 0);
-  const isMatureCohort = cohortAgeDays >= matureCohortMinAgeDays;
-  const openAtEnd = deals.filter((deal) => {
-    if (!deal.createdMonth || deal.createdMonth > row.month) return false;
-    if (!deal.closedMonth) return deal.status === 'open';
-    return deal.closedMonth > row.month;
+function buildCommercialFunnelForDeals(monthlyRows, dealList) {
+  return monthlyRows.map((row) => {
+    const created = dealList.filter((deal) => deal.createdMonth === row.month);
+    const createdWon = created.filter((deal) => deal.status === 'won');
+    const createdLost = created.filter((deal) => deal.status === 'lost');
+    const createdStillOpen = created.filter((deal) => deal.status === 'open');
+    const createdClosed = createdWon.length + createdLost.length;
+    const wonInMonth = dealList.filter((deal) => deal.wonMonth === row.month);
+    const lostInMonth = dealList.filter((deal) => deal.lostMonth === row.month);
+    const cohortAgeDays = Math.max(0, daysBetween(monthEnd(row.month), generatedAt) ?? 0);
+    const isMatureCohort = cohortAgeDays >= matureCohortMinAgeDays;
+    const openAtEnd = dealList.filter((deal) => {
+      if (!deal.createdMonth || deal.createdMonth > row.month) return false;
+      if (!deal.closedMonth) return deal.status === 'open';
+      return deal.closedMonth > row.month;
+    });
+    const createdValue = sum(created, (deal) => deal.value);
+    const wonValue = sum(wonInMonth, (deal) => deal.value);
+    const lostValue = sum(lostInMonth, (deal) => deal.value);
+    const openValue = sum(openAtEnd, (deal) => deal.value);
+    return {
+      month: row.month,
+      createdDeals: created.length,
+      createdValue,
+      createdWonDeals: createdWon.length,
+      createdLostDeals: createdLost.length,
+      createdStillOpenDeals: createdStillOpen.length,
+      cohortConversionPct: created.length ? (createdWon.length / created.length) * 100 : null,
+      cohortLossPct: created.length ? (createdLost.length / created.length) * 100 : null,
+      cohortPendingPct: created.length ? (createdStillOpen.length / created.length) * 100 : null,
+      matureCohortMinAgeDays,
+      cohortAgeDays,
+      isMatureCohort,
+      matureConversionPct: isMatureCohort && created.length ? (createdWon.length / created.length) * 100 : null,
+      closedConversionPct: createdClosed ? (createdWon.length / createdClosed) * 100 : null,
+      closedDealsFromCohort: createdClosed,
+      wonDeals: wonInMonth.length,
+      wonValue,
+      lostDeals: lostInMonth.length,
+      lostValue,
+      openBaseDealsEndOfMonth: openAtEnd.length,
+      openBaseValueEndOfMonth: openValue,
+      averageWonTicket: wonInMonth.length ? wonValue / wonInMonth.length : 0
+    };
   });
-  const createdValue = sum(created, (deal) => deal.value);
-  const wonValue = sum(wonInMonth, (deal) => deal.value);
-  const openValue = sum(openAtEnd, (deal) => deal.value);
-  return {
-    month: row.month,
-    createdDeals: created.length,
-    createdValue,
-    createdWonDeals: createdWon.length,
-    createdLostDeals: createdLost.length,
-    createdStillOpenDeals: created.filter((deal) => deal.status === 'open').length,
-    cohortConversionPct: created.length ? (createdWon.length / created.length) * 100 : null,
-    cohortLossPct: created.length ? (createdLost.length / created.length) * 100 : null,
-    matureCohortMinAgeDays,
-    cohortAgeDays,
-    isMatureCohort,
-    matureConversionPct: isMatureCohort && created.length ? (createdWon.length / created.length) * 100 : null,
-    closedConversionPct: createdClosed ? (createdWon.length / createdClosed) * 100 : null,
-    closedDealsFromCohort: createdClosed,
-    wonDeals: wonInMonth.length,
-    wonValue,
-    lostDeals: lostInMonth.length,
-    openBaseDealsEndOfMonth: openAtEnd.length,
-    openBaseValueEndOfMonth: openValue,
-    averageWonTicket: wonInMonth.length ? wonValue / wonInMonth.length : 0
-  };
-});
+}
+
+const PIPELINE_CONSULTORIA = 11;
+const PIPELINE_OBRAS = 14;
+
+const commercialFunnel = buildCommercialFunnelForDeals(monthly, deals);
+const commercialFunnelByPipeline = {
+  collective: commercialFunnel,
+  consultoria: buildCommercialFunnelForDeals(
+    monthly,
+    deals.filter((deal) => deal.pipelineId === PIPELINE_CONSULTORIA)
+  ),
+  obras: buildCommercialFunnelForDeals(monthly, deals.filter((deal) => deal.pipelineId === PIPELINE_OBRAS))
+};
 
 const businessTypeDeals = [];
 const businessTypeMultiDeals = [];
@@ -2111,26 +2131,76 @@ const growthGuides = {
 };
 
 const MAIN_EXEC_PIPELINE = '[Exec] Laudos - Condo';
+const OBRAS_PIPELINE = 'Obras';
 
 function parseDealTimestamp(value) {
   return parsePipedriveDate(value);
 }
 
-function countDealsInDays(dealList, timeField, days) {
+function countDealsInDays(dealList, timeField, days, pipelineId = null) {
   return dealList.filter((deal) => {
+    if (pipelineId != null && deal.pipelineId !== pipelineId) return false;
     const age = daysBetween(deal[timeField], generatedAt);
     return age != null && age >= 0 && age <= days;
   }).length;
 }
 
-const directorMainOpen = openDeals.filter((deal) => deal.pipeline === MAIN_EXEC_PIPELINE);
-const directorSnapshot = {
-  reuniaoMarcada: directorMainOpen.filter((deal) => deal.stage === 'Reunião Marcada').length,
-  diagnostico: directorMainOpen.filter((deal) => deal.stage === 'Diagnóstico').length,
-  negociacao: directorMainOpen.filter((deal) => deal.stage === 'Negociação').length,
-  fechamento: directorMainOpen.filter((deal) => deal.stage === 'Fechamento').length,
-  relacionamento: directorMainOpen.filter((deal) => deal.stage === 'Relacionamento').length
+function buildDirectorSnapshot(openPipelineDeals, stageMap) {
+  const snapshot = {};
+  for (const [key, stageName] of Object.entries(stageMap)) {
+    snapshot[key] = openPipelineDeals.filter((deal) => deal.stage === stageName).length;
+  }
+  return snapshot;
+}
+
+const CONSULTORIA_STAGE_MAP = {
+  reuniaoMarcada: 'Reunião Marcada',
+  diagnostico: 'Diagnóstico',
+  negociacao: 'Negociação',
+  fechamento: 'Fechamento',
+  relacionamento: 'Relacionamento'
 };
+
+const OBRAS_STAGE_MAP = {
+  solicitacaoOrcamento: 'Solicitação Orçamento',
+  levantamentoDados: 'Levantamento de Dados',
+  elaboracaoProposta: 'Elaboração Proposta',
+  propostaFeita: 'Proposta Feita',
+  negociacoesIniciadas: 'Negociações Iniciadas',
+  fechamento: 'Fechamento'
+};
+
+function buildPipelineDirectorMetrics(pipelineName, pipelineId, stageMap, includeSla = false) {
+  const openPipelineDeals = openDeals.filter((deal) => deal.pipelineId === pipelineId);
+  const metrics = {
+    pipelineId,
+    pipelineName,
+    snapshot: buildDirectorSnapshot(openPipelineDeals, stageMap),
+    rolling: {
+      won7d: countDealsInDays(wonDeals, 'wonTime', 7, pipelineId),
+      won30d: countDealsInDays(wonDeals, 'wonTime', 30, pipelineId),
+      created7d: countDealsInDays(analysisDeals, 'addTime', 7, pipelineId),
+      created30d: countDealsInDays(analysisDeals, 'addTime', 30, pipelineId)
+    }
+  };
+  if (includeSla) {
+    metrics.sla48h = {
+      breaches: openPipelineDeals.filter((deal) => {
+        if (deal.stage !== 'Diagnóstico') return false;
+        const ref = deal.updateTime ?? deal.addTime;
+        const age = daysBetween(ref, generatedAt);
+        return age != null && age > 2;
+      }).length,
+      gateTarget: 0,
+      note:
+        'Negócios em Diagnóstico sem avanço há >48h (update_time ou add_time). App registrará visita → proposta com SLA auditável.'
+    };
+  }
+  return metrics;
+}
+
+const directorMainOpen = openDeals.filter((deal) => deal.pipeline === MAIN_EXEC_PIPELINE);
+const directorSnapshot = buildDirectorSnapshot(directorMainOpen, CONSULTORIA_STAGE_MAP);
 
 const commercialDirector = {
   mainPipeline: MAIN_EXEC_PIPELINE,
@@ -2151,6 +2221,15 @@ const commercialDirector = {
     won30d: countDealsInDays(wonDeals, 'wonTime', 30),
     created7d: countDealsInDays(analysisDeals, 'addTime', 7),
     created30d: countDealsInDays(analysisDeals, 'addTime', 30)
+  },
+  byPipeline: {
+    consultoria: buildPipelineDirectorMetrics(
+      MAIN_EXEC_PIPELINE,
+      PIPELINE_CONSULTORIA,
+      CONSULTORIA_STAGE_MAP,
+      true
+    ),
+    obras: buildPipelineDirectorMetrics(OBRAS_PIPELINE, PIPELINE_OBRAS, OBRAS_STAGE_MAP, false)
   }
 };
 
@@ -2287,6 +2366,16 @@ const funnelStageHistory = buildFunnelStageHistory(
   currentMonthKey
 );
 
+const conversionAnalytics = buildConversionAnalytics({
+  deals,
+  flowsByDealId: flowsPayload.flows ?? {},
+  stagesRaw,
+  monthly,
+  commercialFunnelByPipeline,
+  generatedAt,
+  lagMaturityDays: 90
+});
+
 const report = {
   generatedAt: new Date().toISOString(),
   scope: 'Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus',
@@ -2299,11 +2388,13 @@ const report = {
   },
   monthly,
   commercialFunnel,
+  commercialFunnelByPipeline,
   growthComparison,
   projection2026H2,
   planningSummary,
   planning2026,
   funnelStageHistory,
+  conversionAnalytics,
   indicatorHighlights,
   deepAnalysis,
   commercialDirector,

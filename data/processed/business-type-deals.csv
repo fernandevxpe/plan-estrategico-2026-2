@@ -83,6 +83,7 @@ month;type;dealId;dealTitle;organization;value;labels;isMultiBusinessType
 2026-02;LDC - Laudo de disponibilidade de carga;1152;Negócio Edificio Le Parc;Edificio Le Parc;102000;LDC - Laudo de disponibilidade de carga;false
 2026-01;PROJETOS;1156;Negócio Edf Itaqua Vilage;Edf Itaqua Vilage;6000;PROJETOS;false
 2025-11;LDC - Laudo de disponibilidade de carga;1162;Negócio Edf Maria Regina;Edf Maria Regina;11000;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
+2026-05;LDC - Laudo de disponibilidade de carga;1163;Negócio Edf Palácio de Queluz;Edf Palácio de Queluz;12500;"LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga";true
 2025-10;LIE - Laudo de Instalações Elétricas;1172;Negócio edifício Morada das Palmeiras;edifício Morada das Palmeiras;6800;LIE - Laudo de Instalações Elétricas;false
 2025-10;LDC - Laudo de disponibilidade de carga;1179;Negócio Edf Madalena Colonial;Edf Madalena Colonial;8300;LDC - Laudo de disponibilidade de carga;false
 2025-10;LDC - Laudo de disponibilidade de carga;1180;Negócio Edf Reserva do Poço;Edf Reserva do Poço;13000;"LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular";true
@@ -180,10 +181,13 @@ month;type;dealId;dealTitle;organization;value;labels;isMultiBusinessType
 2026-05;LDC - Laudo de disponibilidade de carga;1663;Edf TAMARINEIRA PRINCE VANGARD;Edf TAMARINEIRA PRINCE VANGARD;8500;LDC - Laudo de disponibilidade de carga;false
 2026-05;PROJETOS;1666;Rotterdam negócio;Rotterdam;5000;PROJETOS;false
 2026-05;PIE - Projeto infra.  Eletrocalha e Emergência;1672;Condominio do Edificio Lucilo Maranhao;Condominio do Edificio Lucilo Maranhao;6000;PIE - Projeto infra.  Eletrocalha e Emergência;false
+2026-06;LDC - Laudo de disponibilidade de carga;1696;Edf Mirante;Edf Mirante;6500;LDC - Laudo de disponibilidade de carga;false
 2026-06;OBRA;1718;Rio Araguaia melhoria elétrica;Sindico Profi;950;OBRA;false
 2026-06;OBRA;1721;Edf  Castelo de Blois;Edf PARADOR DE GALICIA;16190;OBRA;false
 2026-06;LDC - Laudo de disponibilidade de carga;1733;Edf Saint Martin;Edf Saint Martin;7500;LDC - Laudo de disponibilidade de carga;false
 2026-06;LDC - Laudo de disponibilidade de carga;1748;Empresarial Antonio de Albuquerque Galvão;Empresarial Antonio de Albuquerque Galvão;9400;"LDC - Laudo de disponibilidade de carga, LCC - Laudo Carregador Coletivo";true
+2026-06;LDC - Laudo de disponibilidade de carga;1755;Edf Varanda do Parque;Edf Varanda do Parque;14000;LDC - Laudo de disponibilidade de carga;false
 2026-06;ICV - Inspeção de carregador veicular;1759;Cond Chácara Santa Rosa;Cond Chácara Santa Rosa;4500;ICV - Inspeção de carregador veicular;false
 2026-06;ICV - Inspeção de carregador veicular;1774;Condomínio Carmen Costa;Condomínio Carmen Costa;9200;ICV - Inspeção de carregador veicular;false
 2026-06;OBRA;1819;Edf. Cap d'Antibes;Edf. Cap d'Antibes;4500;OBRA;false
+2026-06;ICV - Inspeção de carregador veicular;1832;Edf Varanda do Parque;Edf Varanda do Parque;7920;ICV - Inspeção de carregador veicular;false

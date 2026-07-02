@@ -2049,6 +2049,102 @@ tr:last-child td {
   line-height: 1.35;
 }
 
+.planning-kpi-group {
+  margin-bottom: 18px;
+}
+
+.planning-kpi-group-title {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.commercial-funnel-chart-box {
+  min-height: 480px;
+}
+
+.commercial-funnel-chart-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+
+.commercial-funnel-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.commercial-funnel-series-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.commercial-funnel-legend-note {
+  margin: 0;
+  max-width: 520px;
+}
+
+.commercial-funnel-cohort-note {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+.funnel-stage-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.funnel-stage-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.funnel-stage-chip-group-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.7;
+  margin-right: 2px;
+}
+
+.funnel-month-table-wrap {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.funnel-month-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.funnel-month-table th,
+.funnel-month-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #dce5e8;
+  text-align: left;
+}
+
+.funnel-month-cards-secondary {
+  margin-top: -6px;
+}
+
+.funnel-stage-chart .recharts-wrapper {
+  min-height: 360px;
+}
+
 .planning-pipedrive-grid {
   margin-bottom: 24px;
 }

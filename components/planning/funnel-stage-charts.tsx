@@ -1,30 +1,43 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Bar,
-  BarChart,
   CartesianGrid,
+  ComposedChart,
   Legend,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
 } from "recharts";
-import type { FunnelStageHistory } from "@/lib/analysis/types";
+import type { ConversionMonthRow } from "@/lib/analysis/types";
+import type { FunnelStageChartRow } from "@/lib/analysis/conversion-metrics";
 import {
   buildFunnelStackedRows,
   funnelMonthBreakdown,
+  getVisibleStages,
+  metricKey,
   stageColor,
-  type FunnelViewMode
+  type FunnelMetricMode,
+  type FunnelViewMode,
+  type PipelineFilter
 } from "@/lib/analysis/funnel-stage-metrics";
+import type { FunnelStageHistory } from "@/lib/analysis/types";
 import { brl } from "@/lib/analysis/format";
+
+export type FunnelTimeSeriesId = "averageDaysToWin" | "ganhosAntigosSharePct";
 
 type Props = {
   history: FunnelStageHistory;
-  pipelineId: number;
+  pipelineFilter: PipelineFilter;
   mode: FunnelViewMode;
+  metricMode: FunnelMetricMode;
   selectedStageIds: Set<number>;
   selectedMonth: string | null;
+  enabledTimeSeries: Set<FunnelTimeSeriesId>;
+  conversionMonths: ConversionMonthRow[];
   onSelectMonth: (month: string) => void;
 };
 
@@ -33,61 +46,99 @@ function FunnelTooltip({
   payload,
   label,
   history,
-  pipelineId,
+  pipelineFilter,
   mode,
-  selectedStageIds
+  selectedStageIds,
+  conversionMonths
 }: {
   active?: boolean;
-  payload?: Array<{ dataKey?: string; value?: number; color?: string; name?: string; payload?: { month?: string } }>;
+  payload?: Array<{
+    dataKey?: string;
+    value?: number;
+    color?: string;
+    name?: string;
+    payload?: FunnelStageChartRow;
+  }>;
   label?: string;
   history: FunnelStageHistory;
-  pipelineId: number;
+  pipelineFilter: PipelineFilter;
   mode: FunnelViewMode;
   selectedStageIds: Set<number>;
+  conversionMonths: ConversionMonthRow[];
 }) {
   if (!active || !payload?.length || !label) return null;
 
-  const monthRow = payload[0]?.payload as { month?: string } | undefined;
+  const monthRow = payload[0]?.payload as FunnelStageChartRow | undefined;
   const month = monthRow?.month;
   if (!month) return null;
 
-  const breakdown = funnelMonthBreakdown(history, pipelineId, mode, month, selectedStageIds);
+  const breakdown = funnelMonthBreakdown(history, pipelineFilter, mode, month, selectedStageIds);
+  const conversion = conversionMonths.find((row) => row.month === month);
 
   return (
     <div className="chart-tooltip">
       <strong>{label}</strong>
+      {conversion?.wonDeals ? (
+        <p className="commercial-funnel-cohort-note">
+          Ganhos: {conversion.wonDeals} · média {Math.round(conversion.averageDaysToWin ?? 0)}d
+          {conversion.ganhosAntigosSharePct != null
+            ? ` · antigos (>1M) ${conversion.ganhosAntigosSharePct.toFixed(0)}%`
+            : ""}
+        </p>
+      ) : null}
       <ul>
         {breakdown.map((row, index) => (
-          <li key={row.stageId} style={{ color: stageColor(index) }}>
+          <li key={`${row.pipelineId}-${row.stageId}`} style={{ color: stageColor(index) }}>
             {row.stage}: {row.deals} neg. · {brl.format(row.value)}
           </li>
         ))}
       </ul>
+      {conversion ? (
+        <p className="commercial-funnel-cohort-note">
+          Fechamento: M {conversion.winLagM0Pct?.toFixed(0)}% · M−1 {conversion.winLagM1Pct?.toFixed(0)}% · M−2{" "}
+          {conversion.winLagM2Pct?.toFixed(0)}% · M−3 {conversion.winLagM3Pct?.toFixed(0)}% · M&gt;4{" "}
+          {conversion.winLagM4PlusPct?.toFixed(0)}%
+        </p>
+      ) : null}
     </div>
   );
 }
 
 export function FunnelStageStackedChart({
   history,
-  pipelineId,
+  pipelineFilter,
   mode,
+  metricMode,
   selectedStageIds,
   selectedMonth,
+  enabledTimeSeries,
+  conversionMonths,
   onSelectMonth
 }: Props) {
-  const pipeline = history.pipelines.find((item) => item.id === pipelineId);
-  const data = buildFunnelStackedRows(history, pipelineId, mode, selectedStageIds);
-  const stages = pipeline?.stages.filter((stage) => selectedStageIds.has(stage.id)) ?? [];
+  const stages = getVisibleStages(history, pipelineFilter, selectedStageIds);
+  const data = useMemo(() => {
+    const funnelRows = buildFunnelStackedRows(history, pipelineFilter, mode, selectedStageIds, metricMode);
+    const byMonth = Object.fromEntries(conversionMonths.map((row) => [row.month, row]));
+    return funnelRows.map((row) => ({
+      ...row,
+      averageDaysToWin: byMonth[row.month]?.averageDaysToWin ?? null,
+      ganhosAntigosSharePct: byMonth[row.month]?.ganhosAntigosSharePct ?? null
+    }));
+  }, [history, pipelineFilter, mode, selectedStageIds, metricMode, conversionMonths]);
 
   if (!stages.length) {
     return <p className="chart-empty">Selecione ao menos uma etapa do funil.</p>;
   }
 
+  const showTime = enabledTimeSeries.size > 0;
+  const showDays = enabledTimeSeries.has("averageDaysToWin");
+  const showAntigos = enabledTimeSeries.has("ganhosAntigosSharePct");
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart
+      <ComposedChart
         data={data}
-        margin={{ top: 12, right: 12, left: 4, bottom: 0 }}
+        margin={{ top: 12, right: showDays && showAntigos ? 56 : showTime ? 44 : 12, left: 4, bottom: 0 }}
         onClick={(state) => {
           const month = state?.activePayload?.[0]?.payload?.month;
           if (typeof month === "string") onSelectMonth(month);
@@ -95,30 +146,88 @@ export function FunnelStageStackedChart({
       >
         <CartesianGrid stroke="#dce5e8" vertical={false} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={36} />
+        <YAxis
+          yAxisId="left"
+          allowDecimals={metricMode === "value"}
+          tickFormatter={(value) =>
+            metricMode === "value" ? `${Math.round(Number(value) / 1000)}k` : String(Math.round(Number(value)))
+          }
+          tickLine={false}
+          axisLine={false}
+          width={metricMode === "value" ? 48 : 36}
+        />
+        {showDays ? (
+          <YAxis
+            yAxisId="days"
+            orientation="right"
+            tickFormatter={(value) => `${Math.round(Number(value))}d`}
+            tickLine={false}
+            axisLine={false}
+            width={showAntigos ? 36 : 40}
+            domain={[0, "auto"]}
+          />
+        ) : null}
+        {showAntigos ? (
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            tickFormatter={(value) => `${Math.round(Number(value))}%`}
+            tickLine={false}
+            axisLine={false}
+            width={40}
+            domain={[0, 100]}
+          />
+        ) : null}
         <Tooltip
           content={
             <FunnelTooltip
               history={history}
-              pipelineId={pipelineId}
+              pipelineFilter={pipelineFilter}
               mode={mode}
               selectedStageIds={selectedStageIds}
+              conversionMonths={conversionMonths}
             />
           }
         />
         <Legend />
         {stages.map((stage, index) => (
           <Bar
-            key={stage.id}
-            dataKey={`s${stage.id}`}
-            name={stage.name}
+            key={`${stage.pipelineId}-${stage.stageId}`}
+            yAxisId="left"
+            dataKey={metricKey(stage.stageId, metricMode)}
+            name={stage.label}
             stackId="funnel"
             fill={stageColor(index)}
             radius={index === stages.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
             opacity={selectedMonth ? 0.72 : 1}
           />
         ))}
-      </BarChart>
+        {enabledTimeSeries.has("averageDaysToWin") ? (
+          <Line
+            yAxisId="days"
+            type="monotone"
+            dataKey="averageDaysToWin"
+            name="Média dias até ganho"
+            stroke="#14b8a6"
+            strokeWidth={2.5}
+            dot={{ r: 3 }}
+            connectNulls
+          />
+        ) : null}
+        {enabledTimeSeries.has("ganhosAntigosSharePct") ? (
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="ganhosAntigosSharePct"
+            name="Ganhos antigos (>1M)"
+            stroke="#64748b"
+            strokeWidth={2}
+            strokeDasharray="5 4"
+            dot={{ r: 2 }}
+            connectNulls
+          />
+        ) : null}
+      </ComposedChart>
     </ResponsiveContainer>
   );
 }

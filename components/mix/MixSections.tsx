@@ -22,6 +22,7 @@ import {
   type MixGranularity
 } from "@/lib/analysis/mix-metrics";
 import { mixColors, StackedRevenueMixChart } from "@/components/charts";
+import { MixGoalCompositionPanel } from "@/components/mix/MixGoalCompositionPanel";
 import { brl, formatGrowth, number } from "@/lib/analysis/format";
 
 type ViewMode = "table" | "compare" | "timeline";
@@ -434,6 +435,8 @@ export function MixSections({ analysis, year }: Props) {
           </table>
         </div>
       </section>
+
+      <MixGoalCompositionPanel analysis={analysis} year={year} />
 
       <details className="appendix-details compact-details">
         <summary>Detalhe mensal bruto por tipo principal</summary>

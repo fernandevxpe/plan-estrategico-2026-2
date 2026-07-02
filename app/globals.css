@@ -983,6 +983,119 @@ a {
   border-color: #d7efe4;
 }
 
+.mix-goal-section {
+  margin: 28px 0 20px;
+  padding-top: 24px;
+  border-top: 2px solid #e3ecef;
+}
+
+.mix-goal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.mix-goal-header h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.mix-goal-header p {
+  margin: 0;
+  color: var(--muted);
+  max-width: 72ch;
+}
+
+.mix-goal-year-note {
+  margin-top: 8px !important;
+  color: #b67818 !important;
+  font-size: 12px;
+}
+
+.mix-goal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mix-goal-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mix-goal-kpi {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.mix-goal-kpi span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mix-goal-kpi strong {
+  font-size: 18px;
+}
+
+.mix-goal-kpi.tone-warn strong {
+  color: #b67818;
+}
+
+.mix-goal-kpi.tone-good strong {
+  color: #0f766e;
+}
+
+.mix-goal-chart-card,
+.mix-goal-table-card {
+  margin-bottom: 14px;
+}
+
+.mix-goal-chart-wrap {
+  height: 360px;
+}
+
+.mix-goal-row-projected {
+  background: #fafcfd;
+}
+
+.mix-goal-mix-pct {
+  font-size: 11px;
+}
+
+.mix-goal-shares {
+  margin-bottom: 16px;
+}
+
+.mix-goal-share-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mix-goal-share-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fbfcfc;
+  font-size: 12px;
+}
+
+.mix-goal-share-chip i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
 .obra-subgroups {
   margin: 20px 0 24px;
 }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-02T19:04:17.983Z",
+  "generatedAt": "2026-07-02T20:54:49.383Z",
   "scope": "Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus",
   "totals": {
     "pipedriveDealsAll": 1685,
@@ -18525,6 +18525,720 @@
       "dealsYoYPct": null
     }
   ],
+  "businessTypeMonthlyByScope": [
+    {
+      "month": "2025-01",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 2,
+      "revenue": 13400,
+      "averageTicket": 6700
+    },
+    {
+      "month": "2025-01",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 1,
+      "revenue": 5000,
+      "averageTicket": 5000
+    },
+    {
+      "month": "2025-02",
+      "scope": "consultoria",
+      "type": "LSPDA",
+      "wonDeals": 1,
+      "revenue": 13800,
+      "averageTicket": 13800
+    },
+    {
+      "month": "2025-02",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 1,
+      "revenue": 5400,
+      "averageTicket": 5400
+    },
+    {
+      "month": "2025-02",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 1,
+      "revenue": 5400,
+      "averageTicket": 5400
+    },
+    {
+      "month": "2025-02",
+      "scope": "consultoria",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 1,
+      "revenue": 5400,
+      "averageTicket": 5400
+    },
+    {
+      "month": "2025-02",
+      "scope": "consultoria",
+      "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "wonDeals": 1,
+      "revenue": 3750,
+      "averageTicket": 3750
+    },
+    {
+      "month": "2025-02",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 1,
+      "revenue": 3750,
+      "averageTicket": 3750
+    },
+    {
+      "month": "2025-03",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 1,
+      "revenue": 10500,
+      "averageTicket": 10500
+    },
+    {
+      "month": "2025-04",
+      "scope": "consultoria",
+      "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "wonDeals": 2,
+      "revenue": 13300,
+      "averageTicket": 6650
+    },
+    {
+      "month": "2025-04",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 2,
+      "revenue": 11966.666666666668,
+      "averageTicket": 5983.333333333334
+    },
+    {
+      "month": "2025-04",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 2,
+      "revenue": 11833.333333333334,
+      "averageTicket": 5916.666666666667
+    },
+    {
+      "month": "2025-04",
+      "scope": "consultoria",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 1,
+      "revenue": 5966.666666666667,
+      "averageTicket": 5966.666666666667
+    },
+    {
+      "month": "2025-04",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 1,
+      "revenue": 5866.666666666667,
+      "averageTicket": 5866.666666666667
+    },
+    {
+      "month": "2025-04",
+      "scope": "consultoria",
+      "type": "LSPDA",
+      "wonDeals": 1,
+      "revenue": 5866.666666666667,
+      "averageTicket": 5866.666666666667
+    },
+    {
+      "month": "2025-04",
+      "scope": "obras",
+      "type": "OBRA",
+      "wonDeals": 1,
+      "revenue": 21000,
+      "averageTicket": 21000
+    },
+    {
+      "month": "2025-05",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 6,
+      "revenue": 37830,
+      "averageTicket": 6305
+    },
+    {
+      "month": "2025-05",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 1,
+      "revenue": 14000,
+      "averageTicket": 14000
+    },
+    {
+      "month": "2025-05",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 1,
+      "revenue": 6750,
+      "averageTicket": 6750
+    },
+    {
+      "month": "2025-05",
+      "scope": "consultoria",
+      "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "wonDeals": 1,
+      "revenue": 5580,
+      "averageTicket": 5580
+    },
+    {
+      "month": "2025-06",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 6,
+      "revenue": 35000,
+      "averageTicket": 5833.333333333333
+    },
+    {
+      "month": "2025-06",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 4,
+      "revenue": 31500,
+      "averageTicket": 7875
+    },
+    {
+      "month": "2025-06",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 2,
+      "revenue": 10500,
+      "averageTicket": 5250
+    },
+    {
+      "month": "2025-07",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 7,
+      "revenue": 41533.33333333333,
+      "averageTicket": 5933.333333333333
+    },
+    {
+      "month": "2025-07",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 2,
+      "revenue": 7733.333333333333,
+      "averageTicket": 3866.6666666666665
+    },
+    {
+      "month": "2025-07",
+      "scope": "consultoria",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 1,
+      "revenue": 5333.333333333333,
+      "averageTicket": 5333.333333333333
+    },
+    {
+      "month": "2025-07",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 1,
+      "revenue": 4500,
+      "averageTicket": 4500
+    },
+    {
+      "month": "2025-07",
+      "scope": "obras",
+      "type": "OBRA",
+      "wonDeals": 1,
+      "revenue": 10540,
+      "averageTicket": 10540
+    },
+    {
+      "month": "2025-08",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 10,
+      "revenue": 75250,
+      "averageTicket": 7525
+    },
+    {
+      "month": "2025-08",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 3,
+      "revenue": 16000,
+      "averageTicket": 5333.333333333333
+    },
+    {
+      "month": "2025-08",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 2,
+      "revenue": 11050,
+      "averageTicket": 5525
+    },
+    {
+      "month": "2025-08",
+      "scope": "consultoria",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 2,
+      "revenue": 2900,
+      "averageTicket": 1450
+    },
+    {
+      "month": "2025-09",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 6,
+      "revenue": 40020,
+      "averageTicket": 6670
+    },
+    {
+      "month": "2025-09",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 2,
+      "revenue": 11500,
+      "averageTicket": 5750
+    },
+    {
+      "month": "2025-09",
+      "scope": "consultoria",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 1,
+      "revenue": 5300,
+      "averageTicket": 5300
+    },
+    {
+      "month": "2025-09",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 1,
+      "revenue": 5000,
+      "averageTicket": 5000
+    },
+    {
+      "month": "2025-09",
+      "scope": "consultoria",
+      "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "wonDeals": 1,
+      "revenue": 4000,
+      "averageTicket": 4000
+    },
+    {
+      "month": "2025-09",
+      "scope": "obras",
+      "type": "OBRA",
+      "wonDeals": 1,
+      "revenue": 16493.98,
+      "averageTicket": 16493.98
+    },
+    {
+      "month": "2025-10",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 6,
+      "revenue": 60516.66666666667,
+      "averageTicket": 10086.111111111111
+    },
+    {
+      "month": "2025-10",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 3,
+      "revenue": 15966.666666666668,
+      "averageTicket": 5322.222222222223
+    },
+    {
+      "month": "2025-10",
+      "scope": "consultoria",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 2,
+      "revenue": 11166.666666666668,
+      "averageTicket": 5583.333333333334
+    },
+    {
+      "month": "2025-10",
+      "scope": "consultoria",
+      "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "wonDeals": 1,
+      "revenue": 4500,
+      "averageTicket": 4500
+    },
+    {
+      "month": "2025-10",
+      "scope": "obras",
+      "type": "OBRA",
+      "wonDeals": 1,
+      "revenue": 20000,
+      "averageTicket": 20000
+    },
+    {
+      "month": "2025-11",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 8,
+      "revenue": 49160,
+      "averageTicket": 6145
+    },
+    {
+      "month": "2025-11",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 6,
+      "revenue": 31600,
+      "averageTicket": 5266.666666666667
+    },
+    {
+      "month": "2025-11",
+      "scope": "consultoria",
+      "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "wonDeals": 1,
+      "revenue": 9000,
+      "averageTicket": 9000
+    },
+    {
+      "month": "2025-11",
+      "scope": "obras",
+      "type": "OBRA",
+      "wonDeals": 1,
+      "revenue": 9700,
+      "averageTicket": 9700
+    },
+    {
+      "month": "2025-12",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 3,
+      "revenue": 19300,
+      "averageTicket": 6433.333333333333
+    },
+    {
+      "month": "2025-12",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 2,
+      "revenue": 11400,
+      "averageTicket": 5700
+    },
+    {
+      "month": "2025-12",
+      "scope": "consultoria",
+      "type": "Laudos e consultoria condominial",
+      "wonDeals": 1,
+      "revenue": 7800,
+      "averageTicket": 7800
+    },
+    {
+      "month": "2025-12",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 1,
+      "revenue": 5000,
+      "averageTicket": 5000
+    },
+    {
+      "month": "2025-12",
+      "scope": "consultoria",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 1,
+      "revenue": 3000,
+      "averageTicket": 3000
+    },
+    {
+      "month": "2025-12",
+      "scope": "obras",
+      "type": "OBRA",
+      "wonDeals": 2,
+      "revenue": 52649.29,
+      "averageTicket": 26324.645
+    },
+    {
+      "month": "2025-12",
+      "scope": "obras",
+      "type": "Obras eletricas",
+      "wonDeals": 2,
+      "revenue": 39140,
+      "averageTicket": 19570
+    },
+    {
+      "month": "2026-01",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 5,
+      "revenue": 27900,
+      "averageTicket": 5580
+    },
+    {
+      "month": "2026-01",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 4,
+      "revenue": 21400,
+      "averageTicket": 5350
+    },
+    {
+      "month": "2026-01",
+      "scope": "consultoria",
+      "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "wonDeals": 3,
+      "revenue": 17000,
+      "averageTicket": 5666.666666666667
+    },
+    {
+      "month": "2026-01",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 1,
+      "revenue": 6000,
+      "averageTicket": 6000
+    },
+    {
+      "month": "2026-01",
+      "scope": "obras",
+      "type": "OBRA",
+      "wonDeals": 4,
+      "revenue": 86315.86,
+      "averageTicket": 21578.965
+    },
+    {
+      "month": "2026-01",
+      "scope": "obras",
+      "type": "Instalação de Carregador Eletrico",
+      "wonDeals": 1,
+      "revenue": 21515.86,
+      "averageTicket": 21515.86
+    },
+    {
+      "month": "2026-02",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 8,
+      "revenue": 146500,
+      "averageTicket": 18312.5
+    },
+    {
+      "month": "2026-02",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 3,
+      "revenue": 19000,
+      "averageTicket": 6333.333333333333
+    },
+    {
+      "month": "2026-02",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 1,
+      "revenue": 4207.5,
+      "averageTicket": 4207.5
+    },
+    {
+      "month": "2026-02",
+      "scope": "consultoria",
+      "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "wonDeals": 1,
+      "revenue": 4207.5,
+      "averageTicket": 4207.5
+    },
+    {
+      "month": "2026-02",
+      "scope": "obras",
+      "type": "OBRA",
+      "wonDeals": 3,
+      "revenue": 24250,
+      "averageTicket": 8083.333333333333
+    },
+    {
+      "month": "2026-03",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 9,
+      "revenue": 57666.66666666667,
+      "averageTicket": 6407.407407407408
+    },
+    {
+      "month": "2026-03",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 5,
+      "revenue": 22666.666666666668,
+      "averageTicket": 4533.333333333334
+    },
+    {
+      "month": "2026-03",
+      "scope": "consultoria",
+      "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "wonDeals": 4,
+      "revenue": 17250,
+      "averageTicket": 4312.5
+    },
+    {
+      "month": "2026-03",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 3,
+      "revenue": 16000,
+      "averageTicket": 5333.333333333333
+    },
+    {
+      "month": "2026-03",
+      "scope": "consultoria",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 1,
+      "revenue": 4166.666666666667,
+      "averageTicket": 4166.666666666667
+    },
+    {
+      "month": "2026-03",
+      "scope": "consultoria",
+      "type": "LGR - Laudo de Gerenciamento de Risco",
+      "wonDeals": 1,
+      "revenue": 2000,
+      "averageTicket": 2000
+    },
+    {
+      "month": "2026-03",
+      "scope": "obras",
+      "type": "OBRA",
+      "wonDeals": 2,
+      "revenue": 101300,
+      "averageTicket": 50650
+    },
+    {
+      "month": "2026-03",
+      "scope": "obras",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 1,
+      "revenue": 1400,
+      "averageTicket": 1400
+    },
+    {
+      "month": "2026-04",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 8,
+      "revenue": 64500,
+      "averageTicket": 8062.5
+    },
+    {
+      "month": "2026-04",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 5,
+      "revenue": 26050,
+      "averageTicket": 5210
+    },
+    {
+      "month": "2026-04",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 1,
+      "revenue": 8000,
+      "averageTicket": 8000
+    },
+    {
+      "month": "2026-04",
+      "scope": "consultoria",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 1,
+      "revenue": 4200,
+      "averageTicket": 4200
+    },
+    {
+      "month": "2026-04",
+      "scope": "consultoria",
+      "type": "LGR - Laudo de Gerenciamento de Risco",
+      "wonDeals": 1,
+      "revenue": 1350,
+      "averageTicket": 1350
+    },
+    {
+      "month": "2026-04",
+      "scope": "obras",
+      "type": "OBRA",
+      "wonDeals": 2,
+      "revenue": 51500,
+      "averageTicket": 25750
+    },
+    {
+      "month": "2026-05",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 8,
+      "revenue": 57550,
+      "averageTicket": 7193.75
+    },
+    {
+      "month": "2026-05",
+      "scope": "consultoria",
+      "type": "LIE - Laudo de Instalações Elétricas",
+      "wonDeals": 4,
+      "revenue": 24250,
+      "averageTicket": 6062.5
+    },
+    {
+      "month": "2026-05",
+      "scope": "consultoria",
+      "type": "PROJETOS",
+      "wonDeals": 3,
+      "revenue": 20000,
+      "averageTicket": 6666.666666666667
+    },
+    {
+      "month": "2026-05",
+      "scope": "consultoria",
+      "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "wonDeals": 2,
+      "revenue": 12500,
+      "averageTicket": 6250
+    },
+    {
+      "month": "2026-05",
+      "scope": "consultoria",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 2,
+      "revenue": 10000,
+      "averageTicket": 5000
+    },
+    {
+      "month": "2026-05",
+      "scope": "consultoria",
+      "type": "LCC - Laudo Carregador Coletivo",
+      "wonDeals": 1,
+      "revenue": 6500,
+      "averageTicket": 6500
+    },
+    {
+      "month": "2026-06",
+      "scope": "consultoria",
+      "type": "LDC - Laudo de disponibilidade de carga",
+      "wonDeals": 6,
+      "revenue": 43200,
+      "averageTicket": 7200
+    },
+    {
+      "month": "2026-06",
+      "scope": "consultoria",
+      "type": "ICV - Inspeção de carregador veicular",
+      "wonDeals": 3,
+      "revenue": 21620,
+      "averageTicket": 7206.666666666667
+    },
+    {
+      "month": "2026-06",
+      "scope": "consultoria",
+      "type": "LCC - Laudo Carregador Coletivo",
+      "wonDeals": 1,
+      "revenue": 4700,
+      "averageTicket": 4700
+    },
+    {
+      "month": "2026-06",
+      "scope": "obras",
+      "type": "OBRA",
+      "wonDeals": 5,
+      "revenue": 69970,
+      "averageTicket": 13994
+    }
+  ],
   "businessTypeDeals": [
     {
       "month": "2025-06",
@@ -20451,6 +21165,8 @@
     {
       "month": "2025-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 423,
       "dealTitle": "Negócio Cond Saint Eduardo",
       "organization": "Cond Saint Eduardo",
@@ -20464,6 +21180,8 @@
     {
       "month": "2025-05",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 505,
       "dealTitle": "Negócio Cond. Solar das Palmeiras",
       "organization": "Cond. Solar das Palmeiras",
@@ -20477,6 +21195,8 @@
     {
       "month": "2025-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 505,
       "dealTitle": "Negócio Cond. Solar das Palmeiras",
       "organization": "Cond. Solar das Palmeiras",
@@ -20490,6 +21210,8 @@
     {
       "month": "2026-02",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 625,
       "dealTitle": "Negócio Edf. Aderbal Jurema",
       "organization": "Edf. Aderbal Jurema",
@@ -20503,6 +21225,8 @@
     {
       "month": "2026-02",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 625,
       "dealTitle": "Negócio Edf. Aderbal Jurema",
       "organization": "Edf. Aderbal Jurema",
@@ -20516,6 +21240,8 @@
     {
       "month": "2025-02",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 662,
       "dealTitle": "Negócio Cond. João Heráclio",
       "organization": "Cond. João Heráclio",
@@ -20529,6 +21255,8 @@
     {
       "month": "2025-02",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 662,
       "dealTitle": "Negócio Cond. João Heráclio",
       "organization": "Cond. João Heráclio",
@@ -20542,6 +21270,8 @@
     {
       "month": "2025-02",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 662,
       "dealTitle": "Negócio Cond. João Heráclio",
       "organization": "Cond. João Heráclio",
@@ -20555,6 +21285,8 @@
     {
       "month": "2025-12",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 665,
       "dealTitle": "Negócio Edf Villa Casa Forte",
       "organization": "Edf Villa Casa Forte",
@@ -20568,6 +21300,8 @@
     {
       "month": "2025-07",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 667,
       "dealTitle": "Negócio Edf Tignanello",
       "organization": "Edf Tignanelo",
@@ -20581,6 +21315,8 @@
     {
       "month": "2025-07",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 669,
       "dealTitle": "Negócio Edf Carla Dias",
       "organization": "Edf Carla Dias",
@@ -20594,6 +21330,8 @@
     {
       "month": "2025-09",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 673,
       "dealTitle": "Negócio Jardins do Capibaribe",
       "organization": "Jardins do Capibaribe",
@@ -20607,6 +21345,8 @@
     {
       "month": "2025-04",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 681,
       "dealTitle": "Negócio Cond. Montendre",
       "organization": "Cond. Montendre",
@@ -20620,6 +21360,8 @@
     {
       "month": "2025-04",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 681,
       "dealTitle": "Negócio Cond. Montendre",
       "organization": "Cond. Montendre",
@@ -20633,6 +21375,8 @@
     {
       "month": "2025-04",
       "type": "LSPDA",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 681,
       "dealTitle": "Negócio Cond. Montendre",
       "organization": "Cond. Montendre",
@@ -20646,6 +21390,8 @@
     {
       "month": "2025-08",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 682,
       "dealTitle": "Negócio Cond. The Plaza",
       "organization": "Cond. The Plaza",
@@ -20659,6 +21405,8 @@
     {
       "month": "2025-08",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 682,
       "dealTitle": "Negócio Cond. The Plaza",
       "organization": "Cond. The Plaza",
@@ -20672,6 +21420,8 @@
     {
       "month": "2026-01",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 685,
       "dealTitle": "Negócio Edf. Ara Pacis",
       "organization": "Edf. Ara Pacis",
@@ -20685,6 +21435,8 @@
     {
       "month": "2026-01",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 685,
       "dealTitle": "Negócio Edf. Ara Pacis",
       "organization": "Edf. Ara Pacis",
@@ -20698,6 +21450,8 @@
     {
       "month": "2025-09",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 692,
       "dealTitle": "Negócio Hilson Macedo",
       "organization": "Hilson Macedo",
@@ -20711,6 +21465,8 @@
     {
       "month": "2025-09",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 692,
       "dealTitle": "Negócio Hilson Macedo",
       "organization": "Hilson Macedo",
@@ -20724,6 +21480,8 @@
     {
       "month": "2025-09",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 699,
       "dealTitle": "Negócio Edf Samsara",
       "organization": "Edf Samsara",
@@ -20737,6 +21495,8 @@
     {
       "month": "2025-02",
       "type": "LSPDA",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 745,
       "dealTitle": "Le Parc",
       "organization": "Edificio Le Parc",
@@ -20750,6 +21510,8 @@
     {
       "month": "2026-03",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 752,
       "dealTitle": "Negócio Cond. Hilson de Azevedo Mota",
       "organization": "Cond. Hilson de Azevedo Mota",
@@ -20763,6 +21525,8 @@
     {
       "month": "2025-04",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 770,
       "dealTitle": "Negócio Edf. Maria João",
       "organization": "Pe no condominio",
@@ -20776,6 +21540,8 @@
     {
       "month": "2025-01",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 791,
       "dealTitle": "Negócio Ed. Rio Araguaia",
       "organization": "Ed. Rio Araguaia",
@@ -20789,6 +21555,8 @@
     {
       "month": "2025-01",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 793,
       "dealTitle": "Negócio Edf Solar das Acácios",
       "organization": "Edf Solar das Acácios",
@@ -20802,6 +21570,8 @@
     {
       "month": "2025-04",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 799,
       "dealTitle": "Negócio Edf Praça do Mar",
       "organization": "Edf Praça do Mar",
@@ -20815,6 +21585,8 @@
     {
       "month": "2025-01",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 804,
       "dealTitle": "Negócio Maison Monet",
       "organization": "Maison Monet",
@@ -20828,6 +21600,8 @@
     {
       "month": "2025-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 819,
       "dealTitle": "Negócio Edf Guimarães Rosa",
       "organization": "Edf Guimarães Rosa",
@@ -20841,6 +21615,8 @@
     {
       "month": "2025-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 822,
       "dealTitle": "Negócio Edf Quebra Mar",
       "organization": "Edf Quebra Mar",
@@ -20854,6 +21630,8 @@
     {
       "month": "2026-01",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 823,
       "dealTitle": "Negócio Verano ADM",
       "organization": "Verano ADM",
@@ -20867,6 +21645,8 @@
     {
       "month": "2025-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 826,
       "dealTitle": "Negócio Edf Margarida Renda Colonial",
       "organization": "Edf Margarida Renda Colonial",
@@ -20880,6 +21660,8 @@
     {
       "month": "2025-12",
       "type": "Laudos e consultoria condominial",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 868,
       "dealTitle": "Negócio Edf Giulia Priori",
       "organization": "Edf Giulia Priori",
@@ -20893,6 +21675,8 @@
     {
       "month": "2025-07",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 937,
       "dealTitle": "Negócio Edf Delmar",
       "organization": "Edf Delmar",
@@ -20906,6 +21690,8 @@
     {
       "month": "2025-05",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 944,
       "dealTitle": "Negócio Edf Duas Naçoes",
       "organization": "Edf Duas Naçoes",
@@ -20919,6 +21705,8 @@
     {
       "month": "2026-05",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 946,
       "dealTitle": "Negócio Edf Santorini",
       "organization": "Edf Santorini",
@@ -20932,6 +21720,8 @@
     {
       "month": "2026-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 946,
       "dealTitle": "Negócio Edf Santorini",
       "organization": "Edf Santorini",
@@ -20945,6 +21735,8 @@
     {
       "month": "2025-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 952,
       "dealTitle": "Negócio Edf Praia de Grauna",
       "organization": "Edf Praia de Grauna",
@@ -20958,6 +21750,8 @@
     {
       "month": "2025-04",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 955,
       "dealTitle": "Edf. Maria Teresa Coelho",
       "organization": null,
@@ -20971,6 +21765,8 @@
     {
       "month": "2025-04",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 955,
       "dealTitle": "Edf. Maria Teresa Coelho",
       "organization": null,
@@ -20984,6 +21780,8 @@
     {
       "month": "2025-04",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 955,
       "dealTitle": "Edf. Maria Teresa Coelho",
       "organization": null,
@@ -20997,6 +21795,8 @@
     {
       "month": "2025-07",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 959,
       "dealTitle": "Negócio Edf Praia de Imbituba",
       "organization": "Edf Praia de Imbituba",
@@ -21010,6 +21810,8 @@
     {
       "month": "2025-07",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 959,
       "dealTitle": "Negócio Edf Praia de Imbituba",
       "organization": "Edf Praia de Imbituba",
@@ -21023,6 +21825,8 @@
     {
       "month": "2025-07",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 959,
       "dealTitle": "Negócio Edf Praia de Imbituba",
       "organization": "Edf Praia de Imbituba",
@@ -21036,6 +21840,8 @@
     {
       "month": "2025-07",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 962,
       "dealTitle": "Negócio Edf Splendid Rosarinho",
       "organization": "Edf Splendid Rosarinho",
@@ -21049,6 +21855,8 @@
     {
       "month": "2025-06",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 963,
       "dealTitle": "Negócio Edf Praia de Japaratinga",
       "organization": "Edf Praia de Japaratinga",
@@ -21062,6 +21870,8 @@
     {
       "month": "2025-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 971,
       "dealTitle": "Negócio Edf Morada Rosarinho",
       "organization": "Edf Morada Rosarinho",
@@ -21075,6 +21885,8 @@
     {
       "month": "2025-04",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 973,
       "dealTitle": "Negócio Enseada do Mar",
       "organization": "Enseada do Mar",
@@ -21088,6 +21900,8 @@
     {
       "month": "2025-04",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 974,
       "dealTitle": "Negócio Edf Brunello Di Montalcino",
       "organization": "Edf Brunello Di Montalcino",
@@ -21101,6 +21915,8 @@
     {
       "month": "2025-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 975,
       "dealTitle": "Edf Luar das Ubaias negócio",
       "organization": "Edf Luar das Ubaias",
@@ -21114,6 +21930,8 @@
     {
       "month": "2025-05",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 975,
       "dealTitle": "Edf Luar das Ubaias negócio",
       "organization": "Edf Luar das Ubaias",
@@ -21127,6 +21945,8 @@
     {
       "month": "2025-02",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1005,
       "dealTitle": "Negócio Enseada do Mar",
       "organization": "Enseada do Mar",
@@ -21140,6 +21960,8 @@
     {
       "month": "2025-02",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1005,
       "dealTitle": "Negócio Enseada do Mar",
       "organization": "Enseada do Mar",
@@ -21153,6 +21975,8 @@
     {
       "month": "2025-03",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1006,
       "dealTitle": "Negócio Rio Ave",
       "organization": "Rio Ave",
@@ -21166,6 +21990,8 @@
     {
       "month": "2025-06",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1007,
       "dealTitle": "Negócio Postos Pichilau - caruaru",
       "organization": "Postos Pichilau - caruaru",
@@ -21179,6 +22005,8 @@
     {
       "month": "2025-06",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1008,
       "dealTitle": "Negócio Pichilaue Abasteça",
       "organization": "Pichilau Vila Esperança",
@@ -21192,6 +22020,8 @@
     {
       "month": "2025-06",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1009,
       "dealTitle": "Negócio Pichilau Abasteça",
       "organization": "Pichilau Vila Esperança",
@@ -21205,6 +22035,8 @@
     {
       "month": "2025-06",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1021,
       "dealTitle": "Negócio Ed Portal do Capibaribe",
       "organization": "Ed Portal do Capibaribe",
@@ -21218,6 +22050,8 @@
     {
       "month": "2025-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1022,
       "dealTitle": "Negócio Edf Ilha do Retiro",
       "organization": "Edf Ilha do Retiro",
@@ -21231,6 +22065,8 @@
     {
       "month": "2025-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1023,
       "dealTitle": "Negócio Edf Hockenheim",
       "organization": "Edf Hockeneim",
@@ -21244,6 +22080,8 @@
     {
       "month": "2025-06",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1025,
       "dealTitle": "Edf Maria Carolina negócio",
       "organization": "Edf Maria Carolina",
@@ -21257,6 +22095,8 @@
     {
       "month": "2025-08",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1030,
       "dealTitle": "Negócio Edf Sirius e Antares",
       "organization": "condomínio Residencial Estrela",
@@ -21270,6 +22110,8 @@
     {
       "month": "2025-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1031,
       "dealTitle": "Negócio Edf Boa Viagem",
       "organization": "Edf Boa Viagem",
@@ -21283,6 +22125,8 @@
     {
       "month": "2025-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1035,
       "dealTitle": "Negócio Edf Villa das Pedras",
       "organization": "Edf Villa das Pedras",
@@ -21296,6 +22140,8 @@
     {
       "month": "2025-08",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1036,
       "dealTitle": "Edf Principe de Toscana",
       "organization": "Edificio Principe de Toscana",
@@ -21309,6 +22155,8 @@
     {
       "month": "2025-10",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1040,
       "dealTitle": "Negócio Edf Morada dos Agapanthus",
       "organization": "Edf Morada dos Agapanthus",
@@ -21322,6 +22170,8 @@
     {
       "month": "2025-08",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1043,
       "dealTitle": "Negócio Edf Morada Rosarinho",
       "organization": "Edf Morada Rosarinho",
@@ -21335,6 +22185,8 @@
     {
       "month": "2025-08",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1043,
       "dealTitle": "Negócio Edf Morada Rosarinho",
       "organization": "Edf Morada Rosarinho",
@@ -21348,6 +22200,8 @@
     {
       "month": "2025-08",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1052,
       "dealTitle": "Negócio Edf Turmalina",
       "organization": "Edf Turmalina",
@@ -21361,6 +22215,8 @@
     {
       "month": "2025-11",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1055,
       "dealTitle": "Negócio Edf Walter Turton",
       "organization": "Edf Walter Turton",
@@ -21374,6 +22230,8 @@
     {
       "month": "2025-11",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1062,
       "dealTitle": "Negócio Cond Casa da Montanha",
       "organization": "Cond Casa da Montanha",
@@ -21387,6 +22245,8 @@
     {
       "month": "2025-11",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1062,
       "dealTitle": "Negócio Cond Casa da Montanha",
       "organization": "Cond Casa da Montanha",
@@ -21400,6 +22260,8 @@
     {
       "month": "2025-08",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1071,
       "dealTitle": "Edf Terra Brasilis",
       "organization": "Edf Terra Brasilis",
@@ -21413,6 +22275,8 @@
     {
       "month": "2025-07",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1073,
       "dealTitle": "Negócio Edf Morada Ilha Verde",
       "organization": "Edf Morada Ilha Verde",
@@ -21426,6 +22290,8 @@
     {
       "month": "2025-10",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1074,
       "dealTitle": "Negócio Edf Piedade Prince",
       "organization": "Edf Piedade Prince",
@@ -21439,6 +22305,8 @@
     {
       "month": "2025-10",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1074,
       "dealTitle": "Negócio Edf Piedade Prince",
       "organization": "Edf Piedade Prince",
@@ -21452,6 +22320,8 @@
     {
       "month": "2025-10",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1074,
       "dealTitle": "Negócio Edf Piedade Prince",
       "organization": "Edf Piedade Prince",
@@ -21465,6 +22335,8 @@
     {
       "month": "2025-10",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1076,
       "dealTitle": "Negócio Edf Nicolau II",
       "organization": "Edf Nicolau II",
@@ -21478,6 +22350,8 @@
     {
       "month": "2025-11",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1077,
       "dealTitle": "Negócio Edf Maria Clarice",
       "organization": "Edf Maria Clarice",
@@ -21491,6 +22365,8 @@
     {
       "month": "2025-08",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1081,
       "dealTitle": "Edf Praia dos Jardins",
       "organization": "Edf Praia dos Jardins",
@@ -21504,6 +22380,8 @@
     {
       "month": "2025-08",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1083,
       "dealTitle": "Negócio Edf Sainte Daniela",
       "organization": "Edf Sainte Daniela",
@@ -21517,6 +22395,8 @@
     {
       "month": "2025-09",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1084,
       "dealTitle": "Negócio Edf Quinta do Algarve",
       "organization": "Edf Quinta do Algarve",
@@ -21530,6 +22410,8 @@
     {
       "month": "2025-08",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1085,
       "dealTitle": "Edf Luis Dias lins",
       "organization": "Edf Luis dias lins",
@@ -21543,6 +22425,8 @@
     {
       "month": "2025-08",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1089,
       "dealTitle": "Negócio Edf Píer Mauricio de Nassau",
       "organization": "Edf Píer Mauricio de Nassau",
@@ -21556,6 +22440,8 @@
     {
       "month": "2025-08",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1092,
       "dealTitle": "Edf FICUS negócio",
       "organization": "Edf FICUS",
@@ -21569,6 +22455,8 @@
     {
       "month": "2025-08",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1092,
       "dealTitle": "Edf FICUS negócio",
       "organization": "Edf FICUS",
@@ -21582,6 +22470,8 @@
     {
       "month": "2025-07",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1093,
       "dealTitle": "Negócio Edf Cristiano",
       "organization": "Edf Cristiano",
@@ -21595,6 +22485,8 @@
     {
       "month": "2025-07",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1101,
       "dealTitle": "Negócio Edf MIllennium",
       "organization": "Edf MIllennium",
@@ -21608,6 +22500,8 @@
     {
       "month": "2025-11",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1102,
       "dealTitle": "Negócio Edf Sobrado do Capibaribe",
       "organization": "Edf Sobrado do Capibaribe",
@@ -21621,6 +22515,8 @@
     {
       "month": "2025-11",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1102,
       "dealTitle": "Negócio Edf Sobrado do Capibaribe",
       "organization": "Edf Sobrado do Capibaribe",
@@ -21634,6 +22530,8 @@
     {
       "month": "2025-07",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1111,
       "dealTitle": "Negócio Edf Praia de Japaratinga",
       "organization": "Edf Praia de Japaratinga",
@@ -21647,6 +22545,8 @@
     {
       "month": "2025-07",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1112,
       "dealTitle": "Negócio Edf Villa das Pedras",
       "organization": "Edf Villa das Pedras",
@@ -21660,6 +22560,8 @@
     {
       "month": "2026-04",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1119,
       "dealTitle": "Negócio Edf Maria Ines",
       "organization": "Condominio do Edificio Maria Ines",
@@ -21673,6 +22575,8 @@
     {
       "month": "2025-08",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1124,
       "dealTitle": "Negócio Edf Maison Monet",
       "organization": "Edf Maison Monet",
@@ -21686,6 +22590,8 @@
     {
       "month": "2025-10",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1129,
       "dealTitle": "Negócio Paraíso Eco Resort Campina Grande",
       "organization": "Paraíso Eco Resort Campina Grande",
@@ -21699,6 +22605,8 @@
     {
       "month": "2025-09",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1130,
       "dealTitle": "Negócio Edf Casa Rosada",
       "organization": "Edf Manoella Vilaça",
@@ -21712,6 +22620,8 @@
     {
       "month": "2025-09",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1134,
       "dealTitle": "Edf Luar da Praia",
       "organization": "Edf Luar da Praia",
@@ -21725,6 +22635,8 @@
     {
       "month": "2025-09",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1136,
       "dealTitle": "Negócio Edf PARADOR DE GALICIA",
       "organization": "Edf PARADOR DE GALICIA",
@@ -21738,6 +22650,8 @@
     {
       "month": "2025-08",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1139,
       "dealTitle": "Negócio condomínio Residencial Estrela Sirius e Antares",
       "organization": "condomínio Residencial Estrela",
@@ -21751,6 +22665,8 @@
     {
       "month": "2025-08",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1140,
       "dealTitle": "Negócio Edf Praça do Mar",
       "organization": "Edf Praça do Mar",
@@ -21764,6 +22680,8 @@
     {
       "month": "2025-09",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1141,
       "dealTitle": "Negócio Edf MIllennium",
       "organization": "Edf MIllennium",
@@ -21777,6 +22695,8 @@
     {
       "month": "2025-09",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1142,
       "dealTitle": "Edf Castelo de Blois negócio",
       "organization": "Edf Castelo de Blois",
@@ -21790,6 +22710,8 @@
     {
       "month": "2026-02",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1152,
       "dealTitle": "Negócio Edificio Le Parc",
       "organization": "Edificio Le Parc",
@@ -21803,6 +22725,8 @@
     {
       "month": "2026-01",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1156,
       "dealTitle": "Negócio Edf Itaqua Vilage",
       "organization": "Edf Itaqua Vilage",
@@ -21816,6 +22740,8 @@
     {
       "month": "2025-11",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1162,
       "dealTitle": "Negócio Edf Maria Regina",
       "organization": "Edf Maria Regina",
@@ -21829,6 +22755,8 @@
     {
       "month": "2025-11",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1162,
       "dealTitle": "Negócio Edf Maria Regina",
       "organization": "Edf Maria Regina",
@@ -21842,6 +22770,8 @@
     {
       "month": "2026-05",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1163,
       "dealTitle": "Negócio Edf Palácio de Queluz",
       "organization": "Edf Palácio de Queluz",
@@ -21855,6 +22785,8 @@
     {
       "month": "2026-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1163,
       "dealTitle": "Negócio Edf Palácio de Queluz",
       "organization": "Edf Palácio de Queluz",
@@ -21868,6 +22800,8 @@
     {
       "month": "2025-10",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1172,
       "dealTitle": "Negócio edifício Morada das Palmeiras",
       "organization": "edifício Morada das Palmeiras",
@@ -21881,6 +22815,8 @@
     {
       "month": "2025-10",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1179,
       "dealTitle": "Negócio Edf Madalena Colonial",
       "organization": "Edf Madalena Colonial",
@@ -21894,6 +22830,8 @@
     {
       "month": "2025-10",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1180,
       "dealTitle": "Negócio Edf Reserva do Poço",
       "organization": "Edf Reserva do Poço",
@@ -21907,6 +22845,8 @@
     {
       "month": "2025-10",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1180,
       "dealTitle": "Negócio Edf Reserva do Poço",
       "organization": "Edf Reserva do Poço",
@@ -21920,6 +22860,8 @@
     {
       "month": "2025-09",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1183,
       "dealTitle": "Edf Luis dias lins negócio",
       "organization": "Edf Luis dias lins",
@@ -21933,6 +22875,8 @@
     {
       "month": "2025-09",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1184,
       "dealTitle": "Negócio Edf Cristiano",
       "organization": "Edf Cristiano",
@@ -21946,6 +22890,8 @@
     {
       "month": "2025-11",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1188,
       "dealTitle": "Edf Terra Brasilis",
       "organization": "Edf Terra Brasilis",
@@ -21959,6 +22905,8 @@
     {
       "month": "2025-12",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1191,
       "dealTitle": "Edf Novo Jardim",
       "organization": "Edf Novo Jardim",
@@ -21972,6 +22920,8 @@
     {
       "month": "2026-01",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1195,
       "dealTitle": "Edf Roraima",
       "organization": "Edf nao informado",
@@ -21985,6 +22935,8 @@
     {
       "month": "2025-11",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1202,
       "dealTitle": "Edf. Cap d'Antibes",
       "organization": "Edf. Cap d'Antibes",
@@ -21998,6 +22950,8 @@
     {
       "month": "2025-10",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1204,
       "dealTitle": "Edf Principe de Toscana",
       "organization": "Edf Principe de Toscana",
@@ -22011,6 +22965,8 @@
     {
       "month": "2025-11",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1206,
       "dealTitle": "Edf Terra Brasilis",
       "organization": "Edf Terra Brasilis",
@@ -22024,6 +22980,8 @@
     {
       "month": "2025-11",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1211,
       "dealTitle": "Edf Porto dos Corais",
       "organization": "Edf Porto dos Corais",
@@ -22037,6 +22995,8 @@
     {
       "month": "2025-12",
       "type": "Obras eletricas",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1220,
       "dealTitle": "Edf Maria Carolina negócio",
       "organization": "Edf Maria Carolina",
@@ -22050,6 +23010,8 @@
     {
       "month": "2025-12",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1221,
       "dealTitle": "Cond. Montendre",
       "organization": "Cond. Montendre",
@@ -22063,6 +23025,8 @@
     {
       "month": "2025-10",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1225,
       "dealTitle": "Edf Cristiano",
       "organization": "Edf Cristiano",
@@ -22076,6 +23040,8 @@
     {
       "month": "2025-11",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1231,
       "dealTitle": "Edf Muçambê",
       "organization": "Edf Muçambê",
@@ -22089,6 +23055,8 @@
     {
       "month": "2025-10",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1232,
       "dealTitle": "Edf Cristiano",
       "organization": "Edf Cristiano",
@@ -22102,6 +23070,8 @@
     {
       "month": "2025-11",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1236,
       "dealTitle": "Conjunto Portinari",
       "organization": "Conjunto Portinari",
@@ -22115,6 +23085,8 @@
     {
       "month": "2025-11",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1238,
       "dealTitle": "Geraldo Posto Geração",
       "organization": "Geraldo Posto Geração",
@@ -22128,6 +23100,8 @@
     {
       "month": "2026-04",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1245,
       "dealTitle": "Edf Ilha de Millos",
       "organization": "Edf Ilha de Millos",
@@ -22141,6 +23115,8 @@
     {
       "month": "2025-12",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1246,
       "dealTitle": "Edf Rio Siriji",
       "organization": "Edf Rio Siriji",
@@ -22154,6 +23130,8 @@
     {
       "month": "2026-03",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1251,
       "dealTitle": "Edf Sitio Beira Rio",
       "organization": "Edf Sitio Beira Rio",
@@ -22167,6 +23145,8 @@
     {
       "month": "2026-03",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1251,
       "dealTitle": "Edf Sitio Beira Rio",
       "organization": "Edf Sitio Beira Rio",
@@ -22180,6 +23160,8 @@
     {
       "month": "2026-02",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1254,
       "dealTitle": "Empresarial Praia Guarapari",
       "organization": "Empresarial Praia Guarapari",
@@ -22193,6 +23175,8 @@
     {
       "month": "2025-12",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1257,
       "dealTitle": "Edf Portal do Parnamirim",
       "organization": "Edf Portal do Parnamirim",
@@ -22206,6 +23190,8 @@
     {
       "month": "2025-12",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1257,
       "dealTitle": "Edf Portal do Parnamirim",
       "organization": "Edf Portal do Parnamirim",
@@ -22219,6 +23205,8 @@
     {
       "month": "2026-02",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1261,
       "dealTitle": "Edifício Ferreira da Costa",
       "organization": "Edifício Ferreira da Costa",
@@ -22232,6 +23220,8 @@
     {
       "month": "2025-11",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1262,
       "dealTitle": "Edf Quinta Tereza Beltrão",
       "organization": "Edf Quinta Tereza Beltrão",
@@ -22245,6 +23235,8 @@
     {
       "month": "2025-12",
       "type": "Obras eletricas",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1296,
       "dealTitle": "Edf Luar das Ubaias",
       "organization": "Edf Luar das Ubaias",
@@ -22258,6 +23250,8 @@
     {
       "month": "2026-01",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1300,
       "dealTitle": "Edf.Maria Nice negócio",
       "organization": "Edf.Maria Nice",
@@ -22271,6 +23265,8 @@
     {
       "month": "2026-01",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1300,
       "dealTitle": "Edf.Maria Nice negócio",
       "organization": "Edf.Maria Nice",
@@ -22284,6 +23280,8 @@
     {
       "month": "2025-12",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1301,
       "dealTitle": "Edf Carla Dias",
       "organization": "Edf Carla Dias",
@@ -22297,6 +23295,8 @@
     {
       "month": "2026-01",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1308,
       "dealTitle": "Câmara de Vereadores de Recife",
       "organization": "Câmara de Vereadores de Recife",
@@ -22310,6 +23310,8 @@
     {
       "month": "2026-01",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1308,
       "dealTitle": "Câmara de Vereadores de Recife",
       "organization": "Câmara de Vereadores de Recife",
@@ -22323,6 +23325,8 @@
     {
       "month": "2026-03",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1314,
       "dealTitle": "Edf Maria Leopoldina",
       "organization": "Edf Maria Leopoldina",
@@ -22336,6 +23340,8 @@
     {
       "month": "2026-03",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1314,
       "dealTitle": "Edf Maria Leopoldina",
       "organization": "Edf Maria Leopoldina",
@@ -22349,6 +23355,8 @@
     {
       "month": "2026-03",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1314,
       "dealTitle": "Edf Maria Leopoldina",
       "organization": "Edf Maria Leopoldina",
@@ -22362,6 +23370,8 @@
     {
       "month": "2026-01",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1316,
       "dealTitle": "Cond. João Heráclio negócio",
       "organization": "Cond. João Heráclio",
@@ -22375,6 +23385,8 @@
     {
       "month": "2026-03",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1319,
       "dealTitle": "Edificio Belize",
       "organization": "Edificio Belize",
@@ -22388,6 +23400,8 @@
     {
       "month": "2026-03",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1319,
       "dealTitle": "Edificio Belize",
       "organization": "Edificio Belize",
@@ -22401,6 +23415,8 @@
     {
       "month": "2025-12",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1320,
       "dealTitle": "Edf Walter Turton",
       "organization": "Edf Walter Turton",
@@ -22414,6 +23430,8 @@
     {
       "month": "2025-12",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1323,
       "dealTitle": "Edf Cid Sampaio",
       "organization": "Edf Cid Sampaio",
@@ -22427,6 +23445,8 @@
     {
       "month": "2026-02",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1324,
       "dealTitle": "Edf Solar do Camaragybe",
       "organization": "Edf Solar do Camaragybe",
@@ -22440,6 +23460,8 @@
     {
       "month": "2026-01",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1325,
       "dealTitle": "Edf Lajedo negócio",
       "organization": "Edf Lajedo",
@@ -22453,6 +23475,8 @@
     {
       "month": "2026-03",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1331,
       "dealTitle": "Edf Terra Brasilis",
       "organization": "Edf Terra Brasilis",
@@ -22466,6 +23490,8 @@
     {
       "month": "2026-04",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1334,
       "dealTitle": "Enseada do Mar",
       "organization": "Enseada do Mar",
@@ -22479,6 +23505,8 @@
     {
       "month": "2026-03",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1335,
       "dealTitle": "Edf Morada Ilha Verde",
       "organization": "Edf Morada Ilha Verde",
@@ -22492,6 +23520,8 @@
     {
       "month": "2026-02",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1336,
       "dealTitle": "Edf Chanel",
       "organization": "Edf Chanel",
@@ -22505,6 +23535,8 @@
     {
       "month": "2026-01",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1337,
       "dealTitle": "Edf Quinta do Algarve",
       "organization": "Edf Quinta do Algarve",
@@ -22518,6 +23550,8 @@
     {
       "month": "2026-03",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1345,
       "dealTitle": "Edifício Lucilo Maranhão",
       "organization": "Condominio do Edificio Lucilo Maranhao",
@@ -22531,6 +23565,8 @@
     {
       "month": "2026-03",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1352,
       "dealTitle": "Quinta Tereza Beltrão",
       "organization": "Edf Quinta Tereza Beltrão",
@@ -22544,6 +23580,8 @@
     {
       "month": "2026-02",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1355,
       "dealTitle": "Edf Morada Rosarinho",
       "organization": "Edf Morada Rosarinho",
@@ -22557,6 +23595,8 @@
     {
       "month": "2026-01",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1356,
       "dealTitle": "Edf Samsara",
       "organization": "Edf Samsara",
@@ -22570,6 +23610,8 @@
     {
       "month": "2026-01",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1357,
       "dealTitle": "Edf Samsara",
       "organization": "Edf Samsara",
@@ -22583,6 +23625,8 @@
     {
       "month": "2026-01",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1365,
       "dealTitle": "Edf Castelo de Blois",
       "organization": "Edf Castelo de Blois",
@@ -22596,6 +23640,8 @@
     {
       "month": "2026-02",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1371,
       "dealTitle": "Edf Venâncio Barbosa negócio",
       "organization": "Edf Venâncio Barbosa",
@@ -22609,6 +23655,8 @@
     {
       "month": "2026-01",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1372,
       "dealTitle": "Edf Samsara",
       "organization": "Edf Samsara",
@@ -22622,6 +23670,8 @@
     {
       "month": "2026-04",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1374,
       "dealTitle": "Edf Domus Prof Mario Pessoa negócio",
       "organization": "Edf Domus Prof Mario Pessoa",
@@ -22635,6 +23685,8 @@
     {
       "month": "2026-02",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1375,
       "dealTitle": "Edf. Augusto Lins e Silva negócio",
       "organization": "Edf. Augusto Lins e Silva",
@@ -22648,6 +23700,8 @@
     {
       "month": "2026-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1382,
       "dealTitle": "Edf Alameda dos Flamboyants negócio",
       "organization": "Edf Alameda dos Flamboyants",
@@ -22661,6 +23715,8 @@
     {
       "month": "2026-01",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1386,
       "dealTitle": "Verano ADM",
       "organization": "Verano ADM",
@@ -22674,6 +23730,8 @@
     {
       "month": "2026-01",
       "type": "Instalação de Carregador Eletrico",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1386,
       "dealTitle": "Verano ADM",
       "organization": "Verano ADM",
@@ -22687,6 +23745,8 @@
     {
       "month": "2026-02",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1391,
       "dealTitle": "Edf Cidade do Recife",
       "organization": "Edf Cidade do Recife",
@@ -22700,6 +23760,8 @@
     {
       "month": "2026-02",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1393,
       "dealTitle": "Edf Ébano",
       "organization": "Edf Ébano",
@@ -22713,6 +23775,8 @@
     {
       "month": "2026-02",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1410,
       "dealTitle": "Edf Porto dos Corais",
       "organization": "Edf Porto dos Corais",
@@ -22726,6 +23790,8 @@
     {
       "month": "2026-04",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1418,
       "dealTitle": "Edf. Villa Pasárgada",
       "organization": "Edf. Villa Pasárgada",
@@ -22739,6 +23805,8 @@
     {
       "month": "2026-04",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1418,
       "dealTitle": "Edf. Villa Pasárgada",
       "organization": "Edf. Villa Pasárgada",
@@ -22752,6 +23820,8 @@
     {
       "month": "2026-02",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1420,
       "dealTitle": "Empório Muro Alto",
       "organization": "Empório Muro Alto",
@@ -22765,6 +23835,8 @@
     {
       "month": "2026-02",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1423,
       "dealTitle": "Cond. Melo Barbosa",
       "organization": "Cond. Melo Barbosa",
@@ -22778,6 +23850,8 @@
     {
       "month": "2026-03",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1425,
       "dealTitle": "Edf Nazaré",
       "organization": "Edf Nazaré",
@@ -22791,6 +23865,8 @@
     {
       "month": "2026-03",
       "type": "LGR - Laudo de Gerenciamento de Risco",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1425,
       "dealTitle": "Edf Nazaré",
       "organization": "Edf Nazaré",
@@ -22804,6 +23880,8 @@
     {
       "month": "2026-03",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1426,
       "dealTitle": "Edf Jardim das Orquídeas",
       "organization": "Edf Jardim das Orquídeas",
@@ -22817,6 +23895,8 @@
     {
       "month": "2026-04",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1427,
       "dealTitle": "Condomínio Jardins da Ilha",
       "organization": "Condomínio Jardins da Ilha",
@@ -22830,6 +23910,8 @@
     {
       "month": "2026-03",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1429,
       "dealTitle": "Edf Costa Atlântica  negócio",
       "organization": "Condominio do Edificio Costa Atlantica",
@@ -22843,6 +23925,8 @@
     {
       "month": "2026-03",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1432,
       "dealTitle": "Edf Jardins do Rosarinho",
       "organization": "Edf Jardins do Rosarinho",
@@ -22856,6 +23940,8 @@
     {
       "month": "2026-03",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1435,
       "dealTitle": "Edf Rita de Cássia negócio",
       "organization": "Edf Rita de Cássia",
@@ -22869,6 +23955,8 @@
     {
       "month": "2026-03",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1435,
       "dealTitle": "Edf Rita de Cássia negócio",
       "organization": "Edf Rita de Cássia",
@@ -22882,6 +23970,8 @@
     {
       "month": "2026-03",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1436,
       "dealTitle": "Edf Reserva do Poço",
       "organization": "Edf Reserva do Poço",
@@ -22895,6 +23985,8 @@
     {
       "month": "2026-03",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1443,
       "dealTitle": "Edf Reserva do Poço",
       "organization": "Edf Reserva do Poço",
@@ -22908,6 +24000,8 @@
     {
       "month": "2026-03",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1443,
       "dealTitle": "Edf Reserva do Poço",
       "organization": "Edf Reserva do Poço",
@@ -22921,6 +24015,8 @@
     {
       "month": "2026-02",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1444,
       "dealTitle": "Edf Villa Casa Forte",
       "organization": "Edf Villa Casa Forte",
@@ -22934,6 +24030,8 @@
     {
       "month": "2026-04",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1446,
       "dealTitle": "Cond Saint Eduardo",
       "organization": "Cond Saint Eduardo",
@@ -22947,6 +24045,8 @@
     {
       "month": "2026-03",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1459,
       "dealTitle": "Edf Morada Apipucos",
       "organization": "Edf Morada Apipucos",
@@ -22960,6 +24060,8 @@
     {
       "month": "2026-03",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1461,
       "dealTitle": "Edifício Fernando Perez negócio",
       "organization": "Edifício Fernando Perez",
@@ -22973,6 +24075,8 @@
     {
       "month": "2026-04",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1464,
       "dealTitle": "Edf Jardins das Acácias",
       "organization": "Edf Jardins das Acácias",
@@ -22986,6 +24090,8 @@
     {
       "month": "2026-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1473,
       "dealTitle": "condomínio Saint Sebastien",
       "organization": "condomínio Saint Sebastien",
@@ -22999,6 +24105,8 @@
     {
       "month": "2026-04",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1474,
       "dealTitle": "Edifício Ana Cristina",
       "organization": "Edifício Ana Cristina",
@@ -23012,6 +24120,8 @@
     {
       "month": "2026-04",
       "type": "LGR - Laudo de Gerenciamento de Risco",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1474,
       "dealTitle": "Edifício Ana Cristina",
       "organization": "Edifício Ana Cristina",
@@ -23025,6 +24135,8 @@
     {
       "month": "2026-05",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1490,
       "dealTitle": "Edifício União",
       "organization": "Edifício União",
@@ -23038,6 +24150,8 @@
     {
       "month": "2026-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1507,
       "dealTitle": "Cond. The Plaza",
       "organization": "Cond. The Plaza",
@@ -23051,6 +24165,8 @@
     {
       "month": "2026-06",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1512,
       "dealTitle": "Edf Rio Siriji",
       "organization": "Edf Rio Siriji",
@@ -23064,6 +24180,8 @@
     {
       "month": "2026-03",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1514,
       "dealTitle": "Edf Sobrado do Capibaribe",
       "organization": "Edf Sobrado do Capibaribe",
@@ -23077,6 +24195,8 @@
     {
       "month": "2026-04",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1522,
       "dealTitle": "Condomínio Carmen Costa",
       "organization": "Condomínio Carmen Costa",
@@ -23090,6 +24210,8 @@
     {
       "month": "2026-03",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1532,
       "dealTitle": "Edf Hilson Macedo",
       "organization": "Edf Hilson Macedo",
@@ -23103,6 +24225,8 @@
     {
       "month": "2026-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1544,
       "dealTitle": "Edf. Príncipe de Navarra",
       "organization": "Edf. Príncipe de Navarra",
@@ -23116,6 +24240,8 @@
     {
       "month": "2026-05",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1544,
       "dealTitle": "Edf. Príncipe de Navarra",
       "organization": "Edf. Príncipe de Navarra",
@@ -23129,6 +24255,8 @@
     {
       "month": "2026-04",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1561,
       "dealTitle": "Edifício Lá Maison",
       "organization": "Edifício Lá Maison",
@@ -23142,6 +24270,8 @@
     {
       "month": "2026-05",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1563,
       "dealTitle": "EDF VILLA CLÁUDIA",
       "organization": "EDF VILLA CLÁUDIA",
@@ -23155,6 +24285,8 @@
     {
       "month": "2026-05",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1566,
       "dealTitle": "EDIFICIOS MARIA JULIA E MARIA DA GRACA",
       "organization": "EDIFICIOS MARIA JULIA E MARIA DA GRACA",
@@ -23168,6 +24300,8 @@
     {
       "month": "2026-05",
       "type": "LCC - Laudo Carregador Coletivo",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1566,
       "dealTitle": "EDIFICIOS MARIA JULIA E MARIA DA GRACA",
       "organization": "EDIFICIOS MARIA JULIA E MARIA DA GRACA",
@@ -23181,6 +24315,8 @@
     {
       "month": "2026-05",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1566,
       "dealTitle": "EDIFICIOS MARIA JULIA E MARIA DA GRACA",
       "organization": "EDIFICIOS MARIA JULIA E MARIA DA GRACA",
@@ -23194,6 +24330,8 @@
     {
       "month": "2026-04",
       "type": "LIE - Laudo de Instalações Elétricas",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1579,
       "dealTitle": "Edf Sagarana",
       "organization": "Edf Sagarana",
@@ -23207,6 +24345,8 @@
     {
       "month": "2026-04",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1579,
       "dealTitle": "Edf Sagarana",
       "organization": "Edf Sagarana",
@@ -23220,6 +24360,8 @@
     {
       "month": "2026-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1600,
       "dealTitle": "Jardim do Mar",
       "organization": "Jardim do Mar",
@@ -23233,6 +24375,8 @@
     {
       "month": "2026-05",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1600,
       "dealTitle": "Jardim do Mar",
       "organization": "Jardim do Mar",
@@ -23246,6 +24390,8 @@
     {
       "month": "2026-04",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1601,
       "dealTitle": "Edf Turmalina",
       "organization": "Edf Turmalina",
@@ -23259,6 +24405,8 @@
     {
       "month": "2026-06",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1603,
       "dealTitle": "Edf PARADOR DE GALICIA",
       "organization": "Edf PARADOR DE GALICIA",
@@ -23272,6 +24420,8 @@
     {
       "month": "2026-04",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1609,
       "dealTitle": "Edf Madalena Colonial",
       "organization": "Edf Madalena Colonial",
@@ -23285,6 +24435,8 @@
     {
       "month": "2026-04",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1617,
       "dealTitle": "Edf Miriam Dubeux",
       "organization": "Edf Miriam Dubeux",
@@ -23298,6 +24450,8 @@
     {
       "month": "2026-05",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1620,
       "dealTitle": "Edf Cidade do Recife",
       "organization": "Edf Cidade do Recife",
@@ -23311,6 +24465,8 @@
     {
       "month": "2026-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1643,
       "dealTitle": "EMPRESARIAL. CASA FORTE",
       "organization": "EMPRESARIAL. CASA FORTE",
@@ -23324,6 +24480,8 @@
     {
       "month": "2026-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1655,
       "dealTitle": "Edf. Cine Torre",
       "organization": "Edf. Cine Torre",
@@ -23337,6 +24495,8 @@
     {
       "month": "2026-05",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1663,
       "dealTitle": "Edf TAMARINEIRA PRINCE VANGARD",
       "organization": "Edf TAMARINEIRA PRINCE VANGARD",
@@ -23350,6 +24510,8 @@
     {
       "month": "2026-05",
       "type": "PROJETOS",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1666,
       "dealTitle": "Rotterdam negócio",
       "organization": "Rotterdam",
@@ -23363,6 +24525,8 @@
     {
       "month": "2026-05",
       "type": "PIE - Projeto infra.  Eletrocalha e Emergência",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1672,
       "dealTitle": "Condominio do Edificio Lucilo Maranhao",
       "organization": "Condominio do Edificio Lucilo Maranhao",
@@ -23376,6 +24540,8 @@
     {
       "month": "2026-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1696,
       "dealTitle": "Edf Mirante",
       "organization": "Edf Mirante",
@@ -23389,6 +24555,8 @@
     {
       "month": "2026-06",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1718,
       "dealTitle": "Rio Araguaia melhoria elétrica",
       "organization": "Sindico Profi",
@@ -23402,6 +24570,8 @@
     {
       "month": "2026-06",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1721,
       "dealTitle": "Edf  Castelo de Blois",
       "organization": "Edf PARADOR DE GALICIA",
@@ -23415,6 +24585,8 @@
     {
       "month": "2026-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1733,
       "dealTitle": "Edf Saint Martin",
       "organization": "Edf Saint Martin",
@@ -23428,6 +24600,8 @@
     {
       "month": "2026-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1748,
       "dealTitle": "Empresarial Antonio de Albuquerque Galvão",
       "organization": "Empresarial Antonio de Albuquerque Galvão",
@@ -23441,6 +24615,8 @@
     {
       "month": "2026-06",
       "type": "LCC - Laudo Carregador Coletivo",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1748,
       "dealTitle": "Empresarial Antonio de Albuquerque Galvão",
       "organization": "Empresarial Antonio de Albuquerque Galvão",
@@ -23454,6 +24630,8 @@
     {
       "month": "2026-06",
       "type": "LDC - Laudo de disponibilidade de carga",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1755,
       "dealTitle": "Edf Varanda do Parque",
       "organization": "Edf Varanda do Parque",
@@ -23467,6 +24645,8 @@
     {
       "month": "2026-06",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1759,
       "dealTitle": "Cond Chácara Santa Rosa",
       "organization": "Cond Chácara Santa Rosa",
@@ -23480,6 +24660,8 @@
     {
       "month": "2026-06",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1774,
       "dealTitle": "Condomínio Carmen Costa",
       "organization": "Condomínio Carmen Costa",
@@ -23493,6 +24675,8 @@
     {
       "month": "2026-06",
       "type": "OBRA",
+      "pipelineId": 14,
+      "scope": "obras",
       "dealId": 1819,
       "dealTitle": "Edf. Cap d'Antibes",
       "organization": "Edf. Cap d'Antibes",
@@ -23506,6 +24690,8 @@
     {
       "month": "2026-06",
       "type": "ICV - Inspeção de carregador veicular",
+      "pipelineId": 11,
+      "scope": "consultoria",
       "dealId": 1832,
       "dealTitle": "Edf Varanda do Parque",
       "organization": "Edf Varanda do Parque",

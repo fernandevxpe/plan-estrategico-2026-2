@@ -1,6 +1,6 @@
 # Comercial — funil e mix
 
-Gerado em: 02/07/2026, 16:04:17
+Gerado em: 02/07/2026, 17:54:49
 
 ## Funil mensal 2026
 

@@ -445,10 +445,19 @@ for (const deal of wonDeals) {
     isMultiBusinessType: deal.isMultiBusinessType
   });
 
+  const scope =
+    deal.pipelineId === PIPELINE_CONSULTORIA
+      ? 'consultoria'
+      : deal.pipelineId === PIPELINE_OBRAS
+        ? 'obras'
+        : null;
+
   for (const type of types) {
     businessTypeMultiDeals.push({
       month: deal.wonMonth,
       type,
+      pipelineId: deal.pipelineId,
+      scope,
       dealId: deal.id,
       dealTitle: deal.title,
       organization: deal.organization,
@@ -475,6 +484,29 @@ const businessTypeSummary = groupBy(businessTypeMultiDeals, (item) => `${item.mo
     };
   })
   .sort((a, b) => a.month.localeCompare(b.month) || b.revenue - a.revenue);
+
+const businessTypeScopeSummary = groupBy(
+  businessTypeMultiDeals.filter((item) => item.scope),
+  (item) => `${item.month}|||${item.scope}|||${item.type}`
+)
+  .map(([key, items]) => {
+    const [month, scope, type] = key.split('|||');
+    const revenue = sum(items, (item) => item.value);
+    return {
+      month,
+      scope,
+      type,
+      wonDeals: items.length,
+      revenue,
+      averageTicket: items.length ? revenue / items.length : 0
+    };
+  })
+  .sort(
+    (a, b) =>
+      a.month.localeCompare(b.month) ||
+      a.scope.localeCompare(b.scope) ||
+      b.revenue - a.revenue
+  );
 
 const businessTypeTrend = businessTypeSummary.map((row) => {
   const previousMonthDate = new Date(`${row.month}-01T00:00:00.000Z`);
@@ -2400,6 +2432,7 @@ const report = {
   commercialDirector,
   growthGuides,
   businessTypeMonthly: businessTypeTrend,
+  businessTypeMonthlyByScope: businessTypeScopeSummary,
   businessTypeDeals,
   businessTypeMultiDeals,
   obraSubgroups: {
@@ -2465,6 +2498,7 @@ await writeCsv(
   )
 );
 await writeCsv('business-type-monthly.csv', businessTypeTrend);
+await writeCsv('business-type-monthly-by-scope.csv', businessTypeScopeSummary);
 await writeCsv('business-type-deals.csv', businessTypeDeals);
 await writeCsv('business-type-multi-deals.csv', businessTypeMultiDeals);
 await writeCsv('obra-subgroup-monthly.csv', obraSubgroupMonthly);

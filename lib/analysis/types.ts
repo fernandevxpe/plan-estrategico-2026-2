@@ -157,6 +157,17 @@ export type BusinessTypeMonthly = {
   dealsYoYPct: number | null;
 };
 
+export type MixGoalScope = "consultoria" | "obras";
+
+export type BusinessTypeMonthlyByScope = {
+  month: string;
+  scope: MixGoalScope;
+  type: string;
+  wonDeals: number;
+  revenue: number;
+  averageTicket: number;
+};
+
 export type ObraSubgroupSummary = {
   subgroup: string;
   wonDeals: number;
@@ -460,6 +471,7 @@ export type Analysis = {
   commercialDirector?: CommercialDirectorMetrics;
   growthGuides: GrowthGuides;
   businessTypeMonthly: BusinessTypeMonthly[];
+  businessTypeMonthlyByScope?: BusinessTypeMonthlyByScope[];
   obraSubgroups?: {
     summary: ObraSubgroupSummary[];
     monthly: ObraSubgroupMonthly[];

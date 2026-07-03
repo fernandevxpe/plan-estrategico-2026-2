@@ -1048,6 +1048,11 @@ a {
   font-size: 18px;
 }
 
+.mix-goal-kpi-hint {
+  color: var(--muted);
+  font-size: 10px;
+}
+
 .mix-goal-kpi.tone-warn strong {
   color: #b67818;
 }

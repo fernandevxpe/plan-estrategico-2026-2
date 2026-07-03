@@ -191,14 +191,17 @@ export function MixGoalCompositionPanel({ analysis, year }: Props) {
         <article className="card mix-goal-kpi">
           <span>Realizado YTD</span>
           <strong>{brl.format(summary.realizedYtd)}</strong>
+          <small className="mix-goal-kpi-hint">Pipedrive</small>
         </article>
         <article className="card mix-goal-kpi">
           <span>Projeção ano</span>
           <strong>{brl.format(summary.projectedYearEnd)}</strong>
+          <small className="mix-goal-kpi-hint">Ritmo Pipedrive</small>
         </article>
         <article className={`card mix-goal-kpi ${summary.gapToTarget > 0 ? "tone-warn" : "tone-good"}`}>
           <span>Gap vs meta</span>
           <strong>{brl.format(summary.gapToTarget)}</strong>
+          <small className="mix-goal-kpi-hint">Meta − projeção Pipedrive</small>
         </article>
       </div>
 

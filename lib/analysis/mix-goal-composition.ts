@@ -2,7 +2,8 @@ import type {
   Analysis,
   BusinessTypeMonthlyByScope,
   GoalPlan,
-  MixGoalScope
+  MixGoalScope,
+  Planning2026
 } from "./types";
 import { getGoalForScope } from "./planning-pipedrive";
 
@@ -176,15 +177,73 @@ function mergeCompositionMonths(monthRows: ScopeCompositionMonth[]): ScopeCompos
   };
 }
 
+function goalsForScopes(planning: Planning2026, scopes: MixGoalScope[]) {
+  return scopes
+    .map((scope) => getGoalForScope(planning, scope))
+    .filter((goal): goal is GoalPlan => Boolean(goal));
+}
+
+/** Escala meses projetados pelo restante da projeção anual do Pipedrive (ritmo real). */
+function alignProjectedRowsWithPipedrive(
+  rows: ScopeCompositionMonth[],
+  planning: Planning2026,
+  scopes: MixGoalScope[]
+): ScopeCompositionMonth[] {
+  const goals = goalsForScopes(planning, scopes);
+  if (!goals.length) return rows;
+
+  const pipedriveProjected = goals.reduce((acc, goal) => acc + goal.projectedYearEnd, 0);
+  const pipedriveRealized = goals.reduce((acc, goal) => acc + goal.totalRealized, 0);
+  const remainingPipedrive = Math.max(0, pipedriveProjected - pipedriveRealized);
+
+  const projectedRows = rows.filter((row) => row.isProjected);
+  const remainingTargetSum = projectedRows.reduce((acc, row) => acc + (row.metaTarget ?? 0), 0);
+  if (!remainingTargetSum || remainingPipedrive <= 0) return rows;
+
+  return rows.map((row) => {
+    if (!row.isProjected) return row;
+
+    const monthWeight = (row.metaTarget ?? 0) / remainingTargetSum;
+    const monthProjectedTotal = remainingPipedrive * monthWeight;
+    const scale = row.totalProjectedRevenue ? monthProjectedTotal / row.totalProjectedRevenue : 1;
+
+    const types = row.types.map((item) => ({
+      ...item,
+      projectedRevenue: item.projectedRevenue * scale,
+      projectedDeals: item.projectedDeals * scale
+    }));
+    const totalProjectedRevenue = types.reduce((acc, item) => acc + item.projectedRevenue, 0);
+    const totalProjectedDeals = types.reduce((acc, item) => acc + item.projectedDeals, 0);
+
+    return {
+      ...row,
+      types,
+      totalProjectedRevenue,
+      totalProjectedDeals,
+      totalRevenue: row.totalRealizedRevenue + totalProjectedRevenue,
+      totalDeals: row.totalRealizedDeals + totalProjectedDeals
+    };
+  });
+}
+
 export function buildScopesCompositionRows(
   analysis: Analysis,
   scopes: MixGoalScope[]
 ): ScopeCompositionMonth[] {
   if (!scopes.length) return [];
-  if (scopes.length === 1) return buildScopeCompositionRows(analysis, scopes[0]);
 
-  const perScope = scopes.map((scope) => buildScopeCompositionRows(analysis, scope));
-  return MONTHS_2026.map((_, index) => mergeCompositionMonths(perScope.map((rows) => rows[index])));
+  let rows: ScopeCompositionMonth[];
+  if (scopes.length === 1) {
+    rows = buildScopeCompositionRows(analysis, scopes[0]);
+  } else {
+    const perScope = scopes.map((scope) => buildScopeCompositionRows(analysis, scope));
+    rows = MONTHS_2026.map((_, index) => mergeCompositionMonths(perScope.map((item) => item[index])));
+  }
+
+  if (analysis.planning2026) {
+    return alignProjectedRowsWithPipedrive(rows, analysis.planning2026, scopes);
+  }
+  return rows;
 }
 
 export function buildScopeCompositionRows(analysis: Analysis, scope: MixGoalScope): ScopeCompositionMonth[] {
@@ -250,12 +309,23 @@ export function getScopesCompositionSummary(
   scopes: MixGoalScope[],
   rows: ScopeCompositionMonth[]
 ): ScopeCompositionSummary {
-  const goals = scopes
-    .map((scope) => (planning ? getGoalForScope(planning, scope) : null))
-    .filter((goal): goal is GoalPlan => Boolean(goal));
-  const annualTarget =
-    goals.reduce((acc, goal) => acc + goal.totalTarget, 0) ||
-    rows.reduce((acc, row) => acc + (row.metaTarget ?? 0), 0);
+  const goals = planning ? goalsForScopes(planning, scopes) : [];
+
+  if (goals.length) {
+    const annualTarget = goals.reduce((acc, goal) => acc + goal.totalTarget, 0);
+    const realizedYtd = goals.reduce((acc, goal) => acc + goal.totalRealized, 0);
+    const projectedYearEnd = goals.reduce((acc, goal) => acc + goal.projectedYearEnd, 0);
+
+    return {
+      annualTarget,
+      realizedYtd,
+      projectedYearEnd,
+      gapToTarget: annualTarget - projectedYearEnd,
+      baselineUntilMonth: rows.find((row) => row.isProjected)?.month ?? null
+    };
+  }
+
+  const annualTarget = rows.reduce((acc, row) => acc + (row.metaTarget ?? 0), 0);
   const realizedYtd = rows
     .filter((row) => !row.isProjected)
     .reduce((acc, row) => acc + row.totalRealizedRevenue, 0);
@@ -274,7 +344,17 @@ export function getScopeCompositionSummary(
   goal: GoalPlan | null,
   rows: ScopeCompositionMonth[]
 ): ScopeCompositionSummary {
-  const annualTarget = goal?.totalTarget ?? rows.reduce((acc, row) => acc + (row.metaTarget ?? 0), 0);
+  if (goal) {
+    return {
+      annualTarget: goal.totalTarget,
+      realizedYtd: goal.totalRealized,
+      projectedYearEnd: goal.projectedYearEnd,
+      gapToTarget: goal.totalTarget - goal.projectedYearEnd,
+      baselineUntilMonth: rows.find((row) => row.isProjected)?.month ?? null
+    };
+  }
+
+  const annualTarget = rows.reduce((acc, row) => acc + (row.metaTarget ?? 0), 0);
   const realizedYtd = rows
     .filter((row) => !row.isProjected)
     .reduce((acc, row) => acc + row.totalRealizedRevenue, 0);

@@ -2221,6 +2221,44 @@ tr:last-child td {
   min-height: 330px;
 }
 
+.commercial-planning-forecast-panel {
+  margin-bottom: 28px;
+}
+
+.forecast-ticket-note {
+  margin: 0 0 16px;
+  font-size: 0.82rem;
+  color: #52636d;
+}
+
+.commercial-forecast-chart-grid {
+  margin-bottom: 16px;
+}
+
+.commercial-forecast-chart-grid h4 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.commercial-forecast-chart {
+  min-height: 290px;
+}
+
+.forecast-status {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #edf3f5;
+  color: #52636d;
+}
+
+.forecast-status.current { background: #fff1d6; color: #8a5b00; }
+.forecast-status.forecast { background: #e4f5ed; color: #08704f; }
+.is-positive { color: #08704f; font-weight: 600; }
+.is-negative { color: #b42318; font-weight: 600; }
+
 .commercial-funnel-cohort-note {
   margin: 8px 0 0;
   font-size: 0.78rem;

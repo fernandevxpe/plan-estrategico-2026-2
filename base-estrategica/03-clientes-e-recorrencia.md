@@ -1,6 +1,6 @@
 # Clientes e recorrência
 
-Gerado em: 22/07/2026, 13:44:05
+Gerado em: 22/07/2026, 15:14:09
 
 ## Recorrência
 
@@ -62,7 +62,7 @@ Gerado em: 22/07/2026, 13:44:05
 - Total cadastradas: **1643**
 - Com pelo menos 1 fechamento: **157**
 - Com repetição (2+ fechamentos): **45**
-- Com negócios abertos agora: **664**
+- Com negócios abertos agora: **663**
 
 ### Top 20 organizações com pipeline aberto
 

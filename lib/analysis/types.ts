@@ -102,6 +102,27 @@ export type CommercialFunnelScope = "collective" | "consultoria" | "obras";
 
 export type CommercialFunnelByPipeline = Record<CommercialFunnelScope, CommercialFunnel[]>;
 
+export type CommercialPlanningMonthKind = "actual" | "current" | "forecast";
+
+export type CommercialPlanningMonthlyRow = {
+  month: string;
+  label: string;
+  scope: CommercialFunnelScope;
+  targetRevenue: number;
+  actualRevenue: number | null;
+  forecastRevenue: number | null;
+  targetWonDeals: number;
+  actualWonDeals: number | null;
+  forecastWonDeals: number | null;
+  averageTicketYtd: number;
+  gapRevenue: number | null;
+  gapWonDeals: number | null;
+  kind: CommercialPlanningMonthKind;
+  forecastBasis: "seasonal" | "run_rate" | null;
+};
+
+export type CommercialPlanningByScope = Record<CommercialFunnelScope, CommercialPlanningMonthlyRow[]>;
+
 export type WinVintageSlice = {
   originMonth: string;
   deals: number;
@@ -460,6 +481,7 @@ export type Analysis = {
   monthly: Monthly[];
   commercialFunnel: CommercialFunnel[];
   commercialFunnelByPipeline?: CommercialFunnelByPipeline;
+  commercialPlanningByScope?: CommercialPlanningByScope;
   growthComparison: GrowthComparison[];
   projection2026H2: {
     basis: {

@@ -18,6 +18,7 @@ import { GoalCard } from "@/components/planning/GoalCard";
 import { PlanningKpiStrip } from "@/components/planning/PlanningKpiStrip";
 import { CommercialFunnelChart } from "@/components/planning/CommercialFunnelChart";
 import { FunnelStageHistoryPanel } from "@/components/planning/FunnelStageHistoryPanel";
+import { CommercialPlanningForecastPanel } from "@/components/planning/CommercialPlanningForecastPanel";
 import {
   GoalCumulativeChart,
   GoalProgressChart,
@@ -152,6 +153,8 @@ export function PlanningPage({ analysis }: Props) {
           />
         </div>
       </article>
+
+      <CommercialPlanningForecastPanel data={analysis.commercialPlanningByScope} />
 
       <FunnelStageHistoryPanel analysis={analysis} defaultMonth={currentMonth} />
 

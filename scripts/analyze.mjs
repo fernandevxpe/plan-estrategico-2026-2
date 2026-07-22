@@ -2422,9 +2422,9 @@ function findGoalByTitle(pattern) {
   );
 }
 
-const globalGoal = findGoalByTitle(/global/i);
-const consultoriaGoal = findGoalByTitle(/consultoria/i);
-const obrasGoal = findGoalByTitle(/obras/i);
+const globalGoal = goals2026.find((goal) => /global/i.test(goal.title) && goal.interval === 'monthly') ?? findGoalByTitle(/global/i);
+const consultoriaGoal = goals2026.find((goal) => /consultoria/i.test(goal.title) && goal.interval === 'monthly') ?? findGoalByTitle(/consultoria/i);
+const obrasGoal = goals2026.find((goal) => /obras/i.test(goal.title) && goal.interval === 'monthly') ?? findGoalByTitle(/obras/i);
 const potencialGoal = findGoalByTitle(/potencial/i);
 const reuniaoGoal = findGoalByTitle(/reuni/i);
 const quarterGoal = findGoalByTitle(/quarter/i);
@@ -2445,13 +2445,96 @@ const planning2026 = {
   }
 };
 
+const PLANNING_MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+function goalTargetForMonth(goal, month) {
+  if (!goal) return 0;
+  const direct = goal.intervals.find((interval) => interval.monthKey === month);
+  if (goal.interval === 'monthly') return direct?.target ?? 0;
+  const matching = goal.intervals.find((interval) => interval.start <= `${month}-31` && interval.end >= `${month}-01`);
+  if (!matching) return 0;
+  const start = new Date(`${matching.start}T00:00:00Z`);
+  const end = new Date(`${matching.end}T00:00:00Z`);
+  const months = Math.max(1, (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + end.getUTCMonth() - start.getUTCMonth() + 1);
+  return matching.target / months;
+}
+
+function daysInMonth(month) {
+  const [year, rawMonth] = month.split('-').map(Number);
+  return new Date(Date.UTC(year, rawMonth, 0)).getUTCDate();
+}
+
+function dayOfMonthInBusinessTimezone(date) {
+  return Number(new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS_TIMEZONE, day: '2-digit' }).format(date));
+}
+
+function buildCommercialPlanningForScope(scope, goal) {
+  const scopedDeals = scope === 'collective'
+    ? deals
+    : deals.filter((deal) => deal.pipelineId === (scope === 'consultoria' ? PIPELINE_CONSULTORIA : PIPELINE_OBRAS));
+  const completedMonths = Array.from({ length: 12 }, (_, index) => `2026-${String(index + 1).padStart(2, '0')}`)
+    .filter((month) => month < currentMonthKey);
+  const ytdWon = scopedDeals.filter((deal) => deal.status === 'won' && deal.wonMonth?.startsWith('2026') && deal.wonMonth <= currentMonthKey);
+  const ytdRevenue = sum(ytdWon, (deal) => deal.value);
+  const averageTicketYtd = ytdWon.length ? ytdRevenue / ytdWon.length : 0;
+  const completedRevenue = completedMonths.map((month) => sum(scopedDeals.filter((deal) => deal.wonMonth === month), (deal) => deal.value));
+  const runRateRevenue = completedRevenue.length ? sum(completedRevenue, (value) => value) / completedRevenue.length : 0;
+  const historicalRevenue = Array.from({ length: 12 }, (_, index) => {
+    const month = `2025-${String(index + 1).padStart(2, '0')}`;
+    return sum(scopedDeals.filter((deal) => deal.wonMonth === month), (deal) => deal.value);
+  });
+  const historicalAverage = sum(historicalRevenue, (value) => value) / 12;
+  const today = dayOfMonthInBusinessTimezone(generatedAt);
+
+  return Array.from({ length: 12 }, (_, index) => {
+    const month = `2026-${String(index + 1).padStart(2, '0')}`;
+    const actualDeals = scopedDeals.filter((deal) => deal.wonMonth === month);
+    const actualRevenue = sum(actualDeals, (deal) => deal.value);
+    const actualWonDeals = actualDeals.length;
+    const targetRevenue = goalTargetForMonth(goal, month);
+    const targetWonDeals = averageTicketYtd > 0 ? Math.ceil(targetRevenue / averageTicketYtd) : 0;
+    const isPast = month < currentMonthKey;
+    const isCurrent = month === currentMonthKey;
+    const seasonalIndex = historicalAverage > 0 ? historicalRevenue[index] / historicalAverage : 1;
+    const baseForecastRevenue = runRateRevenue * seasonalIndex;
+    const forecastBasis = historicalAverage > 0 && runRateRevenue > 0 ? 'seasonal' : 'run_rate';
+    const remainingFraction = isCurrent ? Math.max(0, (daysInMonth(month) - today) / daysInMonth(month)) : 1;
+    const forecastRevenue = isPast ? null : actualRevenue + baseForecastRevenue * remainingFraction;
+    const forecastWonDeals = forecastRevenue != null && averageTicketYtd > 0 ? Math.round(forecastRevenue / averageTicketYtd) : null;
+    const comparisonRevenue = forecastRevenue ?? actualRevenue;
+    const comparisonDeals = forecastWonDeals ?? actualWonDeals;
+    return {
+      month,
+      label: PLANNING_MONTH_LABELS[index],
+      scope,
+      targetRevenue,
+      actualRevenue: isPast || isCurrent ? actualRevenue : null,
+      forecastRevenue,
+      targetWonDeals,
+      actualWonDeals: isPast || isCurrent ? actualWonDeals : null,
+      forecastWonDeals,
+      averageTicketYtd,
+      gapRevenue: targetRevenue ? comparisonRevenue - targetRevenue : null,
+      gapWonDeals: targetWonDeals ? comparisonDeals - targetWonDeals : null,
+      kind: isPast ? 'actual' : isCurrent ? 'current' : 'forecast',
+      forecastBasis
+    };
+  });
+}
+
+const commercialPlanningByScope = {
+  collective: buildCommercialPlanningForScope('collective', globalGoal),
+  consultoria: buildCommercialPlanningForScope('consultoria', consultoriaGoal),
+  obras: buildCommercialPlanningForScope('obras', obrasGoal)
+};
+
 const flowsPayload = await readOptionalJson('pipedrive-deal-flows.json', { flows: {} });
 const funnelStageHistory = buildFunnelStageHistory(
   dealsRaw,
   flowsPayload.flows ?? {},
   stagesRaw,
-  '2025-01',
-  currentMonthKey
+  '2026-01',
+  '2026-12'
 );
 
 const conversionAnalytics = buildConversionAnalytics({
@@ -2477,6 +2560,7 @@ const report = {
   monthly,
   commercialFunnel,
   commercialFunnelByPipeline,
+  commercialPlanningByScope,
   growthComparison,
   projection2026H2,
   planningSummary,

@@ -47,7 +47,7 @@ const TIME_SERIES_LABELS: Record<FunnelTimeSeriesId, string> = {
 
 export function FunnelStageHistoryPanel({ analysis, defaultMonth }: Props) {
   const history = getFunnelStageHistory(analysis);
-  const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>("all");
+  const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>(() => history?.pipelines[0]?.id ?? "all");
   const [mode, setMode] = useState<FunnelViewMode>("entries");
   const [metricMode, setMetricMode] = useState<FunnelMetricMode>("deals");
   const [enabledTimeSeries, setEnabledTimeSeries] = useState<Set<FunnelTimeSeriesId>>(
@@ -56,7 +56,7 @@ export function FunnelStageHistoryPanel({ analysis, defaultMonth }: Props) {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(defaultMonth ?? null);
   const [selectedStageIds, setSelectedStageIds] = useState<Set<number>>(() => {
     if (!history) return new Set();
-    return allStageIdsForPipelines(history, "all");
+    return allStageIdsForPipelines(history, history.pipelines[0]?.id ?? "all");
   });
 
   const conversionMonths = useMemo(

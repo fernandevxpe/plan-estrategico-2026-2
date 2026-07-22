@@ -1,6 +1,6 @@
 # Visão geral e metas — XPE Consultoria
 
-Gerado em: 22/07/2026, 13:44:05
+Gerado em: 22/07/2026, 15:14:09
 
 ## Escopo dos dados
 
@@ -9,7 +9,7 @@ Gerado em: 22/07/2026, 13:44:05
 - Negócios ganhos no período: **215**
 - Foco 2026: **532** negócios
 - Pipedrive total: **1728** negócios
-- ClickUp: **0** tarefas
+- ClickUp: **1654** tarefas
 - Organizações no CRM: **1643**
 
 ## Receita e volume

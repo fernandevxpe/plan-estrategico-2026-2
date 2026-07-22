@@ -169,6 +169,14 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - [ ] **Etapa 9** — Análise de estrutura UI + sistema de templates
 - [ ] **Etapa 10** — Preparação para deploy (Vercel + Supabase cloud)
 
+### Pendência operacional — ativar sync diário (GitHub Actions)
+
+O workflow existe em `.github/workflows/daily-sync.yml` (cron 08:00 BRT + disparo manual) e o sync de metas Pipedrive busca goals `company`.
+
+- [x] **Commit + push** — workflow, `scripts/sync-data.mjs` (goals company), `vercel.json` (`build:app`), `data/processed/`, `base-estrategica/`, `reports/`
+- [ ] **Secrets no GitHub** (Settings → Secrets and variables → Actions): `PIPEDRIVE_API_KEY`, `CLICKUP_API_TOKEN`, `CLICKUP_TEAM_ID`
+- [ ] **Validar** — Actions → Daily sync → Run workflow → conferir commit automático + redeploy Vercel
+
 ---
 
 ## 💡 Decisões Já Tomadas

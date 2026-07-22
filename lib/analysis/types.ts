@@ -335,6 +335,8 @@ export type GoalPlan = {
   unit: GoalUnit;
   interval: "weekly" | "monthly" | "quarterly" | string;
   isActive: boolean;
+  assigneeType?: "person" | "company" | "team" | string | null;
+  assigneeId?: number | string | null;
   pipelineIds: number[];
   pipelines: string[];
   durationStart: string | null;

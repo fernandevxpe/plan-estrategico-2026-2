@@ -45,10 +45,31 @@ async function fetchPipedriveCollection(path, params = {}) {
 
 async function fetchPipedriveGoals() {
   const token = process.env.PIPEDRIVE_API_KEY;
-  const url = new URL('https://api.pipedrive.com/v1/goals/find');
-  url.searchParams.set('api_token', token);
-  const json = await getJson(url);
-  return json.data?.goals ?? [];
+  // Sem assignee.type a API devolve só metas do dono do token.
+  // Buscamos company/team/person e deduplicamos por id.
+  const assigneeTypes = ['company', 'team', 'person'];
+  const byId = new Map();
+  for (const assigneeType of assigneeTypes) {
+    const url = new URL('https://api.pipedrive.com/v1/goals/find');
+    url.searchParams.set('api_token', token);
+    url.searchParams.set('is_active', 'true');
+    url.searchParams.set('assignee.type', assigneeType);
+    try {
+      const json = await getJson(url);
+      for (const goal of json.data?.goals ?? []) {
+        if (!byId.has(goal.id)) byId.set(goal.id, goal);
+      }
+    } catch (error) {
+      console.warn(`goals/find assignee.type=${assigneeType} falhou:`, error.message);
+    }
+  }
+  if (byId.size === 0) {
+    const url = new URL('https://api.pipedrive.com/v1/goals/find');
+    url.searchParams.set('api_token', token);
+    const json = await getJson(url);
+    for (const goal of json.data?.goals ?? []) byId.set(goal.id, goal);
+  }
+  return [...byId.values()];
 }
 
 async function fetchGoalProgress(goalId, start, end) {

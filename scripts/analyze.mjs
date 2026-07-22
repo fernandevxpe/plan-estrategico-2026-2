@@ -2341,6 +2341,8 @@ function buildGoalPlan(goal) {
     unit,
     interval: goal.interval,
     isActive: goal.is_active === true,
+    assigneeType: goal.assignee?.type ?? null,
+    assigneeId: goal.assignee?.id ?? null,
     pipelineIds,
     pipelines,
     durationStart: goal.duration?.start ?? null,
@@ -2363,7 +2365,13 @@ const goals2026 = goalsRaw
   .map(buildGoalPlan);
 
 function findGoalByTitle(pattern) {
-  return goals2026.find((goal) => pattern.test(goal.title)) ?? null;
+  const matches = goals2026.filter((goal) => pattern.test(goal.title));
+  if (!matches.length) return null;
+  return (
+    matches.find((goal) => goal.assigneeType === 'company') ??
+    matches.find((goal) => goal.assigneeType === 'team') ??
+    matches[0]
+  );
 }
 
 const globalGoal = findGoalByTitle(/global/i);

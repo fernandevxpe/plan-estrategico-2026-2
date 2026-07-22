@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { loadEnv } from './lib/env.mjs';
 
 loadEnv();
@@ -10,6 +10,14 @@ const now = new Date().toISOString();
 
 async function writeJson(name, data) {
   await writeFile(new URL(name, outDir), JSON.stringify({ syncedAt: now, data }, null, 2));
+}
+
+async function readRawData(name, fallback) {
+  try {
+    return JSON.parse(await readFile(new URL(name, outDir), 'utf8')).data ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 async function getJson(url, options = {}) {
@@ -157,9 +165,11 @@ async function syncPipedrive() {
 
   const funnelPipelineIds = [11, 14];
   const funnelDeals = deals.filter((deal) => funnelPipelineIds.includes(deal.pipeline_id));
-  const dealFlows = {};
+  let dealFlows = {};
   if (process.env.SKIP_DEAL_FLOWS === '1') {
-    console.log('SKIP_DEAL_FLOWS=1 — histórico de etapas não atualizado.');
+    const previous = await readRawData('pipedrive-deal-flows.json', { flows: {} });
+    dealFlows = previous.flows ?? {};
+    console.log('SKIP_DEAL_FLOWS=1 — histórico de etapas preservado da última coleta.');
   } else {
     console.log(`Buscando flow de ${funnelDeals.length} negócios (pipelines consultoria + obras)...`);
     let index = 0;

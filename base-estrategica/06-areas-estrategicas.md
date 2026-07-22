@@ -1,6 +1,6 @@
 # Áreas estratégicas — XPE Consultoria
 
-Gerado em: 22/07/2026, 13:10:05
+Gerado em: 22/07/2026, 13:44:05
 
 Todas as 11 áreas em um único documento. Para conversar sobre uma área específica, referencie a seção pelo nome.
 

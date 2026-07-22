@@ -1,6 +1,6 @@
 # Base estratégica — XPE Consultoria
 
-Export gerado em **22/07/2026, 13:10:05** · **10 arquivos** (7 docs + 3 CSVs).
+Export gerado em **22/07/2026, 13:44:05** · **10 arquivos** (7 docs + 3 CSVs).
 
 ## Os arquivos
 

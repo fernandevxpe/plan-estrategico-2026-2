@@ -133,6 +133,28 @@ async function syncPipedrive() {
   await writeJson('pipedrive-activities.json', activities);
   await writeJson('pipedrive-goals.json', goals);
 
+  // Produtos reais são buscados por negócio. Mantemos apenas os negócios que o
+  // Pipedrive sinaliza com itens para evitar centenas de chamadas desnecessárias.
+  const dealProducts = {};
+  const dealsWithProducts = deals.filter((deal) => Number(deal.products_count ?? 0) > 0);
+  if (dealsWithProducts.length) {
+    console.log(`Buscando produtos de ${dealsWithProducts.length} negócio(s)...`);
+    for (const deal of dealsWithProducts) {
+      const token = process.env.PIPEDRIVE_API_KEY;
+      const url = new URL(`https://api.pipedrive.com/v1/deals/${deal.id}/products`);
+      url.searchParams.set('api_token', token);
+      try {
+        const json = await getJson(url);
+        dealProducts[String(deal.id)] = json.data ?? [];
+      } catch (error) {
+        console.warn(`  Aviso: produtos do negócio ${deal.id} não foram carregados: ${error.message}`);
+        dealProducts[String(deal.id)] = [];
+      }
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+  }
+  await writeJson('pipedrive-deal-products.json', dealProducts);
+
   const funnelPipelineIds = [11, 14];
   const funnelDeals = deals.filter((deal) => funnelPipelineIds.includes(deal.pipeline_id));
   const dealFlows = {};
@@ -170,6 +192,7 @@ async function syncPipedrive() {
     users: users.length,
     activities: activities.length,
     goals: goals.length,
+    dealProducts: Object.keys(dealProducts).length,
     dealFlows: Object.keys(dealFlows).length
   };
 }

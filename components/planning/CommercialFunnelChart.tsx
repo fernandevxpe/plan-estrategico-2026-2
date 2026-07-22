@@ -9,6 +9,7 @@ import {
   Line,
   ResponsiveContainer,
   Tooltip,
+  type TooltipProps,
   XAxis,
   YAxis
 } from "recharts";
@@ -16,318 +17,89 @@ import type { CommercialFunnelChartRow } from "@/lib/analysis/planning-pipedrive
 import type { CommercialFunnelScope } from "@/lib/analysis/types";
 import { brl } from "@/lib/analysis/format";
 
-export type CommercialFunnelSeriesId =
-  | "goalTarget"
-  | "goalRealized"
-  | "createdValue"
-  | "wonValue"
-  | "lostValue"
-  | "openValue"
-  | "createdDeals"
-  | "wonDeals"
-  | "lostDeals"
-  | "openDeals"
-  | "stageCohortConversionPct"
-  | "closedConversionPct"
-  | "averageDaysToWin"
-  | "ganhosAntigosSharePct"
-  | "winLagM0Pct"
-  | "winLagM1Pct"
-  | "winLagM2Pct"
-  | "winLagM3Pct"
-  | "winLagM4PlusPct";
-
+type ViewId = "revenue" | "volume" | "closing";
 type SeriesKind = "currency" | "count" | "percent" | "days";
+type Series = { id: keyof CommercialFunnelChartRow; label: string; kind: SeriesKind; axis: "left" | "right"; type: "bar" | "line"; color: string; dash?: string };
 
-type SeriesConfig = {
-  id: CommercialFunnelSeriesId;
-  label: string;
-  kind: SeriesKind;
-  axis: "left" | "right" | "days";
-  type: "bar" | "line";
-  color: string;
-  dash?: string;
-};
-
-const SERIES_CONFIG: SeriesConfig[] = [
-  { id: "goalTarget", label: "Meta", kind: "currency", axis: "left", type: "bar", color: "#9fb2bd" },
-  { id: "goalRealized", label: "Realizado (meta)", kind: "currency", axis: "left", type: "bar", color: "#2368a0" },
-  { id: "createdValue", label: "Criado (R$)", kind: "currency", axis: "left", type: "bar", color: "#64748b" },
-  { id: "wonValue", label: "Ganho (R$)", kind: "currency", axis: "left", type: "bar", color: "#21a67a" },
-  { id: "lostValue", label: "Perdido (R$)", kind: "currency", axis: "left", type: "bar", color: "#e5484d" },
-  { id: "openValue", label: "Aberto (R$)", kind: "currency", axis: "left", type: "line", color: "#b67818" },
-  { id: "createdDeals", label: "Criados (qtd)", kind: "count", axis: "left", type: "line", color: "#94a3b8" },
-  { id: "wonDeals", label: "Ganhos (qtd)", kind: "count", axis: "left", type: "line", color: "#0f766e" },
-  { id: "lostDeals", label: "Perdidos (qtd)", kind: "count", axis: "left", type: "line", color: "#dc2626" },
-  { id: "openDeals", label: "Base aberta (qtd)", kind: "count", axis: "left", type: "line", color: "#d97706" },
-  {
-    id: "stageCohortConversionPct",
-    label: "Conversão etapa qualificada",
-    kind: "percent",
-    axis: "right",
-    type: "line",
-    color: "#7c3aed"
+const VIEWS: Record<ViewId, { label: string; description: string; series: Series[] }> = {
+  revenue: {
+    label: "Receita e meta",
+    description: "Meta, realizado, valor ganho e valor criado. O pipeline aberto é mostrado como linha para não disputar a leitura das barras.",
+    series: [
+      { id: "goalTarget", label: "Meta", kind: "currency", axis: "left", type: "bar", color: "#9fb2bd" },
+      { id: "goalRealized", label: "Realizado", kind: "currency", axis: "left", type: "bar", color: "#2368a0" },
+      { id: "wonValue", label: "Ganho", kind: "currency", axis: "left", type: "bar", color: "#21a67a" },
+      { id: "createdValue", label: "Criado", kind: "currency", axis: "left", type: "line", color: "#64748b" },
+      { id: "openValue", label: "Pipeline aberto", kind: "currency", axis: "left", type: "line", color: "#b67818", dash: "4 3" }
+    ]
   },
-  {
-    id: "closedConversionPct",
-    label: "Conversão fechados",
-    kind: "percent",
-    axis: "right",
-    type: "line",
-    color: "#be185d",
-    dash: "2 2"
+  volume: {
+    label: "Volume e conversão",
+    description: "Quantidade de negócios por mês no eixo esquerdo; conversão de oportunidades que alcançaram diagnóstico/proposta no eixo direito.",
+    series: [
+      { id: "createdDeals", label: "Criados", kind: "count", axis: "left", type: "bar", color: "#64748b" },
+      { id: "wonDeals", label: "Ganhos", kind: "count", axis: "left", type: "bar", color: "#21a67a" },
+      { id: "lostDeals", label: "Perdidos", kind: "count", axis: "left", type: "bar", color: "#e5484d" },
+      { id: "openDeals", label: "Base aberta", kind: "count", axis: "left", type: "line", color: "#b67818" },
+      { id: "stageCohortConversionPct", label: "Conversão por etapa", kind: "percent", axis: "right", type: "line", color: "#7c3aed" }
+    ]
   },
-  {
-    id: "averageDaysToWin",
-    label: "Média dias até ganho",
-    kind: "days",
-    axis: "days",
-    type: "line",
-    color: "#14b8a6"
-  },
-  {
-    id: "ganhosAntigosSharePct",
-    label: "Ganhos antigos (>1M)",
-    kind: "percent",
-    axis: "right",
-    type: "line",
-    color: "#64748b",
-    dash: "4 3"
-  },
-  { id: "winLagM0Pct", label: "Fechamento M", kind: "percent", axis: "right", type: "line", color: "#2368a0" },
-  { id: "winLagM1Pct", label: "Fechamento M−1", kind: "percent", axis: "right", type: "line", color: "#21a67a", dash: "3 2" },
-  { id: "winLagM2Pct", label: "Fechamento M−2", kind: "percent", axis: "right", type: "line", color: "#b67818", dash: "3 2" },
-  { id: "winLagM3Pct", label: "Fechamento M−3", kind: "percent", axis: "right", type: "line", color: "#d97706", dash: "3 2" },
-  {
-    id: "winLagM4PlusPct",
-    label: "Fechamento M>4",
-    kind: "percent",
-    axis: "right",
-    type: "line",
-    color: "#94a3b8",
-    dash: "5 3"
+  closing: {
+    label: "Fechamento e ciclo",
+    description: "Qualidade dos fechamentos: taxa de ganho entre negócios encerrados, ciclo médio e origem temporal dos ganhos.",
+    series: [
+      { id: "closedConversionPct", label: "Win rate dos fechados", kind: "percent", axis: "left", type: "line", color: "#be185d" },
+      { id: "ganhosAntigosSharePct", label: "Ganhos criados há >1 mês", kind: "percent", axis: "left", type: "line", color: "#64748b", dash: "4 3" },
+      { id: "averageDaysToWin", label: "Dias até ganho", kind: "days", axis: "right", type: "line", color: "#14b8a6" }
+    ]
   }
-];
-
-const DEFAULT_SERIES: CommercialFunnelSeriesId[] = [
-  "goalTarget",
-  "goalRealized",
-  "createdValue",
-  "wonValue",
-  "openValue",
-  "stageCohortConversionPct",
-  "averageDaysToWin"
-];
-
-const SCOPE_LABELS: Record<CommercialFunnelScope, string> = {
-  collective: "Coletivo",
-  consultoria: "Consultoria",
-  obras: "Obras"
 };
 
-type Props = {
-  data: CommercialFunnelChartRow[];
-  scope: CommercialFunnelScope;
-  onScopeChange: (scope: CommercialFunnelScope) => void;
-};
+const SCOPE_LABELS: Record<CommercialFunnelScope, string> = { collective: "Coletivo", consultoria: "Consultoria", obras: "Obras" };
 
 function formatValue(value: number, kind: SeriesKind) {
   if (kind === "percent") return `${value.toFixed(1)}%`;
-  if (kind === "days") return `${Math.round(value)}d`;
+  if (kind === "days") return `${Math.round(value)} dias`;
   if (kind === "count") return String(Math.round(value));
   return brl.format(value);
 }
 
-function FunnelTooltip({
-  active,
-  payload,
-  label
-}: {
-  active?: boolean;
-  payload?: Array<{
-    dataKey?: string;
-    value?: number;
-    name?: string;
-    color?: string;
-    payload?: CommercialFunnelChartRow;
-  }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length || !label) return null;
-
-  const row = payload[0]?.payload as CommercialFunnelChartRow | undefined;
-  const items = payload.filter((item) => item.value != null && item.value !== 0);
-
-  return (
-    <div className="chart-tooltip commercial-funnel-tooltip">
-      <strong>{label}</strong>
-      <ul>
-        {items.map((item) => (
-          <li key={String(item.dataKey)} style={{ color: item.color }}>
-            {item.name}: {formatSeriesValue(item.dataKey as CommercialFunnelSeriesId, Number(item.value))}
-          </li>
-        ))}
-      </ul>
-      {row ? (
-        <>
-          <p className="commercial-funnel-cohort-note">
-            Conversão etapa qualificada: {formatPct(row.stageCohortConversionPct)}
-          </p>
-          <p className="commercial-funnel-cohort-note">
-            Origem dos ganhos: M {formatPct(row.winLagM0Pct)} · M−1 {formatPct(row.winLagM1Pct)} · M−2{" "}
-            {formatPct(row.winLagM2Pct)} · M−3 {formatPct(row.winLagM3Pct)} · M&gt;4 {formatPct(row.winLagM4PlusPct)}
-          </p>
-        </>
-      ) : null}
-    </div>
-  );
-}
-
-function formatPct(value: number | null | undefined) {
-  if (value == null) return "—";
-  return `${value.toFixed(1)}%`;
-}
-
-function formatSeriesValue(id: CommercialFunnelSeriesId, value: number) {
-  const config = SERIES_CONFIG.find((item) => item.id === id);
-  if (!config) return String(value);
-  return formatValue(value, config.kind);
-}
-
-export function CommercialFunnelChart({ data, scope, onScopeChange }: Props) {
-  const [enabledSeries, setEnabledSeries] = useState<Set<CommercialFunnelSeriesId>>(
-    () => new Set(DEFAULT_SERIES)
-  );
-
-  const activeConfigs = useMemo(
-    () => SERIES_CONFIG.filter((item) => enabledSeries.has(item.id)),
-    [enabledSeries]
-  );
-
-  function toggleSeries(id: CommercialFunnelSeriesId) {
-    setEnabledSeries((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        if (next.size === 1) return prev;
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }
+export function CommercialFunnelChart({ data, scope, onScopeChange }: { data: CommercialFunnelChartRow[]; scope: CommercialFunnelScope; onScopeChange: (scope: CommercialFunnelScope) => void }) {
+  const [view, setView] = useState<ViewId>("revenue");
+  const config = VIEWS[view];
+  const hasRight = config.series.some((item) => item.axis === "right");
+  const leftKind = config.series.find((item) => item.axis === "left")?.kind ?? "count";
+  const tooltip = useMemo(() => ({ active, payload, label }: TooltipProps<number, string>) => {
+    if (!active || !payload?.length || !label) return null;
+    return <div className="chart-tooltip commercial-funnel-tooltip"><strong>{label}</strong><ul>{payload.filter((item) => item.value != null).map((item) => {
+      const series = config.series.find((candidate) => candidate.id === String(item.dataKey));
+      return <li key={String(item.dataKey)} style={{ color: item.color }}>{item.name}: {formatValue(Number(item.value), series?.kind ?? "count")}</li>;
+    })}</ul></div>;
+  }, [config]);
 
   if (!data.length) return <p className="chart-empty">Sem dados de funil comercial para 2026.</p>;
 
-  const hasPercent = activeConfigs.some((item) => item.axis === "right");
-  const hasDays = activeConfigs.some((item) => item.axis === "days");
-  const hasCurrency = activeConfigs.some((item) => item.kind === "currency");
-
-  return (
-    <div className="commercial-funnel-chart-wrap">
-      <div className="commercial-funnel-controls">
-        <div className="funnel-pipeline-toggle" role="group" aria-label="Escopo do funil">
-          {(Object.keys(SCOPE_LABELS) as CommercialFunnelScope[]).map((item) => (
-            <button
-              key={item}
-              type="button"
-              className={`goal-preset-btn ${scope === item ? "is-active" : ""}`}
-              onClick={() => onScopeChange(item)}
-            >
-              {SCOPE_LABELS[item]}
-            </button>
-          ))}
-        </div>
-        <p className="chart-caption commercial-funnel-legend-note">
-          Conversão principal = oportunidades que entraram em Diagnóstico/Proposta no mês. Fechamento M…M&gt;4 = % dos
-          ganhos do mês vindos de negócios criados no mesmo mês, 1, 2, 3 ou mais de 4 meses antes.
-        </p>
+  return <div className="commercial-funnel-chart-wrap">
+    <div className="commercial-funnel-controls">
+      <div className="funnel-pipeline-toggle" role="group" aria-label="Escopo do funil">
+        {(Object.keys(SCOPE_LABELS) as CommercialFunnelScope[]).map((item) => <button key={item} type="button" className={`goal-preset-btn ${scope === item ? "is-active" : ""}`} onClick={() => onScopeChange(item)}>{SCOPE_LABELS[item]}</button>)}
       </div>
-
-      <div className="commercial-funnel-series-chips">
-        <span className="goal-compare-presets-label">Séries:</span>
-        {SERIES_CONFIG.map((item) => {
-          const active = enabledSeries.has(item.id);
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className={`funnel-stage-chip ${active ? "is-active" : ""}`}
-              style={active ? { borderColor: item.color, background: `${item.color}14` } : undefined}
-              onClick={() => toggleSeries(item.id)}
-            >
-              <span className="funnel-stage-chip-dot" style={{ background: item.color }} />
-              {item.label}
-            </button>
-          );
-        })}
+      <div className="chart-mode-toggle" role="group" aria-label="Visão do funil">
+        {(Object.keys(VIEWS) as ViewId[]).map((item) => <button key={item} type="button" className={view === item ? "is-active" : ""} onClick={() => setView(item)}>{VIEWS[item].label}</button>)}
       </div>
-
+    </div>
+    <p className="chart-caption commercial-funnel-legend-note">{config.description}</p>
+    <div className="commercial-funnel-plot">
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart
-          data={data}
-          margin={{ top: 12, right: hasPercent && hasDays ? 56 : hasPercent || hasDays ? 40 : 8, left: 4, bottom: 0 }}
-        >
+        <ComposedChart data={data} margin={{ top: 16, right: hasRight ? 48 : 12, left: 4, bottom: 0 }}>
           <CartesianGrid stroke="#dce5e8" vertical={false} />
           <XAxis dataKey="label" tickLine={false} axisLine={false} />
-          <YAxis
-            yAxisId="left"
-            tickFormatter={(value) =>
-              hasCurrency ? `${Math.round(Number(value) / 1000)}k` : String(Math.round(Number(value)))
-            }
-            tickLine={false}
-            axisLine={false}
-            width={48}
-          />
-          {hasPercent ? (
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              tickFormatter={(value) => `${Math.round(Number(value))}%`}
-              tickLine={false}
-              axisLine={false}
-              width={40}
-              domain={[0, "auto"]}
-            />
-          ) : null}
-          {hasDays ? (
-            <YAxis
-              yAxisId="days"
-              orientation="right"
-              tickFormatter={(value) => `${Math.round(Number(value))}d`}
-              tickLine={false}
-              axisLine={false}
-              width={hasPercent ? 36 : 40}
-              domain={[0, "auto"]}
-            />
-          ) : null}
-          <Tooltip content={<FunnelTooltip />} />
-          <Legend />
-          {activeConfigs.map((item) => {
-            const common = {
-              yAxisId: item.axis,
-              dataKey: item.id,
-              name: item.label,
-              stroke: item.color,
-              fill: item.color
-            };
-            if (item.type === "bar") {
-              return <Bar key={item.id} {...common} radius={[4, 4, 0, 0]} />;
-            }
-            return (
-              <Line
-                key={item.id}
-                {...common}
-                type="monotone"
-                strokeWidth={2}
-                strokeDasharray={item.dash}
-                dot={{ r: 2 }}
-                connectNulls={false}
-              />
-            );
-          })}
+          <YAxis yAxisId="left" tickFormatter={(value) => leftKind === "currency" ? `${Math.round(Number(value) / 1000)}k` : leftKind === "percent" ? `${Math.round(Number(value))}%` : String(Math.round(Number(value)))} tickLine={false} axisLine={false} width={48} domain={leftKind === "percent" ? [0, 100] : [0, "auto"]} />
+          {hasRight ? <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${Math.round(Number(value))}d`} tickLine={false} axisLine={false} width={42} domain={[0, "auto"]} /> : null}
+          <Tooltip content={tooltip} /><Legend />
+          {config.series.map((item) => item.type === "bar" ? <Bar key={String(item.id)} yAxisId={item.axis} dataKey={item.id} name={item.label} fill={item.color} radius={[4, 4, 0, 0]} /> : <Line key={String(item.id)} yAxisId={item.axis} dataKey={item.id} name={item.label} type="monotone" stroke={item.color} strokeWidth={2.5} strokeDasharray={item.dash} dot={{ r: 3 }} connectNulls={false} />)}
         </ComposedChart>
       </ResponsiveContainer>
     </div>
-  );
+  </div>;
 }

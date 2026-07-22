@@ -201,7 +201,7 @@ function monthlyRows(deals) {
   });
 }
 
-const [dealsRaw, fieldsRaw, orgFieldsRaw, organizationsRaw, pipelinesRaw, stagesRaw, clickupTasksRaw, goalsRaw] = await Promise.all([
+const [dealsRaw, fieldsRaw, orgFieldsRaw, organizationsRaw, pipelinesRaw, stagesRaw, clickupTasksRaw, goalsRaw, dealProductsRaw] = await Promise.all([
   readJson('pipedrive-deals.json'),
   readJson('pipedrive-deal-fields.json'),
   readOptionalJson('pipedrive-organization-fields.json'),
@@ -209,7 +209,8 @@ const [dealsRaw, fieldsRaw, orgFieldsRaw, organizationsRaw, pipelinesRaw, stages
   readJson('pipedrive-pipelines.json'),
   readJson('pipedrive-stages.json'),
   readOptionalJson('clickup-tasks.json', []),
-  readOptionalJson('pipedrive-goals.json', [])
+  readOptionalJson('pipedrive-goals.json', []),
+  readOptionalJson('pipedrive-deal-products.json', {})
 ]);
 
 const fieldsByKey = Object.fromEntries(fieldsRaw.map((field) => [field.key, field]));
@@ -264,6 +265,24 @@ function primaryBusinessTypeForDeal(types, fallbackService) {
   return types[0] || fallbackService || 'Sem tipo comercial';
 }
 
+function productValue(product) {
+  const explicitTotal = Number(product.sum ?? product.total_price ?? product.value ?? 0);
+  if (Number.isFinite(explicitTotal) && explicitTotal > 0) return explicitTotal;
+  const quantity = Number(product.quantity ?? 1);
+  const price = Number(product.item_price ?? product.price ?? 0);
+  return Number.isFinite(quantity * price) ? quantity * price : 0;
+}
+
+function productsForDeal(deal) {
+  const items = Array.isArray(dealProductsRaw?.[String(deal.id)]) ? dealProductsRaw[String(deal.id)] : [];
+  return items.map((product) => ({
+    id: product.product_id ?? product.id ?? null,
+    name: product.name ?? product.product_name ?? `Produto ${product.product_id ?? "sem nome"}`,
+    quantity: Number(product.quantity ?? 1),
+    value: productValue(product)
+  })).filter((product) => product.value > 0);
+}
+
 const deals = dealsRaw.map((deal) => {
   const pipeline = pipelineById[deal.pipeline_id];
   const stage = stageById[deal.stage_id];
@@ -273,6 +292,7 @@ const deals = dealsRaw.map((deal) => {
   const cnpj = normalizeDocument(cnpjField ? organization?.[cnpjField.key] : null);
   const orgName = deal.org_name ?? deal.org_id?.name ?? organization?.name ?? null;
   const businessTypes = businessTypesForDeal(deal, service);
+  const products = productsForDeal(deal);
   return {
     id: deal.id,
     title: deal.title,
@@ -304,6 +324,8 @@ const deals = dealsRaw.map((deal) => {
     primaryBusinessType: primaryBusinessTypeForDeal(businessTypes, service),
     hasExplicitBusinessType: businessTypes.some((type) => businessTypeLabels.has(type)),
     isMultiBusinessType: businessTypes.length > 1,
+    products,
+    productValueSource: products.length ? 'pipedrive_products' : 'equal_label_split',
     person: deal.person_name ?? deal.person_id?.name ?? null,
     service
   };
@@ -429,6 +451,7 @@ const commercialFunnelByPipeline = {
 
 const businessTypeDeals = [];
 const businessTypeMultiDeals = [];
+const dealProductRows = [];
 for (const deal of wonDeals) {
   const types = deal.businessTypes?.length ? deal.businessTypes : [deal.primaryBusinessType];
   const typeCount = types.length;
@@ -452,21 +475,46 @@ for (const deal of wonDeals) {
         ? 'obras'
         : null;
 
-  for (const type of types) {
+  const allocations = deal.products.length
+    ? deal.products.map((product) => ({
+        type: types.find((type) => normalizeText(product.name).includes(normalizeText(type)) || normalizeText(type).includes(normalizeText(product.name))) ?? product.name,
+        value: product.value,
+        source: 'pipedrive_products'
+      }))
+    : types.map((type) => ({ type, value: allocatedValue, source: 'equal_label_split' }));
+
+  for (const allocation of allocations) {
     businessTypeMultiDeals.push({
       month: deal.wonMonth,
-      type,
+      type: allocation.type,
       pipelineId: deal.pipelineId,
       scope,
       dealId: deal.id,
       dealTitle: deal.title,
       organization: deal.organization,
-      value: allocatedValue,
+      value: allocation.value,
       fullValue: deal.value,
-      typeCount,
-      allocationSharePct: typeCount ? 100 / typeCount : 100,
+      typeCount: allocations.length,
+      allocationSharePct: deal.value ? (allocation.value / deal.value) * 100 : 0,
+      allocationSource: allocation.source,
       labels: deal.businessTypes.join(', '),
       isMultiBusinessType: deal.isMultiBusinessType
+    });
+  }
+
+  for (const product of deal.products) {
+    dealProductRows.push({
+      month: deal.wonMonth,
+      dealId: deal.id,
+      dealTitle: deal.title,
+      organization: deal.organization,
+      pipelineId: deal.pipelineId,
+      scope,
+      productId: product.id,
+      product: product.name,
+      quantity: product.quantity,
+      value: product.value,
+      status: deal.status
     });
   }
 }
@@ -2443,6 +2491,7 @@ const report = {
   businessTypeMonthlyByScope: businessTypeScopeSummary,
   businessTypeDeals,
   businessTypeMultiDeals,
+  dealProducts: dealProductRows,
   obraSubgroups: {
     summary: obraSubgroupSummary,
     monthly: obraSubgroupMonthly,
@@ -2509,6 +2558,7 @@ await writeCsv('business-type-monthly.csv', businessTypeTrend);
 await writeCsv('business-type-monthly-by-scope.csv', businessTypeScopeSummary);
 await writeCsv('business-type-deals.csv', businessTypeDeals);
 await writeCsv('business-type-multi-deals.csv', businessTypeMultiDeals);
+await writeCsv('deal-products.csv', dealProductRows);
 await writeCsv('obra-subgroup-monthly.csv', obraSubgroupMonthly);
 await writeCsv('obra-subgroup-deals.csv', obraSubgroupDeals.map((deal) => ({
   ...deal,

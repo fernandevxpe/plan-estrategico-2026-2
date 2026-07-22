@@ -142,7 +142,7 @@ export function PlanningPage({ analysis }: Props) {
       <article className="card span-2">
         <h3>Funil comercial 2026</h3>
         <p className="chart-caption">
-          Meta, realizado, criado, ganho, perdido, aberto e conversão por cohort — séries configuráveis.
+          Acompanhe separadamente receita, volume do funil e qualidade dos fechamentos. Selecione o escopo e a visão desejada.
         </p>
         <div className="chart-box chart-box-tall commercial-funnel-chart-box">
           <CommercialFunnelChart

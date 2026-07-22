@@ -168,6 +168,20 @@ export type BusinessTypeMonthlyByScope = {
   averageTicket: number;
 };
 
+export type DealProduct = {
+  month: string;
+  dealId: number;
+  dealTitle: string;
+  organization: string | null;
+  pipelineId: number | null;
+  scope: MixGoalScope | null;
+  productId: number | null;
+  product: string;
+  quantity: number;
+  value: number;
+  status: string;
+};
+
 export type ObraSubgroupSummary = {
   subgroup: string;
   wonDeals: number;
@@ -474,6 +488,7 @@ export type Analysis = {
   growthGuides: GrowthGuides;
   businessTypeMonthly: BusinessTypeMonthly[];
   businessTypeMonthlyByScope?: BusinessTypeMonthlyByScope[];
+  dealProducts?: DealProduct[];
   obraSubgroups?: {
     summary: ObraSubgroupSummary[];
     monthly: ObraSubgroupMonthly[];

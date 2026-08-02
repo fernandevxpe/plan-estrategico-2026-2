@@ -1,6 +1,6 @@
 # Investigação e alertas
 
-Gerado em: 22/07/2026, 15:14:09
+Gerado em: 02/08/2026, 20:22:00
 
 ## Alertas de performance
 
@@ -15,8 +15,8 @@ Gerado em: 22/07/2026, 15:14:09
 - **[medium] Dez/25**: 2 indicadores recuaram vs 2025-11.
 - **[medium] Mar/26**: 2 indicadores recuaram vs 2026-02.
 - **[high] Abr/26**: 4 indicadores caíram vs 2026-03. Revisar follow-up, propostas e conversão.
-- **[high] Mai/26**: 4 indicadores caíram vs 2026-04. Revisar follow-up, propostas e conversão.
-- **[high] Jul/26**: 4 indicadores caíram vs 2026-06. Revisar follow-up, propostas e conversão.
+- **[high] Mai/26**: 3 indicadores caíram vs 2026-04. Revisar follow-up, propostas e conversão.
+- **[high] Jul/26**: 3 indicadores caíram vs 2026-06. Revisar follow-up, propostas e conversão.
 
 ## Recomendações de indicadores
 
@@ -29,7 +29,7 @@ Gerado em: 22/07/2026, 15:14:09
 - Melhor mês de receita: **Jun/26** (R$ 333.210)
 - Melhor conversão dos novos negócios: **Jun/25** (40,9%)
 - Melhor mês de novos negócios: **Fev/25** (110 criados)
-- Recordes em 2026: **22** eventos
+- Recordes em 2026: **23** eventos
 
 ## Análise: tempo para fechar (2026)
 
@@ -41,7 +41,7 @@ Gerado em: 22/07/2026, 15:14:09
 | 2026-04 | 15 | 60 | 52 | R$ 155.600 |
 | 2026-05 | 14 | 84 | 40 | R$ 130.800 |
 | 2026-06 | 23 | 49 | 29 | R$ 319.290 |
-| 2026-07 | 12 | 34 | 11 | R$ 131.000 |
+| 2026-07 | 27 | 52 | 44 | R$ 301.300 |
 
 ## Padrões de mix em picos
 
@@ -51,7 +51,7 @@ Gerado em: 22/07/2026, 15:14:09
 
 ## Alertas de qualidade de dados
 
-- **Cobertura de CNPJ parcial** (high): 257/1643 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
-- **Negócios ganhos sem etiqueta comercial explícita** (medium): 3/215 ganhos usam fallback de serviço/funil como tipo principal.
-- **Negócios com múltiplas etiquetas** (medium): 42 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
-- **Base aberta contém negócios antigos** (high): 168 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.
+- **Cobertura de CNPJ parcial** (high): 258/1655 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
+- **Negócios ganhos sem etiqueta comercial explícita** (medium): 3/232 ganhos usam fallback de serviço/funil como tipo principal.
+- **Negócios com múltiplas etiquetas** (medium): 44 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
+- **Base aberta contém negócios antigos** (high): 174 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.

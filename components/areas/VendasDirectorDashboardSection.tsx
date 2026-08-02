@@ -3,6 +3,8 @@
 import type { VendasDirectorDashboard } from "@/lib/areas/build-vendas-director-dashboard";
 import { brl } from "@/lib/analysis/format";
 import { VendasInlineDetails } from "@/components/areas/VendasInlineDetails";
+import { VendasMonthlyAnalysis } from "@/components/areas/VendasMonthlyAnalysis";
+import { VendasSellerMonitoring } from "@/components/areas/VendasSellerMonitoring";
 
 type Props = {
   dashboard: VendasDirectorDashboard;
@@ -60,6 +62,13 @@ export function VendasDirectorDashboardSection({ dashboard, embedded = false }: 
           </div>
         ))}
       </div>
+
+      <VendasSellerMonitoring rows={dashboard.sellerMonitoring} />
+
+      <VendasMonthlyAnalysis
+        monthlyAnalysis={dashboard.monthlyAnalysis}
+        reviewAudits={dashboard.reviewAudits}
+      />
 
       <div className="vendas-details-grid">
         <VendasInlineDetails title="Pauta da reunião (1h–2h)" defaultOpen>

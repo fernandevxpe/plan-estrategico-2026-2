@@ -5,7 +5,7 @@ Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-03-01;2026
 Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-04-01;2026-04-30;140800;115850;82.27982954545455
 Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-05-01;2026-05-31;153600;130800;85.15625
 Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-06-01;2026-06-30;183040;152520;83.32604895104895
-Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-07-01;2026-07-31;197120;48900;24.807224025974026
+Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-07-01;2026-07-31;197120;161086;81.71976461038962
 Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-08-01;2026-08-31;230400;0;0
 Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-09-01;2026-09-30;245760;0;0
 Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-10-01;2026-10-31;253440;0;0
@@ -13,8 +13,8 @@ Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-11-01;2026
 Meta Consultoria / Mês - 2026;Contratos ganhos;currency;monthly;2026-12-01;2026-12-31;230400;0;0
 Meta Contrato Global / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-01-01;2026-03-31;337427;588996.72;174.55530233205997
 Meta Contrato Global / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-04-01;2026-06-30;587264;631360;107.50871839581518
-Meta Contrato Global / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-07-01;2026-09-30;1170560;130999.98;11.191223004373976
-Meta Contrato Global / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-10-01;2026-12-31;1136096;0;0
+Meta Contrato Global / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-07-01;2026-09-30;1033280;312685.98;30.261495432022294
+Meta Contrato Global / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-10-01;2026-12-31;994240;0;0
 Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-01-01;2026-01-03;0;0;
 Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-01-04;2026-01-10;0;0;
 Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-01-11;2026-01-17;3;4;133.33333333333331
@@ -44,8 +44,8 @@ Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-06-21;
 Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-06-28;2026-07-04;24;12;50
 Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-07-05;2026-07-11;24;16;66.66666666666666
 Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-07-12;2026-07-18;24;16;66.66666666666666
-Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-07-19;2026-07-25;24;6;25
-Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-07-26;2026-08-01;24;0;0
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-07-19;2026-07-25;24;22;91.66666666666666
+Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-07-26;2026-08-01;24;15;62.5
 Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-08-02;2026-08-08;26;0;0
 Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-08-09;2026-08-15;26;0;0
 Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-08-16;2026-08-22;26;0;0
@@ -68,12 +68,12 @@ Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-12-06;
 Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-12-13;2026-12-19;20;0;0
 Meta de Reunião Semanal  - 2026;Atividades concluídas;count;weekly;2026-12-20;2026-12-26;20;0;0
 Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-01-01;2026-01-31;198000;807037.72;407.59480808080804
-Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-02-01;2026-02-28;270000;484290;179.36666666666667
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-02-01;2026-02-28;270000;478290;177.14444444444445
 Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-03-01;2026-03-31;360000;433000;120.27777777777777
 Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-04-01;2026-04-30;440000;846250;192.32954545454547
-Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-05-01;2026-05-31;480000;1035405;215.709375
-Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-06-01;2026-06-30;572000;1160235;202.8382867132867
-Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-07-01;2026-07-31;616000;319055.61;51.79474188311688
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-05-01;2026-05-31;480000;1017405;211.959375
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-06-01;2026-06-30;572000;1153560;201.67132867132867
+Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-07-01;2026-07-31;616000;485991.61;78.89474188311688
 Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-08-01;2026-08-31;720000;0;0
 Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-09-01;2026-09-30;760000;0;0
 Meta  Potencial Criado - 2026;Potencial criado;currency;monthly;2026-10-01;2026-10-31;780000;0;0
@@ -85,19 +85,19 @@ Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-03-01;2026-
 Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-04-01;2026-04-30;174357.33;167350;95.98105224483537
 Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-05-01;2026-05-31;190208;130800;68.76682368775235
 Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-06-01;2026-06-30;222698.67;333210;149.62370453312542
-Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-07-01;2026-07-31;359829.33;130999.98;36.40614287890317
-Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-08-01;2026-08-31;396160;0;0
-Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-09-01;2026-09-30;414570.67;0;0
-Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-10-01;2026-10-31;423776;0;0
-Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-11-01;2026-11-30;356160;0;0
-Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-12-01;2026-12-31;356160;0;0
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-07-01;2026-07-31;317120;312685.98;98.60178481331987
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-08-01;2026-08-31;350400;0;0
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-09-01;2026-09-30;365760;0;0
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-10-01;2026-10-31;373440;0;0
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-11-01;2026-11-30;310400;0;0
+Meta Global XPE / Mês - 2026;Contratos ganhos;currency;monthly;2026-12-01;2026-12-31;310400;0;0
 Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-01-01;2026-01-31;19066.67;107831.72;565.5508801484475
 Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-02-01;2026-02-28;22880;24250;105.98776223776223
 Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-03-01;2026-03-31;30506.67;102700;336.6476904886702
 Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-04-01;2026-04-30;33557.33;51500;153.46870564493656
 Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-05-01;2026-05-31;36608;0;0
 Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-06-01;2026-06-30;120000;180690;150.575
-Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-07-01;2026-07-31;120000;82099.98;68.41665
+Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-07-01;2026-07-31;120000;151599.98;126.33331666666668
 Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-08-01;2026-08-31;120000;0;0
 Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-09-01;2026-09-30;120000;0;0
 Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-10-01;2026-10-31;120000;0;0
@@ -105,5 +105,5 @@ Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-11-01;2026-11-30
 Meta Obras / Mês - 2026;Contratos ganhos;currency;monthly;2026-12-01;2026-12-31;80000;0;0
 Meta Consultoria / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-01-01;2026-03-31;264973.6;354215;133.67935522633198
 Meta Consultoria / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-04-01;2026-06-30;477440;399170;83.60631702412869
-Meta Consultoria / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-07-01;2026-09-30;677280;48900;7.220056697377747
+Meta Consultoria / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-07-01;2026-09-30;677280;161086;23.78425466572171
 Meta Consultoria / Quarter - 2026;Contratos ganhos;currency;quarterly;2026-10-01;2026-12-31;714240;0;0

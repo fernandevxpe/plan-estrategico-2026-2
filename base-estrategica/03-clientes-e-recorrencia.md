@@ -1,14 +1,14 @@
 # Clientes e recorrência
 
-Gerado em: 22/07/2026, 15:14:09
+Gerado em: 02/08/2026, 20:22:00
 
 ## Recorrência
 
-- Contas com mais de um fechamento (CNPJ): **30**
-- Contas repetidas (organização): **47**
-- Receita de repetição: **R$ 956.771**
-- Confiança CNPJ: **30** contas · R$ 535.100 (high)
-- Por nome de organização: **17** contas · R$ 421.671 (medium)
+- Contas com mais de um fechamento (CNPJ): **32**
+- Contas repetidas (organização): **50**
+- Receita de repetição: **R$ 1.050.657**
+- Confiança CNPJ: **32** contas · R$ 569.946 (high)
+- Por nome de organização: **18** contas · R$ 480.711 (medium)
 
 ## Origem da receita (novo vs repetido)
 
@@ -20,7 +20,7 @@ Gerado em: 22/07/2026, 15:14:09
 | 2026-04 | R$ 155.600 | R$ 91.900 | R$ 63.700 | 59,1% | 40,9% |
 | 2026-05 | R$ 130.800 | R$ 119.800 | R$ 11.000 | 91,6% | 8,4% |
 | 2026-06 | R$ 333.210 | R$ 92.450 | R$ 240.760 | 27,7% | 72,3% |
-| 2026-07 | R$ 131.000 | R$ 47.400 | R$ 83.600 | 36,2% | 63,8% |
+| 2026-07 | R$ 312.686 | R$ 135.200 | R$ 177.486 | 43,2% | 56,8% |
 
 ## Top 30 clientes por receita (organizações com fechamento)
 
@@ -32,12 +32,15 @@ Gerado em: 22/07/2026, 15:14:09
 | Edf Madalena Colonial | 10383770000114 | 2 | R$ 53.300 | R$ 45.000 | 2025-10 | 2026-04 | LDC - Laudo de disponibilidade de carga, OBRA |
 | Verano ADM | - | 2 | R$ 50.532 | R$ 43.032 | 2026-01 | 2026-01 | PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, Instalação de Carregador Eletrico |
 | Edf PARADOR DE GALICIA | - | 3 | R$ 46.020 | R$ 40.520 | 2025-09 | 2026-06 | LIE - Laudo de Instalações Elétricas, OBRA |
+| Edf nao informado | - | 4 | R$ 45.150 | R$ 40.150 | 2026-01 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | Edifício Ferreira da Costa | - | 3 | R$ 45.470 | R$ 39.470 | 2026-02 | 2026-06 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | Edf Morada Ilha Verde | 24565913000113 | 3 | R$ 45.000 | R$ 37.000 | 2025-07 | 2026-07 | LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, OBRA |
 | Cond. Montendre | - | 2 | R$ 51.249 | R$ 33.649 | 2025-04 | 2025-12 | LIE - Laudo de Instalações Elétricas, PROJETOS, LSPDA, OBRA |
+| Empresarial Praia Guarapari | - | 4 | R$ 40.550 | R$ 33.550 | 2026-02 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | Edf Samsara | 10395888000162 | 3 | R$ 37.500 | R$ 32.500 | 2025-09 | 2026-01 | LDC - Laudo de disponibilidade de carga, OBRA, PIE - Projeto infra.  Eletrocalha e Emergência |
-| Empresarial Praia Guarapari | - | 3 | R$ 36.800 | R$ 29.800 | 2026-02 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | Enseada do Mar | 14006221000181 | 3 | R$ 35.000 | R$ 27.500 | 2025-02 | 2026-04 | PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA |
+| Edf Lajedo | - | 3 | R$ 30.440 | R$ 26.440 | 2026-01 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
+| Edifício Fernando Perez | 69904753000128 | 3 | R$ 28.996 | R$ 24.996 | 2026-03 | 2026-07 | LIE - Laudo de Instalações Elétricas, PROJETOS, OBRA |
 | Edf Rio Siriji | 00942145000101 | 2 | R$ 31.000 | R$ 24.000 | 2025-12 | 2026-06 | LIE - Laudo de Instalações Elétricas, OBRA |
 | Edf FICUS | 41089830000114 | 3 | R$ 33.750 | R$ 23.250 | 2025-08 | 2026-06 | LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, PROJETOS, OBRA |
 | Edf Terra Brasilis | 04239390000108 | 4 | R$ 37.100 | R$ 20.100 | 2025-08 | 2026-03 | LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, ICV - Inspeção de carregador veicular |
@@ -49,31 +52,26 @@ Gerado em: 22/07/2026, 15:14:09
 | Edf Quinta Tereza Beltrão | 15066354000106 | 2 | R$ 25.360 | R$ 17.800 | 2025-11 | 2026-03 | LDC - Laudo de disponibilidade de carga, OBRA |
 | Edf Morada Rosarinho | 11236467000151 | 3 | R$ 22.750 | R$ 17.750 | 2025-05 | 2026-02 | LDC - Laudo de disponibilidade de carga, LIE - Laudo de Instalações Elétricas, PROJETOS, OBRA |
 | Edf Quinta do Algarve | 10528059000100 | 2 | R$ 21.800 | R$ 17.000 | 2025-09 | 2026-01 | LDC - Laudo de disponibilidade de carga, OBRA |
-| Edf nao informado | - | 2 | R$ 16.300 | R$ 11.300 | 2026-01 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA |
 | Edf Praia de Japaratinga | - | 2 | R$ 16.040 | R$ 10.540 | 2025-06 | 2025-07 | LIE - Laudo de Instalações Elétricas, OBRA |
+| Condominio do Edificio Maria Ines | 08374012000198 | 3 | R$ 16.850 | R$ 9.850 | 2026-04 | 2026-07 | LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, OBRA |
 | Condomínio Carmen Costa | - | 2 | R$ 16.200 | R$ 9.200 | 2026-04 | 2026-06 | LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular |
 | Edf Ilha do Retiro | 03786545000163 | 2 | R$ 12.000 | R$ 8.000 | 2025-06 | 2026-07 | LDC - Laudo de disponibilidade de carga, LIE - Laudo de Instalações Elétricas |
-| Edf Turmalina | 04113342000179 | 2 | R$ 16.000 | R$ 8.000 | 2025-08 | 2026-04 | LDC - Laudo de disponibilidade de carga, PROJETOS |
-| Edf Varanda do Parque | - | 2 | R$ 21.920 | R$ 7.920 | 2026-06 | 2026-06 | LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular |
-| Edf MIllennium | 04107259000197 | 3 | R$ 14.500 | R$ 7.500 | 2025-07 | 2026-07 | LDC - Laudo de disponibilidade de carga, PROJETOS, ICV - Inspeção de carregador veicular |
 
 ## Organizações no CRM
 
-- Total cadastradas: **1643**
-- Com pelo menos 1 fechamento: **157**
-- Com repetição (2+ fechamentos): **45**
-- Com negócios abertos agora: **663**
+- Total cadastradas: **1655**
+- Com pelo menos 1 fechamento: **165**
+- Com repetição (2+ fechamentos): **49**
+- Com negócios abertos agora: **634**
 
 ### Top 20 organizações com pipeline aberto
 
 | Organização | Negócios abertos | Ganhos históricos | Perdidos |
 | --- | --- | --- | --- |
 | Edf Maria Leopoldina | 6 | 1 | 0 |
-| Não informado | 3 | 1 | 0 |
 | Cond Casa da Montanha | 3 | 1 | 0 |
 | Edf Terra Brasilis | 3 | 4 | 0 |
-| Edf Maria Regina | 3 | 1 | 0 |
-| Edifício Fernando Perez | 3 | 1 | 0 |
+| Maria Tereza Coelho | 3 | 0 | 1 |
 | ERS | 2 | 0 | 0 |
 | Edf Quebra Mar | 2 | 1 | 0 |
 | Verano ADM | 2 | 2 | 0 |
@@ -81,12 +79,14 @@ Gerado em: 22/07/2026, 15:14:09
 | Edf Boa Viagem | 2 | 1 | 0 |
 | Edf Morada dos Agapanthus | 2 | 1 | 0 |
 | Edf Maria Clarice | 2 | 1 | 0 |
-| Edf MIllennium | 2 | 3 | 0 |
-| Condominio do Edificio Maria Ines | 2 | 1 | 0 |
-| Edf Vasco da Gama | 2 | 0 | 0 |
+| Edf Maria Regina | 2 | 1 | 1 |
 | Edf Reserva do Poço | 2 | 3 | 0 |
 | Edf Porto dos Corais | 2 | 2 | 0 |
 | Edf.Maria Nice | 2 | 1 | 0 |
-| Maria Tereza Coelho | 2 | 0 | 1 |
+| Edificio Belize | 2 | 1 | 0 |
+| Condominio do Edificio Lucilo Maranhao | 2 | 2 | 0 |
+| Edf Nazaré | 2 | 1 | 0 |
+| Condomínio Jardins da Ilha | 2 | 1 | 0 |
+| Edf Santorini Aflitos | 2 | 0 | 0 |
 
 > Lista completa: `anexos/clientes-organizacoes.csv`

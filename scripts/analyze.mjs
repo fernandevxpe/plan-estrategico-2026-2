@@ -21,11 +21,25 @@ async function readOptionalJson(name, fallback = []) {
   }
 }
 
-const PLANNING_REALIZED_PIPELINES = new Set(['[Exec] Laudos - Condo', 'Obras']);
+const CONSULTING_PIPELINE_ALIASES = new Set(['[Exec] Laudos - Condo', 'Consultoria - Condo']);
 const BUSINESS_TIMEZONE = 'America/Recife';
+
+function isConsultingPipeline(name) {
+  return CONSULTING_PIPELINE_ALIASES.has(name) || /consultoria.*condo/i.test(String(name ?? ''));
+}
+
+function isPlanningRealizedPipeline(name) {
+  return name === 'Obras' || isConsultingPipeline(name);
+}
 
 function parsePipedriveDate(value) {
   if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value === 'number' || /^\d{10,13}$/.test(String(value).trim())) {
+    const timestamp = Number(value);
+    const date = new Date(timestamp < 1e12 ? timestamp * 1_000 : timestamp);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
   const raw = String(value).trim();
   if (!raw) return null;
 
@@ -201,7 +215,20 @@ function monthlyRows(deals) {
   });
 }
 
-const [dealsRaw, fieldsRaw, orgFieldsRaw, organizationsRaw, pipelinesRaw, stagesRaw, clickupTasksRaw, goalsRaw, dealProductsRaw] = await Promise.all([
+const [
+  dealsRaw,
+  fieldsRaw,
+  orgFieldsRaw,
+  organizationsRaw,
+  pipelinesRaw,
+  stagesRaw,
+  clickupTasksRaw,
+  activitiesRaw,
+  activityTypesRaw,
+  productsRaw,
+  dealProductsRaw,
+  goalsRaw
+] = await Promise.all([
   readJson('pipedrive-deals.json'),
   readJson('pipedrive-deal-fields.json'),
   readOptionalJson('pipedrive-organization-fields.json'),
@@ -209,17 +236,50 @@ const [dealsRaw, fieldsRaw, orgFieldsRaw, organizationsRaw, pipelinesRaw, stages
   readJson('pipedrive-pipelines.json'),
   readJson('pipedrive-stages.json'),
   readOptionalJson('clickup-tasks.json', []),
-  readOptionalJson('pipedrive-goals.json', []),
-  readOptionalJson('pipedrive-deal-products.json', {})
+  readOptionalJson('pipedrive-activities.json'),
+  readOptionalJson('pipedrive-activity-types.json'),
+  readOptionalJson('pipedrive-products.json'),
+  readOptionalJson('pipedrive-deal-products.json', {}),
+  readOptionalJson('pipedrive-goals.json', [])
 ]);
 
 const fieldsByKey = Object.fromEntries(fieldsRaw.map((field) => [field.key, field]));
 const orgFieldsByKey = Object.fromEntries(orgFieldsRaw.map((field) => [field.key, field]));
 const pipelineById = Object.fromEntries(pipelinesRaw.map((pipeline) => [pipeline.id, pipeline]));
+const planningRealizedPipelineNames = pipelinesRaw
+  .map((pipeline) => pipeline.name)
+  .filter((name) => isPlanningRealizedPipeline(name));
 const stageById = Object.fromEntries(stagesRaw.map((stage) => [stage.id, stage]));
 const organizationById = Object.fromEntries(organizationsRaw.map((org) => [org.id, org]));
 const labelField = fieldsByKey.label;
 const labelById = Object.fromEntries((labelField?.options ?? []).map((option) => [String(option.id), option.label]));
+const sellerLabels = new Set(['GABRIEL', 'IGOR', 'JONILDO']);
+const productCatalogById = new Map(productsRaw.map((product) => [product.id, product]));
+const dealProductsByDeal = new Map();
+const dealProductEntries = Array.isArray(dealProductsRaw)
+  ? dealProductsRaw
+  : Object.entries(dealProductsRaw ?? {}).flatMap(([dealId, items]) =>
+      (Array.isArray(items) ? items : []).map((item) => ({ ...item, deal_id: item.deal_id ?? Number(dealId) }))
+    );
+for (const product of dealProductEntries) {
+  const catalogProduct = productCatalogById.get(product.product_id);
+  const key = String(product.deal_id);
+  if (!dealProductsByDeal.has(key)) dealProductsByDeal.set(key, []);
+  dealProductsByDeal.get(key).push({
+    id: product.id,
+    productId: product.product_id,
+    name: product.name || catalogProduct?.name || `Produto ${product.product_id}`,
+    code: catalogProduct?.code || null,
+    inCurrentCatalog: Boolean(catalogProduct),
+    itemPrice: Number(product.item_price || 0),
+    quantity: Number(product.quantity || 0),
+    sum: Number(product.sum || (Number(product.item_price || 0) * Number(product.quantity || 0))),
+    discount: Number(product.discount || 0),
+    discountType: product.discount_type || null,
+    currency: product.currency || 'BRL',
+    addTime: product.add_time || null
+  });
+}
 const businessTypeLabels = new Set([
   'LIE - Laudo de Instalações Elétricas',
   'LGR - Laudo de Gerenciamento de Risco',
@@ -291,8 +351,10 @@ const deals = dealsRaw.map((deal) => {
   const service = inferService({ ...deal, stage_name: stage?.name, pipeline_name: pipeline?.name }, fieldsByKey);
   const cnpj = normalizeDocument(cnpjField ? organization?.[cnpjField.key] : null);
   const orgName = deal.org_name ?? deal.org_id?.name ?? organization?.name ?? null;
-  const businessTypes = businessTypesForDeal(deal, service);
-  const products = productsForDeal(deal);
+  const labels = parseSetIds(deal.label).map((id) => labelById[id] ?? id);
+  const products = dealProductsByDeal.get(String(deal.id)) ?? [];
+  const productTypes = [...new Set(products.map((product) => product.name).filter(Boolean))];
+  const businessTypes = productTypes.length ? productTypes : businessTypesForDeal(deal, service);
   return {
     id: deal.id,
     title: deal.title,
@@ -301,6 +363,7 @@ const deals = dealsRaw.map((deal) => {
     currency: deal.currency,
     addTime: deal.add_time,
     updateTime: deal.update_time ?? deal.stage_change_time ?? null,
+    stageChangeTime: deal.stage_change_time ?? null,
     wonTime: deal.won_time,
     closeTime: deal.close_time,
     createdMonth: monthKey(deal.add_time),
@@ -319,12 +382,15 @@ const deals = dealsRaw.map((deal) => {
     cnpj,
     channel: fieldValueLabel(deal.channel, fieldsByKey.channel) ?? deal.channel ?? null,
     origin: fieldValueLabel(deal.origin, fieldsByKey.origin) ?? deal.origin ?? null,
-    labels: parseSetIds(deal.label).map((id) => labelById[id] ?? id),
+    labels,
+    seller: labels.find((label) => sellerLabels.has(label)) ?? 'Sem vendedor',
+    lostReason: deal.lost_reason || 'Sem motivo informado',
+    products,
+    productSource: productTypes.length ? 'pipedrive_product' : 'label_or_inference',
     businessTypes,
     primaryBusinessType: primaryBusinessTypeForDeal(businessTypes, service),
-    hasExplicitBusinessType: businessTypes.some((type) => businessTypeLabels.has(type)),
+    hasExplicitBusinessType: productTypes.length > 0 || businessTypes.some((type) => businessTypeLabels.has(type)),
     isMultiBusinessType: businessTypes.length > 1,
-    products,
     productValueSource: products.length ? 'pipedrive_products' : 'equal_label_split',
     person: deal.person_name ?? deal.person_id?.name ?? null,
     service
@@ -356,7 +422,7 @@ const planningRealizedDeals = analysisDeals.filter(
   (deal) =>
     deal.status === 'won' &&
     deal.wonMonth &&
-    PLANNING_REALIZED_PIPELINES.has(deal.pipeline)
+    isPlanningRealizedPipeline(deal.pipeline)
 );
 const planningRealizedMonthly = monthlyRows(planningRealizedDeals).filter(
   (row) => row.month >= '2025-01' && row.month <= '2026-12'
@@ -1165,7 +1231,7 @@ const planningSummary = {
   partialMonth: '2026-06',
   runRateMonthly,
   runRateWonMonthly,
-  realizedRevenuePipelines: [...PLANNING_REALIZED_PIPELINES],
+  realizedRevenuePipelines: planningRealizedPipelineNames,
   realizedRevenueTimezone: BUSINESS_TIMEZONE,
   planningRealizedMonthly,
   annual: {
@@ -1446,7 +1512,9 @@ const revenueOriginByMonth = groupBy(wonDeals, (deal) => deal.wonMonth)
   })
   .sort((a, b) => a.month.localeCompare(b.month));
 
-const openDeals = analysisDeals.filter((deal) => deal.status === 'open');
+// Snapshot atual deve incluir todo negócio ainda aberto, mesmo que tenha sido criado
+// antes da janela histórica usada nos relatórios anuais.
+const openDeals = deals.filter((deal) => deal.status === 'open');
 const lostDeals = analysisDeals.filter((deal) => deal.status === 'lost');
 const funnelByStage = {
   open: aggregateStageRows(openDeals, stageMeta),
@@ -2210,8 +2278,11 @@ const growthGuides = {
   })
 };
 
-const MAIN_EXEC_PIPELINE = '[Exec] Laudos - Condo';
 const OBRAS_PIPELINE = 'Obras';
+const MAIN_EXEC_PIPELINE =
+  pipelinesRaw.find((pipeline) => pipeline.name === 'Consultoria - Condo')?.name ??
+  pipelinesRaw.find((pipeline) => isConsultingPipeline(pipeline.name))?.name ??
+  'Consultoria - Condo';
 
 function parseDealTimestamp(value) {
   return parsePipedriveDate(value);
@@ -2236,6 +2307,7 @@ function buildDirectorSnapshot(openPipelineDeals, stageMap) {
 const CONSULTORIA_STAGE_MAP = {
   reuniaoMarcada: 'Reunião Marcada',
   diagnostico: 'Diagnóstico',
+  elaboracaoProposta: 'Elaboração de Proposta',
   negociacao: 'Negociação',
   fechamento: 'Fechamento',
   relacionamento: 'Relacionamento'
@@ -2287,14 +2359,14 @@ const commercialDirector = {
   snapshot: directorSnapshot,
   sla48h: {
     breaches: directorMainOpen.filter((deal) => {
-      if (deal.stage !== 'Diagnóstico') return false;
-      const ref = deal.updateTime ?? deal.addTime;
+      if (!['Diagnóstico', 'Elaboração de Proposta'].includes(deal.stage)) return false;
+      const ref = deal.stageChangeTime ?? deal.updateTime ?? deal.addTime;
       const age = daysBetween(ref, generatedAt);
       return age != null && age > 2;
     }).length,
     gateTarget: 0,
     note:
-      'Negócios em Diagnóstico sem avanço há >48h (update_time ou add_time). App registrará visita → proposta com SLA auditável.'
+      'Negócios em Elaboração de Proposta há >48h, usando stage_change_time (fallback: update_time/add_time).'
   },
   rolling: {
     won7d: countDealsInDays(wonDeals, 'wonTime', 7),
@@ -2547,6 +2619,525 @@ const conversionAnalytics = buildConversionAnalytics({
   lagMaturityDays: 90
 });
 
+function dimensionRows(rows, selector, basis = 'count') {
+  const total = basis === 'value' ? sum(rows, (row) => row.value) : rows.length;
+  return groupBy(rows, selector)
+    .map(([key, grouped]) => {
+      const value = sum(grouped, (row) => row.value);
+      const amount = basis === 'value' ? value : grouped.length;
+      return {
+        key,
+        deals: grouped.length,
+        value,
+        sharePct: total ? (amount / total) * 100 : 0
+      };
+    })
+    .sort((a, b) => b.sharePct - a.sharePct);
+}
+
+function productSummary(rows, cutoff = generatedAt) {
+  const covered = rows.filter((deal) => deal.products.length > 0);
+  const lines = covered.flatMap((deal) => deal.products
+    .filter((product) => {
+      const added = parsePipedriveDate(product.addTime);
+      return !added || added <= cutoff;
+    })
+    .map((product) => ({ ...product, dealId: deal.id })));
+  const coveredDealIds = new Set(lines.map((line) => line.dealId));
+  const coveredAtCutoff = covered.filter((deal) => coveredDealIds.has(deal.id));
+  const productValue = sum(lines, (line) => line.sum);
+  const products = groupBy(lines, (line) => line.name)
+    .map(([key, grouped]) => ({
+      key,
+      deals: new Set(grouped.map((line) => line.dealId)).size,
+      value: sum(grouped, (line) => line.sum),
+      sharePct: productValue ? (sum(grouped, (line) => line.sum) / productValue) * 100 : 0
+    }))
+    .sort((a, b) => b.value - a.value);
+  return {
+    coveredDeals: coveredAtCutoff.length,
+    coveragePct: rows.length ? (coveredAtCutoff.length / rows.length) * 100 : 0,
+    productValue,
+    coveredDealValue: sum(coveredAtCutoff, (deal) => deal.value),
+    reconciliationGap: sum(coveredAtCutoff, (deal) => deal.value) - productValue,
+    catalogMismatchLines: lines.filter((line) => !line.inCurrentCatalog).length,
+    products
+  };
+}
+
+function monthCutoff(month) {
+  const [year, rawMonth] = month.split('-').map(Number);
+  const end = new Date(Date.UTC(year, rawMonth, 0, 23, 59, 59));
+  return end > generatedAt ? generatedAt : end;
+}
+
+function existedOpenAt(deal, cutoff) {
+  const created = parsePipedriveDate(deal.addTime);
+  const closed = parsePipedriveDate(deal.closeTime);
+  return created && created <= cutoff && (!closed || closed > cutoff);
+}
+
+const consultantDeals = deals.filter((deal) => isConsultingPipeline(deal.pipeline));
+const consultantDealById = new Map(consultantDeals.map((deal) => [String(deal.id), deal]));
+const activityTypeByKey = new Map(activityTypesRaw.map((type) => [type.key_string, type.name]));
+const completedConsultingActivities = activitiesRaw
+  .filter((activity) => activity.done && consultantDealById.has(String(activity.deal_id)))
+  .map((activity) => {
+    const completedAt = activity.marked_as_done_time || activity.due_date;
+    return {
+      id: activity.id,
+      deal: consultantDealById.get(String(activity.deal_id)),
+      type: activity.type,
+      typeLabel: activityTypeByKey.get(activity.type) ?? activity.type,
+      subject: activity.subject || '',
+      completedAt,
+      month: monthKey(completedAt)
+    };
+  })
+  .filter((activity) => activity.month);
+
+function isDirectorActivity(activity) {
+  return (
+    ['meeting', 'elaborar_proposta', 'visita_diagnostico'].includes(activity.type) ||
+    /assembleia|reuni[aã]o|proposta|visita|diagn[oó]stico/i.test(activity.subject)
+  );
+}
+
+const commercialReviewConfig = JSON.parse(
+  await readFile(new URL('../data/areas/commercial-director-reviews.json', import.meta.url), 'utf8')
+);
+const availableCommercialMonths = [...new Set([
+  ...consultantDeals.flatMap((deal) => [deal.createdMonth, deal.wonMonth, deal.lostMonth]).filter(Boolean),
+  ...completedConsultingActivities.map((activity) => activity.month),
+  ...commercialReviewConfig.map((review) => review.month),
+  monthKey(generatedAt)
+])]
+  .filter((month) => month >= '2026-01' && month <= monthKey(generatedAt))
+  .sort();
+
+function buildCommercialMonth(month) {
+  const cutoff = monthCutoff(month);
+  const cutoffIso = cutoff.toISOString();
+  const openAtCutoff = consultantDeals.filter((deal) => existedOpenAt(deal, cutoff));
+  const wonYtd = consultantDeals.filter((deal) => {
+    const date = parsePipedriveDate(deal.wonTime);
+    return deal.status === 'won' && deal.wonMonth?.startsWith('2026') && date && date <= cutoff;
+  });
+  const lostYtd = consultantDeals.filter((deal) => {
+    const date = parsePipedriveDate(deal.closeTime);
+    return deal.status === 'lost' && deal.lostMonth?.startsWith('2026') && date && date <= cutoff;
+  });
+  const wonInMonth = wonYtd.filter((deal) => deal.wonMonth === month);
+  const activityRows = completedConsultingActivities.filter(
+    (activity) => activity.month === month && isDirectorActivity(activity)
+  );
+  const elapsedDays = Math.max(
+    1,
+    Math.min(
+      new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate(),
+      month === monthKey(generatedAt) ? generatedAt.getUTCDate() : 31
+    )
+  );
+  const weeks = elapsedDays / 7;
+  const rawWonCycles = wonInMonth.map((deal) => daysBetween(deal.addTime, deal.wonTime));
+  const wonCycles = rawWonCycles.filter((value) => value != null && value >= 0);
+  const negotiationAtCutoff = openAtCutoff.filter((deal) => deal.stage === 'Negociação');
+  const negotiationAges = negotiationAtCutoff
+    .map((deal) => daysBetween(deal.stageChangeTime ?? deal.updateTime ?? deal.addTime, cutoffIso))
+    .filter((value) => value != null && value >= 0);
+  const relationshipOpenChannels = new Set([
+    'Sind. Profissional Base',
+    'Administradora Cond.',
+    'Sucesso do Cliente',
+    'Pós-Venda base XPE'
+  ]);
+  const knownWonChannels = wonYtd.filter((deal) => deal.channel && deal.channel !== 'Sem tracking');
+  const openChannel = dimensionRows(openAtCutoff, (deal) => deal.channel || 'Sem tracking', 'value');
+  const sellerRows = groupBy(openAtCutoff, (deal) => deal.seller).map(([seller, rows]) => ({
+    seller,
+    deals: rows.length,
+    value: sum(rows, (deal) => deal.value),
+    channels: dimensionRows(rows, (deal) => deal.channel || 'Sem tracking', 'value')
+  })).sort((a, b) => b.value - a.value);
+
+  return {
+    month,
+    cutoff: cutoffIso,
+    isPartial: month === monthKey(generatedAt),
+    openPotential: {
+      deals: openAtCutoff.length,
+      value: sum(openAtCutoff, (deal) => deal.value),
+      channels: openChannel,
+      relationshipSharePct: (() => {
+        const relationshipValue = sum(
+          openAtCutoff.filter((deal) => relationshipOpenChannels.has(deal.channel)),
+          (deal) => deal.value
+        );
+        const total = sum(openAtCutoff, (deal) => deal.value);
+        return total ? (relationshipValue / total) * 100 : 0;
+      })(),
+      productSummary: productSummary(openAtCutoff, cutoff),
+      sellers: sellerRows
+    },
+    wonYtd: {
+      deals: wonYtd.length,
+      value: sum(wonYtd, (deal) => deal.value),
+      channels: dimensionRows(wonYtd, (deal) => deal.channel || 'Sem tracking'),
+      relationshipSharePct: wonYtd.length
+        ? ((wonYtd.length - wonYtd.filter((deal) => ['Tráfego Pago', 'Sem tracking'].includes(deal.channel || 'Sem tracking')).length) / wonYtd.length) * 100
+        : 0,
+      trackedDeals: knownWonChannels.length,
+      productSummary: productSummary(wonYtd, cutoff)
+    },
+    lostYtd: {
+      deals: lostYtd.length,
+      value: sum(lostYtd, (deal) => deal.value),
+      reasons: dimensionRows(lostYtd, (deal) => deal.lostReason),
+      channels: dimensionRows(lostYtd, (deal) => deal.channel || 'Sem tracking'),
+      untrackedDeals: lostYtd.filter((deal) => !deal.channel).length,
+      productSummary: productSummary(lostYtd, cutoff)
+    },
+    activity: {
+      completed: activityRows.length,
+      weeklyAverage: weeks ? activityRows.length / weeks : 0,
+      byType: dimensionRows(activityRows, (activity) => activity.typeLabel),
+      bySeller: dimensionRows(activityRows, (activity) => activity.deal.seller),
+      meetingRecords: activityRows.filter((activity) => activity.type === 'meeting' || /reuni[aã]o|assembleia/i.test(activity.subject)).length,
+      note: 'Atividades concluídas e vinculadas a negócios de consultoria; reuniões/assembleias não registradas no CRM não podem ser inferidas.'
+    },
+    cycle: {
+      wonDealsInMonth: wonCycles.length,
+      wonAverageDays: wonCycles.length ? sum(wonCycles, (value) => value) / wonCycles.length : null,
+      wonMedianDays: median(wonCycles),
+      negotiationDeals: negotiationAges.length,
+      negotiationAverageDays: negotiationAges.length ? sum(negotiationAges, (value) => value) / negotiationAges.length : null,
+      note: 'O ciclo ganho usa criação → ganho. Tempo em Negociação usa o estágio atual e stage_change_time; sem histórico de etapas, meses passados são aproximações.'
+    },
+    dataQuality: {
+      openWithoutValue: openAtCutoff.filter((deal) => !deal.value).length,
+      openWithoutChannel: openAtCutoff.filter((deal) => !deal.channel).length,
+      wonWithoutChannel: wonYtd.filter((deal) => !deal.channel).length,
+      lostWithoutChannel: lostYtd.filter((deal) => !deal.channel).length,
+      lostWithoutStandardReason: lostYtd.filter((deal) => !['Caiu de Prioridade', 'Tentativas Esgotadas (Final Cadência)', 'Barrado em Assembleia', 'Concorrente', 'Fora do ICP'].includes(deal.lostReason)).length,
+      invalidWonCycleDates: rawWonCycles.filter((value) => value != null && value < 0).length,
+      activityCoverageComplete: activityRows.some((activity) => activity.type === 'meeting')
+    }
+  };
+}
+
+const commercialMonthly = availableCommercialMonths.map(buildCommercialMonth);
+
+function periodLabelDate(date) {
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit' }).format(date);
+}
+
+function endOfDay(date) {
+  const result = new Date(date);
+  result.setUTCHours(23, 59, 59, 999);
+  return result;
+}
+
+function buildCommercialPeriods() {
+  const year = 2026;
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+  const yearEnd = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+  const effectiveEnd = generatedAt < yearEnd ? generatedAt : yearEnd;
+  const periods = [];
+
+  const firstWeekday = yearStart.getUTCDay() || 7;
+  let weekCursor = new Date(yearStart.getTime() - (firstWeekday - 1) * 86_400_000);
+  while (weekCursor <= effectiveEnd) {
+    const weekStart = weekCursor < yearStart ? yearStart : new Date(weekCursor);
+    const weekEnd = endOfDay(new Date(Math.min(
+      weekCursor.getTime() + 6 * 86_400_000,
+      effectiveEnd.getTime()
+    )));
+    const isoWeek = (() => {
+      const target = new Date(weekCursor);
+      const day = target.getUTCDay() || 7;
+      target.setUTCDate(target.getUTCDate() + 4 - day);
+      const first = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+      return Math.ceil((((target - first) / 86_400_000) + 1) / 7);
+    })();
+    periods.push({
+      id: `week-${year}-W${String(isoWeek).padStart(2, '0')}`,
+      kind: 'week',
+      label: `${periodLabelDate(weekStart)}–${periodLabelDate(weekEnd)}`,
+      start: new Date(weekStart),
+      end: weekEnd,
+      isPartial: weekEnd >= effectiveEnd
+    });
+    weekCursor = new Date(weekCursor.getTime() + 7 * 86_400_000);
+  }
+
+  for (let month = 0; month <= effectiveEnd.getUTCMonth(); month += 1) {
+    const start = new Date(Date.UTC(year, month, 1));
+    const naturalEnd = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59));
+    const end = naturalEnd > effectiveEnd ? effectiveEnd : naturalEnd;
+    periods.push({
+      id: `month-${year}-${String(month + 1).padStart(2, '0')}`,
+      kind: 'month',
+      label: new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(start),
+      start,
+      end,
+      isPartial: naturalEnd > effectiveEnd
+    });
+  }
+
+  for (let quarter = 0; quarter < 4; quarter += 1) {
+    const start = new Date(Date.UTC(year, quarter * 3, 1));
+    if (start > effectiveEnd) continue;
+    const naturalEnd = new Date(Date.UTC(year, quarter * 3 + 3, 0, 23, 59, 59));
+    periods.push({
+      id: `quarter-${year}-Q${quarter + 1}`,
+      kind: 'quarter',
+      label: `${quarter + 1}º trimestre/${year}`,
+      start,
+      end: naturalEnd > effectiveEnd ? effectiveEnd : naturalEnd,
+      isPartial: naturalEnd > effectiveEnd
+    });
+  }
+
+  for (let semester = 0; semester < 2; semester += 1) {
+    const start = new Date(Date.UTC(year, semester * 6, 1));
+    if (start > effectiveEnd) continue;
+    const naturalEnd = new Date(Date.UTC(year, semester * 6 + 6, 0, 23, 59, 59));
+    periods.push({
+      id: `semester-${year}-S${semester + 1}`,
+      kind: 'semester',
+      label: `${semester + 1}º semestre/${year}`,
+      start,
+      end: naturalEnd > effectiveEnd ? effectiveEnd : naturalEnd,
+      isPartial: naturalEnd > effectiveEnd
+    });
+  }
+
+  periods.push({
+    id: `year-${year}`,
+    kind: 'year',
+    label: String(year),
+    start: yearStart,
+    end: effectiveEnd,
+    isPartial: effectiveEnd < yearEnd
+  });
+  return periods;
+}
+
+function inPeriod(value, period) {
+  const date = parsePipedriveDate(value);
+  return Boolean(date && date >= period.start && date <= period.end);
+}
+
+const revenueGoalDefinitions = {
+  consulting: goalsRaw.find((goal) => goal.is_active && /Meta Consultoria \/ M[eê]s - 2026/i.test(goal.title)),
+  works: goalsRaw.find((goal) => goal.is_active && /Meta Obras \/ M[eê]s - 2026/i.test(goal.title)),
+  total: goalsRaw.find((goal) => goal.is_active && /Meta Global XPE \/ M[eê]s - 2026/i.test(goal.title))
+};
+
+function goalTargetForPeriod(goal, period) {
+  if (!goal?.seasonality?.intervals) return 0;
+  const periodEndExclusive = period.isPartial
+    ? period.end.getTime() + 1
+    : endOfDay(period.end).getTime() + 1;
+  return goal.seasonality.intervals.reduce((total, interval) => {
+    const start = new Date(`${interval.start}T00:00:00.000Z`);
+    const endExclusive = new Date(`${interval.end}T00:00:00.000Z`);
+    endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
+    const overlapStart = new Date(Math.max(start.getTime(), period.start.getTime()));
+    const overlapEnd = new Date(Math.min(endExclusive.getTime(), periodEndExclusive));
+    if (overlapEnd <= overlapStart) return total;
+    const intervalMs = endExclusive.getTime() - start.getTime();
+    const overlapPct = (overlapEnd.getTime() - overlapStart.getTime()) / intervalMs;
+    return total + Number(interval.target || 0) * overlapPct;
+  }, 0);
+}
+
+function revenueTargetRow(actual, target) {
+  return {
+    actual,
+    target,
+    attainmentPct: target ? (actual / target) * 100 : null,
+    gap: actual - target
+  };
+}
+
+function sellerMonitoringRows(seller, period) {
+  const scopedDeals = seller === 'TIME'
+    ? consultantDeals
+    : consultantDeals.filter((deal) => deal.seller === seller);
+  const openAtCutoff = scopedDeals.filter((deal) => existedOpenAt(deal, period.end));
+  const won = scopedDeals.filter((deal) => deal.status === 'won' && inPeriod(deal.wonTime, period));
+  const lost = scopedDeals.filter((deal) => deal.status === 'lost' && inPeriod(deal.closeTime, period));
+  const activities = completedConsultingActivities.filter((activity) =>
+    isDirectorActivity(activity) &&
+    (seller === 'TIME' || activity.deal.seller === seller) &&
+    inPeriod(activity.completedAt, period)
+  );
+  const validCycles = won
+    .map((deal) => daysBetween(deal.addTime, deal.wonTime))
+    .filter((value) => value != null && value >= 0);
+  const durationDays = Math.max(1, Math.floor((period.end.getTime() - period.start.getTime()) / 86_400_000) + 1);
+  const durationWeeks = durationDays / 7;
+  const sellerCount = seller === 'TIME' ? 2 : 1;
+  const weeklyTarget = 9 * sellerCount;
+  const stageRows = dimensionRows(openAtCutoff, (deal) => deal.stage || 'Sem etapa', 'value');
+  const wonValue = sum(won, (deal) => deal.value);
+  const lostValue = sum(lost, (deal) => deal.value);
+  const sellerShare = seller === 'TIME' ? 1 : 0.5;
+  const actualRevenueByPipeline = (pipelineName) => sum(
+    deals.filter((deal) =>
+      deal.status === 'won' &&
+      deal.pipeline === pipelineName &&
+      (seller === 'TIME' || deal.seller === seller) &&
+      inPeriod(deal.wonTime, period)
+    ),
+    (deal) => deal.value
+  );
+  const consultingRevenue = actualRevenueByPipeline(MAIN_EXEC_PIPELINE);
+  const worksRevenue = actualRevenueByPipeline('Obras');
+  const consultingTarget = goalTargetForPeriod(revenueGoalDefinitions.consulting, period) * sellerShare;
+  const worksTarget = goalTargetForPeriod(revenueGoalDefinitions.works, period) * sellerShare;
+  const totalTarget = goalTargetForPeriod(revenueGoalDefinitions.total, period) * sellerShare;
+
+  return {
+    periodId: period.id,
+    periodKind: period.kind,
+    periodLabel: period.label,
+    start: period.start.toISOString(),
+    end: period.end.toISOString(),
+    isPartial: period.isPartial,
+    seller,
+    revenueGoals: {
+      allocation: seller === 'TIME' ? 'company' : 'equal_split_50_pct',
+      consulting: revenueTargetRow(consultingRevenue, consultingTarget),
+      works: revenueTargetRow(worksRevenue, worksTarget),
+      total: revenueTargetRow(consultingRevenue + worksRevenue, totalTarget),
+      source: 'Metas ativas do Pipedrive — rateio individual de 50% entre Gabriel e Igor.'
+    },
+    open: {
+      deals: openAtCutoff.length,
+      value: sum(openAtCutoff, (deal) => deal.value),
+      stages: stageRows,
+      channels: dimensionRows(openAtCutoff, (deal) => deal.channel || 'Sem tracking', 'value'),
+      products: productSummary(openAtCutoff, period.end),
+      withoutValue: openAtCutoff.filter((deal) => !deal.value).length,
+      withoutChannel: openAtCutoff.filter((deal) => !deal.channel).length,
+      withoutSeller: openAtCutoff.filter((deal) => deal.seller === 'Sem vendedor').length
+    },
+    won: {
+      deals: won.length,
+      value: wonValue,
+      averageTicket: won.length ? wonValue / won.length : 0,
+      channels: dimensionRows(won, (deal) => deal.channel || 'Sem tracking')
+    },
+    lost: {
+      deals: lost.length,
+      value: lostValue,
+      reasons: dimensionRows(lost, (deal) => deal.lostReason),
+      channels: dimensionRows(lost, (deal) => deal.channel || 'Sem tracking')
+    },
+    conversion: {
+      closedDeals: won.length + lost.length,
+      closedConversionPct: won.length + lost.length ? (won.length / (won.length + lost.length)) * 100 : null
+    },
+    cycle: {
+      validDeals: validCycles.length,
+      averageDays: validCycles.length ? sum(validCycles, (value) => value) / validCycles.length : null,
+      medianDays: median(validCycles),
+      invalidDates: won.length - validCycles.length
+    },
+    activity: {
+      completed: activities.length,
+      weeklyAverage: activities.length / durationWeeks,
+      weeklyTarget,
+      targetToDate: weeklyTarget * durationWeeks,
+      attainmentPct: weeklyTarget * durationWeeks ? (activities.length / (weeklyTarget * durationWeeks)) * 100 : null,
+      proposals: activities.filter((activity) => activity.type === 'elaborar_proposta' || /proposta/i.test(activity.subject)).length,
+      meetings: activities.filter((activity) => activity.type === 'meeting' || /reuni[aã]o|assembleia/i.test(activity.subject)).length,
+      visits: activities.filter((activity) => activity.type === 'visita_diagnostico' || /visita|diagn[oó]stico/i.test(activity.subject)).length,
+      byType: dimensionRows(activities, (activity) => activity.typeLabel)
+    }
+  };
+}
+
+const commercialPeriods = buildCommercialPeriods();
+const commercialSellerMonitoring = commercialPeriods.flatMap((period) =>
+  ['TIME', 'GABRIEL', 'IGOR'].map((seller) => sellerMonitoringRows(seller, period))
+);
+
+function lookupShare(rows, key) {
+  return rows.find((row) => row.key === key)?.sharePct ?? 0;
+}
+
+function auditMetric(section, label, reported, calculated, tolerance = 0.75, note = '') {
+  const delta = calculated - reported;
+  return {
+    section,
+    label,
+    reported,
+    calculated,
+    delta,
+    status: Math.abs(delta) <= tolerance ? 'confirmed' : 'divergent',
+    note
+  };
+}
+
+const commercialReviewAudits = commercialReviewConfig.map((review) => {
+  const calculated = commercialMonthly.find((row) => row.month === review.month);
+  if (!calculated) return { ...review, status: 'not_verifiable', audits: [] };
+  const audits = [];
+  audits.push(auditMetric('Ganhos', 'Negócios ganhos no ano', review.wonYtd.deals, calculated.wonYtd.deals, 0));
+  audits.push(auditMetric('Perdas', 'Negócios perdidos no ano', review.lostYtd.deals, calculated.lostYtd.deals, 0));
+  audits.push(auditMetric('Potencial', 'Participação de relacionamento', review.openPotential.relationshipSharePct, calculated.openPotential.relationshipSharePct));
+  for (const [channel, reported] of Object.entries(review.openPotential.channels)) {
+    audits.push(auditMetric('Potencial por canal', channel, reported, lookupShare(calculated.openPotential.channels, channel)));
+  }
+  for (const [seller, channels] of Object.entries(review.openPotential.sellers)) {
+    const sellerRow = calculated.openPotential.sellers.find((row) => row.seller === seller);
+    for (const [channel, reported] of Object.entries(channels)) {
+      audits.push(auditMetric(`Potencial ${seller}`, channel, reported, lookupShare(sellerRow?.channels ?? [], channel)));
+    }
+  }
+  const wonOther = ['Lista de Contato', 'Redrive', 'Parceiro Comercial']
+    .reduce((total, channel) => total + lookupShare(calculated.wonYtd.channels, channel), 0);
+  for (const [channel, reported] of Object.entries(review.wonYtd.channels)) {
+    const actual = channel === 'Outros e parceiros' ? wonOther : lookupShare(calculated.wonYtd.channels, channel);
+    audits.push(auditMetric('Ganhos por canal', channel, reported, actual));
+  }
+  audits.push(auditMetric('Ganhos', 'Participação de relacionamento', review.wonYtd.relationshipSharePct, calculated.wonYtd.relationshipSharePct));
+  for (const [reason, reported] of Object.entries(review.lostYtd.reasons)) {
+    audits.push(auditMetric('Perdas por motivo', reason, reported, lookupShare(calculated.lostYtd.reasons, reason)));
+  }
+  for (const [channel, reported] of Object.entries(review.lostYtd.channels)) {
+    audits.push(auditMetric('Perdas por canal', channel, reported, lookupShare(calculated.lostYtd.channels, channel)));
+  }
+  audits.push({
+    section: 'Atividade',
+    label: 'Reuniões/propostas/assembleias por semana',
+    reported: review.activity.weeklyAverage,
+    calculated: calculated.activity.weeklyAverage,
+    delta: calculated.activity.weeklyAverage - review.activity.weeklyAverage,
+    status: calculated.dataQuality.activityCoverageComplete ? 'divergent' : 'not_verifiable',
+    note: calculated.dataQuality.activityCoverageComplete ? '' : 'O CRM não contém reuniões/assembleias concluídas no período; há apenas propostas e o indicador fica incompleto.'
+  });
+  audits.push({
+    section: 'Ciclo',
+    label: 'Ciclo médio no funil',
+    reported: review.cycle.funnelAverageDays,
+    calculated: calculated.cycle.wonAverageDays,
+    delta: (calculated.cycle.wonAverageDays ?? 0) - review.cycle.funnelAverageDays,
+    status: 'not_verifiable',
+    note: 'O valor reportado usa uma definição não registrada. A plataforma calcula criação → ganho; histórico completo de etapas não está disponível.'
+  });
+  return {
+    month: review.month,
+    sourceDate: review.sourceDate,
+    author: review.author,
+    status: audits.some((item) => item.status === 'divergent') ? 'divergent' : audits.some((item) => item.status === 'not_verifiable') ? 'partial' : 'confirmed',
+    audits
+  };
+});
+
 const report = {
   generatedAt: new Date().toISOString(),
   scope: 'Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus',
@@ -2570,6 +3161,9 @@ const report = {
   indicatorHighlights,
   deepAnalysis,
   commercialDirector,
+  commercialMonthly,
+  commercialSellerMonitoring,
+  commercialReviewAudits,
   growthGuides,
   businessTypeMonthly: businessTypeTrend,
   businessTypeMonthlyByScope: businessTypeScopeSummary,
@@ -2599,6 +3193,102 @@ const report = {
 await writeFile(new URL('analysis.json', processedDir), JSON.stringify(report, null, 2));
 await writeCsv('monthly.csv', monthly);
 await writeCsv('commercial-funnel.csv', commercialFunnel);
+await writeCsv('commercial-monthly-analysis.csv', commercialMonthly.map((row) => ({
+  month: row.month,
+  cutoff: row.cutoff,
+  isPartial: row.isPartial,
+  openDeals: row.openPotential.deals,
+  openValue: row.openPotential.value,
+  openRelationshipSharePct: row.openPotential.relationshipSharePct,
+  openProductCoveragePct: row.openPotential.productSummary.coveragePct,
+  openProductValue: row.openPotential.productSummary.productValue,
+  openProductReconciliationGap: row.openPotential.productSummary.reconciliationGap,
+  wonYtdDeals: row.wonYtd.deals,
+  wonYtdValue: row.wonYtd.value,
+  wonRelationshipSharePct: row.wonYtd.relationshipSharePct,
+  wonProductCoveragePct: row.wonYtd.productSummary.coveragePct,
+  wonProductValue: row.wonYtd.productSummary.productValue,
+  lostYtdDeals: row.lostYtd.deals,
+  lostYtdValue: row.lostYtd.value,
+  activityCompleted: row.activity.completed,
+  activityWeeklyAverage: row.activity.weeklyAverage,
+  wonCycleAverageDays: row.cycle.wonAverageDays,
+  wonCycleMedianDays: row.cycle.wonMedianDays,
+  negotiationAverageDays: row.cycle.negotiationAverageDays,
+  openWithoutValue: row.dataQuality.openWithoutValue,
+  openWithoutChannel: row.dataQuality.openWithoutChannel,
+  invalidWonCycleDates: row.dataQuality.invalidWonCycleDates
+})));
+await writeCsv('commercial-review-audit.csv', commercialReviewAudits.flatMap((review) =>
+  review.audits.map((item) => ({ month: review.month, sourceDate: review.sourceDate, author: review.author, ...item }))
+));
+await writeCsv('commercial-seller-monitoring.csv', commercialSellerMonitoring.map((row) => ({
+  periodId: row.periodId,
+  periodKind: row.periodKind,
+  periodLabel: row.periodLabel,
+  start: row.start,
+  end: row.end,
+  isPartial: row.isPartial,
+  seller: row.seller,
+  consultingSales: row.revenueGoals.consulting.actual,
+  consultingTarget: row.revenueGoals.consulting.target,
+  consultingAttainmentPct: row.revenueGoals.consulting.attainmentPct,
+  worksSales: row.revenueGoals.works.actual,
+  worksTarget: row.revenueGoals.works.target,
+  worksAttainmentPct: row.revenueGoals.works.attainmentPct,
+  totalSales: row.revenueGoals.total.actual,
+  totalTarget: row.revenueGoals.total.target,
+  totalAttainmentPct: row.revenueGoals.total.attainmentPct,
+  openDeals: row.open.deals,
+  openValue: row.open.value,
+  wonDeals: row.won.deals,
+  wonValue: row.won.value,
+  averageTicket: row.won.averageTicket,
+  lostDeals: row.lost.deals,
+  closedConversionPct: row.conversion.closedConversionPct,
+  cycleAverageDays: row.cycle.averageDays,
+  cycleMedianDays: row.cycle.medianDays,
+  activityCompleted: row.activity.completed,
+  activityWeeklyAverage: row.activity.weeklyAverage,
+  activityWeeklyTarget: row.activity.weeklyTarget,
+  activityAttainmentPct: row.activity.attainmentPct,
+  proposals: row.activity.proposals,
+  meetings: row.activity.meetings,
+  visits: row.activity.visits,
+  openWithoutValue: row.open.withoutValue,
+  openWithoutChannel: row.open.withoutChannel,
+  openWithoutSeller: row.open.withoutSeller,
+  productCoveragePct: row.open.products.coveragePct
+})));
+await writeCsv('pipedrive-products.csv', productsRaw.map((product) => ({
+  id: product.id,
+  code: product.code,
+  name: product.name,
+  active: product.active_flag,
+  billingFrequency: product.billing_frequency,
+  price: product.prices?.find((price) => price.currency === 'BRL')?.price ?? product.prices?.[0]?.price ?? null,
+  currency: product.prices?.find((price) => price.currency === 'BRL')?.currency ?? product.prices?.[0]?.currency ?? null
+})));
+await writeCsv('pipedrive-deal-products.csv', deals.flatMap((deal) => deal.products.map((product) => ({
+  dealId: deal.id,
+  dealTitle: deal.title,
+  status: deal.status,
+  pipeline: deal.pipeline,
+  seller: deal.seller,
+  wonMonth: deal.wonMonth,
+  productId: product.productId,
+  productCode: product.code,
+  productName: product.name,
+  inCurrentCatalog: product.inCurrentCatalog,
+  quantity: product.quantity,
+  itemPrice: product.itemPrice,
+  discount: product.discount,
+  discountType: product.discountType,
+  lineTotal: product.sum,
+  dealValue: deal.value,
+  currency: product.currency,
+  productAddedAt: product.addTime
+}))));
 await writeCsv('growth-comparison.csv', growthComparison);
 await writeCsv('projection-2026-h2.csv', projectionMonths);
 await writeCsv(
@@ -2691,7 +3381,7 @@ Gerado em: ${new Date().toLocaleString('pt-BR')}
 - Negocios ganhos no periodo: ${wonDeals.length}, somando ${money(sum(wonDeals, (deal) => deal.value))}.
 - Ticket medio geral dos negocios ganhos: ${money(wonDeals.length ? sum(wonDeals, (deal) => deal.value) / wonDeals.length : 0)}.
 - Tarefas/projetos encontrados no ClickUp: ${clickupTasksRaw.length}; candidatos de producao ligados a projetos/operacao: ${projectCandidates.length}.
-- Junho de 2026 deve ser lido como parcial, pois a base foi extraida em ${new Date().toLocaleDateString('pt-BR')}.
+- ${partialMonthKey} deve ser lido como parcial, pois a base foi extraida em ${new Date().toLocaleDateString('pt-BR')}.
 - O Pipedrive nao trouxe produtos por negocio; a classificacao inicial de servico usa principalmente funil/etapa e, quando necessario, termos explicitos no titulo.
 - Para tipos de negocio, a fonte principal agora e a etiqueta comercial do Pipedrive: LIE, LDC, LCC, PIE, OBRA, PROJETOS, LSPDA, CDM, ICV e instalacao de carregador.
 - Cobertura de CNPJ nas organizacoes: ${cnpjCoverage.organizationsWithCnpj}/${cnpjCoverage.organizations}; nos ganhos analisados: ${cnpjCoverage.wonDealsWithCnpj}/${cnpjCoverage.wonDeals}.

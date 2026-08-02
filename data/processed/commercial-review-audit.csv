@@ -1,0 +1,40 @@
+month;sourceDate;author;section;label;reported;calculated;delta;status;note
+2026-07;2026-07-31;Gabriel Veloso;Ganhos;Negócios ganhos no ano;102;102;0;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas;Negócios perdidos no ano;202;202;0;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Potencial;Participação de relacionamento;52;48.56541669024627;-3.4345833097537266;divergent;
+2026-07;2026-07-31;Gabriel Veloso;Potencial por canal;Tráfego Pago;35;38.1511187023156;3.1511187023155998;divergent;
+2026-07;2026-07-31;Gabriel Veloso;Potencial por canal;Sind. Profissional Base;17.44;16.02041393786302;-1.4195860621369825;divergent;
+2026-07;2026-07-31;Gabriel Veloso;Potencial por canal;Administradora Cond.;15.6;14.338116135139444;-1.2618838648605557;divergent;
+2026-07;2026-07-31;Gabriel Veloso;Potencial por canal;Sucesso do Cliente;14.9;13.859664466474944;-1.040335533525056;divergent;
+2026-07;2026-07-31;Gabriel Veloso;Potencial por canal;Pós-Venda base XPE;4.4;4.347222150768867;-0.05277784923113327;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Potencial GABRIEL;Sind. Profissional Base;32.4;31.298978864877704;-1.101021135122295;divergent;
+2026-07;2026-07-31;Gabriel Veloso;Potencial GABRIEL;Tráfego Pago;28.4;28.176205176917595;-0.22379482308240384;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Potencial GABRIEL;Administradora Cond.;13.7;13.29850391830919;-0.40149608169080864;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Potencial GABRIEL;Sucesso do Cliente;9.5;9.154595108050344;-0.34540489194965573;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Potencial IGOR;Tráfego Pago;41.4;45.777390451809694;4.3773904518096955;divergent;
+2026-07;2026-07-31;Gabriel Veloso;Potencial IGOR;Administradora Cond.;17.3;15.13294661256207;-2.16705338743793;divergent;
+2026-07;2026-07-31;Gabriel Veloso;Potencial IGOR;Sucesso do Cliente;17;17.456902421089897;0.45690242108989665;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Ganhos por canal;Pós-Venda base XPE;24;23.52941176470588;-0.47058823529411953;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Ganhos por canal;Tráfego Pago;20;19.607843137254903;-0.39215686274509665;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Ganhos por canal;Sind. Profissional Base;15;14.705882352941178;-0.2941176470588225;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Ganhos por canal;Indicação de Cliente XPE;12;11.76470588235294;-0.23529411764705976;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Ganhos por canal;Administradora Cond.;9;8.823529411764707;-0.1764705882352935;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Ganhos por canal;Sucesso do Cliente;6;5.88235294117647;-0.11764705882352988;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Ganhos por canal;Indicação Avulsa;6;7.8431372549019605;1.8431372549019605;divergent;
+2026-07;2026-07-31;Gabriel Veloso;Ganhos por canal;Sem tracking;6;3.9215686274509802;-2.0784313725490198;divergent;
+2026-07;2026-07-31;Gabriel Veloso;Ganhos por canal;Outros e parceiros;4;3.9215686274509802;-0.07843137254901977;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Ganhos;Participação de relacionamento;76;76.47058823529412;0.470588235294116;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por motivo;Caiu de Prioridade;40;39.603960396039604;-0.3960396039603964;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por motivo;Tentativas Esgotadas (Final Cadência);23;22.772277227722775;-0.22772277227722526;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por motivo;Barrado em Assembleia;12;12.376237623762377;0.37623762376237657;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por motivo;Concorrente;12;11.881188118811881;-0.11881188118811892;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por motivo;Fora do ICP;8;8.415841584158416;0.4158415841584162;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por canal;Tráfego Pago;48;47.524752475247524;-0.47524752475247567;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por canal;Administradora Cond.;14;13.861386138613863;-0.13861386138613696;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por canal;Sucesso do Cliente;5;4.9504950495049505;-0.04950495049504955;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por canal;Indicação de Cliente XPE;4;4.455445544554455;0.45544554455445496;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por canal;Pós-Venda base XPE;4;4.455445544554455;0.45544554455445496;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por canal;Parceiro Comercial;4;3.9603960396039604;-0.03960396039603964;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Perdas por canal;Sind. Profissional Base;4;3.9603960396039604;-0.03960396039603964;confirmed;
+2026-07;2026-07-31;Gabriel Veloso;Atividade;Reuniões/propostas/assembleias por semana;17;11.516129032258064;-5.483870967741936;not_verifiable;"O CRM não contém reuniões/assembleias concluídas no período; há apenas propostas e o indicador fica incompleto."
+2026-07;2026-07-31;Gabriel Veloso;Ciclo;Ciclo médio no funil;41;58.111111111111114;17.111111111111114;not_verifiable;"O valor reportado usa uma definição não registrada. A plataforma calcula criação → ganho; histórico completo de etapas não está disponível."

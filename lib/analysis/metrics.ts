@@ -485,7 +485,7 @@ export function getMonthlyRows(analysis: Analysis, filters: PlanningFilters): Ta
   return rows.filter((row, index, arr) => arr.findIndex((item) => item.key === row.key) === index);
 }
 
-const PLANNING_REALIZED_PIPELINES = new Set(["[Exec] Laudos - Condo", "Obras"]);
+const PLANNING_REALIZED_PIPELINES = new Set(["[Exec] Laudos - Condo", "Consultoria - Condo", "Obras"]);
 
 export function getMonthDetail(analysis: Analysis, month: string): MonthDetail | null {
   const monthly = analysis.monthly.find((row) => row.month === month);

@@ -426,6 +426,7 @@ export type CommercialDirectorMetrics = {
   snapshot: {
     reuniaoMarcada: number;
     diagnostico: number;
+    elaboracaoProposta?: number;
     negociacao: number;
     fechamento: number;
     relacionamento: number;
@@ -469,6 +470,170 @@ export type FunnelStageHistory = {
   stock: FunnelStageMonthlyRow[];
 };
 
+export type CommercialBreakdownRow = {
+  key: string;
+  deals: number;
+  value: number;
+  sharePct: number;
+};
+
+export type CommercialProductSummary = {
+  coveredDeals: number;
+  coveragePct: number;
+  productValue: number;
+  coveredDealValue: number;
+  reconciliationGap: number;
+  catalogMismatchLines: number;
+  products: CommercialBreakdownRow[];
+};
+
+export type CommercialMonthlyAnalysis = {
+  month: string;
+  cutoff: string;
+  isPartial: boolean;
+  openPotential: {
+    deals: number;
+    value: number;
+    channels: CommercialBreakdownRow[];
+    relationshipSharePct: number;
+    productSummary: CommercialProductSummary;
+    sellers: Array<{
+      seller: string;
+      deals: number;
+      value: number;
+      channels: CommercialBreakdownRow[];
+    }>;
+  };
+  wonYtd: {
+    deals: number;
+    value: number;
+    channels: CommercialBreakdownRow[];
+    relationshipSharePct: number;
+    trackedDeals: number;
+    productSummary: CommercialProductSummary;
+  };
+  lostYtd: {
+    deals: number;
+    value: number;
+    reasons: CommercialBreakdownRow[];
+    channels: CommercialBreakdownRow[];
+    untrackedDeals: number;
+    productSummary: CommercialProductSummary;
+  };
+  activity: {
+    completed: number;
+    weeklyAverage: number;
+    byType: CommercialBreakdownRow[];
+    bySeller: CommercialBreakdownRow[];
+    meetingRecords: number;
+    note: string;
+  };
+  cycle: {
+    wonDealsInMonth: number;
+    wonAverageDays: number | null;
+    wonMedianDays: number | null;
+    negotiationDeals: number;
+    negotiationAverageDays: number | null;
+    note: string;
+  };
+  dataQuality: {
+    openWithoutValue: number;
+    openWithoutChannel: number;
+    wonWithoutChannel: number;
+    lostWithoutChannel: number;
+    lostWithoutStandardReason: number;
+    invalidWonCycleDates: number;
+    activityCoverageComplete: boolean;
+  };
+};
+
+export type CommercialAuditItem = {
+  section: string;
+  label: string;
+  reported: number;
+  calculated: number | null;
+  delta: number;
+  status: "confirmed" | "divergent" | "not_verifiable";
+  note: string;
+};
+
+export type CommercialReviewAudit = {
+  month: string;
+  sourceDate: string;
+  author: string;
+  status: "confirmed" | "partial" | "divergent" | "not_verifiable";
+  audits: CommercialAuditItem[];
+};
+
+export type CommercialPeriodKind = "week" | "month" | "quarter" | "semester" | "year";
+
+export type CommercialSellerMonitoring = {
+  periodId: string;
+  periodKind: CommercialPeriodKind;
+  periodLabel: string;
+  start: string;
+  end: string;
+  isPartial: boolean;
+  seller: "TIME" | "GABRIEL" | "IGOR";
+  revenueGoals: {
+    allocation: "company" | "equal_split_50_pct";
+    consulting: CommercialRevenueGoal;
+    works: CommercialRevenueGoal;
+    total: CommercialRevenueGoal;
+    source: string;
+  };
+  open: {
+    deals: number;
+    value: number;
+    stages: CommercialBreakdownRow[];
+    channels: CommercialBreakdownRow[];
+    products: CommercialProductSummary;
+    withoutValue: number;
+    withoutChannel: number;
+    withoutSeller: number;
+  };
+  won: {
+    deals: number;
+    value: number;
+    averageTicket: number;
+    channels: CommercialBreakdownRow[];
+  };
+  lost: {
+    deals: number;
+    value: number;
+    reasons: CommercialBreakdownRow[];
+    channels: CommercialBreakdownRow[];
+  };
+  conversion: {
+    closedDeals: number;
+    closedConversionPct: number | null;
+  };
+  cycle: {
+    validDeals: number;
+    averageDays: number | null;
+    medianDays: number | null;
+    invalidDates: number;
+  };
+  activity: {
+    completed: number;
+    weeklyAverage: number;
+    weeklyTarget: number;
+    targetToDate: number;
+    attainmentPct: number | null;
+    proposals: number;
+    meetings: number;
+    visits: number;
+    byType: CommercialBreakdownRow[];
+  };
+};
+
+export type CommercialRevenueGoal = {
+  actual: number;
+  target: number;
+  attainmentPct: number | null;
+  gap: number;
+};
+
 export type Analysis = {
   generatedAt: string;
   totals: {
@@ -507,6 +672,9 @@ export type Analysis = {
   indicatorHighlights: IndicatorHighlights;
   deepAnalysis: DeepAnalysis;
   commercialDirector?: CommercialDirectorMetrics;
+  commercialMonthly?: CommercialMonthlyAnalysis[];
+  commercialSellerMonitoring?: CommercialSellerMonitoring[];
+  commercialReviewAudits?: CommercialReviewAudit[];
   growthGuides: GrowthGuides;
   businessTypeMonthly: BusinessTypeMonthly[];
   businessTypeMonthlyByScope?: BusinessTypeMonthlyByScope[];

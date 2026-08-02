@@ -1,0 +1,6 @@
+id;code;name;active;billingFrequency;price;currency
+4;LIE;LIE - Laudo de Instalações Elétricas;true;one-time;5000;BRL
+5;LDC;LDC - Laudo de Disponibilidade de Carga;true;one-time;5000;BRL
+6;LCV;LCV - Laudo de Carregamento Veicular;true;one-time;5000;BRL
+7;LCC;LCC -Laudo Carregador Coletivo;true;one-time;6500;BRL
+8;PIE;PIE - Projeto Infraestrutura Eletrocalha;true;one-time;6000;BRL

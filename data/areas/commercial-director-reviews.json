@@ -1,0 +1,74 @@
+[
+  {
+    "month": "2026-07",
+    "sourceDate": "2026-07-31",
+    "author": "Gabriel Veloso",
+    "openPotential": {
+      "relationshipSharePct": 52,
+      "channels": {
+        "Tráfego Pago": 35,
+        "Sind. Profissional Base": 17.44,
+        "Administradora Cond.": 15.6,
+        "Sucesso do Cliente": 14.9,
+        "Pós-Venda base XPE": 4.4
+      },
+      "sellers": {
+        "GABRIEL": {
+          "Sind. Profissional Base": 32.4,
+          "Tráfego Pago": 28.4,
+          "Administradora Cond.": 13.7,
+          "Sucesso do Cliente": 9.5
+        },
+        "IGOR": {
+          "Tráfego Pago": 41.4,
+          "Administradora Cond.": 17.3,
+          "Sucesso do Cliente": 17
+        }
+      }
+    },
+    "activity": {
+      "weeklyAverage": 17,
+      "weeklyAveragePerSeller": 9,
+      "weeklyTargetGap": 3,
+      "consultingTargetGapPct": 18
+    },
+    "cycle": {
+      "funnelAverageDays": 41,
+      "negotiationAverageDays": 40
+    },
+    "wonYtd": {
+      "deals": 102,
+      "relationshipSharePct": 76,
+      "channels": {
+        "Pós-Venda base XPE": 24,
+        "Tráfego Pago": 20,
+        "Sind. Profissional Base": 15,
+        "Indicação de Cliente XPE": 12,
+        "Administradora Cond.": 9,
+        "Sucesso do Cliente": 6,
+        "Indicação Avulsa": 6,
+        "Sem tracking": 6,
+        "Outros e parceiros": 4
+      }
+    },
+    "lostYtd": {
+      "deals": 202,
+      "reasons": {
+        "Caiu de Prioridade": 40,
+        "Tentativas Esgotadas (Final Cadência)": 23,
+        "Barrado em Assembleia": 12,
+        "Concorrente": 12,
+        "Fora do ICP": 8
+      },
+      "channels": {
+        "Tráfego Pago": 48,
+        "Administradora Cond.": 14,
+        "Sucesso do Cliente": 5,
+        "Indicação de Cliente XPE": 4,
+        "Pós-Venda base XPE": 4,
+        "Parceiro Comercial": 4,
+        "Sind. Profissional Base": 4
+      }
+    }
+  }
+]

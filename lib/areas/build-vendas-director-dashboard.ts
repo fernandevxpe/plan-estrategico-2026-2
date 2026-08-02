@@ -1,8 +1,12 @@
-import type { Analysis } from "@/lib/analysis/types";
+import type {
+  Analysis,
+  CommercialMonthlyAnalysis,
+  CommercialReviewAudit,
+  CommercialSellerMonitoring
+} from "@/lib/analysis/types";
 import type { VendasScenariosDashboard } from "@/lib/areas/build-vendas-scenarios";
 import dashboardConfigJson from "@/data/areas/vendas-director-dashboard.json";
 
-const MAIN_PIPELINE = "[Exec] Laudos - Condo";
 const config = dashboardConfigJson as typeof dashboardConfigJson;
 
 export type DirectorKpi = {
@@ -56,14 +60,15 @@ export type VendasDirectorDashboard = {
     followups: number;
     fechamentos: number;
   };
+  monthlyAnalysis: CommercialMonthlyAnalysis[];
+  sellerMonitoring: CommercialSellerMonitoring[];
+  reviewAudits: CommercialReviewAudit[];
 };
 
-function stageCount(analysis: Analysis, stage: string) {
-  return (
-    analysis.deepAnalysis.funnelByStage.open?.find(
-      (row) => row.pipeline === MAIN_PIPELINE && row.stage === stage
-    )?.deals ?? 0
-  );
+function stageCount(analysis: Analysis, pipeline: string, stages: string[]) {
+  return (analysis.deepAnalysis.funnelByStage.open ?? [])
+    .filter((row) => row.pipeline === pipeline && stages.includes(row.stage))
+    .reduce((total, row) => total + row.deals, 0);
 }
 
 function kpiStatus(current: number, target: number | null, gate: number | null, lowerIsBetter = false) {
@@ -109,17 +114,18 @@ export function buildVendasDirectorDashboard(
   const activeScenario = scenarios.scenarios[0];
   const latestMonth = activeScenario.months[activeScenario.months.length - 1];
   const headcountFte = latestMonth?.effectiveFte ?? 2;
+  const mainPipeline = analysis.commercialDirector?.mainPipeline ?? "Consultoria - Condo";
+  const commercialDirector = analysis.commercialDirector;
 
   const snapshot = {
-    reuniaoMarcada: stageCount(analysis, "Reunião Marcada"),
-    diagnostico: stageCount(analysis, "Diagnóstico"),
-    negociacao: stageCount(analysis, "Negociação"),
-    fechamento: stageCount(analysis, "Fechamento"),
-    relacionamento: stageCount(analysis, "Relacionamento"),
-    aguardandoProposta: stageCount(analysis, "Diagnóstico")
+    reuniaoMarcada: commercialDirector?.snapshot.reuniaoMarcada ?? stageCount(analysis, mainPipeline, ["Reunião Marcada", "Aguardando Agendamento"]),
+    diagnostico: commercialDirector?.snapshot.diagnostico ?? stageCount(analysis, mainPipeline, ["Diagnóstico", "Visita de Diagnóstico"]),
+    negociacao: commercialDirector?.snapshot.negociacao ?? stageCount(analysis, mainPipeline, ["Negociação"]),
+    fechamento: commercialDirector?.snapshot.fechamento ?? stageCount(analysis, mainPipeline, ["Fechamento"]),
+    relacionamento: commercialDirector?.snapshot.relacionamento ?? stageCount(analysis, mainPipeline, ["Relacionamento"]),
+    aguardandoProposta: commercialDirector?.snapshot.elaboracaoProposta ?? stageCount(analysis, mainPipeline, ["Elaboração de Proposta"])
   };
 
-  const commercialDirector = analysis.commercialDirector;
   const slaBreaches = commercialDirector?.sla48h?.breaches ?? snapshot.aguardandoProposta;
 
   const rolling = commercialDirector?.rolling ?? {
@@ -158,7 +164,7 @@ export function buildVendasDirectorDashboard(
       weeklyTarget: teamWeeklyTargets.visitas,
       gateTarget: null,
       status: kpiStatus(snapshot.diagnostico, teamWeeklyTargets.visitas, null),
-      source: "Pipeline [Exec] — estágio Diagnóstico"
+      source: "Pipeline Consultoria — Visita de Diagnóstico"
     },
     {
       id: "apresentacoes",
@@ -167,7 +173,7 @@ export function buildVendasDirectorDashboard(
       weeklyTarget: teamWeeklyTargets.apresentacoes,
       gateTarget: null,
       status: kpiStatus(snapshot.reuniaoMarcada, teamWeeklyTargets.apresentacoes, null),
-      source: "Reunião Marcada + assembleias (noite)"
+      source: "Aguardando Agendamento + assembleias (noite)"
     },
     {
       id: "propostas",
@@ -186,7 +192,7 @@ export function buildVendasDirectorDashboard(
       weeklyTarget: teamWeeklyTargets.propostasGeradas,
       gateTarget: null,
       status: snapshot.aguardandoProposta > 20 ? "critical" : snapshot.aguardandoProposta > 10 ? "warn" : "ok",
-      source: "Diagnóstico sem proposta enviada"
+      source: "Estágio Elaboração de Proposta"
     },
     {
       id: "won7d",
@@ -219,6 +225,9 @@ export function buildVendasDirectorDashboard(
     snapshot,
     rolling,
     rampProjection: buildRampProjection(scenarios),
-    teamWeeklyTargets
+    teamWeeklyTargets,
+    monthlyAnalysis: analysis.commercialMonthly ?? [],
+    sellerMonitoring: analysis.commercialSellerMonitoring ?? [],
+    reviewAudits: analysis.commercialReviewAudits ?? []
   };
 }

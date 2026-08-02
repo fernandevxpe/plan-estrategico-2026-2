@@ -1,29 +1,29 @@
 # Analise comercial e projetos - XPE Consultoria
 
-Gerado em: 22/07/2026, 15:14:09
+Gerado em: 02/08/2026, 20:22:00
 
 ## Resumo executivo
 
-- Negocios analisados no Pipedrive: 1064 em 2025-2026.
-- Negocios ganhos no periodo: 215, somando R$ 2.241.770.
-- Ticket medio geral dos negocios ganhos: R$ 10.427.
-- Tarefas/projetos encontrados no ClickUp: 1654; candidatos de producao ligados a projetos/operacao: 1322.
-- Junho de 2026 deve ser lido como parcial, pois a base foi extraida em 22/07/2026.
+- Negocios analisados no Pipedrive: 1080 em 2025-2026.
+- Negocios ganhos no periodo: 232, somando R$ 2.423.456.
+- Ticket medio geral dos negocios ganhos: R$ 10.446.
+- Tarefas/projetos encontrados no ClickUp: 1633; candidatos de producao ligados a projetos/operacao: 1268.
+- 2026-06 deve ser lido como parcial, pois a base foi extraida em 02/08/2026.
 - O Pipedrive nao trouxe produtos por negocio; a classificacao inicial de servico usa principalmente funil/etapa e, quando necessario, termos explicitos no titulo.
 - Para tipos de negocio, a fonte principal agora e a etiqueta comercial do Pipedrive: LIE, LDC, LCC, PIE, OBRA, PROJETOS, LSPDA, CDM, ICV e instalacao de carregador.
-- Cobertura de CNPJ nas organizacoes: 257/1643; nos ganhos analisados: 121/215.
+- Cobertura de CNPJ nas organizacoes: 258/1655; nos ganhos analisados: 130/232.
 - Arquivos tabulares gerados em `data/processed/*.csv` para revisao e uso em planilhas.
 
 ## Funil comercial mensal
 
 | Mes | Novos negocios | Valor criado | Ganhos no mes | Receita ganha | Perdidos no mes | Conversao novos neg. | Base aberta fim do mes | Valor em aberto |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2026-01 | 59 | R$ 807.038 | 14 | R$ 180.132 | 20 | +28,8% | 519 | R$ 2.363.494 |
-| 2026-02 | 59 | R$ 484.290 | 15 | R$ 198.165 | 17 | +30,5% | 546 | R$ 2.511.889 |
-| 2026-03 | 83 | R$ 438.000 | 19 | R$ 222.450 | 29 | +13,3% | 581 | R$ 2.509.139 |
-| 2026-04 | 74 | R$ 841.250 | 15 | R$ 155.600 | 25 | +18,9% | 615 | R$ 3.020.489 |
-| 2026-05 | 91 | R$ 1.035.405 | 14 | R$ 130.800 | 22 | +15,4% | 670 | R$ 3.725.894 |
-| 2026-06 | 93 | R$ 1.160.235 | 25 | R$ 333.210 | 38 | +11,8% | 701 | R$ 4.119.839 |
+| 2026-01 | 59 | R$ 807.038 | 14 | R$ 180.132 | 20 | +28,8% | 519 | R$ 2.374.794 |
+| 2026-02 | 59 | R$ 478.290 | 15 | R$ 198.165 | 17 | +32,2% | 546 | R$ 2.517.189 |
+| 2026-03 | 83 | R$ 438.000 | 19 | R$ 222.450 | 29 | +13,3% | 581 | R$ 2.514.439 |
+| 2026-04 | 74 | R$ 841.250 | 15 | R$ 155.600 | 25 | +20,3% | 615 | R$ 3.025.789 |
+| 2026-05 | 91 | R$ 1.017.405 | 14 | R$ 130.800 | 22 | +20,9% | 670 | R$ 3.713.194 |
+| 2026-06 | 93 | R$ 1.153.560 | 25 | R$ 333.210 | 37 | +16,1% | 702 | R$ 4.112.964 |
 
 ## 2026 mes a mes
 
@@ -35,7 +35,7 @@ Gerado em: 22/07/2026, 15:14:09
 | 2026-04 | 74 | 15 | R$ 155.600 | R$ 10.373 | -30,1% |
 | 2026-05 | 91 | 14 | R$ 130.800 | R$ 9.343 | -15,9% |
 | 2026-06 | 93 | 25 | R$ 333.210 | R$ 13.328 | +154,7% |
-| 2026-07 | 51 | 12 | R$ 131.000 | R$ 10.917 | -60,7% |
+| 2026-07 | 67 | 29 | R$ 312.686 | R$ 10.782 | -6,2% |
 
 ## Leitura de crescimento em 2026
 
@@ -123,9 +123,9 @@ Gerado em: 22/07/2026, 15:14:09
 
 ## Pos-venda e recorrencia
 
-- Contas com mais de um fechamento no mesmo CNPJ: 30.
-- Contas com mais de um fechamento por organizacao normalizada: 47.
-- Receita de repeticao por organizacao no periodo: R$ 956.771.
+- Contas com mais de um fechamento no mesmo CNPJ: 32.
+- Contas com mais de um fechamento por organizacao normalizada: 50.
+- Receita de repeticao por organizacao no periodo: R$ 1.050.657.
 
 | Conta/CNPJ | Cliente | Fechamentos | Receita total | Receita repetida | Primeiro ganho | Ultimo ganho | Tipos |
 | --- | --- | ---: | ---: | ---: | --- | --- | --- |
@@ -135,27 +135,27 @@ Gerado em: 22/07/2026, 15:14:09
 | 10383770000114 | Edf Madalena Colonial | 2 | R$ 53.300 | R$ 45.000 | 2025-10 | 2026-04 | LDC - Laudo de disponibilidade de carga, OBRA |
 | org:verano adm | Verano ADM | 2 | R$ 50.532 | R$ 43.032 | 2026-01 | 2026-01 | PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, Instalação de Carregador Eletrico |
 | org:parador galicia | Edf PARADOR DE GALICIA | 3 | R$ 46.020 | R$ 40.520 | 2025-09 | 2026-06 | LIE - Laudo de Instalações Elétricas, OBRA |
+| org:nao informado | Edf nao informado | 4 | R$ 45.150 | R$ 40.150 | 2026-01 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | org:ferreira costa | Edifício Ferreira da Costa | 3 | R$ 45.470 | R$ 39.470 | 2026-02 | 2026-06 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | 24565913000113 | Edf Morada Ilha Verde | 3 | R$ 45.000 | R$ 37.000 | 2025-07 | 2026-07 | LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, OBRA |
 | org:montendre | Cond. Montendre | 2 | R$ 51.249 | R$ 33.649 | 2025-04 | 2025-12 | LIE - Laudo de Instalações Elétricas, PROJETOS, LSPDA, OBRA |
+| org:praia guarapari | Empresarial Praia Guarapari | 4 | R$ 40.550 | R$ 33.550 | 2026-02 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | 10395888000162 | Edf Samsara | 3 | R$ 37.500 | R$ 32.500 | 2025-09 | 2026-01 | LDC - Laudo de disponibilidade de carga, OBRA, PIE - Projeto infra.  Eletrocalha e Emergência |
-| org:praia guarapari | Empresarial Praia Guarapari | 3 | R$ 36.800 | R$ 29.800 | 2026-02 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | 14006221000181 | Enseada do Mar | 3 | R$ 35.000 | R$ 27.500 | 2025-02 | 2026-04 | PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA |
+| org:lajedo | Edf Lajedo | 3 | R$ 30.440 | R$ 26.440 | 2026-01 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
+| 69904753000128 | Edifício Fernando Perez | 3 | R$ 28.996 | R$ 24.996 | 2026-03 | 2026-07 | LIE - Laudo de Instalações Elétricas, PROJETOS, OBRA |
 | 00942145000101 | Edf Rio Siriji | 2 | R$ 31.000 | R$ 24.000 | 2025-12 | 2026-06 | LIE - Laudo de Instalações Elétricas, OBRA |
 | 41089830000114 | Edf FICUS | 3 | R$ 33.750 | R$ 23.250 | 2025-08 | 2026-06 | LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, PROJETOS, OBRA |
 | 04239390000108 | Edf Terra Brasilis | 4 | R$ 37.100 | R$ 20.100 | 2025-08 | 2026-03 | LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, ICV - Inspeção de carregador veicular |
 | org:itaqua vilage | Edf Itaqua Vilage | 2 | R$ 26.000 | R$ 20.000 | 2026-01 | 2026-06 | PROJETOS, LIE - Laudo de Instalações Elétricas |
 | org:cristiano | Edf Cristiano | 2 | R$ 24.500 | R$ 20.000 | 2025-10 | 2025-10 | PIE - Projeto infra.  Eletrocalha e Emergência, OBRA |
-| org:castelo blois | Edf Castelo de Blois | 2 | R$ 25.800 | R$ 19.800 | 2025-09 | 2026-01 | LIE - Laudo de Instalações Elétricas, OBRA |
-| 11467141000135 | Edf Luar das Ubaias | 2 | R$ 30.860 | R$ 19.700 | 2025-05 | 2025-12 | LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, Obras eletricas |
-| org:maria carolina | Edf Maria Carolina | 2 | R$ 24.440 | R$ 19.440 | 2025-06 | 2025-12 | LIE - Laudo de Instalações Elétricas, Obras eletricas |
 
 ## Servicos mais fechados
 
 | Servico | Projetos ganhos | Receita | Ticket medio | Primeiro fechamento | Ultimo fechamento |
 | --- | ---: | ---: | ---: | --- | --- |
-| Laudos e consultoria condominial | 182 | R$ 1.523.175 | R$ 8.369 | 2025-01 | 2026-07 |
-| Obras eletricas | 33 | R$ 718.595 | R$ 21.776 | 2025-04 | 2026-07 |
+| Laudos e consultoria condominial | 194 | R$ 1.635.361 | R$ 8.430 | 2025-01 | 2026-07 |
+| Obras eletricas | 38 | R$ 788.095 | R$ 20.739 | 2025-04 | 2026-07 |
 
 ## Servicos que apareceram em 2026
 
@@ -271,21 +271,38 @@ Gerado em: 22/07/2026, 15:14:09
 | 2026-06 | Ficus | Edf FICUS | Laudos e consultoria condominial | R$ 6.000 |
 | 2026-06 | Edf. Cap d'Antibes | Edf. Cap d'Antibes | Obras eletricas | R$ 4.500 |
 | 2026-06 | Edf Varanda do Parque | Edf Varanda do Parque | Laudos e consultoria condominial | R$ 7.920 |
+| 2026-07 | Edf Maria Tereza negócio | Edf Maria Tereza | Laudos e consultoria condominial | R$ 8.000 |
+| 2026-07 | Edf Lajedo negócio | Edf Lajedo | Obras eletricas | R$ 20.440 |
 | 2026-07 | Edf Joana D'Arc negócio | Edf Joana D'Arc | Laudos e consultoria condominial | R$ 6.000 |
+| 2026-07 | Edf. Queen Mary | Edf. Queen Mary | Laudos e consultoria condominial | R$ 6.000 |
+| 2026-07 | Condominio do Edificio Maria Ines | Condominio do Edificio Maria Ines | Laudos e consultoria condominial | R$ 7.000 |
 | 2026-07 | Edf. Varandas do Bosque | Edf. Varandas do Bosque | Laudos e consultoria condominial | R$ 8.400 |
 | 2026-07 | Edf Rio Laje | Edf Rio Laje | Laudos e consultoria condominial | R$ 7.000 |
+| 2026-07 | Edf. Multmed Ilha Center | Edf. Multmed Ilha Center | Laudos e consultoria condominial | R$ 8.000 |
+| 2026-07 | Edifício Fernando Perez | Edifício Fernando Perez | Obras eletricas | R$ 19.610 |
 | 2026-07 | Edf. Costa Del Sol | Edf. Costa Del Sol | Laudos e consultoria condominial | R$ 5.000 |
+| 2026-07 | Condomínio Residencial Corais | Condomínio Residencial Corais | Laudos e consultoria condominial | R$ 18.800 |
+| 2026-07 | Edf. Saint Guilherme | Edf. Saint Guilherme | Laudos e consultoria condominial | R$ 7.000 |
+| 2026-07 | Solar do Camaragybe | Não informado | Obras eletricas | R$ 22.850 |
+| 2026-07 | Pátio Torre Botanik | Pátio Torre Botanik | Laudos e consultoria condominial | R$ 17.000 |
+| 2026-07 | Cond. First Crystal Home | Cond. First Crystal Home | Laudos e consultoria condominial | R$ 6.000 |
+| 2026-07 | Condominio do Edificio Maria Ines | Condominio do Edificio Maria Ines | Obras eletricas | R$ 2.850 |
 | 2026-07 | Edf Acauã | Edf Acauã | Laudos e consultoria condominial | R$ 6.000 |
 | 2026-07 | Edf Morada Ilha Verde | Edf Morada Ilha Verde | Obras eletricas | R$ 32.000 |
+| 2026-07 | Edf Solar do Camaragybe | Não informado | Laudos e consultoria condominial | R$ 6.000 |
 | 2026-07 | Edf Morada Apipucos | Não informado | Obras eletricas | R$ 11.300 |
 | 2026-07 | Empresarial Praia de Guarapari | Empresarial Praia de Guarapari | Obras eletricas | R$ 23.800 |
 | 2026-07 | Eletroposto JD | Eletroposto JD | Obras eletricas | R$ 15.000 |
+| 2026-07 | Edf Maria NIna Maria Nara | Edf Maria NIna Maria Nara | Laudos e consultoria condominial | R$ 17.000 |
 | 2026-07 | Edf Ilha do Retiro | Edf Ilha do Retiro | Laudos e consultoria condominial | R$ 8.000 |
 | 2026-07 | Empresarial Praia de Guarapari | Empresarial Praia de Guarapari | Laudos e consultoria condominial | R$ 6.000 |
 | 2026-07 | Edf MIllennium | Edf MIllennium | Laudos e consultoria condominial | R$ 2.500 |
+| 2026-07 | Edifício Fernando Perez | Edifício Fernando Perez | Laudos e consultoria condominial | R$ 5.386 |
+| 2026-07 | Empresarial Praia de Guarapari | Empresarial Praia de Guarapari | Obras eletricas | R$ 3.750 |
+| 2026-07 | Edf Lajedo | Edf Lajedo | Laudos e consultoria condominial | R$ 6.000 |
 
 ## Pontos de atencao para cruzamento Pipedrive x ClickUp
 
-- Ha 112 negocio(s) ganhos sem correspondencia simples por nome em tarefas candidatas de producao do ClickUp.
+- Ha 118 negocio(s) ganhos sem correspondencia simples por nome em tarefas candidatas de producao do ClickUp.
 - Listas de teste/dev/copia foram excluidas da contagem de projetos candidatos do ClickUp.
 - Para granularidade fina de servicos, o ideal e padronizar um campo obrigatorio no Pipedrive ou preencher produtos por negocio; hoje o CRM separa com confianca principalmente "Laudos e consultoria condominial" vs "Obras eletricas".

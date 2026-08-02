@@ -31,12 +31,11 @@ export type VendasFunnelDashboard = {
   contextDiagnosis: string[];
 };
 
-const MAIN_PIPELINE = "[Exec] Laudos - Condo";
-
 export function buildVendasFunnel(analysis: Analysis): VendasFunnelDashboard {
+  const mainPipeline = analysis.commercialDirector?.mainPipeline ?? "Consultoria - Condo";
   const open = analysis.deepAnalysis.funnelByStage.open ?? [];
   const stages = open
-    .filter((row) => row.pipeline === MAIN_PIPELINE)
+    .filter((row) => row.pipeline === mainPipeline)
     .sort((a, b) => a.stageOrder - b.stageOrder)
     .map((row) => ({
       pipeline: row.pipeline,
@@ -63,7 +62,7 @@ export function buildVendasFunnel(analysis: Analysis): VendasFunnelDashboard {
     }));
 
   return {
-    mainPipeline: MAIN_PIPELINE,
+    mainPipeline,
     stages,
     stagesTotalDeals: stages.reduce((sum, row) => sum + row.deals, 0),
     stagesTotalValue: stages.reduce((sum, row) => sum + row.value, 0),

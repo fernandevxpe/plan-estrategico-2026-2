@@ -1,6 +1,6 @@
 # Áreas estratégicas — XPE Consultoria
 
-Gerado em: 22/07/2026, 15:14:09
+Gerado em: 02/08/2026, 20:22:00
 
 Todas as 11 áreas em um único documento. Para conversar sobre uma área específica, referencie a seção pelo nome.
 
@@ -12,13 +12,13 @@ Funil comercial, fechamentos, conversão e capacidade da equipe de 2 comerciais.
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 1.351.357** (100% do total)
-- Contratos fechados: **114**
-- Ticket médio: **R$ 11.854**
+- Receita: **R$ 1.533.043** (100% do total)
+- Contratos fechados: **131**
+- Ticket médio: **R$ 11.703**
 
 ### Destaques
 - 2 comerciais · 9.0 fech./pessoa meta H2
-- Pipeline aberto: 703 negócios (R$ 3.646.470)
+- Pipeline aberto: 667 negócios (R$ 3.334.245)
 - Recomendado: 3 comerciais no cenário 2x
 
 ## Notas estratégicas
@@ -80,14 +80,14 @@ Hub de entrega técnica — projetos de engenharia e laudos regulatórios.
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 755.198** (55,9% do total)
-- Contratos fechados: **108**
-- Ticket médio: **R$ 6.993**
+- Receita: **R$ 867.384** (56,6% do total)
+- Contratos fechados: **122**
+- Ticket médio: **R$ 7.110**
 
 ### Destaques
-- Projetos: 24 contratos · Laudos: 84 contratos
+- Projetos: 27 contratos · Laudos: 95 contratos
 - 5 projetistas (era 3) + automação
-- 56% da receita 2026 YTD
+- 57% da receita 2026 YTD
 
 ## Notas estratégicas
 
@@ -114,12 +114,12 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 132.765** (9,8% do total)
-- Contratos fechados: **24**
-- Ticket médio: **R$ 5.532**
+- Receita: **R$ 150.151** (9,8% do total)
+- Contratos fechados: **27**
+- Ticket médio: **R$ 5.561**
 
 ### Destaques
-- Principal tipo: PROJETOS (R$ 77.208)
+- Principal tipo: PROJETOS (R$ 94.594)
 
 ## Notas estratégicas
 
@@ -185,7 +185,7 @@ _Nenhum risco cadastrado._
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| PROJETOS | 13 | R$ 77.208 |
+| PROJETOS | 16 | R$ 94.594 |
 | PIE | 11 | R$ 55.558 |
 
 ---
@@ -197,12 +197,12 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 622.433** (46,1% do total)
-- Contratos fechados: **84**
-- Ticket médio: **R$ 7.410**
+- Receita: **R$ 717.233** (46,8% do total)
+- Contratos fechados: **95**
+- Ticket médio: **R$ 7.550**
 
 ### Destaques
-- Principal tipo: LDC (R$ 422.317)
+- Principal tipo: LDC (R$ 453.317)
 
 ## Notas estratégicas
 
@@ -273,9 +273,9 @@ _Nenhum risco cadastrado._
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| LDC | 48 | R$ 422.317 |
-| LIE | 29 | R$ 172.967 |
-| LCC | 3 | R$ 14.800 |
+| LDC | 51 | R$ 453.317 |
+| LIE | 35 | R$ 224.267 |
+| LCC | 5 | R$ 27.300 |
 | LGR | 4 | R$ 12.350 |
 
 ---
@@ -287,12 +287,12 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 1.075.228** (79,6% do total)
-- Contratos fechados: **47**
-- Ticket médio: **R$ 22.877**
+- Receita: **R$ 1.214.228** (79,2% do total)
+- Contratos fechados: **57**
+- Ticket médio: **R$ 21.302**
 
 ### Destaques
-- Principal tipo: OBRA (R$ 526.156)
+- Principal tipo: OBRA (R$ 595.656)
 
 ## Notas estratégicas
 
@@ -338,7 +338,7 @@ _Nenhum risco cadastrado._
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| OBRA | 23 | R$ 526.156 |
+| OBRA | 28 | R$ 595.656 |
 
 ---
 
@@ -443,9 +443,9 @@ Presença em feiras, networking e geração de pipeline presencial.
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 84.803** (6,3% do total)
-- Contratos fechados: **14**
-- Ticket médio: **R$ 6.057**
+- Receita: **R$ 97.303** (6,3% do total)
+- Contratos fechados: **16**
+- Ticket médio: **R$ 6.081**
 
 ### Destaques
 - Principal tipo: ICV (R$ 48.487)
@@ -491,8 +491,8 @@ Presença em feiras, networking e geração de pipeline presencial.
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
 | ICV | 10 | R$ 48.487 |
+| LCC | 5 | R$ 27.300 |
 | Instalação de Carregador Eletrico | 1 | R$ 21.516 |
-| LCC | 3 | R$ 14.800 |
 
 ---
 
@@ -509,8 +509,8 @@ CRM, ClickUp, automações internas e produtividade da operação.
 
 
 ### Destaques
-- 1.654 tarefas ClickUp
-- 1.728 negócios no Pipedrive
+- 1.633 tarefas ClickUp
+- 1.743 negócios no Pipedrive
 - 4 alerta(s) de qualidade de dados
 
 ## Notas estratégicas

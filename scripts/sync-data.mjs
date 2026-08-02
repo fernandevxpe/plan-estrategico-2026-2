@@ -21,12 +21,21 @@ async function readRawData(name, fallback) {
 }
 
 async function getJson(url, options = {}) {
-  const response = await fetch(url, options);
-  if (!response.ok) {
+  const maxAttempts = 4;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const response = await fetch(url, options);
+    if (response.ok) return response.json();
+
     const body = await response.text();
-    throw new Error(`${response.status} ${response.statusText} for ${url}\n${body.slice(0, 800)}`);
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt === maxAttempts) {
+      throw new Error(`${response.status} ${response.statusText} for ${url}\n${body.slice(0, 800)}`);
+    }
+    const retryAfter = Number(response.headers.get('retry-after') || 0);
+    const delayMs = retryAfter > 0 ? retryAfter * 1_000 : 500 * (2 ** (attempt - 1));
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
-  return response.json();
+  throw new Error(`Falha inesperada ao consultar ${url}`);
 }
 
 async function fetchPipedriveCollection(path, params = {}) {
@@ -116,7 +125,7 @@ async function enrichGoalsWithResults(goals) {
 }
 
 async function syncPipedrive() {
-  const [deals, dealFields, orgFields, organizations, pipelines, stages, users, activities, goalsRaw] =
+  const [deals, dealFields, orgFields, organizations, pipelines, stages, users, activities, activityTypes, products, goalsRaw] =
     await Promise.all([
       fetchPipedriveCollection('deals', { status: 'all_not_deleted' }),
       fetchPipedriveCollection('dealFields'),
@@ -126,6 +135,8 @@ async function syncPipedrive() {
       fetchPipedriveCollection('stages'),
       fetchPipedriveCollection('users'),
       fetchPipedriveCollection('activities'),
+      fetchPipedriveCollection('activityTypes'),
+      fetchPipedriveCollection('products'),
       fetchPipedriveGoals()
     ]);
 
@@ -139,6 +150,8 @@ async function syncPipedrive() {
   await writeJson('pipedrive-stages.json', stages);
   await writeJson('pipedrive-users.json', users);
   await writeJson('pipedrive-activities.json', activities);
+  await writeJson('pipedrive-activity-types.json', activityTypes);
+  await writeJson('pipedrive-products.json', products);
   await writeJson('pipedrive-goals.json', goals);
 
   // Produtos reais são buscados por negócio. Mantemos apenas os negócios que o
@@ -201,6 +214,8 @@ async function syncPipedrive() {
     stages: stages.length,
     users: users.length,
     activities: activities.length,
+    activityTypes: activityTypes.length,
+    products: products.length,
     goals: goals.length,
     dealProducts: Object.keys(dealProducts).length,
     dealFlows: Object.keys(dealFlows).length

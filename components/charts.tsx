@@ -107,18 +107,20 @@ export function RevenueChart({ data }: { data: MonthlyChartItem[] }) {
           labelFormatter={(label) => `Mês: ${label}`}
         />
         <Legend />
+        <Bar yAxisId="count" dataKey="createdDeals" name="Novos negócios" fill="#2368a0" fillOpacity={0.55} radius={[4, 4, 0, 0]} />
+        <Line yAxisId="count" type="monotone" dataKey="wonDeals" name="Fechados" stroke="#b67818" strokeWidth={3} dot={{ r: 4 }} />
         <Area
           yAxisId="money"
           type="monotone"
           dataKey="wonRevenue"
           name="Receita"
           fill="#21a67a"
-          fillOpacity={0.16}
+          fillOpacity={0.14}
           stroke="#21a67a"
           strokeWidth={3}
+          dot={{ r: 5, fill: "#21a67a", stroke: "#fff", strokeWidth: 2 }}
+          activeDot={{ r: 7 }}
         />
-        <Bar yAxisId="count" dataKey="createdDeals" name="Novos negócios" fill="#2368a0" radius={[4, 4, 0, 0]} />
-        <Line yAxisId="count" type="monotone" dataKey="wonDeals" name="Fechados" stroke="#b67818" strokeWidth={3} dot={{ r: 4 }} />
       </ComposedChart>
     </ResponsiveContainer>
   );

@@ -22,7 +22,7 @@ export type FunnelStackedRow = {
 };
 
 const STAGE_COLORS = [
-  "#bc13fe",
+  "#6d28d9",
   "#21a67a",
   "#b67818",
   "#7c3aed",

@@ -1,13 +1,12 @@
 /**
  * Paleta de gráficos alinhada à marca XPE / USE.
- * Referência: xpeconsultoria.com — roxo #bc13fe, verde neon #39ff14.
- * Verde operacional mantém contraste legível em fundo claro.
+ * Roxo do site (#bc13fe) escurecido para contraste em fundo claro.
  */
 export const chartTheme = {
-  purple: "#bc13fe",
-  purpleDeep: "#9b2fd4",
-  purpleSoft: "#d8b4fe",
-  purpleMuted: "#c084fc",
+  purple: "#6d28d9",
+  purpleDeep: "#5b21b6",
+  purpleSoft: "#c4b5fd",
+  purpleMuted: "#8b5cf6",
   green: "#21a67a",
   greenBrand: "#39ff14",
   amber: "#b67818",
@@ -26,7 +25,7 @@ export const mixColors = [
   "#5b8c5a",
   "#7a6a3a",
   chartTheme.purpleMuted,
-  "#9b5de5",
+  "#a78bfa",
   "#c47f2c",
   "#4b5563"
 ];

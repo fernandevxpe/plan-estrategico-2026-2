@@ -536,7 +536,7 @@ export function CommercialIntelPage({
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(value: number) => num(value, 1)} />
-                  <Bar dataKey="reunioesSemana" name="Reuniões/semana" fill="#bc13fe" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="reunioesSemana" name="Reuniões/semana" fill="#6d28d9" radius={[4, 4, 0, 0]} />
                   <Line dataKey="metaReunioes" name="Meta/semana" stroke="#ef4444" strokeWidth={2} dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>

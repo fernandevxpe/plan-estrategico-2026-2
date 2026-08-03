@@ -9,6 +9,7 @@ const outDir = rawDirUrl;
 await mkdir(outDir, { recursive: true });
 
 const now = new Date().toISOString();
+const today = now.slice(0, 10);
 
 async function writeJson(name, data) {
   await writeFile(new URL(name, outDir), JSON.stringify({ syncedAt: now, data }, null, 2));
@@ -148,13 +149,29 @@ async function enrichGoalsWithResults(goals) {
 
     const intervals = goal.seasonality?.intervals ?? [];
     const intervalResults = [];
+    let skipped = 0;
     for (const interval of intervals) {
+      // Intervalo que ainda não começou sempre devolve zero. A meta semanal tem
+      // 52 deles no ano — buscar os futuros gastava ~40 requisições por rodada
+      // de uma cota diária que é limitada.
+      if (interval.start > today) {
+        intervalResults.push({
+          start: interval.start,
+          end: interval.end,
+          target: interval.target,
+          progress: 0
+        });
+        skipped += 1;
+        continue;
+      }
       const progress = await fetchGoalProgress(goal.id, interval.start, interval.end);
       intervalResults.push({ start: interval.start, end: interval.end, target: interval.target, progress });
     }
 
     enriched.push({ ...goal, totalProgress, intervalResults });
-    console.log(`  meta "${goal.title}" (${intervalResults.length} intervalos)`);
+    console.log(
+      `  meta "${goal.title}" (${intervalResults.length} intervalos, ${skipped} futuros sem consulta)`
+    );
   }
   return enriched;
 }

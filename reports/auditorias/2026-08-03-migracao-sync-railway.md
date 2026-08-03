@@ -12,6 +12,7 @@ highlights:
   - "Arquivos que a plataforma escreve foram para o volume — antes sumiam a cada deploy"
   - "Indicador de frescor mostra quando uma fonte específica para de atualizar"
   - "Sync travava sem erro no 429: retry-after sem teto, sem timeout e sem watchdog"
+  - "Cota diária do Pipedrive é limite rígido: sync caiu de ~1.020 para ~180 requisições"
 ---
 
 ## Por que mudar
@@ -108,6 +109,37 @@ Um `GET /v1/users` isolado confirmou o diagnóstico devolvendo 429.
 - timeout de 60 segundos por requisição
 - watchdog de 20 minutos por etapa, que mata o processo e libera o pipeline
 - log por estágio, porque a ausência de qualquer log foi o que tornou o diagnóstico lento
+
+### O limite é diário, não de rajada
+
+Ler o corpo da resposta esclareceu a natureza do bloqueio:
+
+```json
+{"success":false,"error":"daily request budget exceeded","errorCode":429}
+```
+
+Com `retry-after: 3939` — 66 minutos. Era exatamente esse valor que o código estava
+dormindo. **A cota diária de requisições é um limite rígido da conta**, então o número de
+chamadas por rodada passa a ser uma restrição de projeto, não um detalhe.
+
+Contagem por sync antes das correções:
+
+| Etapa | Requisições |
+| --- | ---: |
+| Coleções paginadas | ~38 |
+| Progresso das metas | ~118 |
+| Produtos por negócio | 47 |
+| Histórico de etapas | 816 |
+| **Total** | **~1.020** |
+
+Duas reduções foram aplicadas:
+
+- **Histórico incremental**: só busca o flow de negócios cujo `update_time` mudou desde a
+  última coleta. Em regime normal cai de 816 para algumas dezenas.
+- **Intervalos futuros de meta não são consultados**: sempre devolvem zero, e a meta semanal
+  tem 52 intervalos no ano. Economiza cerca de 40 requisições por rodada.
+
+O sync passa a custar em torno de 150 a 200 requisições por dia, contra as 1.020 anteriores.
 
 A lição se aplica além deste caso: **um processo dormindo é indistinguível de um processo
 trabalhando se nada for registrado.** O indicador de frescor na plataforma cobre o sintoma

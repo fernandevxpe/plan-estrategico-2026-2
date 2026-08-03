@@ -29,7 +29,23 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
   const metrics = data.periods[period];
   const campaigns = data.campaignPeriods[period].slice().sort((a, b) => b.spend - a.spend);
   const ads = data.adPeriods[period].slice().sort((a, b) => b.videoViews - a.videoViews || b.conversations - a.conversations || b.spend - a.spend).slice(0, 10);
-  const media = useMemo(() => data.instagram.media.slice().sort((a, b) => b.views - a.views || b.interactions - a.interactions).slice(0, 12), [data]);
+  const media = useMemo(() => {
+    const reference = new Date(data.syncedAt);
+    const referenceMonth = reference.toISOString().slice(0, 7);
+    const referenceYear = reference.getUTCFullYear().toString();
+    const cutoffDays = period === "last7d" ? 7 : period === "last30d" ? 30 : null;
+    const cutoff = cutoffDays === null ? null : new Date(reference.getTime() - cutoffDays * 86400000);
+
+    return data.instagram.media
+      .filter((item) => {
+        if (/^\d{4}-\d{2}$/.test(period)) return item.timestamp.startsWith(period);
+        if (period === "month") return item.timestamp.startsWith(referenceMonth);
+        if (period === "ytd") return item.timestamp.startsWith(referenceYear);
+        return cutoff ? new Date(item.timestamp) >= cutoff : true;
+      })
+      .sort((a, b) => b.views - a.views || b.interactions - a.interactions)
+      .slice(0, 12);
+  }, [data, period]);
   const daily = /^\d{4}-\d{2}$/.test(period)
     ? data.daily.filter((row) => row.date.startsWith(period))
     : data.daily.slice(-(period === "last7d" ? 7 : period === "last30d" ? 30 : period === "month" ? 31 : 370));

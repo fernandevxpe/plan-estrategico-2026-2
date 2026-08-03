@@ -66,6 +66,12 @@ jobs:
       - name: Analyze pre-sales data
         run: npm run analyze:presales
 
+      - name: Analyze complete revenue funnel
+        run: npm run analyze:revenue-funnel
+
+      - name: Validate complete revenue funnel
+        run: npm run test:revenue-funnel
+
       - name: Export chat context
         run: npm run export:context
 

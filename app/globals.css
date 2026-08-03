@@ -16,6 +16,100 @@
   --shadow-strong: 0 22px 54px rgba(35, 55, 65, 0.12);
 }
 
+/* Funil 360° — mídia, pré-vendas e CRM em uma única leitura */
+.revenue-funnel-page { display: grid; gap: 16px; width: 100%; min-width: 0; max-width: 100%; overflow: hidden; }
+.revenue-funnel-page > *, .revenue-main-grid > *, .revenue-time-grid > * { min-width: 0; max-width: 100%; }
+.revenue-funnel-toolbar, .revenue-funnel-filters { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.revenue-funnel-toolbar { justify-content: space-between; }
+.revenue-funnel-toolbar > div:first-child { display: grid; gap: 3px; }
+.revenue-funnel-toolbar span, .revenue-funnel-filters > div > span { color: var(--muted); font-size: 11px; }
+.revenue-funnel-toolbar select { min-width: 200px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+.revenue-period-kinds, .revenue-funnel-filters > div { display: flex; align-items: center; gap: 6px; }
+.revenue-period-kinds button, .revenue-funnel-filters button { padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; color: #475569; background: #fff; font: inherit; font-size: 12px; cursor: pointer; }
+.revenue-period-kinds button.active, .revenue-funnel-filters button.active { border-color: #2563eb; color: #1d4ed8; background: #eff6ff; font-weight: 700; }
+.revenue-funnel-filters { flex-wrap: wrap; }
+.revenue-funnel-filters > div > span { margin-right: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.revenue-funnel-filters p { flex: 1; margin: 0; min-width: 260px; color: var(--muted); font-size: 11px; text-align: right; }
+.revenue-funnel-hero { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; overflow: hidden; border-radius: 18px; color: #fff; background: linear-gradient(125deg, #0f172a, #1d4ed8 70%, #0f766e); box-shadow: 0 14px 35px rgba(15, 23, 42, .16); }
+.revenue-funnel-hero > div { display: grid; gap: 5px; }
+.revenue-funnel-hero h2, .revenue-funnel-hero p { margin: 0; }
+.revenue-funnel-hero h2 { font-size: clamp(25px, 4vw, 40px); }
+.revenue-funnel-hero > div > span { color: #bfdbfe; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.revenue-funnel-hero p { color: #dbeafe; }
+.revenue-funnel-hero aside { display: grid; gap: 4px; min-width: 260px; padding: 14px; border: 1px solid rgba(255,255,255,.22); border-radius: 13px; background: rgba(15,23,42,.32); }
+.revenue-funnel-hero aside.warning strong { color: #fde68a; }
+.revenue-funnel-hero aside.reliable strong { color: #86efac; }
+.revenue-funnel-hero aside span { color: #e2e8f0; font-size: 11px; }
+.revenue-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.revenue-kpis article { display: grid; gap: 6px; min-height: 112px; padding: 15px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.revenue-kpis article.accent { border-color: #a7f3d0; background: linear-gradient(145deg, #ecfdf5, #fff); }
+.revenue-kpis span { color: var(--muted); font-size: 11px; }
+.revenue-kpis strong { color: #0f172a; font-size: 22px; line-height: 1.05; }
+.revenue-kpis small { align-self: end; color: #64748b; font-size: 10px; }
+.revenue-main-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .75fr); gap: 16px; }
+.revenue-funnel-card, .revenue-economics-card, .revenue-time-card, .revenue-trend-card, .revenue-period-table { padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+.revenue-funnel-card > header, .revenue-economics-card > header, .revenue-time-card > header, .revenue-trend-card > header, .revenue-period-table > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.revenue-funnel-card header > div, .revenue-economics-card header, .revenue-time-card header, .revenue-trend-card header, .revenue-period-table header { display: flex; flex-direction: column; }
+.revenue-funnel-card header span, .revenue-economics-card header span, .revenue-time-card header span, .revenue-trend-card header span, .revenue-period-table header span { color: var(--muted); font-size: 11px; }
+.revenue-funnel-card header b { padding: 5px 8px; border-radius: 8px; color: #1d4ed8; background: #eff6ff; font-size: 11px; }
+.revenue-funnel-shape { display: flex; align-items: center; flex-direction: column; gap: 6px; }
+.revenue-stage { box-sizing: border-box; padding: 12px 18px; border-radius: 8px; color: #fff; background: linear-gradient(100deg, #1e3a8a, #2563eb); box-shadow: 0 5px 13px rgba(37,99,235,.14); }
+.revenue-stage:nth-child(2) { background: linear-gradient(100deg, #075985, #0891b2); }
+.revenue-stage:nth-child(3) { background: linear-gradient(100deg, #115e59, #0d9488); }
+.revenue-stage:nth-child(4) { background: linear-gradient(100deg, #047857, #10b981); }
+.revenue-stage:nth-child(5) { background: linear-gradient(100deg, #15803d, #22c55e); }
+.revenue-stage:nth-child(6) { background: linear-gradient(100deg, #4d7c0f, #84cc16); }
+.revenue-stage:nth-child(7) { background: linear-gradient(100deg, #a16207, #eab308); }
+.revenue-stage.observed { outline: 1px dashed rgba(255,255,255,.65); outline-offset: -4px; }
+.revenue-stage > div { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.revenue-stage span { display: flex; flex-direction: column; font-size: 12px; font-weight: 700; }
+.revenue-stage em { opacity: .72; font-size: 9px; font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
+.revenue-stage strong { font-size: 21px; }
+.revenue-stage small { display: block; margin-top: 3px; opacity: .8; font-size: 9px; }
+.revenue-economics-card dl { display: grid; gap: 0; margin: 0; }
+.revenue-economics-card dl > div { display: flex; justify-content: space-between; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.revenue-economics-card dt { color: #64748b; font-size: 11px; }
+.revenue-economics-card dd { margin: 0; color: #0f172a; font-size: 13px; font-weight: 800; }
+.revenue-economics-card dl > div.success dd { color: #047857; font-size: 18px; }
+.revenue-economics-card p { margin: 14px 0 0; padding: 10px; border-radius: 9px; color: #92400e; background: #fffbeb; font-size: 10px; line-height: 1.45; }
+.revenue-time-grid { display: grid; grid-template-columns: minmax(300px, .9fr) minmax(0, 1.25fr); gap: 16px; }
+.revenue-time-card > div { display: grid; }
+.revenue-time-card > div > div { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.revenue-time-card > div span, .revenue-time-card > div strong { display: flex; flex-direction: column; }
+.revenue-time-card small, .revenue-time-card em { color: var(--muted); font-size: 9px; font-style: normal; font-weight: 400; }
+.revenue-time-card strong { align-items: flex-end; color: #1d4ed8; font-size: 13px; }
+.revenue-period-table { overflow: hidden; }
+.revenue-period-table .table-wrap { overflow-x: auto; }
+.revenue-period-table table { min-width: 1120px; }
+.revenue-period-table th, .revenue-period-table td { white-space: nowrap; font-size: 11px; }
+.revenue-methodology { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.revenue-methodology article { padding: 15px; border: 1px solid var(--line); border-radius: 13px; background: #f8fafc; }
+.revenue-methodology strong { color: #0f172a; font-size: 12px; }
+.revenue-methodology p { margin: 6px 0 0; color: #64748b; font-size: 10px; line-height: 1.5; }
+
+@media (max-width: 1180px) {
+  .revenue-kpis { grid-template-columns: repeat(3, 1fr); }
+  .revenue-main-grid, .revenue-time-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .revenue-funnel-toolbar, .revenue-funnel-filters, .revenue-funnel-hero { align-items: stretch; flex-direction: column; }
+  .revenue-funnel-toolbar select, .revenue-funnel-hero aside { min-width: 0; width: 100%; }
+  .revenue-period-kinds { display: grid; grid-template-columns: repeat(2, 1fr); width: 100%; }
+  .revenue-funnel-filters > div { flex-wrap: wrap; }
+  .revenue-funnel-filters p { min-width: 0; text-align: left; }
+  .revenue-kpis { grid-template-columns: 1fr 1fr; }
+  .revenue-stage { width: 100% !important; }
+  .revenue-stage > div { min-width: 0; }
+  .revenue-stage span { overflow: hidden; }
+  .revenue-stage strong { flex-shrink: 0; }
+  .revenue-methodology { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px) {
+  .revenue-kpis { grid-template-columns: 1fr; }
+}
+
 /* Marketing — Meta Ads + Instagram */
 .marketing-page { display: grid; gap: 18px; }
 .marketing-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }

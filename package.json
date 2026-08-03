@@ -15,8 +15,10 @@
     "analyze": "node scripts/analyze.mjs",
     "analyze:meta": "node scripts/analyze-meta.mjs",
     "analyze:presales": "node scripts/analyze-presales.mjs",
+    "analyze:revenue-funnel": "node scripts/analyze-revenue-funnel.mjs",
     "test:meta": "node scripts/test-meta.mjs",
     "test:presales": "node scripts/test-presales.mjs",
+    "test:revenue-funnel": "node scripts/test-revenue-funnel.mjs",
     "export:context": "node scripts/export-chat-context.mjs",
     "build": "npm run sync && npm run analyze && npm run export:context"
   },

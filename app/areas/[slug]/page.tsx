@@ -16,6 +16,7 @@ import { buildSmartChargingDashboard } from "@/lib/areas/build-smart-charging-da
 import { buildVendasUnitEconomics } from "@/lib/areas/build-vendas-unit-economics";
 import { buildMarketingDashboard } from "@/lib/areas/build-marketing-dashboard";
 import { buildPresalesDashboard } from "@/lib/areas/build-presales-dashboard";
+import { buildRevenueFunnelDashboard } from "@/lib/areas/build-revenue-funnel-dashboard";
 import { AREA_SLUGS } from "@/lib/areas/registry";
 import { loadDashboardData } from "@/lib/data/load-dashboard";
 
@@ -63,6 +64,7 @@ export default async function AreaSlugPage({ params }: Props) {
   const obras = slug === "obras" ? buildObrasDashboard(analysis) : null;
   const marketing = slug === "marketing" ? buildMarketingDashboard(analysis) : null;
   const presales = slug === "pre-vendas" ? buildPresalesDashboard() : null;
+  const revenueFunnel = slug === "funil-360" ? buildRevenueFunnelDashboard() : null;
 
   return (
     <AppShell>
@@ -83,6 +85,7 @@ export default async function AreaSlugPage({ params }: Props) {
         obras={obras}
         marketing={marketing}
         presales={presales}
+        revenueFunnel={revenueFunnel}
       />
     </AppShell>
   );

@@ -22,6 +22,15 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     lead: "Diretor Comercial"
   },
   {
+    id: "funil-360",
+    name: "Funil 360°",
+    shortName: "Funil 360°",
+    description: "Visão consolidada da verba de mídia ao fechamento, com taxas, custos, perdas e tempo por etapa.",
+    parentId: null,
+    status: "monitorando",
+    lead: "Marketing + Pré-vendas + Comercial"
+  },
+  {
     id: "consultoria",
     name: "Consultoria",
     shortName: "Consultoria",

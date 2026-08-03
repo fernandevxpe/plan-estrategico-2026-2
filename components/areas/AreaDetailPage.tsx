@@ -29,6 +29,8 @@ import type { MarketingDashboard } from "@/lib/areas/build-marketing-dashboard";
 import { MarketingAreaPage } from "@/components/areas/MarketingAreaPage";
 import type { PresalesDashboard } from "@/lib/areas/build-presales-dashboard";
 import { PresalesAreaPage } from "@/components/areas/PresalesAreaPage";
+import type { RevenueFunnelDashboard } from "@/lib/areas/build-revenue-funnel-dashboard";
+import { RevenueFunnelAreaPage } from "@/components/areas/RevenueFunnelAreaPage";
 
 type Props = {
   dashboard: AreasDashboard;
@@ -47,6 +49,7 @@ type Props = {
   obras?: ObrasDashboard | null;
   marketing?: MarketingDashboard | null;
   presales?: PresalesDashboard | null;
+  revenueFunnel?: RevenueFunnelDashboard | null;
 };
 
 export function AreaDetailPage({
@@ -65,7 +68,8 @@ export function AreaDetailPage({
   eventos,
   obras,
   marketing,
-  presales
+  presales,
+  revenueFunnel
 }: Props) {
   return (
     <div className="areas-page">
@@ -118,6 +122,8 @@ export function AreaDetailPage({
             <MarketingAreaPage area={area} data={marketing} />
           ) : area.id === "pre-vendas" && presales ? (
             <PresalesAreaPage area={area} data={presales} />
+          ) : area.id === "funil-360" && revenueFunnel ? (
+            <RevenueFunnelAreaPage area={area} data={revenueFunnel} />
           ) : (
             <AreaDetailPanel area={area} />
           )}

@@ -83,7 +83,8 @@ const STEPS = [
   { name: 'funil de receita', script: 'scripts/analyze-revenue-funnel.mjs', required: false },
   { name: 'inteligência comercial', script: 'scripts/analyze-commercial-intel.mjs', required: true },
   { name: 'snapshot do CRM', script: 'scripts/build-crm-snapshot.mjs', required: true },
-  { name: 'índice de auditorias', script: 'scripts/build-audit-index.mjs', required: true }
+  { name: 'índice de auditorias', script: 'scripts/build-audit-index.mjs', required: true },
+  { name: 'persistência PostgreSQL', script: 'scripts/storage-push.mjs', required: true }
 ];
 
 let running = false;

@@ -6,13 +6,8 @@ export const metadata: Metadata = {
   description: "Dashboard local para planejamento estrategico 2026.2"
 };
 
-/**
- * O sync diário escreve num volume, não no bundle. Sem revalidação as páginas
- * ficariam congeladas no estado do build e o dado novo só apareceria em um
- * redeploy — que é justamente o que queremos evitar. 5 minutos dá frescor de
- * sobra para um dado que muda uma vez por dia, sem re-renderizar a cada request.
- */
-export const revalidate = 300;
+/** Os dados são hidratados do PostgreSQL para o volume e lidos em runtime. */
+export const dynamic = "force-dynamic";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

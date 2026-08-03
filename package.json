@@ -26,17 +26,22 @@
     "build": "npm run sync && npm run analyze && npm run analyze:commercial-intel && npm run build:crm-snapshot && npm run build:audits && npm run export:context",
     "start:next": "next start",
     "sync:all": "node scripts/scheduler.mjs --once",
-    "build:audits": "node scripts/build-audit-index.mjs"
+    "build:audits": "node scripts/build-audit-index.mjs",
+    "storage:push": "node scripts/storage-push.mjs",
+    "storage:hydrate": "node scripts/storage-hydrate.mjs",
+    "storage:status": "node scripts/storage-status.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
     "next": "^16.2.9",
+    "pg": "^8.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "recharts": "^2.12.7"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",
+    "@types/pg": "^8.20.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "typescript": "^5.5.3"

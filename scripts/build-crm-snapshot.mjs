@@ -1,6 +1,6 @@
-// data/raw/ não vai para o git (são dezenas de MB), então em produção a Vercel
-// nunca vê esses arquivos. Este script recorta só o que a Gestão XPE lê em
-// runtime e grava em data/processed/, que é versionado e vai junto no deploy.
+// data/raw/ não vai para o git (são dezenas de MB). Este script recorta só o
+// que a Gestão XPE lê em runtime. O resultado vai ao cache do volume e depois
+// ao PostgreSQL do Railway.
 import { readFile, writeFile } from 'node:fs/promises';
 import { rawDirUrl, processedDirUrl, ensureDataDirs } from './lib/paths.mjs';
 ensureDataDirs();

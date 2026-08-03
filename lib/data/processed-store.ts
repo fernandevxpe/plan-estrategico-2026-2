@@ -12,8 +12,8 @@ import path from "node:path";
  * em memória por processo) o sync diário passa a valer sem rebuild: basta o
  * arquivo mudar no volume.
  *
- * `DATA_DIR` aponta para o volume no Railway; no local e no build cai em
- * `<projeto>/data`.
+ * `DATA_DIR` aponta para o volume no Railway. O processo de produção hidrata
+ * esse cache a partir do PostgreSQL antes de iniciar o Next.
  */
 const DATA_ROOT = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
@@ -21,7 +21,7 @@ const DATA_ROOT = process.env.DATA_DIR
 
 const PROCESSED_DIR = path.join(DATA_ROOT, "processed");
 
-/** Fallback para o snapshot versionado quando o volume ainda não foi populado. */
+/** Fallback local para desenvolvimento; artefatos processados não são versionados. */
 const SEED_DIR = path.join(process.cwd(), "data", "processed");
 
 type CacheEntry = { mtimeMs: number; value: unknown };

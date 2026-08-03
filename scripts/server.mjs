@@ -12,13 +12,38 @@ const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : pat
 const SEED_DIR = path.join(process.cwd(), 'data');
 
 /**
- * Primeira subida com volume vazio: copia o snapshot versionado para o volume
- * para a plataforma não abrir sem dado nenhum enquanto o primeiro sync roda.
+ * Os artefatos processados vivem no PostgreSQL e são hidratados no volume antes
+ * do Next iniciar. O volume funciona como cache local rápido; o banco é a cópia
+ * persistente e auditável.
  */
+async function hydrateProcessedData() {
+  if (!process.env.DATABASE_URL && !process.env.DATABASE_PUBLIC_URL) {
+    console.warn('[server] banco de artefatos não configurado; mantendo cache atual do volume');
+    return;
+  }
+  await new Promise((resolve) => {
+    const child = spawn('node', ['scripts/storage-hydrate.mjs'], {
+      stdio: 'inherit',
+      env: { ...process.env, DATA_DIR }
+    });
+    const timeout = setTimeout(() => child.kill('SIGKILL'), 90_000);
+    child.on('error', (error) => {
+      clearTimeout(timeout);
+      console.warn('[server] não consegui iniciar a hidratação:', error.message);
+      resolve();
+    });
+    child.on('exit', (code) => {
+      clearTimeout(timeout);
+      if (code !== 0) console.warn(`[server] hidratação terminou com código ${code}; mantendo cache do volume`);
+      resolve();
+    });
+  });
+}
+
 async function seedVolume() {
   if (DATA_DIR === SEED_DIR) return;
   await mkdir(DATA_DIR, { recursive: true });
-  for (const folder of ['processed', 'areas', 'gestao-xpe']) {
+  for (const folder of ['areas', 'gestao-xpe']) {
     const target = path.join(DATA_DIR, folder);
     try {
       await access(target);
@@ -40,6 +65,7 @@ async function seedVolume() {
   }
 }
 
+await hydrateProcessedData();
 await seedVolume();
 
 const { startScheduler } = await import('./scheduler.mjs');
@@ -53,14 +79,31 @@ const next = spawn('npx', ['next', 'start', '--port', port, '--hostname', '0.0.0
   env: process.env
 });
 
+// Toda troca de deploy manda SIGTERM. Sair com código diferente de zero aqui faz
+// a plataforma registrar uma substituição rotineira como queda — e disparar
+// alerta de crash por e-mail. Encerramento pedido de fora não é falha.
+let shuttingDown = false;
+
 const shutdown = (signal) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
   console.log(`[server] recebido ${signal}, encerrando`);
   next.kill(signal);
+  // Se o Next travar no encerramento, não segura o container até o kill forçado.
+  setTimeout(() => {
+    console.log('[server] Next não encerrou a tempo, saindo mesmo assim');
+    process.exit(0);
+  }, 10_000).unref();
 };
+
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-next.on('exit', (code) => {
-  console.log(`[server] Next encerrou com código ${code}`);
-  process.exit(code ?? 0);
+next.on('exit', (code, signal) => {
+  if (shuttingDown) {
+    console.log(`[server] encerrado a pedido (${signal ?? `código ${code}`})`);
+    process.exit(0);
+  }
+  console.log(`[server] Next encerrou sozinho com código ${code}${signal ? ` (${signal})` : ''}`);
+  process.exit(code ?? 1);
 });

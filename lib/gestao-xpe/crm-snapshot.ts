@@ -5,10 +5,9 @@ import { readProcessed } from "@/lib/data/processed-store";
 /**
  * Recorte do CRM que a Gestão XPE lê em runtime.
  *
- * Vive em data/processed/ (versionado) e não em data/raw/ (gitignored): os
- * arquivos brutos passam de 70 MB e nunca chegam à Vercel, então ler direto de
- * data/raw/ funcionava só na máquina local e quebrava em produção.
- * Regenerado a cada sync por scripts/build-crm-snapshot.mjs.
+ * Vive no PostgreSQL e é hidratado em data/processed/ no volume do Railway.
+ * Os arquivos brutos permanecem fora do Git. Regenerado a cada sincronização
+ * por scripts/build-crm-snapshot.mjs.
  */
 export type CrmSnapshot = {
   syncedAt: string | null;

@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { AreaDashboardItem } from "@/lib/areas/types";
-import type { MarketingDashboard, MarketingPeriodKey } from "@/lib/areas/build-marketing-dashboard";
+import type {
+  MarketingDailyCreativeRow,
+  MarketingDashboard,
+  MarketingPerformanceRow,
+  MarketingPeriodKey
+} from "@/lib/areas/build-marketing-dashboard";
 import { AreaDetailPanel } from "@/components/areas/AreasOverview";
 import { MarketingCreativesTab } from "@/components/areas/MarketingCreativesTab";
+import { MarketingTrendChart } from "@/components/areas/MarketingTrendChart";
 
 const BASE_PERIODS: Array<{ key: MarketingPeriodKey; label: string }> = [
   { key: "last7d", label: "7 dias" },
@@ -14,10 +19,130 @@ const BASE_PERIODS: Array<{ key: MarketingPeriodKey; label: string }> = [
   { key: "ytd", label: "Ano" }
 ];
 
-const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = (value: number) =>
+  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
 const integer = (value: number) => Math.round(value).toLocaleString("pt-BR");
 const decimal = (value: number) => value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
-const date = (value: string) => new Date(value).toLocaleDateString("pt-BR");
+const shortDate = (value: string) =>
+  new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
+
+type AdDelivery = {
+  activeDays: number;
+  firstDate: string | null;
+  lastDate: string | null;
+};
+
+function dailyWindow(data: MarketingDashboard, period: MarketingPeriodKey) {
+  if (/^\d{4}-\d{2}$/.test(period)) return data.daily.filter((row) => row.date.startsWith(period));
+  const take =
+    period === "last7d" ? 7 : period === "last30d" ? 30 : period === "month" ? 31 : data.daily.length;
+  return data.daily.slice(-take);
+}
+
+function buildAdDeliveryMap(
+  adDaily: MarketingDailyCreativeRow[],
+  dates: Set<string>
+): Map<string, AdDelivery> {
+  const map = new Map<string, { dates: Set<string> }>();
+  for (const row of adDaily) {
+    if (!dates.has(row.date)) continue;
+    if (!(row.spend > 0 || row.impressions > 0 || row.clicks > 0)) continue;
+    const bucket = map.get(row.adId) ?? { dates: new Set<string>() };
+    bucket.dates.add(row.date);
+    map.set(row.adId, bucket);
+  }
+  const out = new Map<string, AdDelivery>();
+  for (const [adId, bucket] of map) {
+    const sorted = [...bucket.dates].sort();
+    out.set(adId, {
+      activeDays: sorted.length,
+      firstDate: sorted[0] ?? null,
+      lastDate: sorted.at(-1) ?? null
+    });
+  }
+  return out;
+}
+
+function deliveryLabel(delivery: AdDelivery | undefined) {
+  if (!delivery?.firstDate || !delivery.lastDate) return "Sem entrega no período";
+  if (delivery.firstDate === delivery.lastDate) {
+    return `${delivery.activeDays} dia · ${shortDate(delivery.firstDate)}`;
+  }
+  return `${delivery.activeDays} dias · ${shortDate(delivery.firstDate)} → ${shortDate(delivery.lastDate)}`;
+}
+
+function AdCreativeCard({
+  row,
+  delivery
+}: {
+  row: MarketingPerformanceRow;
+  delivery?: AdDelivery;
+}) {
+  const cpc = row.clicks ? row.spend / row.clicks : null;
+  const status =
+    row.effectiveStatus === "ACTIVE"
+      ? "Ativo"
+      : row.effectiveStatus?.includes("PAUSED")
+        ? "Pausado"
+        : row.effectiveStatus ?? "—";
+
+  return (
+    <article className="marketing-creative-card">
+      {row.creative?.thumbnailUrl ? (
+        <img src={row.creative.thumbnailUrl} alt="" loading="lazy" />
+      ) : (
+        <div className="marketing-creative-placeholder">Sem miniatura</div>
+      )}
+      <div>
+        <div className="marketing-creative-card-top">
+          <span>{row.campaignName}</span>
+          <em className={row.effectiveStatus === "ACTIVE" ? "is-on" : ""}>{status}</em>
+        </div>
+        <strong title={row.adName}>{row.adName}</strong>
+        <p className="marketing-creative-delivery">{deliveryLabel(delivery)}</p>
+        <dl className="marketing-creative-metrics">
+          <div>
+            <dt>Investido</dt>
+            <dd>{money(row.spend)}</dd>
+          </div>
+          <div>
+            <dt>Cliques</dt>
+            <dd>{integer(row.outboundClicks || row.clicks)}</dd>
+          </div>
+          <div>
+            <dt>Conversas</dt>
+            <dd>{integer(row.conversations)}</dd>
+          </div>
+          <div>
+            <dt>CPC</dt>
+            <dd>{cpc == null ? "—" : money(cpc)}</dd>
+          </div>
+          <div>
+            <dt>Custo/conv.</dt>
+            <dd>{row.costPerConversation == null ? "—" : money(row.costPerConversation)}</dd>
+          </div>
+          <div>
+            <dt>CTR</dt>
+            <dd>{decimal(row.ctr)}%</dd>
+          </div>
+          <div>
+            <dt>Views</dt>
+            <dd>{integer(row.videoViews)}</dd>
+          </div>
+          <div>
+            <dt>100% vídeo</dt>
+            <dd>{integer(row.video100)}</dd>
+          </div>
+        </dl>
+        {row.creative?.permalink ? (
+          <a href={row.creative.permalink} target="_blank" rel="noreferrer">
+            Abrir publicação ↗
+          </a>
+        ) : null}
+      </div>
+    </article>
+  );
+}
 
 export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; data: MarketingDashboard }) {
   const [period, setPeriod] = useState<MarketingPeriodKey>("last30d");
@@ -25,15 +150,33 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("view") === "creatives") setView("creatives");
   }, []);
-  const monthPeriods = useMemo(() => Object.keys(data.periods)
-    .filter((key) => /^\d{4}-\d{2}$/.test(key))
-    .sort()
-    .reverse()
-    .map((key) => ({ key: key as MarketingPeriodKey, label: new Date(`${key}-15T12:00:00`).toLocaleDateString("pt-BR", { month: "short", year: "numeric" }).replace(" de ", "/") })), [data.periods]);
+  const monthPeriods = useMemo(
+    () =>
+      Object.keys(data.periods)
+        .filter((key) => /^\d{4}-\d{2}$/.test(key))
+        .sort()
+        .reverse()
+        .map((key) => ({
+          key: key as MarketingPeriodKey,
+          label: new Date(`${key}-15T12:00:00`)
+            .toLocaleDateString("pt-BR", { month: "short", year: "numeric" })
+            .replace(" de ", "/")
+        })),
+    [data.periods]
+  );
   const periodOptions = [...BASE_PERIODS, ...monthPeriods];
   const metrics = data.periods[period];
   const campaigns = data.campaignPeriods[period].slice().sort((a, b) => b.spend - a.spend);
-  const ads = data.adPeriods[period].slice().sort((a, b) => b.videoViews - a.videoViews || b.conversations - a.conversations || b.spend - a.spend).slice(0, 10);
+  const ads = data.adPeriods[period]
+    .slice()
+    .sort((a, b) => b.spend - a.spend || b.conversations - a.conversations || b.videoViews - a.videoViews)
+    .slice(0, 12);
+  const daily = useMemo(() => dailyWindow(data, period), [data, period]);
+  const deliveryByAd = useMemo(() => {
+    const dates = new Set(daily.map((row) => row.date));
+    return buildAdDeliveryMap(data.adDaily ?? [], dates);
+  }, [data.adDaily, daily]);
+
   const media = useMemo(() => {
     const reference = new Date(data.syncedAt);
     const referenceMonth = reference.toISOString().slice(0, 7);
@@ -51,9 +194,6 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
       .sort((a, b) => b.views - a.views || b.interactions - a.interactions)
       .slice(0, 12);
   }, [data, period]);
-  const daily = /^\d{4}-\d{2}$/.test(period)
-    ? data.daily.filter((row) => row.date.startsWith(period))
-    : data.daily.slice(-(period === "last7d" ? 7 : period === "last30d" ? 30 : period === "month" ? 31 : 370));
 
   return (
     <div className="marketing-page">
@@ -63,67 +203,230 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
           <span>Atualizado em {new Date(data.syncedAt).toLocaleString("pt-BR")}</span>
         </div>
         <div className="marketing-periods" aria-label="Período">
-          {periodOptions.map((item) => <button key={item.key} type="button" className={period === item.key ? "active" : ""} onClick={() => setPeriod(item.key)}>{item.label}</button>)}
+          {periodOptions.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={period === item.key ? "active" : ""}
+              onClick={() => setPeriod(item.key)}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </div>
 
       <nav className="marketing-tabs" aria-label="Análises de marketing">
-        <button type="button" className={view === "overview" ? "active" : ""} onClick={() => setView("overview")}><strong>Visão geral</strong><span>Conta, campanhas e Instagram</span></button>
-        <button type="button" className={view === "creatives" ? "active" : ""} onClick={() => setView("creatives")}><strong>Análise de criativos</strong><span>Ranking, custos, funil e histórico</span></button>
+        <button type="button" className={view === "overview" ? "active" : ""} onClick={() => setView("overview")}>
+          <strong>Visão geral</strong>
+          <span>Conta, campanhas e Instagram</span>
+        </button>
+        <button type="button" className={view === "creatives" ? "active" : ""} onClick={() => setView("creatives")}>
+          <strong>Análise de criativos</strong>
+          <span>Ranking, custos, funil e histórico</span>
+        </button>
       </nav>
 
-      {view === "creatives" ? <MarketingCreativesTab data={data} period={period} /> : <>
+      {view === "creatives" ? (
+        <MarketingCreativesTab data={data} period={period} />
+      ) : (
+        <>
+          <section className="marketing-kpis">
+            <article>
+              <span>Investimento</span>
+              <strong>{money(metrics.spend)}</strong>
+              <small>{data.totals.activeCampaigns} campanha(s) ativa(s)</small>
+            </article>
+            <article>
+              <span>Alcance</span>
+              <strong>{integer(metrics.reach)}</strong>
+              <small>
+                {integer(metrics.impressions)} impressões · freq. {decimal(metrics.frequency)}
+              </small>
+            </article>
+            <article>
+              <span>Cliques externos</span>
+              <strong>{integer(metrics.outboundClicks)}</strong>
+              <small>
+                CTR {decimal(metrics.ctr)}% · CPC {money(metrics.cpc)}
+              </small>
+            </article>
+            <article>
+              <span>Páginas carregadas</span>
+              <strong>{integer(metrics.landingPageViews)}</strong>
+              <small>
+                {metrics.costPerLandingPageView == null
+                  ? "Sem custo calculável"
+                  : `${money(metrics.costPerLandingPageView)} por acesso`}
+              </small>
+            </article>
+            <article>
+              <span>Conversas iniciadas</span>
+              <strong>{integer(metrics.conversations)}</strong>
+              <small>
+                {metrics.costPerConversation == null
+                  ? "Sem custo calculável"
+                  : `${money(metrics.costPerConversation)} por conversa`}
+              </small>
+            </article>
+            <article>
+              <span>Visualizações de vídeo</span>
+              <strong>{integer(metrics.videoViews)}</strong>
+              <small>{integer(metrics.video100)} chegaram a 100%</small>
+            </article>
+          </section>
 
-      <section className="marketing-kpis">
-        <article><span>Investimento</span><strong>{money(metrics.spend)}</strong><small>{data.totals.activeCampaigns} campanha(s) ativa(s)</small></article>
-        <article><span>Alcance</span><strong>{integer(metrics.reach)}</strong><small>{integer(metrics.impressions)} impressões · freq. {decimal(metrics.frequency)}</small></article>
-        <article><span>Cliques externos</span><strong>{integer(metrics.outboundClicks)}</strong><small>CTR {decimal(metrics.ctr)}% · CPC {money(metrics.cpc)}</small></article>
-        <article><span>Páginas carregadas</span><strong>{integer(metrics.landingPageViews)}</strong><small>{metrics.costPerLandingPageView == null ? "Sem custo calculável" : `${money(metrics.costPerLandingPageView)} por acesso`}</small></article>
-        <article><span>Conversas iniciadas</span><strong>{integer(metrics.conversations)}</strong><small>{metrics.costPerConversation == null ? "Sem custo calculável" : `${money(metrics.costPerConversation)} por conversa`}</small></article>
-        <article><span>Visualizações de vídeo</span><strong>{integer(metrics.videoViews)}</strong><small>{integer(metrics.video100)} chegaram a 100%</small></article>
-      </section>
+          <MarketingTrendChart daily={daily} />
 
-      <section className="marketing-grid">
-        <article className="marketing-panel marketing-chart-panel">
-          <header><strong>Cliques e conversas por dia</strong><span>Conta de anúncios</span></header>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={daily}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" tickFormatter={(v) => v.slice(5)} /><YAxis /><Tooltip labelFormatter={date} /><Line type="monotone" dataKey="outboundClicks" name="Cliques externos" stroke="#2563eb" strokeWidth={2} dot={false} /><Line type="monotone" dataKey="conversations" name="Conversas" stroke="#16a34a" strokeWidth={2} dot={false} /></LineChart>
-          </ResponsiveContainer>
-        </article>
-        <article className="marketing-panel marketing-chart-panel">
-          <header><strong>Investimento diário</strong><span>R$ por dia</span></header>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={daily}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" tickFormatter={(v) => v.slice(5)} /><YAxis /><Tooltip labelFormatter={date} formatter={(v) => money(Number(v))} /><Bar dataKey="spend" name="Investimento" fill="#7c3aed" radius={[4, 4, 0, 0]} /></BarChart>
-          </ResponsiveContainer>
-        </article>
-      </section>
+          <section className="marketing-panel">
+            <header>
+              <strong>Campanhas no período</strong>
+              <span>
+                {campaigns.length} com entrega · {data.totals.campaigns} cadastradas ·{" "}
+                {data.totals.activeCampaigns} ativas agora
+              </span>
+            </header>
+            <div className="table-wrap">
+              <table className="marketing-table">
+                <thead>
+                  <tr>
+                    <th>Campanha</th>
+                    <th>Objetivo</th>
+                    <th>Investimento</th>
+                    <th>Alcance</th>
+                    <th>Cliques</th>
+                    <th>Conversas</th>
+                    <th>Custo/conversa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {campaigns.map((row) => (
+                    <tr key={row.campaignId}>
+                      <td>{row.campaignName}</td>
+                      <td>{row.objective ?? "—"}</td>
+                      <td>{money(row.spend)}</td>
+                      <td>{integer(row.reach)}</td>
+                      <td>{integer(row.outboundClicks)}</td>
+                      <td>{integer(row.conversations)}</td>
+                      <td>{row.costPerConversation == null ? "—" : money(row.costPerConversation)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-      <section className="marketing-panel">
-        <header><strong>Campanhas no período</strong><span>{campaigns.length} com entrega · {data.totals.campaigns} cadastradas · {data.totals.activeCampaigns} ativas agora</span></header>
-        <div className="table-wrap"><table className="marketing-table"><thead><tr><th>Campanha</th><th>Objetivo</th><th>Investimento</th><th>Alcance</th><th>Cliques</th><th>Conversas</th><th>Custo/conversa</th></tr></thead><tbody>{campaigns.map((row) => <tr key={row.campaignId}><td>{row.campaignName}</td><td>{row.objective ?? "—"}</td><td>{money(row.spend)}</td><td>{integer(row.reach)}</td><td>{integer(row.outboundClicks)}</td><td>{integer(row.conversations)}</td><td>{row.costPerConversation == null ? "—" : money(row.costPerConversation)}</td></tr>)}</tbody></table></div>
-      </section>
+          <section className="marketing-panel">
+            <header>
+              <strong>Melhores anúncios</strong>
+              <span>Ordenado por investimento no período · entrega e eficiência no card</span>
+            </header>
+            <div className="marketing-creative-grid">
+              {ads.map((row) => (
+                <AdCreativeCard
+                  key={row.adId}
+                  row={row}
+                  delivery={row.adId ? deliveryByAd.get(row.adId) : undefined}
+                />
+              ))}
+            </div>
+          </section>
 
-      <section className="marketing-panel">
-        <header><strong>Melhores anúncios e vídeos</strong><span>Ordenado por visualizações, conversas e investimento</span></header>
-        <div className="marketing-creative-grid">{ads.map((row) => <article key={row.adId} className="marketing-creative-card">{row.creative?.thumbnailUrl ? <img src={row.creative.thumbnailUrl} alt="" loading="lazy" /> : <div className="marketing-creative-placeholder">Sem miniatura</div>}<div><span>{row.campaignName}</span><strong>{row.adName}</strong><small>{integer(row.videoViews)} views · {integer(row.video100)} completas · {integer(row.conversations)} conversas</small>{row.creative?.permalink ? <a href={row.creative.permalink} target="_blank" rel="noreferrer">Abrir publicação ↗</a> : null}</div></article>)}</div>
-      </section>
+          <section className="marketing-grid">
+            <article className="marketing-panel">
+              <header>
+                <strong>Instagram @{data.instagram.profile.username}</strong>
+                <span>
+                  {integer(data.instagram.profile.followers_count)} seguidores ·{" "}
+                  {integer(data.instagram.profile.media_count)} publicações
+                </span>
+              </header>
+              <div className="marketing-instagram-grid">
+                {media.map((item) => (
+                  <a key={item.id} href={item.permalink} target="_blank" rel="noreferrer" className="marketing-media-card">
+                    {item.thumbnailUrl ? (
+                      <img src={item.thumbnailUrl} alt="" loading="lazy" />
+                    ) : (
+                      <div className="marketing-creative-placeholder">{item.mediaProductType}</div>
+                    )}
+                    <strong>{integer(item.views)} views</strong>
+                    <span>
+                      {integer(item.reach)} alcance · {integer(item.interactions)} interações
+                    </span>
+                    <small>
+                      {item.averageWatchTimeMs
+                        ? `${decimal(item.averageWatchTimeMs / 1000)}s média`
+                        : item.mediaProductType}
+                    </small>
+                  </a>
+                ))}
+              </div>
+            </article>
+            <article className="marketing-panel marketing-attribution">
+              <header>
+                <strong>Marketing → Pipedrive</strong>
+                <span>Atribuição gerencial YTD</span>
+              </header>
+              <dl>
+                <div>
+                  <dt>Investimento Meta</dt>
+                  <dd>{money(data.attribution.metaSpendYtd)}</dd>
+                </div>
+                <div>
+                  <dt>Ganhos de tráfego pago</dt>
+                  <dd>{integer(data.attribution.paidTrafficWonDealsYtd)}</dd>
+                </div>
+                <div>
+                  <dt>Receita ganha</dt>
+                  <dd>{money(data.attribution.paidTrafficWonRevenueYtd)}</dd>
+                </div>
+                <div>
+                  <dt>Pipeline aberto</dt>
+                  <dd>
+                    {integer(data.attribution.paidTrafficOpenDeals)} ·{" "}
+                    {money(data.attribution.paidTrafficOpenValue)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Receita / investimento</dt>
+                  <dd>
+                    {data.attribution.crmRevenueToSpend == null
+                      ? "—"
+                      : `${decimal(data.attribution.crmRevenueToSpend)}×`}
+                  </dd>
+                </div>
+              </dl>
+              <p>{data.attribution.note}</p>
+              <div className={`marketing-pixel ${data.pixel.last_fired_time ? "ok" : "pending"}`}>
+                <strong>Pixel: {data.pixel.name}</strong>
+                <span>
+                  {data.pixel.last_fired_time
+                    ? `Último evento: ${new Date(data.pixel.last_fired_time).toLocaleString("pt-BR")}`
+                    : "Sem evento recente"}
+                </span>
+                <small>
+                  {data.pixel.last_fired_time
+                    ? "Pixel ativo · análise baseada no Meta Ads Insights"
+                    : "Verificar atividade do Pixel"}
+                </small>
+              </div>
+            </article>
+          </section>
 
-      <section className="marketing-grid">
-        <article className="marketing-panel">
-          <header><strong>Instagram @{data.instagram.profile.username}</strong><span>{integer(data.instagram.profile.followers_count)} seguidores · {integer(data.instagram.profile.media_count)} publicações</span></header>
-          <div className="marketing-instagram-grid">{media.map((item) => <a key={item.id} href={item.permalink} target="_blank" rel="noreferrer" className="marketing-media-card">{item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" loading="lazy" /> : <div className="marketing-creative-placeholder">{item.mediaProductType}</div>}<strong>{integer(item.views)} views</strong><span>{integer(item.reach)} alcance · {integer(item.interactions)} interações</span><small>{item.averageWatchTimeMs ? `${decimal(item.averageWatchTimeMs / 1000)}s média` : item.mediaProductType}</small></a>)}</div>
-        </article>
-        <article className="marketing-panel marketing-attribution">
-          <header><strong>Marketing → Pipedrive</strong><span>Atribuição gerencial YTD</span></header>
-          <dl><div><dt>Investimento Meta</dt><dd>{money(data.attribution.metaSpendYtd)}</dd></div><div><dt>Ganhos de tráfego pago</dt><dd>{integer(data.attribution.paidTrafficWonDealsYtd)}</dd></div><div><dt>Receita ganha</dt><dd>{money(data.attribution.paidTrafficWonRevenueYtd)}</dd></div><div><dt>Pipeline aberto</dt><dd>{integer(data.attribution.paidTrafficOpenDeals)} · {money(data.attribution.paidTrafficOpenValue)}</dd></div><div><dt>Receita / investimento</dt><dd>{data.attribution.crmRevenueToSpend == null ? "—" : `${decimal(data.attribution.crmRevenueToSpend)}×`}</dd></div></dl>
-          <p>{data.attribution.note}</p>
-          <div className={`marketing-pixel ${data.pixel.last_fired_time ? "ok" : "pending"}`}><strong>Pixel: {data.pixel.name}</strong><span>{data.pixel.last_fired_time ? `Último evento: ${new Date(data.pixel.last_fired_time).toLocaleString("pt-BR")}` : "Sem evento recente"}</span><small>{data.pixel.last_fired_time ? "Pixel ativo · análise baseada no Meta Ads Insights" : "Verificar atividade do Pixel"}</small></div>
-        </article>
-      </section>
-
-      <section className="marketing-panel marketing-quality"><header><strong>Confiabilidade e limites</strong><span>Leitura oficial da Meta</span></header><ul>{data.dataQuality.notes.map((note) => <li key={note}>{note}</li>)}</ul></section>
-      <AreaDetailPanel area={area} compact />
-      </>}
+          <section className="marketing-panel marketing-quality">
+            <header>
+              <strong>Confiabilidade e limites</strong>
+              <span>Leitura oficial da Meta</span>
+            </header>
+            <ul>
+              {data.dataQuality.notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </section>
+          <AreaDetailPanel area={area} compact />
+        </>
+      )}
     </div>
   );
 }

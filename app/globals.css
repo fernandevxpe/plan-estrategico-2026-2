@@ -136,16 +136,50 @@
 .marketing-panel { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
 .marketing-panel > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .marketing-chart-panel { overflow: hidden; }
+.marketing-trend { display: grid; gap: 10px; }
+.marketing-trend-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 0; }
+.marketing-trend-header > div:first-child { display: grid; gap: 3px; }
+.marketing-trend-header strong { font-size: 15px; }
+.marketing-trend-header span { color: var(--muted); font-size: 12px; }
+.marketing-trend-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.marketing-seg { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: #f8fafc; gap: 2px; }
+.marketing-seg button, .marketing-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.marketing-seg button.active, .marketing-toggle.active {
+  background: var(--purple, #6d28d9);
+  color: #fff;
+}
+.marketing-toggle { border: 1px solid var(--line); background: #fff; }
+.marketing-trend-hint { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+.marketing-trend .chart-with-legend { min-height: 390px; }
+.marketing-trend .chart-legend-toggle { justify-content: flex-start; padding-top: 4px; }
 .marketing-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .marketing-table th, .marketing-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
 .marketing-table th:first-child, .marketing-table td:first-child, .marketing-table th:nth-child(2), .marketing-table td:nth-child(2) { text-align: left; white-space: normal; }
-.marketing-creative-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.marketing-creative-card { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #fafafa; }
-.marketing-creative-card img, .marketing-creative-placeholder { width: 90px; height: 100%; min-height: 96px; object-fit: cover; background: #e5e7eb; }
+.marketing-creative-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.marketing-creative-card { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(160deg, #fff, #fafafa); }
+.marketing-creative-card img, .marketing-creative-placeholder { width: 110px; height: 100%; min-height: 168px; object-fit: cover; background: #e5e7eb; }
 .marketing-creative-placeholder { display: grid; place-items: center; padding: 8px; color: var(--muted); font-size: 11px; text-align: center; }
-.marketing-creative-card > div:last-child { display: grid; align-content: center; gap: 5px; padding: 10px 10px 10px 0; min-width: 0; }
-.marketing-creative-card span, .marketing-creative-card small { color: var(--muted); font-size: 11px; }
-.marketing-creative-card strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.marketing-creative-card > div:last-child { display: grid; align-content: start; gap: 6px; padding: 12px 12px 12px 0; min-width: 0; }
+.marketing-creative-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.marketing-creative-card-top span { overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.marketing-creative-card-top em { font-style: normal; flex-shrink: 0; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #64748b; padding: 2px 7px; border-radius: 999px; background: #f1f5f9; }
+.marketing-creative-card-top em.is-on { color: #166534; background: #dcfce7; }
+.marketing-creative-card strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.marketing-creative-delivery { margin: 0; color: var(--muted); font-size: 11px; }
+.marketing-creative-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 2px 0 0; }
+.marketing-creative-metrics div { display: grid; gap: 1px; min-width: 0; padding: 6px 7px; border-radius: 8px; background: #f8fafc; border: 1px solid #eef2f7; }
+.marketing-creative-metrics dt { color: var(--muted); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.marketing-creative-metrics dd { margin: 0; font-size: 12px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .marketing-creative-card a, .marketing-media-card { color: #2563eb; font-size: 12px; font-weight: 700; text-decoration: none; }
 .marketing-instagram-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
 .marketing-media-card { display: grid; gap: 4px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; padding-bottom: 9px; color: var(--text); }
@@ -293,6 +327,8 @@
 @media (max-width: 620px) {
   .marketing-toolbar, .marketing-panel > header { align-items: stretch; flex-direction: column; }
   .marketing-kpis, .marketing-creative-grid, .marketing-instagram-grid { grid-template-columns: 1fr; }
+  .marketing-creative-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .marketing-trend-header { flex-direction: column; }
   .marketing-tabs, .marketing-funnel, .marketing-creative-controls { grid-template-columns: 1fr; }
   .marketing-creative-hero { align-items: stretch; flex-direction: column; }
   .marketing-creative-health { min-width: 0; }

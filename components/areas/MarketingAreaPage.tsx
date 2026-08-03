@@ -16,7 +16,6 @@ import {
   summarizeHistory,
   type MarketingHistoryPoint
 } from "@/lib/areas/marketing-history";
-import { AreaDetailPanel } from "@/components/areas/AreasOverview";
 import { MarketingCreativesTab } from "@/components/areas/MarketingCreativesTab";
 import { MarketingHistoryChart, MarketingHistorySparkline } from "@/components/areas/MarketingHistoryCharts";
 import { MarketingTrendChart } from "@/components/areas/MarketingTrendChart";
@@ -311,7 +310,7 @@ function FocusPanel({
   );
 }
 
-export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; data: MarketingDashboard }) {
+export function MarketingAreaPage({ data }: { area: AreaDashboardItem; data: MarketingDashboard }) {
   const [period, setPeriod] = useState<MarketingPeriodKey>("last30d");
   const [view, setView] = useState<"overview" | "creatives">("overview");
   const [focus, setFocus] = useState<Focus | null>(null);
@@ -657,19 +656,6 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
               </div>
             </article>
           </section>
-
-          <section className="marketing-panel marketing-quality">
-            <header>
-              <strong>Confiabilidade e limites</strong>
-              <span>Leitura oficial da Meta</span>
-            </header>
-            <ul>
-              {data.dataQuality.notes.map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
-          </section>
-          <AreaDetailPanel area={area} compact />
         </>
       )}
     </div>

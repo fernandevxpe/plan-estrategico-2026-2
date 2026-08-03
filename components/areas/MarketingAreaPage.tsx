@@ -17,6 +17,7 @@ import {
   type MarketingHistoryPoint
 } from "@/lib/areas/marketing-history";
 import { MarketingCreativesTab } from "@/components/areas/MarketingCreativesTab";
+import { MarketingGestorIA } from "@/components/areas/MarketingGestorIA";
 import { MarketingHistoryChart, MarketingHistorySparkline } from "@/components/areas/MarketingHistoryCharts";
 import { MarketingTrendChart } from "@/components/areas/MarketingTrendChart";
 
@@ -658,6 +659,8 @@ export function MarketingAreaPage({ data }: { area: AreaDashboardItem; data: Mar
           </section>
         </>
       )}
+
+      <MarketingGestorIA data={data} />
     </div>
   );
 }

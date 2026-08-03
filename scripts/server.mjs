@@ -19,9 +19,9 @@ const SEED_DIR = path.join(process.cwd(), 'data');
 async function hydrateProcessedData() {
   if (!process.env.DATABASE_URL && !process.env.DATABASE_PUBLIC_URL) {
     console.warn('[server] banco de artefatos não configurado; mantendo cache atual do volume');
-    return;
+    return false;
   }
-  await new Promise((resolve) => {
+  return new Promise((resolve) => {
     const child = spawn('node', ['scripts/storage-hydrate.mjs'], {
       stdio: 'inherit',
       env: { ...process.env, DATA_DIR }
@@ -30,12 +30,34 @@ async function hydrateProcessedData() {
     child.on('error', (error) => {
       clearTimeout(timeout);
       console.warn('[server] não consegui iniciar a hidratação:', error.message);
-      resolve();
+      resolve(false);
     });
     child.on('exit', (code) => {
       clearTimeout(timeout);
       if (code !== 0) console.warn(`[server] hidratação terminou com código ${code}; mantendo cache do volume`);
-      resolve();
+      resolve(code === 0);
+    });
+  });
+}
+
+async function seedDatabaseFromVolume() {
+  if (!process.env.DATABASE_URL && !process.env.DATABASE_PUBLIC_URL) return false;
+  return new Promise((resolve) => {
+    console.log('[server] banco vazio; semeando com o cache persistente do volume');
+    const child = spawn('node', ['scripts/storage-push.mjs'], {
+      stdio: 'inherit',
+      env: { ...process.env, DATA_DIR }
+    });
+    const timeout = setTimeout(() => child.kill('SIGKILL'), 90_000);
+    child.on('error', (error) => {
+      clearTimeout(timeout);
+      console.warn('[server] não consegui iniciar a carga inicial:', error.message);
+      resolve(false);
+    });
+    child.on('exit', (code) => {
+      clearTimeout(timeout);
+      if (code !== 0) console.warn(`[server] carga inicial terminou com código ${code}; mantendo somente o volume`);
+      resolve(code === 0);
     });
   });
 }
@@ -65,7 +87,8 @@ async function seedVolume() {
   }
 }
 
-await hydrateProcessedData();
+const hydrated = await hydrateProcessedData();
+if (!hydrated) await seedDatabaseFromVolume();
 await seedVolume();
 
 const { startScheduler } = await import('./scheduler.mjs');

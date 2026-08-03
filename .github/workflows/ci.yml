@@ -1,0 +1,39 @@
+# O sync diário mudou para o Railway (volume persistente + agendador interno),
+# então este workflow não sincroniza nem commita nada. Ele só verifica que a
+# aplicação compila antes do Railway tentar publicar — foi assim que um
+# artefato de build versionado e um erro de pré-renderização derrubaram dois
+# deploys seguidos em 03/08/2026.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verificação de tipos
+        run: npx tsc --noEmit
+
+      - name: Build da aplicação
+        run: npm run build:app
+        env:
+          # Reproduz a condição do Railway: a variável existe, o volume ainda não.
+          DATA_DIR: /data

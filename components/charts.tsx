@@ -17,10 +17,10 @@ import {
   YAxis
 } from "recharts";
 import { chartTheme, mixColors } from "@/lib/chart-theme";
-import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
+import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 
 export { mixColors };
-export { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
+export { ChartWithLegend, ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 
 type MonthlyChartItem = {
   label: string;
@@ -86,27 +86,27 @@ export function RevenueChart({ data }: { data: MonthlyChartItem[] }) {
   );
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis
-          yAxisId="money"
-          tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
-          tickLine={false}
-          axisLine={false}
-          width={48}
-        />
-        <YAxis yAxisId="count" orientation="right" tickLine={false} axisLine={false} width={34} />
-        <Tooltip
-          formatter={(value, name) => {
-            if (name === "Receita") return [brl.format(Number(value)), name];
-            return [Number(value).toLocaleString("pt-BR"), name];
-          }}
-          labelFormatter={(label) => `Mês: ${label}`}
-        />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        <Bar
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis
+            yAxisId="money"
+            tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
+            tickLine={false}
+            axisLine={false}
+            width={48}
+          />
+          <YAxis yAxisId="count" orientation="right" tickLine={false} axisLine={false} width={34} />
+          <Tooltip
+            formatter={(value, name) => {
+              if (name === "Receita") return [brl.format(Number(value)), name];
+              return [Number(value).toLocaleString("pt-BR"), name];
+            }}
+            labelFormatter={(label) => `Mês: ${label}`}
+          />
+          <Bar
           yAxisId="count"
           dataKey="createdDeals"
           name="Novos negócios"
@@ -138,8 +138,9 @@ export function RevenueChart({ data }: { data: MonthlyChartItem[] }) {
           activeDot={{ r: 7 }}
           hide={isHidden("wonRevenue")}
         />
-      </ComposedChart>
-    </ResponsiveContainer>
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 
@@ -158,25 +159,26 @@ export function ServiceMixChart({ data }: { data: ServiceItem[] }) {
   const visible = data.filter((item) => !isHidden(item.service));
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie
-          data={visible}
-          dataKey="revenue"
-          nameKey="service"
-          innerRadius="52%"
-          outerRadius="82%"
-          paddingAngle={3}
-        >
-          {visible.map((entry) => {
-            const index = data.findIndex((item) => item.service === entry.service);
-            return <Cell key={entry.service} fill={colors[Math.max(0, index) % colors.length]} />;
-          })}
-        </Pie>
-        <Tooltip formatter={(value) => brl.format(Number(value))} />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-      </PieChart>
-    </ResponsiveContainer>
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={visible}
+            dataKey="revenue"
+            nameKey="service"
+            innerRadius="52%"
+            outerRadius="82%"
+            paddingAngle={3}
+          >
+            {visible.map((entry) => {
+              const index = data.findIndex((item) => item.service === entry.service);
+              return <Cell key={entry.service} fill={colors[Math.max(0, index) % colors.length]} />;
+            })}
+          </Pie>
+          <Tooltip formatter={(value) => brl.format(Number(value))} />
+        </PieChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 
@@ -205,15 +207,15 @@ export function YearComparisonChart({ data }: { data: GrowthComparisonItem[] }) 
   );
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
-        <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        <Bar
-          dataKey="revenue2025"
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
+          <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
+          <Bar
+            dataKey="revenue2025"
           name="Receita 2025"
           fill={chartTheme.slate}
           radius={[4, 4, 0, 0]}
@@ -228,8 +230,9 @@ export function YearComparisonChart({ data }: { data: GrowthComparisonItem[] }) 
           dot={{ r: 4 }}
           hide={isHidden("revenue2026")}
         />
-      </ComposedChart>
-    </ResponsiveContainer>
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 
@@ -246,15 +249,15 @@ export function ProjectionChart({ data }: { data: ProjectionMonthItem[] }) {
   );
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
-        <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        <Bar
-          dataKey="baselineRevenue2025"
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
+          <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
+          <Bar
+            dataKey="baselineRevenue2025"
           name="2025 realizado"
           fill={chartTheme.slate}
           radius={[4, 4, 0, 0]}
@@ -287,8 +290,9 @@ export function ProjectionChart({ data }: { data: ProjectionMonthItem[] }) {
           dot={false}
           hide={isHidden("seasonalRevenue")}
         />
-      </ComposedChart>
-    </ResponsiveContainer>
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 
@@ -310,24 +314,24 @@ export function StackedRevenueMixChart({
   );
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart
-        data={data}
-        margin={{ top: 12, right: 18, left: 4, bottom: 0 }}
-        onClick={(event) => {
-          const month = event?.activePayload?.[0]?.payload?.month;
-          if (month) onSelectMonth?.(month);
-        }}
-      >
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
-        <Tooltip
-          formatter={(value, name) => [brl.format(Number(value)), name]}
-          labelFormatter={(label) => `Mês: ${label}`}
-        />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        {types.map((item) => (
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={data}
+          margin={{ top: 12, right: 18, left: 4, bottom: 0 }}
+          onClick={(event) => {
+            const month = event?.activePayload?.[0]?.payload?.month;
+            if (month) onSelectMonth?.(month);
+          }}
+        >
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
+          <Tooltip
+            formatter={(value, name) => [brl.format(Number(value)), name]}
+            labelFormatter={(label) => `Mês: ${label}`}
+          />
+          {types.map((item) => (
           <Bar
             key={item.type}
             dataKey={item.type}
@@ -340,8 +344,9 @@ export function StackedRevenueMixChart({
             hide={isHidden(item.type)}
           />
         ))}
-      </BarChart>
-    </ResponsiveContainer>
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 
@@ -361,35 +366,35 @@ export function RevenueShareMixChart({
   );
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart
-        data={data}
-        margin={{ top: 12, right: 18, left: 4, bottom: 0 }}
-        stackOffset="expand"
-        onClick={(event) => {
-          const month = event?.activePayload?.[0]?.payload?.month;
-          if (month) onSelectMonth?.(month);
-        }}
-      >
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis
-          tickFormatter={(value) => `${Math.round(Number(value) * 100)}%`}
-          tickLine={false}
-          axisLine={false}
-          width={42}
-        />
-        <Tooltip
-          formatter={(value, name, payload) => {
-            const rawValue = Number(payload.payload[name as string] ?? 0);
-            const total = Number(payload.payload.totalRevenue ?? 0);
-            const share = total ? (rawValue / total) * 100 : 0;
-            return [`${share.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% · ${brl.format(rawValue)}`, name];
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={data}
+          margin={{ top: 12, right: 18, left: 4, bottom: 0 }}
+          stackOffset="expand"
+          onClick={(event) => {
+            const month = event?.activePayload?.[0]?.payload?.month;
+            if (month) onSelectMonth?.(month);
           }}
-          labelFormatter={(label) => `Mês: ${label}`}
-        />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        {types.map((item) => (
+        >
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis
+            tickFormatter={(value) => `${Math.round(Number(value) * 100)}%`}
+            tickLine={false}
+            axisLine={false}
+            width={42}
+          />
+          <Tooltip
+            formatter={(value, name, payload) => {
+              const rawValue = Number(payload.payload[name as string] ?? 0);
+              const total = Number(payload.payload.totalRevenue ?? 0);
+              const share = total ? (rawValue / total) * 100 : 0;
+              return [`${share.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% · ${brl.format(rawValue)}`, name];
+            }}
+            labelFormatter={(label) => `Mês: ${label}`}
+          />
+          {types.map((item) => (
           <Bar
             key={item.type}
             dataKey={item.type}
@@ -400,7 +405,8 @@ export function RevenueShareMixChart({
             hide={isHidden(item.type)}
           />
         ))}
-      </BarChart>
-    </ResponsiveContainer>
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }

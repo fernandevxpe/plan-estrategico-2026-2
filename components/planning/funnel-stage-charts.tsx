@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { ToggleLegend, useLegendToggle, type LegendSeries } from "@/components/charts/useLegendToggle";
+import { ChartWithLegend, useLegendToggle, type LegendSeries } from "@/components/charts/useLegendToggle";
 import type { ConversionMonthRow } from "@/lib/analysis/types";
 import type { FunnelStageChartRow } from "@/lib/analysis/conversion-metrics";
 import {
@@ -161,8 +161,9 @@ export function FunnelStageStackedChart({
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart
         data={data}
         margin={{ top: 12, right: showDays && showAntigos ? 56 : showTime ? 44 : 12, left: 4, bottom: 0 }}
         onClick={(state) => {
@@ -215,7 +216,6 @@ export function FunnelStageStackedChart({
             />
           }
         />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
         {stages.map((stage, index) => (
           <Bar
             key={`${stage.pipelineId}-${stage.stageId}`}
@@ -256,7 +256,8 @@ export function FunnelStageStackedChart({
             hide={isHidden("ganhosAntigosSharePct")}
           />
         ) : null}
-      </ComposedChart>
-    </ResponsiveContainer>
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }

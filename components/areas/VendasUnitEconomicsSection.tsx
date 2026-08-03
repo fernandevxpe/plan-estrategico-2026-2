@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
+import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import {
   MARGIN_STACK_KEYS,
   type VendasUnitEconomicsDashboard,
@@ -191,26 +191,27 @@ export function VendasUnitEconomicsSection({ unitEconomics, embedded = false }: 
             </div>
           </div>
           <div className="chart-shell tall">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={marginChartData} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-                <CartesianGrid stroke="#dce5e8" vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                <YAxis
-                  tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
-                  tickLine={false}
-                  axisLine={false}
-                  width={48}
-                />
-                <Tooltip
-                  formatter={(value, name) => [brl.format(Number(value)), name]}
-                  labelFormatter={(label) => `Mês: ${label}`}
-                />
-                <ToggleLegend series={marginStackSeries} hidden={marginStackLegend.hidden} onToggle={marginStackLegend.toggle} />
-                {MARGIN_STACK_KEYS.map((item) => (
-                  <Bar key={item.key} dataKey={item.key} stackId="margin" fill={item.color} radius={[2, 2, 0, 0]} hide={marginStackLegend.isHidden(item.key)} />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
+            <ChartWithLegend series={marginStackSeries} hidden={marginStackLegend.hidden} onToggle={marginStackLegend.toggle}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={marginChartData} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+                  <CartesianGrid stroke="#dce5e8" vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis
+                    tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                  />
+                  <Tooltip
+                    formatter={(value, name) => [brl.format(Number(value)), name]}
+                    labelFormatter={(label) => `Mês: ${label}`}
+                  />
+                  {MARGIN_STACK_KEYS.map((item) => (
+                    <Bar key={item.key} dataKey={item.key} stackId="margin" fill={item.color} radius={[2, 2, 0, 0]} hide={marginStackLegend.isHidden(item.key)} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartWithLegend>
           </div>
         </div>
 
@@ -222,22 +223,23 @@ export function VendasUnitEconomicsSection({ unitEconomics, embedded = false }: 
             </div>
           </div>
           <div className="chart-shell tall">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={payrollChartData} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-                <CartesianGrid stroke="#dce5e8" vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                <YAxis
-                  tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
-                  tickLine={false}
-                  axisLine={false}
-                  width={48}
-                />
-                <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
-                <ToggleLegend series={payrollSeries} hidden={payrollLegend.hidden} onToggle={payrollLegend.toggle} />
-                <Bar dataKey="Fixo" stackId="payroll" fill="#f59e0b" radius={[2, 2, 0, 0]} hide={payrollLegend.isHidden("Fixo")} />
-                <Bar dataKey="Comissão" stackId="payroll" fill="#fb923c" radius={[2, 2, 0, 0]} hide={payrollLegend.isHidden("Comissão")} />
-              </BarChart>
-            </ResponsiveContainer>
+            <ChartWithLegend series={payrollSeries} hidden={payrollLegend.hidden} onToggle={payrollLegend.toggle}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={payrollChartData} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+                  <CartesianGrid stroke="#dce5e8" vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis
+                    tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                  />
+                  <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
+                  <Bar dataKey="Fixo" stackId="payroll" fill="#f59e0b" radius={[2, 2, 0, 0]} hide={payrollLegend.isHidden("Fixo")} />
+                  <Bar dataKey="Comissão" stackId="payroll" fill="#fb923c" radius={[2, 2, 0, 0]} hide={payrollLegend.isHidden("Comissão")} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartWithLegend>
           </div>
         </div>
       </div>
@@ -251,17 +253,18 @@ export function VendasUnitEconomicsSection({ unitEconomics, embedded = false }: 
             </div>
           </div>
           <div className="chart-shell tall">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={marginTrend} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-                <CartesianGrid stroke="#dce5e8" vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                <YAxis tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} width={42} />
-                <Tooltip formatter={(value, name) => [`${number.format(Number(value))}%`, name]} />
-                <ToggleLegend series={marginTrendSeries} hidden={marginTrendLegend.hidden} onToggle={marginTrendLegend.toggle} />
-                <Bar dataKey="cacPct" name="CAC % receita" fill="#a78bfa" radius={[3, 3, 0, 0]} hide={marginTrendLegend.isHidden("cacPct")} />
-                <Line type="monotone" dataKey="margemPct" name="Margem bruta %" stroke="#08704f" strokeWidth={2} dot hide={marginTrendLegend.isHidden("margemPct")} />
-              </ComposedChart>
-            </ResponsiveContainer>
+            <ChartWithLegend series={marginTrendSeries} hidden={marginTrendLegend.hidden} onToggle={marginTrendLegend.toggle}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={marginTrend} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+                  <CartesianGrid stroke="#dce5e8" vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} width={42} />
+                  <Tooltip formatter={(value, name) => [`${number.format(Number(value))}%`, name]} />
+                  <Bar dataKey="cacPct" name="CAC % receita" fill="#a78bfa" radius={[3, 3, 0, 0]} hide={marginTrendLegend.isHidden("cacPct")} />
+                  <Line type="monotone" dataKey="margemPct" name="Margem bruta %" stroke="#08704f" strokeWidth={2} dot hide={marginTrendLegend.isHidden("margemPct")} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </ChartWithLegend>
           </div>
         </div>
 
@@ -273,46 +276,47 @@ export function VendasUnitEconomicsSection({ unitEconomics, embedded = false }: 
             </div>
           </div>
           <div className="chart-shell tall">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={cumulativeTrend} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-                <CartesianGrid stroke="#dce5e8" vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                <YAxis
-                  yAxisId="left"
-                  tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
-                  tickLine={false}
-                  axisLine={false}
-                  width={48}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tickFormatter={(v) => `${v}%`}
-                  tickLine={false}
-                  axisLine={false}
-                  width={42}
-                />
-                <Tooltip
-                  formatter={(value, name) => {
-                    if (String(name).includes("%")) return [`${number.format(Number(value))}%`, name];
-                    return [brl.format(Number(value)), name];
-                  }}
-                />
-                <ToggleLegend series={cumulativeSeries} hidden={cumulativeLegend.hidden} onToggle={cumulativeLegend.toggle} />
-                <Bar yAxisId="left" dataKey="receitaAcum" name="Receita acum." fill="#cbd5e1" radius={[2, 2, 0, 0]} hide={cumulativeLegend.isHidden("receitaAcum")} />
-                <Bar yAxisId="left" dataKey="margemAcum" name="Margem acum." fill="#21a67a" radius={[2, 2, 0, 0]} hide={cumulativeLegend.isHidden("margemAcum")} />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="cacPctAcum"
-                  name="CAC acum. % receita"
-                  stroke="#7c3aed"
-                  strokeWidth={2}
-                  dot
-                  hide={cumulativeLegend.isHidden("cacPctAcum")}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+            <ChartWithLegend series={cumulativeSeries} hidden={cumulativeLegend.hidden} onToggle={cumulativeLegend.toggle}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={cumulativeTrend} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+                  <CartesianGrid stroke="#dce5e8" vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis
+                    yAxisId="left"
+                    tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tickFormatter={(v) => `${v}%`}
+                    tickLine={false}
+                    axisLine={false}
+                    width={42}
+                  />
+                  <Tooltip
+                    formatter={(value, name) => {
+                      if (String(name).includes("%")) return [`${number.format(Number(value))}%`, name];
+                      return [brl.format(Number(value)), name];
+                    }}
+                  />
+                  <Bar yAxisId="left" dataKey="receitaAcum" name="Receita acum." fill="#cbd5e1" radius={[2, 2, 0, 0]} hide={cumulativeLegend.isHidden("receitaAcum")} />
+                  <Bar yAxisId="left" dataKey="margemAcum" name="Margem acum." fill="#21a67a" radius={[2, 2, 0, 0]} hide={cumulativeLegend.isHidden("margemAcum")} />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="cacPctAcum"
+                    name="CAC acum. % receita"
+                    stroke="#7c3aed"
+                    strokeWidth={2}
+                    dot
+                    hide={cumulativeLegend.isHidden("cacPctAcum")}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </ChartWithLegend>
           </div>
         </div>
       </div>

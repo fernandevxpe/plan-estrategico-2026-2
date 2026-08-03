@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
+import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import type { BridgeItem, GoalPlan, QuarterlySeriesItem, Timeline2026Item } from "@/lib/analysis/types";
 import type { FunnelMonthRow, GoalAttainmentRow, PipelineStageRow } from "@/lib/analysis/planning-pipedrive";
 import {
@@ -69,35 +69,36 @@ export function GoalProgressChart({ goal, currentMonth }: { goal: GoalPlan; curr
   });
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis
-          tickFormatter={(value) =>
-            goal.unit === "currency" ? `${Math.round(Number(value) / 1000)}k` : count.format(Number(value))
-          }
-          tickLine={false}
-          axisLine={false}
-          width={48}
-        />
-        <Tooltip
-          formatter={(value, name) => [value == null ? "—" : formatGoalValue(Number(value), goal.unit), name]}
-        />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        <Bar dataKey="realized" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={isHidden("realized")} />
-        <Line
-          type="monotone"
-          dataKey="target"
-          name="Meta"
-          stroke="#b67818"
-          strokeWidth={3}
-          strokeDasharray="6 4"
-          dot={{ r: 3 }}
-          hide={isHidden("target")}
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis
+            tickFormatter={(value) =>
+              goal.unit === "currency" ? `${Math.round(Number(value) / 1000)}k` : count.format(Number(value))
+            }
+            tickLine={false}
+            axisLine={false}
+            width={48}
+          />
+          <Tooltip
+            formatter={(value, name) => [value == null ? "—" : formatGoalValue(Number(value), goal.unit), name]}
+          />
+          <Bar dataKey="realized" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={isHidden("realized")} />
+          <Line
+            type="monotone"
+            dataKey="target"
+            name="Meta"
+            stroke="#b67818"
+            strokeWidth={3}
+            strokeDasharray="6 4"
+            dot={{ r: 3 }}
+            hide={isHidden("target")}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 
@@ -126,44 +127,45 @@ export function GoalCumulativeChart({ goal, currentMonth }: { goal: GoalPlan; cu
   });
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis
-          tickFormatter={(value) =>
-            goal.unit === "currency" ? `${Math.round(Number(value) / 1000)}k` : count.format(Number(value))
-          }
-          tickLine={false}
-          axisLine={false}
-          width={48}
-        />
-        <Tooltip
-          formatter={(value, name) => [value == null ? "—" : formatGoalValue(Number(value), goal.unit), name]}
-        />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        <Line
-          type="monotone"
-          dataKey="metaAcum"
-          name="Meta acumulada"
-          stroke="#b67818"
-          strokeWidth={3}
-          strokeDasharray="6 4"
-          dot={false}
-          hide={isHidden("metaAcum")}
-        />
-        <Line
-          type="monotone"
-          dataKey="realizadoAcum"
-          name="Realizado acumulado"
-          stroke="#21a67a"
-          strokeWidth={3}
-          connectNulls
-          dot={{ r: 3 }}
-          hide={isHidden("realizadoAcum")}
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis
+            tickFormatter={(value) =>
+              goal.unit === "currency" ? `${Math.round(Number(value) / 1000)}k` : count.format(Number(value))
+            }
+            tickLine={false}
+            axisLine={false}
+            width={48}
+          />
+          <Tooltip
+            formatter={(value, name) => [value == null ? "—" : formatGoalValue(Number(value), goal.unit), name]}
+          />
+          <Line
+            type="monotone"
+            dataKey="metaAcum"
+            name="Meta acumulada"
+            stroke="#b67818"
+            strokeWidth={3}
+            strokeDasharray="6 4"
+            dot={false}
+            hide={isHidden("metaAcum")}
+          />
+          <Line
+            type="monotone"
+            dataKey="realizadoAcum"
+            name="Realizado acumulado"
+            stroke="#21a67a"
+            strokeWidth={3}
+            connectNulls
+            dot={{ r: 3 }}
+            hide={isHidden("realizadoAcum")}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 
@@ -463,58 +465,59 @@ export function Funnel2026Chart({ data }: { data: FunnelMonthRow[] }) {
   if (!data.length) return null;
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis
-          yAxisId="left"
-          tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
-          tickLine={false}
-          axisLine={false}
-          width={48}
-        />
-        <YAxis
-          yAxisId="right"
-          orientation="right"
-          tickFormatter={(value) => `${Math.round(Number(value))}%`}
-          tickLine={false}
-          axisLine={false}
-          width={40}
-          domain={[0, "auto"]}
-        />
-        <Tooltip
-          formatter={(value, name) => {
-            if (name === "Conversão") return [`${Number(value).toFixed(1)}%`, name];
-            return [brl.format(Number(value)), name];
-          }}
-        />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        <Bar yAxisId="left" dataKey="wonValue" name="Ganho (R$)" fill="#21a67a" radius={[4, 4, 0, 0]} hide={isHidden("wonValue")} />
-        <Bar yAxisId="left" dataKey="createdValue" name="Criado (R$)" fill="#9fb2bd" radius={[4, 4, 0, 0]} hide={isHidden("createdValue")} />
-        <Line
-          yAxisId="left"
-          type="monotone"
-          dataKey="openValue"
-          name="Pipeline aberto"
-          stroke="#b67818"
-          strokeWidth={2.5}
-          dot={{ r: 3 }}
-          hide={isHidden("openValue")}
-        />
-        <Line
-          yAxisId="right"
-          type="monotone"
-          dataKey="conversionPct"
-          name="Conversão"
-          stroke="#7c3aed"
-          strokeWidth={2}
-          strokeDasharray="4 3"
-          dot={{ r: 2 }}
-          hide={isHidden("conversionPct")}
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis
+            yAxisId="left"
+            tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
+            tickLine={false}
+            axisLine={false}
+            width={48}
+          />
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            tickFormatter={(value) => `${Math.round(Number(value))}%`}
+            tickLine={false}
+            axisLine={false}
+            width={40}
+            domain={[0, "auto"]}
+          />
+          <Tooltip
+            formatter={(value, name) => {
+              if (name === "Conversão") return [`${Number(value).toFixed(1)}%`, name];
+              return [brl.format(Number(value)), name];
+            }}
+          />
+          <Bar yAxisId="left" dataKey="wonValue" name="Ganho (R$)" fill="#21a67a" radius={[4, 4, 0, 0]} hide={isHidden("wonValue")} />
+          <Bar yAxisId="left" dataKey="createdValue" name="Criado (R$)" fill="#9fb2bd" radius={[4, 4, 0, 0]} hide={isHidden("createdValue")} />
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="openValue"
+            name="Pipeline aberto"
+            stroke="#b67818"
+            strokeWidth={2.5}
+            dot={{ r: 3 }}
+            hide={isHidden("openValue")}
+          />
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="conversionPct"
+            name="Conversão"
+            stroke="#7c3aed"
+            strokeWidth={2}
+            strokeDasharray="4 3"
+            dot={{ r: 2 }}
+            hide={isHidden("conversionPct")}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 
@@ -538,28 +541,29 @@ export function GoalsAttainmentOverviewChart({ data }: { data: GoalAttainmentRow
   }));
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
-        <CartesianGrid stroke="#dce5e8" horizontal={false} />
-        <XAxis
-          type="number"
-          domain={[0, 150]}
-          tickFormatter={(value) => `${value}%`}
-          tickLine={false}
-          axisLine={false}
-        />
-        <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={148} />
-        <Tooltip
-          formatter={(value, name) => [
-            `${Number(value).toFixed(1)}%`,
-            name === "attainmentCap" ? "% realizado YTD" : "Projeção fim de ano"
-          ]}
-        />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        <Bar dataKey="attainmentCap" name="% realizado YTD" fill="#6d28d9" radius={[0, 4, 4, 0]} hide={isHidden("attainmentCap")} />
-        <Bar dataKey="projectedCap" name="Projeção fim de ano" fill="#21a67a" radius={[0, 4, 4, 0]} hide={isHidden("projectedCap")} />
-      </BarChart>
-    </ResponsiveContainer>
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
+          <CartesianGrid stroke="#dce5e8" horizontal={false} />
+          <XAxis
+            type="number"
+            domain={[0, 150]}
+            tickFormatter={(value) => `${value}%`}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={148} />
+          <Tooltip
+            formatter={(value, name) => [
+              `${Number(value).toFixed(1)}%`,
+              name === "attainmentCap" ? "% realizado YTD" : "Projeção fim de ano"
+            ]}
+          />
+          <Bar dataKey="attainmentCap" name="% realizado YTD" fill="#6d28d9" radius={[0, 4, 4, 0]} hide={isHidden("attainmentCap")} />
+          <Bar dataKey="projectedCap" name="Projeção fim de ano" fill="#21a67a" radius={[0, 4, 4, 0]} hide={isHidden("projectedCap")} />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 
@@ -598,27 +602,28 @@ export function QuarterlyChart({ data }: { data: QuarterlySeriesItem[] }) {
   );
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
-        <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        <Bar dataKey="revenue2025" name="2025 realizado" fill="#9fb2bd" radius={[4, 4, 0, 0]} hide={isHidden("revenue2025")} />
-        <Bar dataKey="revenue2026" name="2026 realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={isHidden("revenue2026")} />
-        <Line
-          type="monotone"
-          dataKey="revenue2026Projected"
-          name="2026 projetado"
-          stroke="#21a67a"
-          strokeWidth={3}
-          strokeDasharray="6 4"
-          dot={{ r: 4 }}
-          hide={isHidden("revenue2026Projected")}
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
+          <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
+          <Bar dataKey="revenue2025" name="2025 realizado" fill="#9fb2bd" radius={[4, 4, 0, 0]} hide={isHidden("revenue2025")} />
+          <Bar dataKey="revenue2026" name="2026 realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={isHidden("revenue2026")} />
+          <Line
+            type="monotone"
+            dataKey="revenue2026Projected"
+            name="2026 projetado"
+            stroke="#21a67a"
+            strokeWidth={3}
+            strokeDasharray="6 4"
+            dot={{ r: 4 }}
+            hide={isHidden("revenue2026Projected")}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 
@@ -646,28 +651,29 @@ export function Timeline2026Chart({ data }: { data: Timeline2026Item[] }) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={chartData} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
-        <Tooltip formatter={(value, name) => [value == null ? "—" : brl.format(Number(value)), name]} />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        <Bar dataKey="actual" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={isHidden("actual")} />
-        <Line
-          type="monotone"
-          dataKey="projected"
-          name="Projetado"
-          stroke="#21a67a"
-          strokeWidth={3}
-          strokeDasharray="6 4"
-          connectNulls
-          dot={{ r: 4 }}
-          hide={isHidden("projected")}
-        />
-        <Line type="monotone" dataKey="combined" name="Linha 2026" stroke="#0f766e" strokeWidth={2} connectNulls dot={false} hide={isHidden("combined")} />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={chartData} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
+          <Tooltip formatter={(value, name) => [value == null ? "—" : brl.format(Number(value)), name]} />
+          <Bar dataKey="actual" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={isHidden("actual")} />
+          <Line
+            type="monotone"
+            dataKey="projected"
+            name="Projetado"
+            stroke="#21a67a"
+            strokeWidth={3}
+            strokeDasharray="6 4"
+            connectNulls
+            dot={{ r: 4 }}
+            hide={isHidden("projected")}
+          />
+          <Line type="monotone" dataKey="combined" name="Linha 2026" stroke="#0f766e" strokeWidth={2} connectNulls dot={false} hide={isHidden("combined")} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 

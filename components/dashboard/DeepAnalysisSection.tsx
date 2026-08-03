@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
+import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import { Clock3, GitBranch, Layers3, PieChart, Users } from "lucide-react";
 import type { Analysis } from "@/lib/analysis/types";
 import {
@@ -41,18 +41,19 @@ function TimeToCloseChart({
   );
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis yAxisId="days" tickLine={false} axisLine={false} width={40} />
-        <YAxis yAxisId="money" orientation="right" tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`} tickLine={false} axisLine={false} width={44} />
-        <Tooltip formatter={(value, name) => [name === "Receita" ? brl.format(Number(value)) : `${value} dias`, name]} />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        <Bar yAxisId="days" dataKey="averageDays" name="Média dias" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={isHidden("averageDays")} />
-        <Line yAxisId="money" type="monotone" dataKey="revenue" name="Receita" stroke="#21a67a" strokeWidth={2} dot={{ r: 3 }} hide={isHidden("revenue")} />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis yAxisId="days" tickLine={false} axisLine={false} width={40} />
+          <YAxis yAxisId="money" orientation="right" tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`} tickLine={false} axisLine={false} width={44} />
+          <Tooltip formatter={(value, name) => [name === "Receita" ? brl.format(Number(value)) : `${value} dias`, name]} />
+          <Bar yAxisId="days" dataKey="averageDays" name="Média dias" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={isHidden("averageDays")} />
+          <Line yAxisId="money" type="monotone" dataKey="revenue" name="Receita" stroke="#21a67a" strokeWidth={2} dot={{ r: 3 }} hide={isHidden("revenue")} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 
@@ -71,17 +72,18 @@ function RevenueOriginChart({
   );
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke="#dce5e8" vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
-        <Tooltip formatter={(value) => brl.format(Number(value))} />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
-        <Bar dataKey="newRevenue" name="Novos" stackId="a" fill="#21a67a" hide={isHidden("newRevenue")} />
-        <Bar dataKey="repeatRevenue" name="Recorrentes" stackId="a" fill="#6d28d9" hide={isHidden("repeatRevenue")} />
-      </BarChart>
-    </ResponsiveContainer>
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="#dce5e8" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
+          <Tooltip formatter={(value) => brl.format(Number(value))} />
+          <Bar dataKey="newRevenue" name="Novos" stackId="a" fill="#21a67a" hide={isHidden("newRevenue")} />
+          <Bar dataKey="repeatRevenue" name="Recorrentes" stackId="a" fill="#6d28d9" hide={isHidden("repeatRevenue")} />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }
 

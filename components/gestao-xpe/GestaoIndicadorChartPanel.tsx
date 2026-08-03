@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
+import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import { LineChart as LineChartIcon, X } from "lucide-react";
 import type { GestaoCatalog, GestaoPeriodo } from "@/lib/gestao-xpe/catalog-types";
 import type { IndicatorHistoryPayload, IndicatorHistorySeries } from "@/lib/gestao-xpe/indicator-history";
@@ -415,18 +415,63 @@ export function GestaoIndicadorChartPanel({
                         <strong>1 {pointLabel.replace("(s)", "")} com dado</strong> — amplie o histórico ou mude o
                         agrupamento para ver tendência.
                       </p>
-                      <ResponsiveContainer width="100%" height={220}>
+                      <ChartWithLegend
+                        series={viewedSeries.length > 1 ? legendSeries : []}
+                        hidden={hidden}
+                        onToggle={toggle}
+                      >
+                        <ResponsiveContainer width="100%" height={220}>
+                          <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(15,23,42,0.08)" />
+                            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} width={chartYAxis.width} tickFormatter={chartYAxis.tickFormatter} />
+                            <Tooltip
+                              formatter={(value: number, name: string) =>
+                                formatTooltipValue(value, name, viewedSeries)
+                              }
+                            />
+                            {viewedSeries.map((s) => (
+                              <Line
+                                key={s.id}
+                                type="monotone"
+                                dataKey={s.id}
+                                name={s.id}
+                                stroke={colorById[s.id]}
+                                strokeWidth={2.5}
+                                dot={{ r: 4, fill: colorById[s.id] }}
+                                connectNulls
+                                hide={isHidden(s.id)}
+                              />
+                            ))}
+                            <ChartMetaLines series={viewedSeries} colorById={colorById} isHidden={isHidden} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </ChartWithLegend>
+                    </div>
+                  ) : (
+                    <ChartWithLegend
+                      series={viewedSeries.length > 1 ? legendSeries : []}
+                      hidden={hidden}
+                      onToggle={toggle}
+                    >
+                      <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                         <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(15,23,42,0.08)" />
-                          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                          <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={20} />
                           <YAxis tick={{ fontSize: 11 }} width={chartYAxis.width} tickFormatter={chartYAxis.tickFormatter} />
                           <Tooltip
                             formatter={(value: number, name: string) =>
                               formatTooltipValue(value, name, viewedSeries)
                             }
+                            labelFormatter={(label) => `${periodTooltip} ${label}`}
                           />
-                          {viewedSeries.length > 1 ? (
-                            <ToggleLegend series={legendSeries} hidden={hidden} onToggle={toggle} />
+                          {highlightLabel ? (
+                            <ReferenceLine
+                              x={highlightLabel}
+                              stroke="#94a3b8"
+                              strokeDasharray="4 4"
+                              label={{ value: "Atual", position: "top", fontSize: 10, fill: "#64748b" }}
+                            />
                           ) : null}
                           {viewedSeries.map((s) => (
                             <Line
@@ -436,7 +481,8 @@ export function GestaoIndicadorChartPanel({
                               name={s.id}
                               stroke={colorById[s.id]}
                               strokeWidth={2.5}
-                              dot={{ r: 4, fill: colorById[s.id] }}
+                              dot={{ r: 3, fill: colorById[s.id] }}
+                              activeDot={{ r: 5 }}
                               connectNulls
                               hide={isHidden(s.id)}
                             />
@@ -444,47 +490,7 @@ export function GestaoIndicadorChartPanel({
                           <ChartMetaLines series={viewedSeries} colorById={colorById} isHidden={isHidden} />
                         </LineChart>
                       </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                      <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(15,23,42,0.08)" />
-                        <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={20} />
-                        <YAxis tick={{ fontSize: 11 }} width={chartYAxis.width} tickFormatter={chartYAxis.tickFormatter} />
-                        <Tooltip
-                          formatter={(value: number, name: string) =>
-                            formatTooltipValue(value, name, viewedSeries)
-                          }
-                          labelFormatter={(label) => `${periodTooltip} ${label}`}
-                        />
-                        {viewedSeries.length > 1 ? (
-                          <ToggleLegend series={legendSeries} hidden={hidden} onToggle={toggle} />
-                        ) : null}
-                        {highlightLabel ? (
-                          <ReferenceLine
-                            x={highlightLabel}
-                            stroke="#94a3b8"
-                            strokeDasharray="4 4"
-                            label={{ value: "Atual", position: "top", fontSize: 10, fill: "#64748b" }}
-                          />
-                        ) : null}
-                        {viewedSeries.map((s) => (
-                          <Line
-                            key={s.id}
-                            type="monotone"
-                            dataKey={s.id}
-                            name={s.id}
-                            stroke={colorById[s.id]}
-                            strokeWidth={2.5}
-                            dot={{ r: 3, fill: colorById[s.id] }}
-                            activeDot={{ r: 5 }}
-                            connectNulls
-                            hide={isHidden(s.id)}
-                          />
-                        ))}
-                        <ChartMetaLines series={viewedSeries} colorById={colorById} isHidden={isHidden} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    </ChartWithLegend>
                   )}
                 </div>
               </div>

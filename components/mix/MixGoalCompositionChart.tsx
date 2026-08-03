@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
+import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import type { CompositionChartRow } from "@/lib/analysis/mix-goal-composition";
 import type { MixGoalMetric, MixGoalViewMode } from "@/lib/analysis/mix-goal-composition";
 import { brl } from "@/lib/analysis/format";
@@ -56,8 +56,9 @@ export function MixGoalCompositionChart({ data, types, metric, mode, currentMont
       : (value: number) => String(Math.round(value));
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
         <CartesianGrid stroke="#dce5e8" vertical={false} />
         <XAxis
           dataKey="label"
@@ -107,7 +108,6 @@ export function MixGoalCompositionChart({ data, types, metric, mode, currentMont
             return `${label}${suffix}`;
           }}
         />
-        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
         {types.map((item) => (
           <Bar
             key={item.type}
@@ -139,7 +139,8 @@ export function MixGoalCompositionChart({ data, types, metric, mode, currentMont
           connectNulls
           hide={isHidden("meta")}
         />
-      </ComposedChart>
-    </ResponsiveContainer>
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartWithLegend>
   );
 }

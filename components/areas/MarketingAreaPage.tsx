@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { AreaDashboardItem } from "@/lib/areas/types";
 import type { MarketingDashboard, MarketingPeriodKey } from "@/lib/areas/build-marketing-dashboard";
 import { AreaDetailPanel } from "@/components/areas/AreasOverview";
+import { MarketingCreativesTab } from "@/components/areas/MarketingCreativesTab";
 
 const BASE_PERIODS: Array<{ key: MarketingPeriodKey; label: string }> = [
   { key: "last7d", label: "7 dias" },
@@ -20,6 +21,10 @@ const date = (value: string) => new Date(value).toLocaleDateString("pt-BR");
 
 export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; data: MarketingDashboard }) {
   const [period, setPeriod] = useState<MarketingPeriodKey>("last30d");
+  const [view, setView] = useState<"overview" | "creatives">("overview");
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("view") === "creatives") setView("creatives");
+  }, []);
   const monthPeriods = useMemo(() => Object.keys(data.periods)
     .filter((key) => /^\d{4}-\d{2}$/.test(key))
     .sort()
@@ -61,6 +66,13 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
           {periodOptions.map((item) => <button key={item.key} type="button" className={period === item.key ? "active" : ""} onClick={() => setPeriod(item.key)}>{item.label}</button>)}
         </div>
       </div>
+
+      <nav className="marketing-tabs" aria-label="Análises de marketing">
+        <button type="button" className={view === "overview" ? "active" : ""} onClick={() => setView("overview")}><strong>Visão geral</strong><span>Conta, campanhas e Instagram</span></button>
+        <button type="button" className={view === "creatives" ? "active" : ""} onClick={() => setView("creatives")}><strong>Análise de criativos</strong><span>Ranking, custos, funil e histórico</span></button>
+      </nav>
+
+      {view === "creatives" ? <MarketingCreativesTab data={data} period={period} /> : <>
 
       <section className="marketing-kpis">
         <article><span>Investimento</span><strong>{money(metrics.spend)}</strong><small>{data.totals.activeCampaigns} campanha(s) ativa(s)</small></article>
@@ -105,12 +117,13 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
           <header><strong>Marketing → Pipedrive</strong><span>Atribuição gerencial YTD</span></header>
           <dl><div><dt>Investimento Meta</dt><dd>{money(data.attribution.metaSpendYtd)}</dd></div><div><dt>Ganhos de tráfego pago</dt><dd>{integer(data.attribution.paidTrafficWonDealsYtd)}</dd></div><div><dt>Receita ganha</dt><dd>{money(data.attribution.paidTrafficWonRevenueYtd)}</dd></div><div><dt>Pipeline aberto</dt><dd>{integer(data.attribution.paidTrafficOpenDeals)} · {money(data.attribution.paidTrafficOpenValue)}</dd></div><div><dt>Receita / investimento</dt><dd>{data.attribution.crmRevenueToSpend == null ? "—" : `${decimal(data.attribution.crmRevenueToSpend)}×`}</dd></div></dl>
           <p>{data.attribution.note}</p>
-          <div className={`marketing-pixel ${data.pixel.statsAvailable ? "ok" : "pending"}`}><strong>Pixel: {data.pixel.name}</strong><span>{data.pixel.last_fired_time ? `Último evento: ${new Date(data.pixel.last_fired_time).toLocaleString("pt-BR")}` : "Sem evento recente"}</span><small>{data.pixel.statsAvailable ? "Eventos detalhados disponíveis" : "Eventos detalhados aguardando permissão somente leitura"}</small></div>
+          <div className={`marketing-pixel ${data.pixel.last_fired_time ? "ok" : "pending"}`}><strong>Pixel: {data.pixel.name}</strong><span>{data.pixel.last_fired_time ? `Último evento: ${new Date(data.pixel.last_fired_time).toLocaleString("pt-BR")}` : "Sem evento recente"}</span><small>{data.pixel.last_fired_time ? "Pixel ativo · análise baseada no Meta Ads Insights" : "Verificar atividade do Pixel"}</small></div>
         </article>
       </section>
 
       <section className="marketing-panel marketing-quality"><header><strong>Confiabilidade e limites</strong><span>Leitura oficial da Meta</span></header><ul>{data.dataQuality.notes.map((note) => <li key={note}>{note}</li>)}</ul></section>
       <AreaDetailPanel area={area} compact />
+      </>}
     </div>
   );
 }

@@ -111,10 +111,15 @@ for (const [key, timeRange] of Object.entries(periods)) {
 const accountDaily = await fetchAll(`${adAccountId}/insights`, { level: 'account', fields: insightFields, time_range: periods.ytd, time_increment: 1 });
 const campaignPeriods = {};
 const adPeriods = {};
+const adDaily = [];
 for (const [key, timeRange] of Object.entries(periods)) {
   console.log(`  Meta Ads: consolidando ${key}...`);
   campaignPeriods[key] = await fetchAll(`${adAccountId}/insights`, { level: 'campaign', fields: `campaign_id,campaign_name,${insightFields}`, time_range: timeRange });
   adPeriods[key] = await fetchAll(`${adAccountId}/insights`, { level: 'ad', fields: `campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,${insightFields}`, time_range: timeRange });
+}
+for (const [key, timeRange] of Object.entries(monthPeriods)) {
+  console.log(`  Meta Ads: histórico diário dos criativos em ${key}...`);
+  adDaily.push(...await fetchAll(`${adAccountId}/insights`, { level: 'ad', fields: `campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,${insightFields}`, time_range: timeRange, time_increment: 1, limit: 500 }));
 }
 
 console.log('Meta: coletando perfil e publicações do Instagram...');
@@ -153,6 +158,7 @@ await Promise.all([
   writeJson('meta-account-daily.json', accountDaily),
   writeJson('meta-campaign-periods.json', campaignPeriods),
   writeJson('meta-ad-periods.json', adPeriods),
+  writeJson('meta-ad-daily.json', adDaily),
   writeJson('meta-instagram-profile.json', instagramProfile),
   writeJson('meta-instagram-media.json', mediaWithInsights),
   writeJson('meta-instagram-account-insights.json', { timeSeries: instagramAccountTimeSeries, totals: instagramAccountTotals }),
@@ -166,6 +172,7 @@ console.log(JSON.stringify({
   adsets: adsets.length,
   ads: ads.length,
   dailyRows: accountDaily.length,
+  adDailyRows: adDaily.length,
   instagramMedia: mediaWithInsights.length,
   pixelStatsAvailable: pixelStats.ok
 }, null, 2));

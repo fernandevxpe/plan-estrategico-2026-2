@@ -60,7 +60,7 @@ function mediaInsightValue(media, metric) {
   return number(row?.values?.[0]?.value ?? row?.total_value?.value);
 }
 
-const [account, campaigns, adsets, ads, accountPeriods, accountDaily, campaignPeriods, adPeriods, instagramProfile, instagramMedia, instagramAccountInsights, pixel] = await Promise.all([
+const [account, campaigns, adsets, ads, accountPeriods, accountDaily, campaignPeriods, adPeriods, adDaily, instagramProfile, instagramMedia, instagramAccountInsights, pixel] = await Promise.all([
   readRaw('meta-account.json'),
   readRaw('meta-campaigns.json'),
   readRaw('meta-adsets.json'),
@@ -69,6 +69,7 @@ const [account, campaigns, adsets, ads, accountPeriods, accountDaily, campaignPe
   readRaw('meta-account-daily.json'),
   readRaw('meta-campaign-periods.json'),
   readRaw('meta-ad-periods.json'),
+  readRaw('meta-ad-daily.json'),
   readRaw('meta-instagram-profile.json'),
   readRaw('meta-instagram-media.json'),
   readRaw('meta-instagram-account-insights.json'),
@@ -77,6 +78,45 @@ const [account, campaigns, adsets, ads, accountPeriods, accountDaily, campaignPe
 
 const adsById = new Map(ads.data.map((item) => [item.id, item]));
 const campaignsById = new Map(campaigns.data.map((item) => [item.id, item]));
+
+function normalizeAdRow(row) {
+  const ad = adsById.get(row.ad_id);
+  return {
+    campaignId: row.campaign_id,
+    campaignName: row.campaign_name,
+    adsetId: row.adset_id,
+    adsetName: row.adset_name,
+    adId: row.ad_id,
+    adName: row.ad_name,
+    effectiveStatus: ad?.effective_status ?? null,
+    creative: ad?.creative ? {
+      id: ad.creative.id,
+      title: ad.creative.title ?? ad.creative.name ?? row.ad_name,
+      body: ad.creative.body ?? null,
+      thumbnailUrl: ad.creative.thumbnail_url ?? ad.creative.image_url ?? null,
+      videoId: ad.creative.video_id ?? null,
+      permalink: ad.creative.instagram_permalink_url ?? (ad.creative.effective_object_story_id ? `https://www.facebook.com/${ad.creative.effective_object_story_id.replace('_', '/posts/')}` : null)
+    } : null,
+    ...normalizeInsight(row)
+  };
+}
+
+function normalizeAdDailyRow(row) {
+  const metrics = normalizeInsight(row);
+  return {
+    date: row.date_start,
+    adId: row.ad_id,
+    spend: metrics.spend,
+    impressions: metrics.impressions,
+    clicks: metrics.clicks,
+    linkClicks: metrics.linkClicks,
+    outboundClicks: metrics.outboundClicks,
+    landingPageViews: metrics.landingPageViews,
+    conversations: metrics.conversations,
+    videoViews: metrics.videoViews,
+    video100: metrics.video100
+  };
+}
 
 const report = {
   generatedAt: new Date().toISOString(),
@@ -89,7 +129,7 @@ const report = {
     pixelStatsError: pixel.data.statsError,
     notes: [
       'Alcance e frequência agregados vêm diretamente da API para cada período; não devem ser somados entre dias.',
-      'Cliques para WhatsApp são representados por conversas iniciadas atribuídas pela Meta.',
+      'Cliques e conversas iniciadas são etapas diferentes; conversas seguem a atribuição informada pela Meta.',
       'Pixel e bloqueadores de navegador podem produzir contagens diferentes das sessões do site.'
     ]
   },
@@ -110,27 +150,8 @@ const report = {
     effectiveStatus: campaignsById.get(row.campaign_id)?.effective_status ?? null,
     ...normalizeInsight(row)
   }))])),
-  adPeriods: Object.fromEntries(Object.entries(adPeriods.data).map(([period, rows]) => [period, rows.map((row) => {
-    const ad = adsById.get(row.ad_id);
-    return {
-      campaignId: row.campaign_id,
-      campaignName: row.campaign_name,
-      adsetId: row.adset_id,
-      adsetName: row.adset_name,
-      adId: row.ad_id,
-      adName: row.ad_name,
-      effectiveStatus: ad?.effective_status ?? null,
-      creative: ad?.creative ? {
-        id: ad.creative.id,
-        title: ad.creative.title ?? ad.creative.name ?? row.ad_name,
-        body: ad.creative.body ?? null,
-        thumbnailUrl: ad.creative.thumbnail_url ?? ad.creative.image_url ?? null,
-        videoId: ad.creative.video_id ?? null,
-        permalink: ad.creative.instagram_permalink_url ?? (ad.creative.effective_object_story_id ? `https://www.facebook.com/${ad.creative.effective_object_story_id.replace('_', '/posts/')}` : null)
-      } : null,
-      ...normalizeInsight(row)
-    };
-  })])),
+  adPeriods: Object.fromEntries(Object.entries(adPeriods.data).map(([period, rows]) => [period, rows.map(normalizeAdRow)])),
+  adDaily: adDaily.data.map(normalizeAdDailyRow),
   instagram: {
     profile: instagramProfile.data,
     accountInsights30d: {
@@ -179,6 +200,7 @@ console.log(JSON.stringify({
   daily: report.daily.length,
   campaignRows: Object.values(report.campaignPeriods).reduce((total, rows) => total + rows.length, 0),
   adRows: Object.values(report.adPeriods).reduce((total, rows) => total + rows.length, 0),
+  adDailyRows: report.adDaily.length,
   instagramMedia: report.instagram.media.length,
   pixelStatsAvailable: report.pixel.statsAvailable
 }, null, 2));

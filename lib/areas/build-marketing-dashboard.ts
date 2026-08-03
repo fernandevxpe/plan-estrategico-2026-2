@@ -44,6 +44,11 @@ export type MarketingPerformanceRow = MarketingMetrics & {
   } | null;
 };
 
+export type MarketingDailyCreativeRow = Pick<MarketingMetrics, 'spend' | 'impressions' | 'clicks' | 'linkClicks' | 'outboundClicks' | 'landingPageViews' | 'conversations' | 'videoViews' | 'video100'> & {
+  date: string;
+  adId: string;
+};
+
 export type MarketingDashboard = {
   generatedAt: string;
   syncedAt: string;
@@ -55,6 +60,7 @@ export type MarketingDashboard = {
   daily: Array<MarketingMetrics & { date: string }>;
   campaignPeriods: Record<MarketingPeriodKey, MarketingPerformanceRow[]>;
   adPeriods: Record<MarketingPeriodKey, MarketingPerformanceRow[]>;
+  adDaily: MarketingDailyCreativeRow[];
   instagram: {
     profile: { id: string; username: string; name: string; followers_count: number; follows_count: number; media_count: number; profile_picture_url: string };
     media: Array<{

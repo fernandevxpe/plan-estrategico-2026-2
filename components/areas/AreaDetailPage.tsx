@@ -25,6 +25,8 @@ import type { ConsultoriaLaudosDashboard } from "@/lib/areas/build-consultoria-l
 import type { EscalaDashboard } from "@/lib/areas/build-escala-dashboard";
 import type { MedidoresIoTDashboard } from "@/lib/areas/build-medidores-iot-dashboard";
 import type { SmartChargingDashboard } from "@/lib/areas/build-smart-charging-dashboard";
+import type { MarketingDashboard } from "@/lib/areas/build-marketing-dashboard";
+import { MarketingAreaPage } from "@/components/areas/MarketingAreaPage";
 
 type Props = {
   dashboard: AreasDashboard;
@@ -41,6 +43,7 @@ type Props = {
   automacoesFerramentas?: AutomacoesFerramentasDashboard | null;
   eventos?: EventosDashboard | null;
   obras?: ObrasDashboard | null;
+  marketing?: MarketingDashboard | null;
 };
 
 export function AreaDetailPage({
@@ -57,7 +60,8 @@ export function AreaDetailPage({
   escala,
   automacoesFerramentas,
   eventos,
-  obras
+  obras,
+  marketing
 }: Props) {
   return (
     <div className="areas-page">
@@ -106,6 +110,8 @@ export function AreaDetailPage({
             <EventosAreaPage area={area} data={eventos} />
           ) : area.id === "obras" && obras ? (
             <ObrasAreaPage area={area} data={obras} />
+          ) : area.id === "marketing" && marketing ? (
+            <MarketingAreaPage area={area} data={marketing} />
           ) : (
             <AreaDetailPanel area={area} />
           )}

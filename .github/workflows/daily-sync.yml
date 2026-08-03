@@ -22,6 +22,13 @@ jobs:
       PIPEDRIVE_API_KEY: ${{ secrets.PIPEDRIVE_API_KEY }}
       CLICKUP_API_TOKEN: ${{ secrets.CLICKUP_API_TOKEN }}
       CLICKUP_TEAM_ID: ${{ secrets.CLICKUP_TEAM_ID }}
+      META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+      META_BUSINESS_ID: ${{ secrets.META_BUSINESS_ID }}
+      META_AD_ACCOUNT_ID: ${{ secrets.META_AD_ACCOUNT_ID }}
+      META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+      META_INSTAGRAM_ACCOUNT_ID: ${{ secrets.META_INSTAGRAM_ACCOUNT_ID }}
+      META_PIXEL_ID: ${{ secrets.META_PIXEL_ID }}
+      META_GRAPH_API_VERSION: v24.0
 
     steps:
       - name: Checkout
@@ -41,8 +48,14 @@ jobs:
       - name: Sync Pipedrive + ClickUp
         run: npm run sync
 
+      - name: Sync Meta Ads + Instagram
+        run: npm run sync:meta
+
       - name: Analyze data
         run: npm run analyze
+
+      - name: Analyze marketing data
+        run: npm run analyze:meta
 
       - name: Export chat context
         run: npm run export:context

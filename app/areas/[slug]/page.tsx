@@ -14,6 +14,7 @@ import { buildEscalaDashboard } from "@/lib/areas/build-escala-dashboard";
 import { buildMedidoresIoTDashboard } from "@/lib/areas/build-medidores-iot-dashboard";
 import { buildSmartChargingDashboard } from "@/lib/areas/build-smart-charging-dashboard";
 import { buildVendasUnitEconomics } from "@/lib/areas/build-vendas-unit-economics";
+import { buildMarketingDashboard } from "@/lib/areas/build-marketing-dashboard";
 import { AREA_SLUGS } from "@/lib/areas/registry";
 import { loadDashboardData } from "@/lib/data/load-dashboard";
 
@@ -59,6 +60,7 @@ export default async function AreaSlugPage({ params }: Props) {
   const eventos = slug === "eventos" ? buildEventosDashboard() : null;
 
   const obras = slug === "obras" ? buildObrasDashboard(analysis) : null;
+  const marketing = slug === "marketing" ? buildMarketingDashboard(analysis) : null;
 
   return (
     <AppShell>
@@ -77,6 +79,7 @@ export default async function AreaSlugPage({ params }: Props) {
         automacoesFerramentas={automacoesFerramentas}
         eventos={eventos}
         obras={obras}
+        marketing={marketing}
       />
     </AppShell>
   );

@@ -447,8 +447,191 @@ if (usersWithActivities <= 1) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Diagnóstico executivo: a cadeia causal que decide o ano, derivada dos dados.
+// Cada item traz o número que o sustenta para não virar opinião solta.
+// ---------------------------------------------------------------------------
+const marketing = await (async () => {
+  try {
+    return JSON.parse(await readFile(new URL('marketing.json', outDir), 'utf8'));
+  } catch {
+    return null;
+  }
+})();
+
+const money = (n) => `R$ ${Math.round(n).toLocaleString('pt-BR')}`;
+const executive = [];
+
+const globalGoal = goals.find((g) => g.is_active && /Meta Global XPE \/ M[eê]s/i.test(g.title ?? ''));
+if (globalGoal) {
+  const intervals = globalGoal.intervalResults ?? [];
+  const yearTarget = (globalGoal.seasonality?.intervals ?? []).reduce((s, i) => s + (i.target ?? 0), 0);
+  const closed = intervals.filter((row) => row.start.slice(0, 7) < currentMonth);
+  const realized = closed.reduce((s, r) => s + (r.progress ?? 0), 0);
+  const closedTarget = closed.reduce((s, r) => s + (r.target ?? 0), 0);
+  const remainingMonths = 12 - closed.length;
+  const runRate = closed.length ? realized / closed.length : 0;
+  const neededPerMonth = remainingMonths ? (yearTarget - realized) / remainingMonths : 0;
+  const liftPct = runRate ? (neededPerMonth / runRate - 1) * 100 : 0;
+  executive.push({
+    id: 'meta-ano',
+    priority: liftPct > 20 ? 'critica' : liftPct > 0 ? 'alta' : 'ok',
+    title:
+      liftPct > 0
+        ? `Meta do ano exige ${liftPct.toFixed(0)}% acima do ritmo atual`
+        : 'Ritmo atual já entrega a meta do ano',
+    detail:
+      `Realizado ${money(realized)} em ${closed.length} meses (${closedTarget ? ((realized / closedTarget) * 100).toFixed(0) : '—'}% da meta acumulada). ` +
+      `Faltam ${money(yearTarget - realized)} em ${remainingMonths} meses = ${money(neededPerMonth)}/mês, contra um ritmo de ${money(runRate)}/mês.`,
+    metric: liftPct,
+    unit: 'percent'
+  });
+}
+
+const obrasScope = scopes.find((s) => s.id === 'obras');
+const consGoal = goalByScope.consultoria?.intervals ?? [];
+const consClosed = consGoal.filter((row) => row.month < currentMonth);
+const consStreak = (() => {
+  let streak = 0;
+  for (const row of [...consClosed].reverse()) {
+    if (row.attainmentPct != null && row.attainmentPct < 100) streak += 1;
+    else break;
+  }
+  return streak;
+})();
+if (consStreak >= 2) {
+  const last = consClosed.at(-1);
+  executive.push({
+    id: 'consultoria-abaixo-meta',
+    priority: consStreak >= 4 ? 'critica' : 'alta',
+    title: `Consultoria abaixo da meta há ${consStreak} meses seguidos`,
+    detail:
+      `Último fechamento em ${last?.attainmentPct?.toFixed(0)}% da meta (${money(last?.progress ?? 0)} de ${money(last?.target ?? 0)}). ` +
+      `Obras vem compensando o resultado consolidado, o que mascara a queda no motor principal.`,
+    metric: consStreak,
+    unit: 'count'
+  });
+}
+
+if (consultoria) {
+  const stages = consultoria.openPipeline.byStage;
+  const worst = [...stages].sort((a, b) => b.value - a.value)[0];
+  if (worst && worst.valuePct > 60) {
+    executive.push({
+      id: 'funil-travado',
+      priority: 'critica',
+      title: `${worst.valuePct.toFixed(0)}% do potencial em aberto travado em "${worst.key}"`,
+      detail:
+        `${worst.deals} negócios e ${money(worst.value)} concentrados numa única etapa. ` +
+        `Ciclo mediano de ${consultoria.year.cycle.medianDays?.toFixed(0)} dias, com média de ${consultoria.year.cycle.averageDays?.toFixed(0)} dias — ` +
+        `a distância entre mediana e média mostra uma cauda de negócios muito antigos parados.`,
+      metric: worst.value,
+      unit: 'currency'
+    });
+  }
+
+  const zeroPct = (consultoria.openPipeline.zeroValueDeals / Math.max(consultoria.openPipeline.deals, 1)) * 100;
+  if (zeroPct > 15) {
+    executive.push({
+      id: 'forecast-cego',
+      priority: 'alta',
+      title: `${zeroPct.toFixed(0)}% do funil aberto não tem valor preenchido`,
+      detail:
+        `${consultoria.openPipeline.zeroValueDeals} de ${consultoria.openPipeline.deals} negócios abertos estão com R$ 0. ` +
+        `Todo forecast de pipeline está cego nessa fatia e o potencial real é maior que ${money(consultoria.openPipeline.value)}.`,
+      metric: consultoria.openPipeline.zeroValueDeals,
+      unit: 'count'
+    });
+  }
+
+  // Eficiência por canal: onde o dinheiro entra e onde escapa.
+  const wonByChannel = Object.fromEntries(consultoria.year.won.byChannel.map((r) => [r.key, r]));
+  const lostByChannel = Object.fromEntries(consultoria.year.lost.byChannel.map((r) => [r.key, r]));
+  const channelEfficiency = [...new Set([...Object.keys(wonByChannel), ...Object.keys(lostByChannel)])]
+    .map((channel) => {
+      const won = wonByChannel[channel]?.deals ?? 0;
+      const lost = lostByChannel[channel]?.deals ?? 0;
+      return {
+        channel,
+        won,
+        lost,
+        total: won + lost,
+        winRatePct: won + lost ? (won / (won + lost)) * 100 : null,
+        revenue: wonByChannel[channel]?.value ?? 0
+      };
+    })
+    .filter((row) => row.total >= 5)
+    .sort((a, b) => (b.winRatePct ?? 0) - (a.winRatePct ?? 0));
+
+  const paid = channelEfficiency.find((row) => row.channel === 'Tráfego Pago');
+  const best = channelEfficiency[0];
+  if (paid && best && best.winRatePct != null && paid.winRatePct != null) {
+    executive.push({
+      id: 'eficiencia-canal',
+      priority: 'alta',
+      title: `Tráfego pago converte a ${paid.winRatePct.toFixed(0)}% contra ${best.winRatePct.toFixed(0)}% da base`,
+      detail:
+        `Tráfego pago responde por ${paid.lost} das ${consultoria.year.lost.deals} perdas do ano (${((paid.lost / Math.max(consultoria.year.lost.deals, 1)) * 100).toFixed(0)}%) ` +
+        `e gerou ${money(paid.revenue)}. ${best.channel} converte ${best.winRatePct.toFixed(0)}% com ${best.total} negócios. ` +
+        `O tráfego alimenta o topo, mas a qualificação antes da proposta é o ponto a corrigir.`,
+      metric: paid.winRatePct,
+      unit: 'percent',
+      channelEfficiency
+    });
+  }
+
+  const priorityDrop = consultoria.year.lost.byReason.find((row) => /prioridade/i.test(row.key));
+  const exhausted = consultoria.year.lost.byReason.find((row) => /tentativas/i.test(row.key));
+  if (priorityDrop && exhausted) {
+    const combined = priorityDrop.deals + exhausted.deals;
+    executive.push({
+      id: 'follow-up',
+      priority: 'critica',
+      title: `${((combined / Math.max(consultoria.year.lost.deals, 1)) * 100).toFixed(0)}% das perdas são falha de follow-up, não de produto`,
+      detail:
+        `"${priorityDrop.key}" (${priorityDrop.deals}) e "${exhausted.key}" (${exhausted.deals}) somam ${combined} negócios e ${money(priorityDrop.value + exhausted.value)}. ` +
+        `Só ${consultoria.year.lost.byReason.find((r) => /concorrente/i.test(r.key))?.deals ?? 0} perdas foram para concorrente. ` +
+        `Qualificação de momento de compra (BANT) e cadência de FUP atacam a maior fatia da perda.`,
+      metric: combined,
+      unit: 'count'
+    });
+  }
+}
+
+// A mídia parou: o efeito chega no fechamento com o atraso do ciclo de vendas.
+if (marketing) {
+  const activeCampaigns = marketing.totals?.activeCampaigns ?? 0;
+  const monthSpend = marketing.periods?.[currentMonth]?.spend ?? 0;
+  const periodKeys = Object.keys(marketing.periods ?? {}).filter((k) => /^\d{4}-\d{2}$/.test(k)).sort();
+  const previous = periodKeys.filter((k) => k < currentMonth).slice(-3);
+  const previousAverage = previous.length
+    ? previous.reduce((s, k) => s + (marketing.periods[k].spend ?? 0), 0) / previous.length
+    : 0;
+  if (activeCampaigns === 0 || monthSpend < previousAverage * 0.3) {
+    const cycleDays = consultoria?.year.cycle.medianDays ?? 40;
+    executive.push({
+      id: 'midia-parada',
+      priority: 'critica',
+      title:
+        activeCampaigns === 0
+          ? 'Nenhuma campanha ativa na Meta neste momento'
+          : `Investimento do mês ${((1 - monthSpend / Math.max(previousAverage, 1)) * 100).toFixed(0)}% abaixo da média recente`,
+      detail:
+        `Investido ${money(monthSpend)} em ${currentMonth} contra média de ${money(previousAverage)} nos 3 meses anteriores. ` +
+        `Com ciclo mediano de ${cycleDays.toFixed(0)} dias, o topo que parar hoje aparece como queda de fechamento daqui a ${Math.round(cycleDays / 30)} a ${Math.round(cycleDays / 30) + 1} meses. ` +
+        `A meta de potencial criado já caiu para ${createdPotentialGoal?.intervals.find((r) => r.month === activeMonths.at(-2))?.attainmentPct?.toFixed(0) ?? '—'}% no último mês fechado.`,
+      metric: monthSpend,
+      unit: 'currency'
+    });
+  }
+}
+
+const priorityOrder = { critica: 0, alta: 1, media: 2, ok: 3 };
+executive.sort((a, b) => (priorityOrder[a.priority] ?? 9) - (priorityOrder[b.priority] ?? 9));
+
 const intel = {
   generatedAt: new Date().toISOString(),
+  executive,
   syncedAt: dealsPayload?.syncedAt ?? null,
   timezone: BUSINESS_TIMEZONE,
   focusYear,

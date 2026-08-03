@@ -135,8 +135,28 @@ export type IntelDataQuality = {
   metric: number;
 };
 
+export type IntelChannelEfficiency = {
+  channel: string;
+  won: number;
+  lost: number;
+  total: number;
+  winRatePct: number | null;
+  revenue: number;
+};
+
+export type IntelExecutiveFinding = {
+  id: string;
+  priority: "critica" | "alta" | "media" | "ok";
+  title: string;
+  detail: string;
+  metric: number;
+  unit: "percent" | "currency" | "count";
+  channelEfficiency?: IntelChannelEfficiency[];
+};
+
 export type CommercialIntelDashboard = {
   generatedAt: string;
+  executive: IntelExecutiveFinding[];
   syncedAt: string | null;
   timezone: string;
   focusYear: string;

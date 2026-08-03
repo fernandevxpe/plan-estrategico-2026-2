@@ -171,11 +171,33 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ### Pendência operacional — ativar sync diário (GitHub Actions)
 
-O workflow existe em `.github/workflows/daily-sync.yml` (cron 08:00 BRT + disparo manual) e o sync de metas Pipedrive busca goals `company`.
+O workflow existe em `.github/workflows/daily-sync.yml` (cron 08:00 BRT + disparo manual).
 
-- [x] **Commit + push** — workflow, `scripts/sync-data.mjs` (goals company), `vercel.json` (`build:app`), `data/processed/`, `base-estrategica/`, `reports/`
-- [ ] **Secrets no GitHub** (Settings → Secrets and variables → Actions): `PIPEDRIVE_API_KEY`, `CLICKUP_API_TOKEN`, `CLICKUP_TEAM_ID`
+**Estado em 03/08/2026:** o workflow falha desde que foi criado — `PIPEDRIVE_API_KEY ausente`.
+Os secrets da Meta e do Chatwoot foram cadastrados, os do Pipedrive/ClickUp não. Enquanto isso
+não for resolvido, **não existe atualização diária**: toda a base em produção veio de execuções
+manuais locais.
+
+- [x] **Commit + push** — workflow, scripts, `vercel.json` (`build:app`), `data/processed/`, `base-estrategica/`, `reports/`
+- [ ] **Secrets no GitHub** — faltam `PIPEDRIVE_API_KEY`, `CLICKUP_API_TOKEN`, `CLICKUP_TEAM_ID`:
+  ```bash
+  gh secret set PIPEDRIVE_API_KEY   # cole o valor de .env.local
+  gh secret set CLICKUP_API_TOKEN
+  gh secret set CLICKUP_TEAM_ID
+  gh workflow run "Daily sync" && gh run watch
+  ```
 - [ ] **Validar** — Actions → Daily sync → Run workflow → conferir commit automático + redeploy Vercel
+
+### Armadilhas já corrigidas (não reintroduzir)
+
+| Armadilha | Correção |
+|---|---|
+| `/v1/activities` sem `user_id=0` devolve só a agenda do dono do token | `scripts/sync-data.mjs` passa `user_id: '0'` — 2.467 → 10.812 atividades |
+| Janela de análise fixa em jan-mai/2026 | `scripts/analyze.mjs` deriva a janela do calendário (`CURRENT_MONTH`, `LAST_CLOSED_MONTH`) |
+| Runtime lendo `data/raw/` (gitignored, ausente na Vercel) | `data/processed/crm-snapshot.json` via `scripts/build-crm-snapshot.mjs` |
+| Rotas sem link no menu | `components/layout/AppNav.tsx` agrupa e expõe todas |
+
+`npm run test:commercial-intel` trava os números contra a análise do diretor de 31/07/2026.
 
 ---
 

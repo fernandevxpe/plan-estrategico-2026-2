@@ -7,6 +7,7 @@ import { getExecutiveKpis } from "@/lib/analysis/metrics";
 import { ExecutiveSummary } from "@/components/planning/ExecutiveSummary";
 import { usePlanningFilters } from "@/components/planning/usePlanningFilters";
 import { brl, formatGrowth, monthLabel } from "@/lib/analysis/format";
+import { buildCommercialIntelDashboard } from "@/lib/areas/build-commercial-intel";
 
 type Props = {
   analysis: Analysis;
@@ -21,8 +22,14 @@ export function HomePage({ analysis, generatedAt }: Props) {
     [analysis.deepAnalysis.performanceAlerts]
   );
   const mainInsight = analysis.planningSummary.insights[0];
+  // Os achados críticos abrem o painel: sem isso o gestor precisa caçar o problema.
+  const criticalFindings = useMemo(
+    () => buildCommercialIntelDashboard().executive.filter((item) => item.priority === "critica").slice(0, 5),
+    []
+  );
 
   const quickLinks = [
+    { href: "/areas/diretor-comercial", title: "Diretor Comercial", desc: "Canais, perdas, ciclo e reuniões mês a mês" },
     { href: "/planejamento", title: "Planejamento", desc: "Metas Pipedrive, gráficos e comparação" },
     { href: "/mix", title: "Mix de vendas", desc: "Receita, esforço e participação por produto" },
     { href: "/areas", title: "Áreas", desc: "Planejamento por área de negócio" },
@@ -54,6 +61,23 @@ export function HomePage({ analysis, generatedAt }: Props) {
           <p>{mainInsight?.body ?? "Priorizar conversão e destravamento da base aberta."}</p>
         </article>
       </section>
+
+      {criticalFindings.length ? (
+        <section className="home-critical" aria-label="Pontos críticos do ano">
+          <header>
+            <h2>Precisa de decisão agora</h2>
+            <Link href="/areas/diretor-comercial">Ver diagnóstico completo →</Link>
+          </header>
+          <ol>
+            {criticalFindings.map((finding) => (
+              <li key={finding.id}>
+                <strong>{finding.title}</strong>
+                <p>{finding.detail}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       <ExecutiveSummary kpis={kpis} />
 

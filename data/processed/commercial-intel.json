@@ -1,5 +1,137 @@
 {
-  "generatedAt": "2026-08-03T04:13:56.827Z",
+  "generatedAt": "2026-08-03T04:18:42.803Z",
+  "executive": [
+    {
+      "id": "meta-ano",
+      "priority": "critica",
+      "title": "Meta do ano exige 30% acima do ritmo atual",
+      "detail": "Realizado R$ 1.533.043 em 7 meses (123% da meta acumulada). Faltam R$ 1.419.168 em 5 meses = R$ 283.834/mês, contra um ritmo de R$ 219.006/mês.",
+      "metric": 29.60079559427795,
+      "unit": "percent"
+    },
+    {
+      "id": "consultoria-abaixo-meta",
+      "priority": "critica",
+      "title": "Consultoria abaixo da meta há 5 meses seguidos",
+      "detail": "Último fechamento em 82% da meta (R$ 161.086 de R$ 197.120). Obras vem compensando o resultado consolidado, o que mascara a queda no motor principal.",
+      "metric": 5,
+      "unit": "count"
+    },
+    {
+      "id": "funil-travado",
+      "priority": "critica",
+      "title": "92% do potencial em aberto travado em \"Negociação\"",
+      "detail": "170 negócios e R$ 1.785.200 concentrados numa única etapa. Ciclo mediano de 40 dias, com média de 73 dias — a distância entre mediana e média mostra uma cauda de negócios muito antigos parados.",
+      "metric": 1785200,
+      "unit": "currency"
+    },
+    {
+      "id": "follow-up",
+      "priority": "critica",
+      "title": "62% das perdas são falha de follow-up, não de produto",
+      "detail": "\"Caiu de Prioridade\" (80) e \"Tentativas Esgotadas (Final Cadência)\" (46) somam 126 negócios e R$ 1.295.950. Só 24 perdas foram para concorrente. Qualificação de momento de compra (BANT) e cadência de FUP atacam a maior fatia da perda.",
+      "metric": 126,
+      "unit": "count"
+    },
+    {
+      "id": "midia-parada",
+      "priority": "critica",
+      "title": "Nenhuma campanha ativa na Meta neste momento",
+      "detail": "Investido R$ 0 em 2026-08 contra média de R$ 2.041 nos 3 meses anteriores. Com ciclo mediano de 40 dias, o topo que parar hoje aparece como queda de fechamento daqui a 1 a 2 meses. A meta de potencial criado já caiu para 79% no último mês fechado.",
+      "metric": 0,
+      "unit": "currency"
+    },
+    {
+      "id": "forecast-cego",
+      "priority": "alta",
+      "title": "29% do funil aberto não tem valor preenchido",
+      "detail": "77 de 262 negócios abertos estão com R$ 0. Todo forecast de pipeline está cego nessa fatia e o potencial real é maior que R$ 1.943.770.",
+      "metric": 77,
+      "unit": "count"
+    },
+    {
+      "id": "eficiencia-canal",
+      "priority": "alta",
+      "title": "Tráfego pago converte a 17% contra 73% da base",
+      "detail": "Tráfego pago responde por 96 das 202 perdas do ano (48%) e gerou R$ 183.550. Pós-Venda base XPE converte 73% com 33 negócios. O tráfego alimenta o topo, mas a qualificação antes da proposta é o ponto a corrigir.",
+      "metric": 17.24137931034483,
+      "unit": "percent",
+      "channelEfficiency": [
+        {
+          "channel": "Pós-Venda base XPE",
+          "won": 24,
+          "lost": 9,
+          "total": 33,
+          "winRatePct": 72.72727272727273,
+          "revenue": 247186
+        },
+        {
+          "channel": "Indicação Avulsa",
+          "won": 8,
+          "lost": 3,
+          "total": 11,
+          "winRatePct": 72.72727272727273,
+          "revenue": 70750
+        },
+        {
+          "channel": "Sind. Profissional Base",
+          "won": 15,
+          "lost": 8,
+          "total": 23,
+          "winRatePct": 65.21739130434783,
+          "revenue": 115420
+        },
+        {
+          "channel": "Indicação de Cliente XPE",
+          "won": 12,
+          "lost": 9,
+          "total": 21,
+          "winRatePct": 57.14285714285714,
+          "revenue": 102750
+        },
+        {
+          "channel": "Sucesso do Cliente",
+          "won": 6,
+          "lost": 10,
+          "total": 16,
+          "winRatePct": 37.5,
+          "revenue": 47500
+        },
+        {
+          "channel": "Administradora Cond.",
+          "won": 9,
+          "lost": 28,
+          "total": 37,
+          "winRatePct": 24.324324324324326,
+          "revenue": 82500
+        },
+        {
+          "channel": "Tráfego Pago",
+          "won": 20,
+          "lost": 96,
+          "total": 116,
+          "winRatePct": 17.24137931034483,
+          "revenue": 183550
+        },
+        {
+          "channel": "Sem tracking",
+          "won": 4,
+          "lost": 24,
+          "total": 28,
+          "winRatePct": 14.285714285714285,
+          "revenue": 31900
+        },
+        {
+          "channel": "Parceiro Comercial",
+          "won": 1,
+          "lost": 8,
+          "total": 9,
+          "winRatePct": 11.11111111111111,
+          "revenue": 4000
+        }
+      ]
+    }
+  ],
   "syncedAt": "2026-08-03T04:05:23.629Z",
   "timezone": "America/Recife",
   "focusYear": "2026",

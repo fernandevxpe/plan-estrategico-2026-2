@@ -200,6 +200,64 @@ export function CommercialIntelPage({
         ))}
       </section>
 
+      {data.executive?.length ? (
+        <section className="ci-exec">
+          <header>
+            <h3>Diagnóstico executivo</h3>
+            <span>Cadeia causal do ano, derivada dos números — ordenada por urgência</span>
+          </header>
+          <ol>
+            {data.executive.map((finding) => (
+              <li key={finding.id} className={`is-${finding.priority}`}>
+                <span className="ci-exec-flag">{finding.priority}</span>
+                <div>
+                  <strong>{finding.title}</strong>
+                  <p>{finding.detail}</p>
+                  {finding.channelEfficiency ? (
+                    <div className="ci-table-wrap">
+                      <table className="ci-table">
+                        <thead>
+                          <tr>
+                            <th>Canal</th>
+                            <th className="num">Ganhos</th>
+                            <th className="num">Perdidos</th>
+                            <th className="num">Win rate</th>
+                            <th className="num">Receita</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {finding.channelEfficiency.map((row) => (
+                            <tr key={row.channel}>
+                              <td>{row.channel}</td>
+                              <td className="num">{row.won}</td>
+                              <td className="num">{row.lost}</td>
+                              <td
+                                className={
+                                  row.winRatePct == null
+                                    ? "num"
+                                    : row.winRatePct >= 50
+                                      ? "num is-ok"
+                                      : row.winRatePct < 25
+                                        ? "num is-bad"
+                                        : "num"
+                                }
+                              >
+                                {pct(row.winRatePct)}
+                              </td>
+                              <td className="num">{money(row.revenue)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
       {data.dataQuality.length ? (
         <section className="ci-alerts">
           <h3>Onde o dado ainda não sustenta a análise</h3>

@@ -158,14 +158,15 @@ function buildScenarioEconomics(analysis: Analysis, scenario: VendasScenario): S
   const monthlyActual = Object.fromEntries(
     analysis.monthly.filter((row) => row.month.startsWith("2026")).map((row) => [row.month, row])
   );
-  const juneProjected = analysis.planningSummary.h1Projection.juneProjected;
+  const { partialMonth, ytdProjection } = analysis.planningSummary;
 
   let cumulativeRevenue = 0;
   let cumulativeGrossMargin = 0;
   let cumulativeAcquisition = 0;
 
   const months: UnitEconomicsMonth[] = YEAR_MONTHS.map((month) => {
-    const isH2 = month >= "2026-07";
+    // Mês fechado usa realizado; do mês corrente em diante vale o cenário.
+    const isH2 = month >= partialMonth && h2ByMonth[month] != null;
     const acquisition = acquisitionForMonth(month);
 
     let revenue: number;
@@ -183,8 +184,9 @@ function buildScenarioEconomics(analysis: Analysis, scenario: VendasScenario): S
       payrollCommission = row.sellers.reduce((sum, seller) => sum + seller.commission, 0);
     } else {
       const actual = monthlyActual[month];
-      revenue = month === "2026-06" && actual && actual.wonRevenue < juneProjected * 0.15
-        ? Math.round(juneProjected)
+      // O mês corrente ainda está aberto: se o realizado mal começou, vale a projeção.
+      revenue = month === partialMonth && (actual?.wonRevenue ?? 0) < ytdProjection.currentMonthProjected * 0.15
+        ? Math.round(ytdProjection.currentMonthProjected)
         : Math.round(actual?.wonRevenue ?? 0);
       wonDeals = actual?.wonDeals ?? 0;
       payrollFixed = 2 * 5000;

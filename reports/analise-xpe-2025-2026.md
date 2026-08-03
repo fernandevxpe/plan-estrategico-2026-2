@@ -1,6 +1,6 @@
 # Analise comercial e projetos - XPE Consultoria
 
-Gerado em: 02/08/2026, 20:22:00
+Gerado em: 03/08/2026, 01:13:54
 
 ## Resumo executivo
 
@@ -8,10 +8,10 @@ Gerado em: 02/08/2026, 20:22:00
 - Negocios ganhos no periodo: 232, somando R$ 2.423.456.
 - Ticket medio geral dos negocios ganhos: R$ 10.446.
 - Tarefas/projetos encontrados no ClickUp: 1633; candidatos de producao ligados a projetos/operacao: 1268.
-- 2026-06 deve ser lido como parcial, pois a base foi extraida em 02/08/2026.
+- 2026-08 deve ser lido como parcial, pois a base foi extraida em 03/08/2026.
 - O Pipedrive nao trouxe produtos por negocio; a classificacao inicial de servico usa principalmente funil/etapa e, quando necessario, termos explicitos no titulo.
 - Para tipos de negocio, a fonte principal agora e a etiqueta comercial do Pipedrive: LIE, LDC, LCC, PIE, OBRA, PROJETOS, LSPDA, CDM, ICV e instalacao de carregador.
-- Cobertura de CNPJ nas organizacoes: 258/1655; nos ganhos analisados: 130/232.
+- Cobertura de CNPJ nas organizacoes: 259/1655; nos ganhos analisados: 130/232.
 - Arquivos tabulares gerados em `data/processed/*.csv` para revisao e uso em planilhas.
 
 ## Funil comercial mensal
@@ -24,6 +24,7 @@ Gerado em: 02/08/2026, 20:22:00
 | 2026-04 | 74 | R$ 841.250 | 15 | R$ 155.600 | 25 | +20,3% | 615 | R$ 3.025.789 |
 | 2026-05 | 91 | R$ 1.017.405 | 14 | R$ 130.800 | 22 | +20,9% | 670 | R$ 3.713.194 |
 | 2026-06 | 93 | R$ 1.153.560 | 25 | R$ 333.210 | 37 | +16,1% | 702 | R$ 4.112.964 |
+| 2026-07 | 67 | R$ 485.992 | 29 | R$ 312.686 | 72 | +17,9% | 667 | R$ 3.334.245 |
 
 ## 2026 mes a mes
 
@@ -39,11 +40,11 @@ Gerado em: 02/08/2026, 20:22:00
 
 ## Leitura de crescimento em 2026
 
-- De janeiro a maio, foram criados 366 novos negocios, media de 73,2 por mes.
-- No mesmo periodo, foram fechados 77 negocios, media de 15,4 por mes.
-- Receita ganha de janeiro a maio: R$ 887.147, media mensal de R$ 177.429.
-- No mesmo recorte de janeiro a maio, 2025 somou R$ 206.360; 2026 esta +329,9% acima.
-- O segundo semestre de 2025 somou R$ 607.053, com 69 fechamentos.
+- De janeiro a maio, foram criados 526 novos negocios, media de 75,1 por mes.
+- No mesmo periodo, foram fechados 131 negocios, media de 18,7 por mes.
+- Receita ganha de janeiro a maio: R$ 1.533.043, media mensal de R$ 219.006.
+- No mesmo recorte de janeiro a maio, 2025 somou R$ 353.000; 2026 esta +334,3% acima.
+- O segundo semestre de 2025 somou R$ 537.413, com 59 fechamentos.
 - A receita caiu por tres meses completos seguidos depois do pico de fevereiro: marco, abril e maio. Junho ainda e parcial.
 
 ## Crescimento mes a mes: 2025 vs 2026
@@ -61,9 +62,9 @@ Gerado em: 02/08/2026, 20:22:00
 
 | Cenario | Premissa | Receita projetada jul-dez | Projetos fechados estimados |
 | --- | --- | ---: | ---: |
-| Conservador | 85% do ritmo medio real de jan-mai/2026 | R$ 904.890 | 79 |
-| Ritmo atual | Media mensal real de jan-mai/2026 aplicada a jul-dez | R$ 1.064.576 | 92 |
-| Realista recomendado | Ritmo atual com aceleracao sazonal moderada derivada de 2025 | R$ 1.249.995 | 108 |
+| Conservador | 85% do ritmo medio real de 2026-01 a 2026-07 | R$ 930.776 | 80 |
+| Ritmo atual | Media mensal real de 2026-01 a 2026-07 aplicada aos 5 meses restantes | R$ 1.095.031 | 94 |
+| Realista recomendado | Ritmo atual com aceleracao sazonal moderada derivada de 2025 | R$ 1.259.285 | 108 |
 
 > Recomendacao: usar o cenario "Realista recomendado" como forecast de planejamento, mantendo o potencial sazonal como teto agressivo e nao como compromisso operacional.
 
@@ -71,12 +72,11 @@ Gerado em: 02/08/2026, 20:22:00
 
 | Mes | Receita 2025 base | Projecao ponderada 2026 | Fechamentos estimados |
 | --- | ---: | ---: | ---: |
-| 2026-07 | R$ 69.640 | R$ 143.397 | 16 |
-| 2026-08 | R$ 105.200 | R$ 216.619 | 22 |
-| 2026-09 | R$ 82.314 | R$ 169.494 | 17 |
-| 2026-10 | R$ 112.150 | R$ 230.930 | 16 |
-| 2026-11 | R$ 99.460 | R$ 204.800 | 20 |
-| 2026-12 | R$ 138.289 | R$ 284.754 | 17 |
+| 2026-08 | R$ 105.200 | R$ 246.508 | 26 |
+| 2026-09 | R$ 82.314 | R$ 192.881 | 20 |
+| 2026-10 | R$ 112.150 | R$ 262.794 | 18 |
+| 2026-11 | R$ 99.460 | R$ 233.058 | 24 |
+| 2026-12 | R$ 138.289 | R$ 324.044 | 20 |
 
 ## Tipos de negocios fechados por mes
 
@@ -120,6 +120,12 @@ Gerado em: 02/08/2026, 20:22:00
 | 2026-06 | LGR - Laudo de Gerenciamento de Risco | 2 | R$ 9.000 | R$ 4.500 | n/a | n/a |
 | 2026-06 | LCC - Laudo Carregador Coletivo | 2 | R$ 8.300 | R$ 4.150 | +27,7% | n/a |
 | 2026-06 | PIE - Projeto infra.  Eletrocalha e Emergência | 1 | R$ 4.600 | R$ 4.600 | -63,2% | n/a |
+| 2026-07 | OBRA | 9 | R$ 151.600 | R$ 16.844 | -16,1% | +1.338,3% |
+| 2026-07 | LIE - Laudo de Instalações Elétricas | 8 | R$ 65.300 | R$ 8.163 | +67% | +744,4% |
+| 2026-07 | LDC - Laudo de disponibilidade de carga | 6 | R$ 52.400 | R$ 8.733 | -1,7% | +26,2% |
+| 2026-07 | PROJETOS | 5 | R$ 28.386 | R$ 5.677 | +136,5% | +530,8% |
+| 2026-07 | LCC - Laudo Carregador Coletivo | 2 | R$ 12.500 | R$ 6.250 | +50,6% | n/a |
+| 2026-07 | ICV - Inspeção de carregador veicular | 1 | R$ 2.500 | R$ 2.500 | -90,5% | -53,1% |
 
 ## Pos-venda e recorrencia
 

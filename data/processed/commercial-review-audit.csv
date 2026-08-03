@@ -36,5 +36,5 @@ month;sourceDate;author;section;label;reported;calculated;delta;status;note
 2026-07;2026-07-31;Gabriel Veloso;Perdas por canal;Pós-Venda base XPE;4;4.455445544554455;0.45544554455445496;confirmed;
 2026-07;2026-07-31;Gabriel Veloso;Perdas por canal;Parceiro Comercial;4;3.9603960396039604;-0.03960396039603964;confirmed;
 2026-07;2026-07-31;Gabriel Veloso;Perdas por canal;Sind. Profissional Base;4;3.9603960396039604;-0.03960396039603964;confirmed;
-2026-07;2026-07-31;Gabriel Veloso;Atividade;Reuniões/propostas/assembleias por semana;17;11.516129032258064;-5.483870967741936;not_verifiable;"O CRM não contém reuniões/assembleias concluídas no período; há apenas propostas e o indicador fica incompleto."
+2026-07;2026-07-31;Gabriel Veloso;Atividade;Reuniões/propostas/assembleias por semana;17;55.32258064516129;38.32258064516129;divergent;
 2026-07;2026-07-31;Gabriel Veloso;Ciclo;Ciclo médio no funil;41;58.111111111111114;17.111111111111114;not_verifiable;"O valor reportado usa uma definição não registrada. A plataforma calcula criação → ganho; histórico completo de etapas não está disponível."

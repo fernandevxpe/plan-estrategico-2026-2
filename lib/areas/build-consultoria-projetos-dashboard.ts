@@ -94,7 +94,7 @@ export function buildConsultoriaProjetosDashboard(analysis: Analysis): Consultor
   }
 
   const monthly = [...monthlyMap.values()].sort((a, b) => a.month.localeCompare(b.month));
-  const completedMonths = monthly.filter((m) => m.month < "2026-07").length || monthly.length || 1;
+  const completedMonths = monthly.filter((m) => m.month <= analysis.planningSummary.lastClosedMonth).length || monthly.length || 1;
 
   const ytd = monthly.reduce(
     (acc, row) => ({

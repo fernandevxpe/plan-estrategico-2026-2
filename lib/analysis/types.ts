@@ -328,6 +328,9 @@ export type PlanningInsight = {
 export type PlanningSummary = {
   generatedFromMonths: string;
   partialMonth: string;
+  lastClosedMonth: string;
+  closedMonthCount: number;
+  remainingMonthCount: number;
   runRateMonthly: number;
   runRateWonMonthly: number;
   realizedRevenuePipelines: string[];
@@ -336,10 +339,11 @@ export type PlanningSummary = {
   annual: Record<string, PeriodAggregate>;
   semesters: Record<string, PeriodAggregate>;
   quarters: Record<string, PeriodAggregate>;
-  h1Projection: {
-    janMayActual: number;
-    juneActual: number;
-    juneProjected: number;
+  /** Meses fechados (realizado) + mês corrente projetado pelo run rate. */
+  ytdProjection: {
+    closedMonthsActual: number;
+    currentMonthActual: number;
+    currentMonthProjected: number;
     totalProjected: number;
     runRateMonthly: number;
   };
@@ -651,6 +655,10 @@ export type Analysis = {
   projection2026H2: {
     basis: {
       completedMonthsUsed: string;
+      lastClosedMonth: string;
+      currentMonth: string;
+      closedMonthCount: number;
+      remainingMonthCount: number;
       h1LikeRevenue2025: number;
       h1LikeRevenue2026: number;
       h2Revenue2025: number;

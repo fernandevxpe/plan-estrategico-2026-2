@@ -3,6 +3,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { loadCrmSnapshot } from "@/lib/gestao-xpe/crm-snapshot";
 import { MAIN_PIPELINE_ID } from "@/lib/gestao-xpe/pipeline-config";
 import { pipedriveDateInRange } from "@/lib/gestao-xpe/pipedrive-datetime";
 
@@ -76,36 +77,12 @@ function titleCaseSeller(name: string) {
   return name.charAt(0) + name.slice(1).toLowerCase();
 }
 
-let channelLabelCache: Record<string, string> | null = null;
-
 async function loadChannelLabels(): Promise<Record<string, string>> {
-  if (channelLabelCache) return channelLabelCache;
-  const file = path.join(process.cwd(), "data/raw/pipedrive-deal-fields.json");
-  const fields = JSON.parse(await readFile(file, "utf8")).data as {
-    key: string;
-    options?: { id: string | number; label: string }[];
-  }[];
-  const channelField = fields.find((f) => f.key === "channel");
-  channelLabelCache = Object.fromEntries(
-    (channelField?.options ?? []).map((o) => [String(o.id), o.label])
-  );
-  return channelLabelCache;
+  return (await loadCrmSnapshot()).options.channel;
 }
 
-let labelByIdCache: Record<string, string> | null = null;
-
 async function loadLabelById(): Promise<Record<string, string>> {
-  if (labelByIdCache) return labelByIdCache;
-  const file = path.join(process.cwd(), "data/raw/pipedrive-deal-fields.json");
-  const fields = JSON.parse(await readFile(file, "utf8")).data as {
-    key: string;
-    options?: { id: string | number; label: string }[];
-  }[];
-  const labelField = fields.find((f) => f.key === "label");
-  labelByIdCache = Object.fromEntries(
-    (labelField?.options ?? []).map((o) => [String(o.id), o.label])
-  );
-  return labelByIdCache;
+  return (await loadCrmSnapshot()).options.label;
 }
 
 function labelsRawFromDeal(label: unknown, labelById: Record<string, string>): string {
@@ -121,12 +98,9 @@ function labelsRawFromDeal(label: unknown, labelById: Record<string, string>): s
 }
 
 export async function loadPipelineDeals(pipelineId = MAIN_PIPELINE_ID): Promise<PipelineDeal[]> {
-  const [raw, channelById, labelById] = await Promise.all([
-    readFile(path.join(process.cwd(), "data/raw/pipedrive-deals.json"), "utf8"),
-    loadChannelLabels(),
-    loadLabelById()
-  ]);
-  const deals = JSON.parse(raw).data as Record<string, unknown>[];
+  const snapshot = await loadCrmSnapshot();
+  const { channel: channelById, label: labelById } = snapshot.options;
+  const deals = snapshot.deals as unknown as Record<string, unknown>[];
   return deals
     .filter((d) => d.pipeline_id === pipelineId)
     .map((d) => {

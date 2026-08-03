@@ -62,11 +62,12 @@ export function buildObrasDashboard(analysis: Analysis): ObrasDashboard {
       note: patternNotes.find((p) => p.month === row.month)?.note
     }));
 
-  const lastTwo = monthly.filter((m) => m.month >= "2026-05");
+  const lastTwo = monthly.slice(-2);
   const gateStatus =
-    lastTwo.every((m) => m.revenue < 20000) || (wonDeals > 0 && revenue / wonDeals < 15000)
+    (lastTwo.length > 0 && lastTwo.every((m) => m.revenue < 20000)) ||
+    (wonDeals > 0 && revenue / wonDeals < 15000)
       ? "critical"
-      : monthly.some((m) => m.month === "2026-06" && m.revenue < 5000)
+      : lastTwo.some((m) => m.revenue < 5000)
         ? "warn"
         : "ok";
 

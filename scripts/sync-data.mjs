@@ -134,7 +134,9 @@ async function syncPipedrive() {
       fetchPipedriveCollection('pipelines'),
       fetchPipedriveCollection('stages'),
       fetchPipedriveCollection('users'),
-      fetchPipedriveCollection('activities'),
+      // user_id=0 é obrigatório: sem ele a API devolve só a agenda do dono do token
+      // (ficavam de fora ~77% das atividades, incluindo todas as reuniões do comercial).
+      fetchPipedriveCollection('activities', { user_id: '0' }),
       fetchPipedriveCollection('activityTypes'),
       fetchPipedriveCollection('products'),
       fetchPipedriveGoals()

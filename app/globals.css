@@ -9382,3 +9382,94 @@ tr:last-child td {
     flex-direction: column;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Diretor Comercial — canais, perdas, ciclo e metas mês a mês
+--------------------------------------------------------------------------- */
+.ci-page { display: grid; gap: 16px; width: 100%; min-width: 0; }
+.ci-page > * { min-width: 0; }
+
+.ci-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.ci-toolbar > div:first-child { display: grid; gap: 3px; }
+.ci-toolbar strong { font-size: 15px; }
+.ci-toolbar span { color: var(--muted); font-size: 11px; }
+.ci-switches { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.ci-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.ci-seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+.ci-seg button:hover { color: var(--ink); }
+.ci-seg button.active { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(35,55,65,.12); }
+.ci-lens { width: 100%; justify-content: flex-start; }
+
+.ci-periods { display: flex; flex-wrap: wrap; gap: 6px; }
+.ci-periods button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: inherit; font-size: 12px; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.ci-periods button:hover { border-color: var(--blue); color: var(--ink); }
+.ci-periods button.active { background: var(--ink); border-color: var(--ink); color: #fff; font-weight: 600; }
+.ci-periods em { font-style: normal; opacity: .7; font-size: 10px; margin-left: 4px; }
+
+.ci-alerts { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 14px 16px; }
+.ci-alerts h3 { font-size: 13px; margin: 0 0 10px; }
+.ci-alerts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ci-alerts li { display: grid; gap: 2px; padding: 9px 12px; border-radius: 10px; border-left: 3px solid var(--line); background: var(--surface-2); }
+.ci-alerts li.is-alta { border-left-color: var(--red); }
+.ci-alerts li.is-media { border-left-color: var(--amber); }
+.ci-alerts li strong { font-size: 12.5px; }
+.ci-alerts li span { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+
+.ci-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.ci-stat { display: grid; gap: 3px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.ci-stat span { color: var(--muted); font-size: 11px; }
+.ci-stat strong { font-size: 21px; letter-spacing: -.02em; }
+.ci-stat small { color: var(--muted); font-size: 11px; }
+.ci-stat.is-ok strong { color: var(--green); }
+.ci-stat.is-warn strong { color: var(--amber); }
+.ci-stat.is-bad strong { color: var(--red); }
+
+.ci-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 14px; align-items: start; }
+.ci-panel { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 15px 16px; min-width: 0; }
+.ci-panel-wide { grid-column: 1 / -1; }
+.ci-panel header { display: grid; gap: 2px; margin-bottom: 12px; }
+.ci-panel header h3 { font-size: 13.5px; margin: 0; }
+.ci-panel header span { color: var(--muted); font-size: 11px; }
+
+.ci-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
+.ci-bars li { display: grid; gap: 4px; }
+.ci-bar-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.ci-bar-name { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ci-bar-name.is-gap { color: var(--muted); font-style: italic; }
+.ci-bar-head strong { font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.ci-bar-track { height: 7px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.ci-bar-fill { height: 100%; border-radius: 999px; transition: width .25s ease; }
+.ci-bars small { color: var(--muted); font-size: 10.5px; }
+.ci-empty { color: var(--muted); font-size: 12px; margin: 0; }
+
+.ci-split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ci-split > div { display: grid; gap: 2px; padding: 12px; border-radius: 10px; background: var(--surface-2); }
+.ci-split strong { font-size: 22px; letter-spacing: -.02em; }
+.ci-split span { color: var(--muted); font-size: 11px; }
+.ci-note { color: var(--muted); font-size: 11.5px; line-height: 1.55; margin: 12px 0 0; }
+
+.ci-chart { width: 100%; min-width: 0; }
+.ci-table-wrap { width: 100%; overflow-x: auto; }
+.ci-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ci-table th, .ci-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ci-table th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+.ci-table td.num, .ci-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.ci-table td.is-gap { color: var(--muted); font-style: italic; }
+.ci-table td.is-ok { color: var(--green); font-weight: 600; }
+.ci-table td.is-bad { color: var(--red); font-weight: 600; }
+.ci-table tr.is-partial { opacity: .72; }
+.ci-table small { color: var(--muted); font-weight: 400; }
+.ci-tag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em; }
+
+.ci-method { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 15px 16px; }
+.ci-method h3 { font-size: 13px; margin: 0 0 10px; }
+.ci-method dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin: 0; }
+.ci-method dt { font-size: 11px; color: var(--blue); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+.ci-method dd { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.55; }
+
+@media (max-width: 640px) {
+  .ci-toolbar { flex-direction: column; align-items: stretch; }
+  .ci-switches { justify-content: flex-start; }
+  .ci-split { grid-template-columns: 1fr; }
+}

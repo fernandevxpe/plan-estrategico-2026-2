@@ -80,7 +80,7 @@ function shortLabel(type: string) {
 
 function aggregateJanMay2026(analysis: Analysis) {
   const months = analysis.commercialFunnel.filter(
-    (row) => row.month >= "2026-01" && row.month <= "2026-05"
+    (row) => row.month >= "2026-01" && row.month <= analysis.planningSummary.lastClosedMonth
   );
   const monthCount = months.length || 1;
   const created = months.reduce((s, r) => s + r.createdDeals, 0);
@@ -136,7 +136,7 @@ function buildProfiles(analysis: Analysis): SellerProductivityProfile[] {
   return [
     {
       id: "historical",
-      label: "Real jan–mai/26",
+      label: `Real ${analysis.planningSummary.generatedFromMonths}`,
       source: "CRM · 2 vendedores · média mensal",
       closingsPerMonth: Math.round(hist.wonPerSeller * 10) / 10,
       revenuePerMonth: Math.round(hist.revenuePerSeller),

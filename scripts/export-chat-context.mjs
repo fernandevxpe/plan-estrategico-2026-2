@@ -494,9 +494,9 @@ Gerado em: ${generatedAt}
 | H1/2025 realizado | ${money(ps.semesters['2025-H1'].revenue)} | ${ps.semesters['2025-H1'].wonDeals} | ${ps.semesters['2025-H1'].createdDeals} | ${money(ps.semesters['2025-H1'].averageTicket)} |
 | H2/2025 realizado | ${money(ps.semesters['2025-H2'].revenue)} | ${ps.semesters['2025-H2'].wonDeals} | ${ps.semesters['2025-H2'].createdDeals} | ${money(ps.semesters['2025-H2'].averageTicket)} |
 | H1/2026 realizado | ${money(ps.semesters['2026-H1'].revenue)} | ${ps.semesters['2026-H1'].wonDeals} | ${ps.semesters['2026-H1'].createdDeals} | ${money(ps.semesters['2026-H1'].averageTicket)} |
-| H1/2026 projetado | ${money(ps.semesters['2026-H1-projected'].revenue)} | ${ps.semesters['2026-H1-projected'].wonDeals} | ${ps.semesters['2026-H1-projected'].createdDeals} | ${money(ps.semesters['2026-H1-projected'].averageTicket)} |
+| ${ps.generatedFromMonths ?? 'YTD'} fechado + ${ps.partialMonth} projetado | ${money(ps.semesters['2026-ytd-projected'].revenue)} | ${ps.semesters['2026-ytd-projected'].wonDeals} | ${ps.semesters['2026-ytd-projected'].createdDeals} | ${money(ps.semesters['2026-ytd-projected'].averageTicket)} |
 
-## Run rate (jan–mai/2026)
+## Run rate (${ps.generatedFromMonths})
 
 - Receita mensal média: **${money(ps.runRateMonthly)}**
 - Fechamentos mensais médios: **${num(ps.runRateWonMonthly)}**

@@ -17,6 +17,7 @@ import { buildVendasUnitEconomics } from "@/lib/areas/build-vendas-unit-economic
 import { buildMarketingDashboard } from "@/lib/areas/build-marketing-dashboard";
 import { buildPresalesDashboard } from "@/lib/areas/build-presales-dashboard";
 import { buildRevenueFunnelDashboard } from "@/lib/areas/build-revenue-funnel-dashboard";
+import { buildCommercialIntelDashboard } from "@/lib/areas/build-commercial-intel";
 import { AREA_SLUGS } from "@/lib/areas/registry";
 import { loadDashboardData } from "@/lib/data/load-dashboard";
 
@@ -65,6 +66,7 @@ export default async function AreaSlugPage({ params }: Props) {
   const marketing = slug === "marketing" ? buildMarketingDashboard(analysis) : null;
   const presales = slug === "pre-vendas" ? buildPresalesDashboard() : null;
   const revenueFunnel = slug === "funil-360" ? buildRevenueFunnelDashboard() : null;
+  const commercialIntel = slug === "diretor-comercial" ? buildCommercialIntelDashboard() : null;
 
   return (
     <AppShell>
@@ -86,6 +88,7 @@ export default async function AreaSlugPage({ params }: Props) {
         marketing={marketing}
         presales={presales}
         revenueFunnel={revenueFunnel}
+        commercialIntel={commercialIntel}
       />
     </AppShell>
   );

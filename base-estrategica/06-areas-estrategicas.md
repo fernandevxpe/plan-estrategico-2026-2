@@ -1,6 +1,6 @@
 # Áreas estratégicas — XPE Consultoria
 
-Gerado em: 02/08/2026, 20:22:00
+Gerado em: 03/08/2026, 01:13:54
 
 Todas as 11 áreas em um único documento. Para conversar sobre uma área específica, referencie a seção pelo nome.
 
@@ -355,9 +355,9 @@ Tráfego pago, aquisição, conteúdo e geração de demanda qualificada.
 
 
 ### Destaques
-- Tráfego H1: R$ 13.500
+- Tráfego H1: R$ 16.000
 - Tráfego anual projetado (2x): R$ 28.500
-- CPA médio: R$ 146
+- CPA médio: R$ 148
 
 ## Notas estratégicas
 
@@ -618,7 +618,7 @@ Capacidade, contratações, processos e crescimento sustentável da operação.
 
 ### Destaques
 - Projetistas: 3 → 5
-- Com 5 projetistas e automação, 3,6 projetos/pessoa/mês é absorvível (histórico com 3: 5,1/pessoa).
+- Com 5 projetistas e automação, 3,6 projetos/pessoa/mês é absorvível (histórico com 3: 6,2/pessoa).
 - Comercial: 2 → 3 recomendado
 
 ## Notas estratégicas

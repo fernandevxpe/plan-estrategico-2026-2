@@ -1,6 +1,6 @@
 # Projeções operacionais 2x e 3x
 
-Gerado em: 02/08/2026, 20:22:00
+Gerado em: 03/08/2026, 01:13:54
 
 Compare os dois cenários de crescimento usados no dashboard.
 
@@ -8,26 +8,25 @@ Compare os dois cenários de crescimento usados no dashboard.
 > R$ 1M no H1 · 2× H2/2025 · superar R$ 2M no ano
 Executar cenário Realista com H1 ajustado para R$ 1M, 2 comerciais e 5 projetistas — recorrência contabilizada à parte.
 - Meta H1: **R$ 1.000.000**
-- Meta H2: **R$ 1.249.995**
-- Meta ano: **R$ 2.249.995**
+- Meta H2: **R$ 1.259.285**
+- Meta ano: **R$ 2.259.285**
 - Recorrência e novas fontes de receita serão acompanhadas à parte — não entram nesta meta de contratos fechados.
 ## Capacidade
 - Comercial: 2 → 3 recomendado
 - Projetistas: 3 → 5
-- Com 5 projetistas e automação, 3,6 projetos/pessoa/mês é absorvível (histórico com 3: 5,1/pessoa).
+- Com 5 projetistas e automação, 3,6 projetos/pessoa/mês é absorvível (histórico com 3: 6,2/pessoa).
 ## Tráfego
-- H1: R$ 13.500
+- H1: R$ 16.000
 - Anual: R$ 28.500
-- CPA médio: R$ 146
+- CPA médio: R$ 148
 ## Metas mês a mês (jul–dez/2026)
 | Mês | Receita | Fechamentos | Ticket | Novos neg. | Conv. | Tráfego | Fech./comercial |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Jul | R$ 143.397 | 12,4 | R$ 11.521 | 54 | 23,1% | R$ 2.500 | 6,2 |
-| Ago | R$ 216.619 | 18,8 | R$ 11.521 | 81 | 23,1% | R$ 2.500 | 9,4 |
-| Set | R$ 169.494 | 14,7 | R$ 11.521 | 64 | 23,1% | R$ 2.500 | 7,4 |
-| Out | R$ 230.930 | 20 | R$ 11.521 | 87 | 23,1% | R$ 2.500 | 10 |
-| Nov | R$ 204.800 | 17,8 | R$ 11.521 | 77 | 23,1% | R$ 2.500 | 8,9 |
-| Dez | R$ 284.754 | 24,7 | R$ 11.521 | 107 | 23,1% | R$ 2.500 | 12,4 |
+| Ago | R$ 246.508 | 21,1 | R$ 11.703 | 99 | 21,4% | R$ 2.500 | 10,5 |
+| Set | R$ 192.881 | 16,5 | R$ 11.703 | 77 | 21,4% | R$ 2.500 | 8,2 |
+| Out | R$ 262.794 | 22,5 | R$ 11.703 | 105 | 21,4% | R$ 2.500 | 11,2 |
+| Nov | R$ 233.058 | 19,9 | R$ 11.703 | 93 | 21,4% | R$ 2.500 | 10 |
+| Dez | R$ 324.044 | 27,7 | R$ 11.703 | 130 | 21,4% | R$ 2.500 | 13,8 |
 
 ---
 
@@ -41,17 +40,16 @@ Escala proporcional ao cenário Realista histórico (sazonalidade 2025 + mix rea
 ## Capacidade
 - Comercial: 2 → 4 recomendado
 - Projetistas: 3 → 5
-- Com 5 projetistas e automação, 5,8 projetos/pessoa/mês é absorvível (histórico com 3: 5,1/pessoa).
+- Com 5 projetistas e automação, 5,7 projetos/pessoa/mês é absorvível (histórico com 3: 6,2/pessoa).
 ## Tráfego
-- H1: R$ 13.500
-- Anual: R$ 37.500
-- CPA médio: R$ 144
+- H1: R$ 16.000
+- Anual: R$ 35.855
+- CPA médio: R$ 140
 ## Metas mês a mês (jul–dez/2026)
 | Mês | Receita | Fechamentos | Ticket | Novos neg. | Conv. | Tráfego | Fech./comercial |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Jul | R$ 229.436 | 19,9 | R$ 11.521 | 86 | 23,1% | R$ 4.000 | 10 |
-| Ago | R$ 346.592 | 30,1 | R$ 11.521 | 130 | 23,1% | R$ 4.000 | 15 |
-| Set | R$ 271.192 | 23,5 | R$ 11.521 | 102 | 23,1% | R$ 4.000 | 11,8 |
-| Out | R$ 369.490 | 32,1 | R$ 11.521 | 139 | 23,1% | R$ 4.000 | 16 |
-| Nov | R$ 327.681 | 28,4 | R$ 11.521 | 123 | 23,1% | R$ 4.000 | 14,2 |
-| Dez | R$ 455.608 | 39,5 | R$ 11.521 | 171 | 23,1% | R$ 4.000 | 19,8 |
+| Ago | R$ 391.505 | 33,5 | R$ 11.703 | 157 | 21,4% | R$ 3.971 | 16,7 |
+| Set | R$ 306.334 | 26,2 | R$ 11.703 | 123 | 21,4% | R$ 3.971 | 13,1 |
+| Out | R$ 417.370 | 35,7 | R$ 11.703 | 167 | 21,4% | R$ 3.971 | 17,8 |
+| Nov | R$ 370.143 | 31,6 | R$ 11.703 | 148 | 21,4% | R$ 3.971 | 15,8 |
+| Dez | R$ 514.648 | 44 | R$ 11.703 | 206 | 21,4% | R$ 3.971 | 22 |

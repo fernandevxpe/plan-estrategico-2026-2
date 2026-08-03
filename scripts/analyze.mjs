@@ -941,6 +941,37 @@ const maybeUnmatchedWon = wonDeals
 
 const monthsByKey = Object.fromEntries(monthly.map((row) => [row.month, row]));
 const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+// ---------------------------------------------------------------------------
+// Janela de referência dinâmica.
+// Todo run rate e toda projeção precisam andar com o calendário. Antes a janela
+// estava fixa em jan-mai/2026 com junho como parcial, então dois dos melhores
+// meses do ano ficavam fora do cálculo e a projeção anual saía subestimada.
+// ---------------------------------------------------------------------------
+const monthKeyFormatter = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: BUSINESS_TIMEZONE,
+  year: 'numeric',
+  month: '2-digit'
+});
+const CURRENT_MONTH = monthKeyFormatter.format(new Date()).slice(0, 7);
+const FOCUS_YEAR = CURRENT_MONTH.slice(0, 4);
+const monthKeyOf = (index) => `${FOCUS_YEAR}-${String(index + 1).padStart(2, '0')}`;
+const focusYearMonths = monthNames.map((_, index) => monthKeyOf(index));
+/** Meses do ano-foco já encerrados (o mês corrente nunca entra: é parcial). */
+const closedFocusMonths = focusYearMonths.filter((month) => month < CURRENT_MONTH);
+/** Meses ainda a projetar — inclui o mês corrente, que segue em andamento. */
+const remainingFocusMonths = focusYearMonths.filter((month) => month >= CURRENT_MONTH);
+const LAST_CLOSED_MONTH = closedFocusMonths.at(-1) ?? focusYearMonths[0];
+const CLOSED_MONTH_COUNT = closedFocusMonths.length || 1;
+const REMAINING_MONTH_COUNT = remainingFocusMonths.length;
+const closedWindowLabel = closedFocusMonths.length
+  ? `${closedFocusMonths[0]} a ${LAST_CLOSED_MONTH}`
+  : `${FOCUS_YEAR}-01 (sem mês fechado)`;
+const inClosedWindow = (month) => month >= `${FOCUS_YEAR}-01` && month <= LAST_CLOSED_MONTH;
+/** Mesma quantidade de meses no ano anterior, para um YoY comparável. */
+const previousYear = String(Number(FOCUS_YEAR) - 1);
+const inPreviousYearWindow = (month) =>
+  month >= `${previousYear}-01` && month <= `${previousYear}-${LAST_CLOSED_MONTH.slice(5)}`;
 const growthComparison = monthNames.map((label, index) => {
   const monthNumber = String(index + 1).padStart(2, '0');
   const current = monthsByKey[`2026-${monthNumber}`] ?? null;
@@ -967,39 +998,42 @@ const growthComparison = monthNames.map((label, index) => {
   };
 });
 
-const completed2026Months = monthly.filter((row) => row.month >= '2026-01' && row.month <= '2026-05');
-const completed2025Equivalent = monthly.filter((row) => row.month >= '2025-01' && row.month <= '2025-05');
+const completed2026Months = monthly.filter((row) => inClosedWindow(row.month));
+const completed2025Equivalent = monthly.filter((row) => inPreviousYearWindow(row.month));
 const h1Like2025 = sum(completed2025Equivalent, (row) => row.wonRevenue);
 const h1Like2026 = sum(completed2026Months, (row) => row.wonRevenue);
-const h2Revenue2025 = sum(monthly.filter((row) => row.month >= '2025-07' && row.month <= '2025-12'), (row) => row.wonRevenue);
-const h2WonDeals2025 = sum(monthly.filter((row) => row.month >= '2025-07' && row.month <= '2025-12'), (row) => row.wonDeals);
-const h2CreatedDeals2025 = sum(monthly.filter((row) => row.month >= '2025-07' && row.month <= '2025-12'), (row) => row.createdDeals);
+// Baseline sazonal do ano anterior: mesmos meses que ainda faltam fechar em 2026.
+const remainingBaselineMonths = remainingFocusMonths.map((month) => `${previousYear}-${month.slice(5)}`);
+const previousYearRemaining = monthly.filter((row) => remainingBaselineMonths.includes(row.month));
+const h2Revenue2025 = sum(previousYearRemaining, (row) => row.wonRevenue);
+const h2WonDeals2025 = sum(previousYearRemaining, (row) => row.wonDeals);
+const h2CreatedDeals2025 = sum(previousYearRemaining, (row) => row.createdDeals);
 const h1Average2026 = completed2026Months.length ? h1Like2026 / completed2026Months.length : 0;
 const h1WonAverage2026 = completed2026Months.length ? sum(completed2026Months, (row) => row.wonDeals) / completed2026Months.length : 0;
 const yoyGrowthFactor = h1Like2025 ? h1Like2026 / h1Like2025 : 1;
-const runRateRevenue = h1Average2026 * 6;
-const runRateWonDeals = h1WonAverage2026 * 6;
+const runRateRevenue = h1Average2026 * REMAINING_MONTH_COUNT;
+const runRateWonDeals = h1WonAverage2026 * REMAINING_MONTH_COUNT;
 const seasonalRevenue = h2Revenue2025 * yoyGrowthFactor;
 const seasonalWonDeals = h2WonDeals2025 * yoyGrowthFactor;
 const h1Average2025 = completed2025Equivalent.length ? h1Like2025 / completed2025Equivalent.length : 0;
-const h2Average2025 = h2Revenue2025 / 6;
+const h2Average2025 = previousYearRemaining.length ? h2Revenue2025 / previousYearRemaining.length : 0;
 const rawSeasonalityLiftPct = h1Average2025 ? ((h2Average2025 - h1Average2025) / h1Average2025) * 100 : 0;
 const realisticSeasonalityLiftPct = Math.min(35, Math.max(15, rawSeasonalityLiftPct * 0.12));
 const realisticRevenue = runRateRevenue * (1 + realisticSeasonalityLiftPct / 100);
 const realisticWonDeals = runRateWonDeals * (1 + realisticSeasonalityLiftPct / 100);
 const weightedRevenue = realisticRevenue;
 const weightedWonDeals = realisticWonDeals;
-const projectionMonths = monthNames.slice(6).map((label, index) => {
-  const monthNumber = String(index + 7).padStart(2, '0');
-  const baseline2025 = monthsByKey[`2025-${monthNumber}`];
-  const h2Share = h2Revenue2025 ? (baseline2025?.wonRevenue ?? 0) / h2Revenue2025 : 1 / 6;
+const projectionMonths = remainingFocusMonths.map((month) => {
+  const monthNumber = month.slice(5);
+  const label = monthNames[Number(monthNumber) - 1];
+  const baseline2025 = monthsByKey[`${previousYear}-${monthNumber}`];
+  const h2Share = h2Revenue2025 ? (baseline2025?.wonRevenue ?? 0) / h2Revenue2025 : 1 / REMAINING_MONTH_COUNT;
   const runRateMonthRevenue = h1Average2026;
   const seasonalMonthRevenue = (baseline2025?.wonRevenue ?? 0) * yoyGrowthFactor;
   const projectedRevenue = realisticRevenue * h2Share;
   const runRateMonthWonDeals = h1WonAverage2026;
-  const seasonalMonthWonDeals = (baseline2025?.wonDeals ?? 0) * yoyGrowthFactor;
   return {
-    month: `2026-${monthNumber}`,
+    month,
     label,
     baselineRevenue2025: baseline2025?.wonRevenue ?? 0,
     baselineWonDeals2025: baseline2025?.wonDeals ?? 0,
@@ -1012,7 +1046,11 @@ const projectionMonths = monthNames.slice(6).map((label, index) => {
 
 const projection2026H2 = {
   basis: {
-    completedMonthsUsed: '2026-01 a 2026-05',
+    completedMonthsUsed: closedWindowLabel,
+    lastClosedMonth: LAST_CLOSED_MONTH,
+    currentMonth: CURRENT_MONTH,
+    closedMonthCount: CLOSED_MONTH_COUNT,
+    remainingMonthCount: REMAINING_MONTH_COUNT,
     h1LikeRevenue2025: h1Like2025,
     h1LikeRevenue2026: h1Like2026,
     h2Revenue2025,
@@ -1026,13 +1064,13 @@ const projection2026H2 = {
   scenarios: [
     {
       name: 'Conservador',
-      premise: '85% do ritmo medio real de jan-mai/2026',
+      premise: `85% do ritmo medio real de ${closedWindowLabel}`,
       revenue: runRateRevenue * 0.85,
       wonDeals: runRateWonDeals * 0.85
     },
     {
       name: 'Ritmo atual',
-      premise: 'Media mensal real de jan-mai/2026 aplicada a jul-dez',
+      premise: `Media mensal real de ${closedWindowLabel} aplicada aos ${REMAINING_MONTH_COUNT} meses restantes`,
       revenue: runRateRevenue,
       wonDeals: runRateWonDeals
     },
@@ -1046,7 +1084,7 @@ const projection2026H2 = {
   aggressiveScenarios: [
     {
       name: 'Potencial sazonal 2025',
-      premise: 'Jul-dez/2025 multiplicado pelo crescimento jan-mai de 2026 vs 2025',
+      premise: `Mesmos meses de ${previousYear} multiplicados pelo crescimento de ${closedWindowLabel} vs ${previousYear}`,
       revenue: seasonalRevenue,
       wonDeals: seasonalWonDeals
     }
@@ -1111,14 +1149,16 @@ function semesterKey(month) {
 
 const monthly2025 = monthly.filter((row) => row.month.startsWith('2025'));
 const monthly2026 = monthly.filter((row) => row.month.startsWith('2026'));
-const janMay2026 = monthly2026.filter((row) => row.month >= '2026-01' && row.month <= '2026-05');
-const june2026 = monthly2026.find((row) => row.month === '2026-06');
-const runRateMonthly = janMay2026.length ? sum(janMay2026, (row) => row.wonRevenue) / janMay2026.length : 0;
-const runRateWonMonthly = janMay2026.length ? sum(janMay2026, (row) => row.wonDeals) / janMay2026.length : 0;
-const janMayActual = sum(janMay2026, (row) => row.wonRevenue);
-const juneActual = june2026?.wonRevenue ?? 0;
-const juneProjected = runRateMonthly;
-const h1ProjectedTotal = janMayActual + juneProjected;
+const closedMonths2026 = monthly2026.filter((row) => inClosedWindow(row.month));
+const currentMonthRow = monthly2026.find((row) => row.month === CURRENT_MONTH);
+const runRateMonthly = closedMonths2026.length ? sum(closedMonths2026, (row) => row.wonRevenue) / closedMonths2026.length : 0;
+const runRateWonMonthly = closedMonths2026.length ? sum(closedMonths2026, (row) => row.wonDeals) / closedMonths2026.length : 0;
+const closedMonthsActual = sum(closedMonths2026, (row) => row.wonRevenue);
+const currentMonthActual = currentMonthRow?.wonRevenue ?? 0;
+// O mês corrente vale pelo maior entre o realizado até agora e o ritmo médio:
+// no início do mês o realizado ainda é baixo e não representa o fechamento.
+const currentMonthProjected = Math.max(runRateMonthly, currentMonthActual);
+const ytdPlusCurrentProjected = closedMonthsActual + currentMonthProjected;
 
 const quarterKeys = [...new Set(monthly.map((row) => quarterKey(row.month)))].sort();
 const quarters = Object.fromEntries(
@@ -1139,23 +1179,30 @@ const semesters = Object.fromEntries(
   })
 );
 
-semesters['2026-H1-projected'] = {
-  revenue: h1ProjectedTotal,
-  wonDeals: sum(janMay2026, (row) => row.wonDeals) + Math.round(runRateWonMonthly),
-  createdDeals: sum(janMay2026, (row) => row.createdDeals),
+// Fechados + mês corrente projetado. Substitui o antigo "H1 projetado", que
+// perdeu sentido assim que o semestre encerrou.
+const ytdProjectedKey = `${FOCUS_YEAR}-ytd-projected`;
+semesters[ytdProjectedKey] = {
+  revenue: ytdPlusCurrentProjected,
+  wonDeals: sum(closedMonths2026, (row) => row.wonDeals) + Math.round(runRateWonMonthly),
+  createdDeals: sum(closedMonths2026, (row) => row.createdDeals),
   averageTicket: 0,
+  throughMonth: CURRENT_MONTH,
   projected: true
 };
-semesters['2026-H1-projected'].averageTicket = semesters['2026-H1-projected'].wonDeals
-  ? semesters['2026-H1-projected'].revenue / semesters['2026-H1-projected'].wonDeals
+semesters[ytdProjectedKey].averageTicket = semesters[ytdProjectedKey].wonDeals
+  ? semesters[ytdProjectedKey].revenue / semesters[ytdProjectedKey].wonDeals
   : 0;
 
+// O total do ano = meses já fechados (realizado) + meses restantes (projetados).
+// Os meses restantes já incluem o mês corrente, então ele não pode entrar
+// também no lado realizado, sob pena de contar duas vezes.
 const yearProjectionByScenario = projection2026H2.scenarios.map((scenario) => ({
   scenario: scenario.name,
-  h1Projected: h1ProjectedTotal,
+  h1Projected: closedMonthsActual,
   h2Projected: scenario.revenue,
-  totalProjected: h1ProjectedTotal + scenario.revenue,
-  wonDealsEstimated: Math.round(sum(janMay2026, (row) => row.wonDeals) + runRateWonMonthly + scenario.wonDeals)
+  totalProjected: closedMonthsActual + scenario.revenue,
+  wonDealsEstimated: Math.round(sum(closedMonths2026, (row) => row.wonDeals) + scenario.wonDeals)
 }));
 
 const baseScenario = projection2026H2.scenarios.find((item) => item.name === 'Realista recomendado');
@@ -1163,10 +1210,10 @@ const projectedByMonth = Object.fromEntries(projectionMonths.map((row) => [row.m
 
 const timeline2026 = monthNames.map((label, index) => {
   const monthNumber = String(index + 1).padStart(2, '0');
-  const month = `2026-${monthNumber}`;
+  const month = `${FOCUS_YEAR}-${monthNumber}`;
   const actual = planningMonthsByKey[month];
   const createdInMonth = analysisDeals.filter((deal) => deal.createdMonth === month);
-  if (index <= 4) {
+  if (month < CURRENT_MONTH) {
     return {
       month,
       label,
@@ -1177,7 +1224,7 @@ const timeline2026 = monthNames.map((label, index) => {
       projectedRevenue: null
     };
   }
-  if (index === 5) {
+  if (month === CURRENT_MONTH) {
     return {
       month,
       label,
@@ -1185,7 +1232,7 @@ const timeline2026 = monthNames.map((label, index) => {
       revenue: actual?.wonRevenue ?? 0,
       wonDeals: actual?.wonDeals ?? 0,
       createdDeals: createdInMonth.length,
-      projectedRevenue: juneProjected
+      projectedRevenue: currentMonthProjected
     };
   }
   const projection = projectedByMonth[month];
@@ -1203,7 +1250,7 @@ const timeline2026 = monthNames.map((label, index) => {
 
 const feb2026 = monthsByKey['2026-02'];
 const decliningMonthsAfterPeak = monthly2026
-  .filter((row) => row.month >= '2026-03' && row.month <= '2026-05' && row.revenueGrowthPct != null && row.revenueGrowthPct < 0)
+  .filter((row) => inClosedWindow(row.month) && row.revenueGrowthPct != null && row.revenueGrowthPct < 0)
   .map((row) => row.month);
 
 const planningInsights = [
@@ -1227,8 +1274,11 @@ const planningInsights = [
 ].filter(Boolean);
 
 const planningSummary = {
-  generatedFromMonths: '2026-01 a 2026-05',
-  partialMonth: '2026-06',
+  generatedFromMonths: closedWindowLabel,
+  partialMonth: CURRENT_MONTH,
+  lastClosedMonth: LAST_CLOSED_MONTH,
+  closedMonthCount: CLOSED_MONTH_COUNT,
+  remainingMonthCount: REMAINING_MONTH_COUNT,
   runRateMonthly,
   runRateWonMonthly,
   realizedRevenuePipelines: planningRealizedPipelineNames,
@@ -1240,18 +1290,18 @@ const planningSummary = {
   },
   semesters,
   quarters,
-  h1Projection: {
-    janMayActual,
-    juneActual,
-    juneProjected,
-    totalProjected: h1ProjectedTotal,
+  ytdProjection: {
+    closedMonthsActual,
+    currentMonthActual,
+    currentMonthProjected,
+    totalProjected: ytdPlusCurrentProjected,
     runRateMonthly
   },
   yearProjectionByScenario,
   timeline2026,
   insights: planningInsights,
   defaultScenario: 'Realista recomendado',
-  baseYearTotal2026: h1ProjectedTotal + (baseScenario?.revenue ?? 0)
+  baseYearTotal2026: closedMonthsActual + (baseScenario?.revenue ?? 0)
 };
 
 function buildRecordTimeline(items, getValue, metricId, metricLabel, unit = 'number') {
@@ -1295,7 +1345,7 @@ const enrichedMonthly = monthly.map((row) => ({
   ...funnelByMonth[row.month]
 }));
 
-const partialMonthKey = '2026-06';
+const partialMonthKey = CURRENT_MONTH;
 const completeMonthly = enrichedMonthly.filter((row) => row.month !== partialMonthKey || row.wonDeals > 0);
 
 const recordMetrics = [
@@ -1771,7 +1821,7 @@ function buildGrowthGuide(config) {
     h2ScaleMode
   } = config;
 
-  const h1Projected = h1ProjectedTotal;
+  const h1Projected = ytdPlusCurrentProjected;
   const h2Base = baseScenario?.revenue ?? realisticRevenue;
   const annualBase = h1Projected + h2Base;
   const h1Target = OPERATIONS.h1RevenueTarget;
@@ -1789,7 +1839,7 @@ function buildGrowthGuide(config) {
   const annualGapVsBase = annualTarget - annualBase;
   const h2Scale = h2Base ? h2Target / h2Base : 1;
 
-  const h1Funnel = commercialFunnel.filter((row) => row.month >= '2026-01' && row.month <= '2026-05');
+  const h1Funnel = commercialFunnel.filter((row) => inClosedWindow(row.month));
   const h1ConversionValues = h1Funnel.map((row) => row.cohortConversionPct).filter((value) => value != null);
   const h1AverageConversion = h1ConversionValues.length
     ? h1ConversionValues.reduce((sum, value) => sum + value, 0) / h1ConversionValues.length
@@ -1811,7 +1861,7 @@ function buildGrowthGuide(config) {
     : h1AverageConversion;
 
   const topTypes2026 = businessTypeTrend
-    .filter((row) => row.month.startsWith('2026') && row.month <= '2026-05')
+    .filter((row) => inClosedWindow(row.month))
     .reduce((acc, row) => {
       acc[row.type] = (acc[row.type] ?? 0) + row.revenue;
       return acc;
@@ -1823,7 +1873,7 @@ function buildGrowthGuide(config) {
     share: (revenue / typeTotal) * 100,
     averageTicket: (() => {
       const deals = businessTypeTrend
-        .filter((row) => row.type === type && row.month.startsWith('2026') && row.month <= '2026-05')
+        .filter((row) => row.type === type && inClosedWindow(row.month))
         .reduce((sum, row) => sum + row.wonDeals, 0);
       return deals ? revenue / deals : h1AverageTicket;
     })()
@@ -1841,7 +1891,7 @@ function buildGrowthGuide(config) {
     };
   });
 
-  const h1Timeline = timeline2026.filter((row) => row.month <= '2026-06');
+  const h1Timeline = timeline2026.filter((row) => row.month <= LAST_CLOSED_MONTH);
   const h1BaseRevenue = h1Timeline.reduce(
     (sum, row) => sum + (row.kind === 'partial' ? row.projectedRevenue ?? row.revenue : row.revenue),
     0
@@ -2135,8 +2185,8 @@ function buildGrowthGuide(config) {
 
   const risks = [
     {
-      title: 'H1 abaixo de R$ 1M se junho não recuperar',
-      mitigation: `Foco em ${money(h1MonthlyTargets.find((row) => row.month === '2026-06')?.revenueTarget ?? 0)} em jun/2026 e pipeline quente em jul.`
+      title: `Ritmo dos ${REMAINING_MONTH_COUNT} meses restantes abaixo do necessário`,
+      mitigation: `Manter ao menos ${money(runRateMonthly)} por mês a partir de ${CURRENT_MONTH} e pipeline quente entrando.`
     },
     {
       title: 'Queda de conversão após fevereiro',
@@ -3349,7 +3399,7 @@ await writeCsv('won-deals.csv', wonDeals);
 await writeCsv('clickup-project-candidates.csv', projectCandidates);
 
 const focusMonths = monthly.filter((row) => row.month.startsWith('2026'));
-const completedH1Months = focusMonths.filter((row) => row.month >= '2026-01' && row.month <= '2026-05');
+const completedH1Months = focusMonths.filter((row) => inClosedWindow(row.month));
 const h1ClosedRevenue = sum(completedH1Months, (row) => row.wonRevenue);
 const h1ClosedDeals = sum(completedH1Months, (row) => row.wonDeals);
 const h1CreatedDeals = sum(completedH1Months, (row) => row.createdDeals);
@@ -3363,7 +3413,7 @@ const topServices = serviceSummary.slice(0, 12);
 const newServices2026 = serviceSummary.filter((service) => service.firstWonMonth?.startsWith('2026'));
 const decliningServices = serviceMonthly
   .map((service) => {
-    const h1 = service.months.filter((month) => month.month >= '2026-01' && month.month <= '2026-06');
+    const h1 = service.months.filter((month) => inClosedWindow(month.month));
     const firstHalf = sum(h1.slice(0, 3), (month) => month.revenue);
     const secondHalf = sum(h1.slice(3, 6), (month) => month.revenue);
     return { service: service.service, firstQuarterRevenue: firstHalf, secondQuarterRevenue: secondHalf, delta: secondHalf - firstHalf };
@@ -3391,7 +3441,7 @@ Gerado em: ${new Date().toLocaleString('pt-BR')}
 
 | Mes | Novos negocios | Valor criado | Ganhos no mes | Receita ganha | Perdidos no mes | Conversao novos neg. | Base aberta fim do mes | Valor em aberto |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-${commercialFunnel.filter((row) => row.month >= '2026-01' && row.month <= '2026-06').map((row) => `| ${row.month} | ${row.createdDeals} | ${money(row.createdValue)} | ${row.wonDeals} | ${money(row.wonValue)} | ${row.lostDeals} | ${pct(row.cohortConversionPct)} | ${row.openBaseDealsEndOfMonth} | ${money(row.openBaseValueEndOfMonth)} |`).join('\n')}
+${commercialFunnel.filter((row) => inClosedWindow(row.month)).map((row) => `| ${row.month} | ${row.createdDeals} | ${money(row.createdValue)} | ${row.wonDeals} | ${money(row.wonValue)} | ${row.lostDeals} | ${pct(row.cohortConversionPct)} | ${row.openBaseDealsEndOfMonth} | ${money(row.openBaseValueEndOfMonth)} |`).join('\n')}
 
 ## 2026 mes a mes
 
@@ -3432,7 +3482,7 @@ ${projection2026H2.months.map((row) => `| ${row.month} | ${money(row.baselineRev
 
 | Mes | Tipo | Fechamentos | Receita | Ticket medio | Cresc. receita MoM | Cresc. receita YoY |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-${businessTypeTrend.filter((row) => row.month >= '2026-01' && row.month <= '2026-06').map((row) => `| ${row.month} | ${row.type} | ${row.wonDeals} | ${money(row.revenue)} | ${money(row.averageTicket)} | ${pct(row.revenueMoMPct)} | ${pct(row.revenueYoYPct)} |`).join('\n')}
+${businessTypeTrend.filter((row) => inClosedWindow(row.month)).map((row) => `| ${row.month} | ${row.type} | ${row.wonDeals} | ${money(row.revenue)} | ${money(row.averageTicket)} | ${pct(row.revenueMoMPct)} | ${pct(row.revenueYoYPct)} |`).join('\n')}
 
 ## Pos-venda e recorrencia
 

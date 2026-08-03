@@ -284,23 +284,36 @@ export function getBridgeData(analysis: Analysis, scenario: ScenarioName): Bridg
   ];
 }
 
+function quarterOf(month: string) {
+  const [year, rawMonth] = month.split("-");
+  return `${year}-Q${Math.ceil(Number(rawMonth) / 3)}`;
+}
+
 export function getQuarterlySeries(analysis: Analysis): QuarterlySeriesItem[] {
   const keys = Object.keys(analysis.planningSummary.quarters).sort();
-  const h1Projected = analysis.planningSummary.h1Projection.totalProjected;
-  const h1Actual = analysis.planningSummary.semesters["2026-H1"]?.revenue ?? 0;
+  const { partialMonth, ytdProjection } = analysis.planningSummary;
+  const partialQuarter = quarterOf(partialMonth);
+  // Receita projetada dos meses que ainda não começaram, somada por trimestre.
+  const futureByQuarter = new Map<string, number>();
+  for (const row of analysis.projection2026H2.months) {
+    if (row.month <= partialMonth) continue;
+    const quarter = quarterOf(row.month);
+    futureByQuarter.set(quarter, (futureByQuarter.get(quarter) ?? 0) + row.projectedRevenue);
+  }
 
   return keys.map((key) => {
     const agg = analysis.planningSummary.quarters[key];
     const is2026 = key.startsWith("2026");
     let projected = 0;
-    if (key === "2026-Q2") {
-      const q2Actual = agg.revenue;
-      const juneProjected = analysis.planningSummary.h1Projection.juneProjected;
-      const juneActual = analysis.planningSummary.h1Projection.juneActual;
-      projected = q2Actual - juneActual + juneProjected;
-    }
-    if (key.startsWith("2026-Q") && key >= "2026-Q3") {
-      projected = agg.revenue;
+    if (key === partialQuarter) {
+      // Trimestre em curso: realizado + o que falta fechar do mês corrente.
+      projected =
+        agg.revenue -
+        ytdProjection.currentMonthActual +
+        ytdProjection.currentMonthProjected +
+        (futureByQuarter.get(key) ?? 0);
+    } else if (is2026 && key > partialQuarter) {
+      projected = futureByQuarter.get(key) ?? agg.revenue;
     }
 
     return {

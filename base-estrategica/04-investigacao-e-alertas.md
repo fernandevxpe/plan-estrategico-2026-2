@@ -1,6 +1,6 @@
 # Investigação e alertas
 
-Gerado em: 02/08/2026, 20:22:00
+Gerado em: 03/08/2026, 01:13:54
 
 ## Alertas de performance
 
@@ -22,6 +22,7 @@ Gerado em: 02/08/2026, 20:22:00
 
 - **Repetir ritmo comercial de receita**: O recorde de receita (R$ 333.210) veio em 2026-06. Vale mapear origem dos negócios, tipos vendidos e tempo de fechamento desse mês.
 - **Replicar conversão dos novos negócios**: Melhor conversão dos novos negócios: +40,9% em 2025-06. Analisar qualidade das propostas criadas nesse mês.
+- **Estabilizar após o pico de fevereiro**: 3 meses completos caíram em sequência depois do pico. Revisar follow-up e taxa de conversão pós-proposta.
 - **Priorizar tipos que mais faturaram**: OBRA teve melhor mês em 2026-06 (R$ 180.690). Considerar campanha focada nesse serviço.
 
 ## Recordes e destaques
@@ -51,7 +52,7 @@ Gerado em: 02/08/2026, 20:22:00
 
 ## Alertas de qualidade de dados
 
-- **Cobertura de CNPJ parcial** (high): 258/1655 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
+- **Cobertura de CNPJ parcial** (high): 259/1655 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
 - **Negócios ganhos sem etiqueta comercial explícita** (medium): 3/232 ganhos usam fallback de serviço/funil como tipo principal.
 - **Negócios com múltiplas etiquetas** (medium): 44 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
 - **Base aberta contém negócios antigos** (high): 174 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.

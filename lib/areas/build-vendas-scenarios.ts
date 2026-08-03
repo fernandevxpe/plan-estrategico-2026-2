@@ -76,8 +76,8 @@ export type VendasScenariosDashboard = {
     h2MonthlyNeeded: number;
   };
   h1: {
-    janMayActual: number;
-    juneProjected: number;
+    closedMonthsActual: number;
+    currentMonthProjected: number;
     totalProjected: number;
   };
   historicalIndividual: SellerProductivityAssumptions;
@@ -106,9 +106,10 @@ function monthsBetween(start: string, end: string) {
   return (ey - sy) * 12 + (em - sm);
 }
 
-function sumJanMay2026(analysis: Analysis) {
+function sumClosedMonths2026(analysis: Analysis) {
+  const lastClosed = analysis.planningSummary.lastClosedMonth;
   const months = analysis.commercialFunnel.filter(
-    (row) => row.month >= "2026-01" && row.month <= "2026-05"
+    (row) => row.month >= "2026-01" && row.month <= lastClosed
   );
   const created = months.reduce((sum, row) => sum + row.createdDeals, 0);
   const won = months.reduce((sum, row) => sum + row.wonDeals, 0);
@@ -129,7 +130,7 @@ function sumJanMay2026(analysis: Analysis) {
   };
 }
 
-function buildConservativeAssumptions(historical: ReturnType<typeof sumJanMay2026>): SellerProductivityAssumptions {
+function buildConservativeAssumptions(historical: ReturnType<typeof sumClosedMonths2026>): SellerProductivityAssumptions {
   const createdPerSellerMonth = Math.round(historical.createdPerSellerMonth * 0.85);
   const conversionPct = 12;
   const closingsPerSellerMonth = createdPerSellerMonth * (conversionPct / 100);
@@ -141,7 +142,7 @@ function buildConservativeAssumptions(historical: ReturnType<typeof sumJanMay202
     closingsPerSellerMonth,
     averageTicket,
     revenuePerSellerMonth: closingsPerSellerMonth * averageTicket,
-    sourceNote: `12% conv. (jan–mai/26 real: ${historical.conversionPct.toFixed(1)}%; meta área: 15%). Criação −15% vs média jan–mai. Ticket −6% vs YTD.`
+    sourceNote: `12% conv. (real nos meses fechados: ${historical.conversionPct.toFixed(1)}%; meta área: 15%). Criação −15% vs média dos meses fechados. Ticket −6% vs YTD.`
   };
 }
 
@@ -285,13 +286,13 @@ function buildScenario(
 export function buildVendasScenarios(analysis: Analysis): VendasScenariosDashboard {
   const ps = analysis.planningSummary;
   const guide3x = analysis.growthGuides.projection3x;
-  const historical = sumJanMay2026(analysis);
+  const historical = sumClosedMonths2026(analysis);
   const conservative = buildConservativeAssumptions(historical);
 
   const h1 = {
-    janMayActual: ps.h1Projection.janMayActual,
-    juneProjected: ps.h1Projection.juneProjected,
-    totalProjected: ps.h1Projection.totalProjected
+    closedMonthsActual: ps.ytdProjection.closedMonthsActual,
+    currentMonthProjected: ps.ytdProjection.currentMonthProjected,
+    totalProjected: ps.ytdProjection.totalProjected
   };
 
   const targets = {

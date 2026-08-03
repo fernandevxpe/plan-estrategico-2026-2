@@ -16,11 +16,14 @@
     "analyze:meta": "node scripts/analyze-meta.mjs",
     "analyze:presales": "node scripts/analyze-presales.mjs",
     "analyze:revenue-funnel": "node scripts/analyze-revenue-funnel.mjs",
+    "analyze:commercial-intel": "node scripts/analyze-commercial-intel.mjs",
+    "build:crm-snapshot": "node scripts/build-crm-snapshot.mjs",
+    "test:commercial-intel": "node scripts/test-commercial-intel.mjs",
     "test:meta": "node scripts/test-meta.mjs",
     "test:presales": "node scripts/test-presales.mjs",
     "test:revenue-funnel": "node scripts/test-revenue-funnel.mjs",
     "export:context": "node scripts/export-chat-context.mjs",
-    "build": "npm run sync && npm run analyze && npm run export:context"
+    "build": "npm run sync && npm run analyze && npm run analyze:commercial-intel && npm run build:crm-snapshot && npm run export:context"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

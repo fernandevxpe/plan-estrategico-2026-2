@@ -42,7 +42,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
 
       - name: Install dependencies
@@ -69,8 +69,17 @@ jobs:
       - name: Analyze complete revenue funnel
         run: npm run analyze:revenue-funnel
 
+      - name: Analyze commercial intelligence
+        run: npm run analyze:commercial-intel
+
+      - name: Build CRM snapshot for runtime
+        run: npm run build:crm-snapshot
+
       - name: Validate complete revenue funnel
         run: npm run test:revenue-funnel
+
+      - name: Validate commercial intelligence
+        run: npm run test:commercial-intel
 
       - name: Export chat context
         run: npm run export:context

@@ -234,7 +234,7 @@ export function DashboardSections({ analysis, filters, kpis, view = "all" }: Pro
               <h2>2025 x 2026</h2>
               <span>Comparação anual por mês</span>
             </div>
-            <span className="pill green">{formatGrowth(analysis.projection2026H2.basis.yoyGrowthPct)} jan-mai</span>
+            <span className="pill green">{formatGrowth(analysis.projection2026H2.basis.yoyGrowthPct)} {analysis.projection2026H2.basis.completedMonthsUsed}</span>
           </div>
           <div className="chart-box">
             <YearComparisonChart data={growthRows} />

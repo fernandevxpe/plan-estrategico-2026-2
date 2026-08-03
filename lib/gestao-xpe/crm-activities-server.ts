@@ -3,6 +3,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { loadCrmSnapshot } from "@/lib/gestao-xpe/crm-snapshot";
 import { activityCompletedDateKey } from "@/lib/gestao-xpe/pipedrive-datetime";
 
 export type PipedriveActivity = {
@@ -102,11 +103,5 @@ export function isVisitActivity(a: PipedriveActivity): boolean {
 }
 
 export async function loadPipedriveActivities(): Promise<PipedriveActivity[]> {
-  const file = path.join(process.cwd(), "data/raw/pipedrive-activities.json");
-  try {
-    const raw = JSON.parse(await readFile(file, "utf8")) as { data: PipedriveActivity[] };
-    return raw.data ?? [];
-  } catch {
-    return [];
-  }
+  return (await loadCrmSnapshot()).activities;
 }

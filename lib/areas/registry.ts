@@ -22,6 +22,16 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     lead: "Diretor Comercial"
   },
   {
+    id: "diretor-comercial",
+    name: "Diretor Comercial",
+    shortName: "Diretor",
+    description:
+      "Canais de origem, motivos de perda, ciclo de vendas, reuniões e metas — a análise mensal do diretor, apurada direto do CRM.",
+    parentId: null,
+    status: "monitorando",
+    lead: "Diretor Comercial"
+  },
+  {
     id: "funil-360",
     name: "Funil 360°",
     shortName: "Funil 360°",

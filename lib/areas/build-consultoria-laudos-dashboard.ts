@@ -127,7 +127,7 @@ export function buildConsultoriaLaudosDashboard(analysis: Analysis): Consultoria
     .sort((a, b) => b.revenue - a.revenue);
 
   const monthly = [...monthlyMap.values()].sort((a, b) => a.month.localeCompare(b.month));
-  const completedMonths = monthly.filter((m) => m.month < "2026-07").length || monthly.length || 1;
+  const completedMonths = monthly.filter((m) => m.month <= analysis.planningSummary.lastClosedMonth).length || monthly.length || 1;
   const avgMonthly = totalDeals / completedMonths;
   const ldcAvg = typeMap.get("ldc")?.deals ?? 0;
   const ldcMonths = typeMap.get("ldc")?.months.size ?? 1;

@@ -16,6 +16,7 @@ import {
   YAxis
 } from "recharts";
 import { chartTheme } from "@/lib/chart-theme";
+import { Collapsible } from "@/components/areas/Collapsible";
 import type { MarketingRevenueBaseline } from "@/lib/areas/build-marketing-dashboard";
 import {
   buildForecast,
@@ -55,7 +56,8 @@ const FIELDS: Array<{
   { key: "cpc", label: "Custo por clique externo", help: "CPC pago no Meta", step: 0.05, suffix: "R$", min: 0 },
   { key: "leadTimeDays", label: "Ciclo até o fechamento", help: "Defasagem entre investir e faturar", step: 1, suffix: "dias", min: 0 },
   { key: "spendPerCreative", label: "Verba mensal por criativo", help: "Quanto um criativo absorve por mês antes de saturar", step: 50, suffix: "R$", min: 1 },
-  { key: "creativeLifeDays", label: "Vida útil da execução", help: "Dias até a troca, observados nesta conta", step: 1, suffix: "dias", min: 1 }
+  { key: "creativeLifeDays", label: "Vida útil da execução", help: "Dias até a troca, observados nesta conta", step: 1, suffix: "dias", min: 1 },
+  { key: "pipelineWinRatePct", label: "Aproveitamento do pipeline", help: "Quanto dos negócios abertos deve fechar", step: 1, suffix: "%", min: 0 }
 ];
 
 function applyScenario(
@@ -76,7 +78,13 @@ function applyScenario(
     conversationToWonPct:
       (pessimistic ? bands.conversationToWonPct.p25 : bands.conversationToWonPct.p75) ??
       base.conversationToWonPct,
-    paidTicket: (pessimistic ? bands.paidTicket.p25 : bands.paidTicket.p75) ?? base.paidTicket
+    paidTicket: (pessimistic ? bands.paidTicket.p25 : bands.paidTicket.p75) ?? base.paidTicket,
+    /* O pipeline aberto é a maior incerteza do plano: metade ou uma vez e meia
+       do aproveitamento histórico muda o investimento mais que qualquer taxa. */
+    pipelineWinRatePct: Math.max(
+      0,
+      Math.min(100, base.pipelineWinRatePct * (pessimistic ? 0.5 : 1.5))
+    )
   };
 }
 
@@ -100,13 +108,22 @@ export function MarketingForecastPanel({
     [baseline, assumptions, intelligence]
   );
 
+  /* Mês fechado mostra o que aconteceu; mês em aberto mostra o que falta,
+     separando o que o pipeline já cobre do que a mídia nova precisa gerar.
+     A versão anterior comparava o realizado contra uma "exigência" sintética
+     (20,1% da meta) e fazia fevereiro aparecer com -100% num mês que bateu
+     201% da meta — comparação que não existia na realidade. */
   const revenueSeries = forecast.months.map((row) => ({
     label: row.label.replace("/", "/​"),
     month: row.month,
-    exigido: Math.round(row.paidRevenueTarget),
-    realizado: row.paidRevenueRealized ?? null,
+    realizado: row.status === "realizado" ? Math.round(row.paidRevenueRealized ?? 0) : null,
+    doPipeline: row.status === "realizado" ? null : Math.round(row.paidRevenueFromPipeline),
+    daMidiaNova: row.status === "realizado" ? null : Math.round(row.paidRevenueToGenerate),
     status: row.status
   }));
+
+  const closedMonths = forecast.months.filter((row) => row.status === "realizado");
+  const pendingMonths = forecast.months.filter((row) => row.status !== "realizado");
 
   const investmentSeries = forecast.investmentByMonth.map((row) => ({
     label: row.label.replace("/", "/​"),
@@ -182,26 +199,31 @@ export function MarketingForecastPanel({
           </small>
         </article>
         <article>
-          <span>Conversas a gerar</span>
-          <strong>{integer(forecast.totals.conversationsRemaining)}</strong>
+          <span>Já coberto pelo pipeline</span>
+          <strong className="is-good">{money(forecast.totals.pipelineExpected)}</strong>
           <small>
-            {integer(forecast.totals.wonRemaining)} contratos a {money(assumptions.paidTicket)}
+            {baseline.pipeline.openDeals} negócios abertos ({money(baseline.pipeline.openValue)}) ×{" "}
+            {decimal(assumptions.pipelineWinRatePct, 1)}% de aproveitamento
+          </small>
+        </article>
+        <article>
+          <span>A gerar com mídia nova</span>
+          <strong>{money(forecast.totals.paidRevenueToGenerate)}</strong>
+          <small>
+            {integer(forecast.totals.wonRemaining)} contratos a {money(assumptions.paidTicket)} ·{" "}
+            {integer(forecast.totals.conversationsRemaining)} conversas
           </small>
         </article>
         <article>
           <span>Criativos novos no período</span>
           <strong>{integer(forecast.totals.newCreativesRemaining)}</strong>
           <small>
-            {Math.max(
-              ...forecast.months.filter((row) => row.status !== "realizado").map((row) => row.creativesNeeded),
-              0
-            )}
-            /mês para absorver a verba · pool atual gira {intelligence.renewal.newCreativesPerMonth ?? "—"}/mês na
-            vida útil de {decimal(assumptions.creativeLifeDays, 0)} dias
+            {Math.max(...pendingMonths.map((row) => row.creativesNeeded), 0)}/mês para absorver a verba · pool
+            atual gira {intelligence.renewal.newCreativesPerMonth ?? "—"}/mês
           </small>
         </article>
         <article>
-          <span>Retorno implícito</span>
+          <span>Retorno implícito da mídia nova</span>
           <strong>
             {forecast.totals.impliedRoas == null ? "—" : `${decimal(forecast.totals.impliedRoas)}×`}
           </strong>
@@ -212,11 +234,22 @@ export function MarketingForecastPanel({
         </article>
       </section>
 
+      {forecast.totals.pipelineCoversTarget ? (
+        <p className="gia-forecast-note is-good">
+          O pipeline aberto de tráfego pago, ao aproveitamento histórico, já cobre sozinho a fatia da meta
+          atribuída ao canal no período. A mídia nova aqui é para repor o funil de {baseline.rates.lagMonths} mês(es)
+          à frente, não para fechar o ano.
+        </p>
+      ) : null}
+
       <div className="gia-forecast-grid">
         <article className="gia-chart">
           <header>
-            <strong>Receita de tráfego pago: exigida × realizada</strong>
-            <span>Barras em cinza são meses ainda não fechados</span>
+            <strong>Receita de tráfego pago por mês</strong>
+            <span>
+              Meses fechados mostram o que o canal entregou. Meses em aberto separam o que o pipeline atual já
+              cobre do que a mídia nova precisa gerar.
+            </span>
           </header>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={revenueSeries} margin={{ top: 8, right: 8, left: 8, bottom: 0 }} barGap={2}>
@@ -234,12 +267,20 @@ export function MarketingForecastPanel({
                 cursor={{ fill: "rgba(109, 40, 217, .06)" }}
               />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="exigido" name="Exigido pela meta" fill={chartTheme.amber} radius={[4, 4, 0, 0]}>
-                {revenueSeries.map((row) => (
-                  <Cell key={row.month} fill={row.status === "realizado" ? "#d9c39a" : chartTheme.amber} />
-                ))}
-              </Bar>
               <Bar dataKey="realizado" name="Realizado" fill={chartTheme.green} radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey="doPipeline"
+                name="Coberto pelo pipeline"
+                stackId="plano"
+                fill={chartTheme.purple}
+              />
+              <Bar
+                dataKey="daMidiaNova"
+                name="A gerar com mídia nova"
+                stackId="plano"
+                fill={chartTheme.amber}
+                radius={[4, 4, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </article>
@@ -295,6 +336,7 @@ export function MarketingForecastPanel({
         </article>
       </div>
 
+      <Collapsible title="Premissas do cálculo" hint="Ajuste qualquer taxa e tudo recalcula na hora">
       <section className="gia-assumptions">
         <header>
           <strong>Premissas do cálculo</strong>
@@ -332,11 +374,62 @@ export function MarketingForecastPanel({
           ))}
         </div>
       </section>
+      </Collapsible>
+
+      <Collapsible title="Histórico e plano mês a mês" hint="O que o canal entregou e o que falta, linha a linha">
+      <section className="gia-plan-table">
+        <header>
+          <strong>Histórico — o que o canal entregou</strong>
+          <span>
+            Meses fechados. Aqui não há &ldquo;exigido&rdquo;: a meta é da empresa inteira e o tráfego pago é um
+            canal entre outros, com fechamento irregular de mês para mês.
+          </span>
+        </header>
+        <div className="table-wrap">
+          <table className="marketing-table">
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th>Meta da empresa</th>
+                <th>Receita realizada</th>
+                <th>Atingimento</th>
+                <th>Receita de tráfego pago</th>
+                <th>Investido em mídia</th>
+                <th>Retorno sobre a mídia</th>
+              </tr>
+            </thead>
+            <tbody>
+              {closedMonths.map((row) => {
+                const roas =
+                  row.spendRealized && row.spendRealized > 0 && row.paidRevenueRealized != null
+                    ? row.paidRevenueRealized / row.spendRealized
+                    : null;
+                return (
+                  <tr key={row.month}>
+                    <td>{row.label}</td>
+                    <td>{money(row.target)}</td>
+                    <td>{row.totalRevenueRealized == null ? "—" : money(row.totalRevenueRealized)}</td>
+                    <td className={row.attainmentPct != null && row.attainmentPct >= 100 ? "is-good" : undefined}>
+                      {row.attainmentPct == null ? "—" : `${decimal(row.attainmentPct, 0)}%`}
+                    </td>
+                    <td>{row.paidRevenueRealized == null ? "—" : money(row.paidRevenueRealized)}</td>
+                    <td>{row.spendRealized == null ? "—" : moneyExact(row.spendRealized)}</td>
+                    <td>{roas == null ? "—" : `${decimal(roas)}×`}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section className="gia-plan-table">
         <header>
-          <strong>Plano mês a mês</strong>
-          <span>Cada linha lê: para faturar no mês X, invista no mês Y</span>
+          <strong>Plano — o que falta</strong>
+          <span>
+            Cada linha lê: para faturar no mês X, invista no mês Y. O pipeline aberto já é descontado antes de
+            pedir mídia nova.
+          </span>
         </header>
         <div className="table-wrap">
           <table className="marketing-table">
@@ -344,8 +437,9 @@ export function MarketingForecastPanel({
               <tr>
                 <th>Mês da receita</th>
                 <th>Meta</th>
-                <th>Receita paga exigida</th>
-                <th>Realizado</th>
+                <th>Fatia do canal</th>
+                <th>Do pipeline</th>
+                <th>A gerar</th>
                 <th>Contratos</th>
                 <th>Conversas</th>
                 <th>Cliques</th>
@@ -355,24 +449,22 @@ export function MarketingForecastPanel({
               </tr>
             </thead>
             <tbody>
-              {forecast.months.map((row) => (
-                <tr key={row.month} className={row.status === "realizado" ? "is-past" : undefined}>
+              {pendingMonths.map((row) => (
+                <tr key={row.month}>
                   <td>
                     {row.label}
-                    <small>{row.status}</small>
+                    <small>{row.status === "parcial" ? "mês corrente" : "projetado"}</small>
                   </td>
                   <td>{money(row.target)}</td>
                   <td>{money(row.paidRevenueTarget)}</td>
-                  <td className={row.gapPct != null && row.gapPct < -20 ? "is-alert" : undefined}>
-                    {row.paidRevenueRealized == null ? "—" : money(row.paidRevenueRealized)}
-                    {row.gapPct != null ? <small>{decimal(row.gapPct, 0)}%</small> : null}
-                  </td>
+                  <td className="is-good">{money(row.paidRevenueFromPipeline)}</td>
+                  <td>{money(row.paidRevenueToGenerate)}</td>
                   <td>{decimal(row.wonNeeded, 1)}</td>
                   <td>{integer(row.conversationsNeeded)}</td>
                   <td>{integer(row.clicksNeeded)}</td>
-                  <td>{row.status === "realizado" ? "—" : money(row.spendNeeded)}</td>
-                  <td>{row.status === "realizado" ? "—" : row.investMonthLabel}</td>
-                  <td>{row.status === "realizado" ? "—" : row.creativesNeeded}</td>
+                  <td>{money(row.spendNeeded)}</td>
+                  <td>{row.investMonthLabel}</td>
+                  <td>{row.creativesNeeded}</td>
                 </tr>
               ))}
             </tbody>
@@ -380,6 +472,9 @@ export function MarketingForecastPanel({
         </div>
       </section>
 
+      </Collapsible>
+
+      <Collapsible title="De onde saem as taxas" hint="Coortes defasadas: conversas de um mês × contratos do mês seguinte">
       <section className="gia-lagpairs">
         <header>
           <strong>De onde saem as taxas</strong>
@@ -422,6 +517,7 @@ export function MarketingForecastPanel({
           </table>
         </div>
       </section>
+      </Collapsible>
     </div>
   );
 }

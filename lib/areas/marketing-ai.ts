@@ -1075,6 +1075,8 @@ export type ForecastAssumptions = {
   spendPerCreative: number;
   /** Dias que uma execução sustenta entrega antes de ser trocada. */
   creativeLifeDays: number;
+  /** Quanto do pipeline aberto de tráfego pago deve fechar (%). */
+  pipelineWinRatePct: number;
 };
 
 export type ForecastMonth = {
@@ -1085,7 +1087,14 @@ export type ForecastMonth = {
   realizedRevenue: number | null;
   /** Receita de tráfego pago exigida no mês. */
   paidRevenueTarget: number;
+  /** Parte da exigência que o pipeline já em aberto deve cobrir. */
+  paidRevenueFromPipeline: number;
+  /** O que sobra para a mídia nova gerar do zero. */
+  paidRevenueToGenerate: number;
   paidRevenueRealized: number | null;
+  /** Receita total do mês e atingimento — só faz sentido em mês fechado. */
+  totalRevenueRealized: number | null;
+  attainmentPct: number | null;
   wonNeeded: number;
   conversationsNeeded: number;
   clicksNeeded: number;
@@ -1114,11 +1123,15 @@ export type ForecastResult = {
   totals: {
     targetRemaining: number;
     paidRevenueRemaining: number;
+    pipelineExpected: number;
+    paidRevenueToGenerate: number;
     spendRemaining: number;
     conversationsRemaining: number;
     wonRemaining: number;
     newCreativesRemaining: number;
     impliedRoas: number | null;
+    /** Verdadeiro quando o pipeline sozinho já cobre a exigência do canal. */
+    pipelineCoversTarget: boolean;
   };
   chain: Array<{ step: string; value: number; unit: string; detail: string }>;
 };
@@ -1141,11 +1154,23 @@ export function buildForecast(
   const monthlyPaidRevenue = new Map(baseline.monthly.map((row) => [row.month, row.paidWonRevenue]));
   const monthlyRevenue = new Map(baseline.monthly.map((row) => [row.month, row.wonRevenue]));
 
+  /* O pipeline aberto é abatido antes de pedir mídia nova. Sem deal-level date
+     não dá para saber em que mês cada negócio fecha, então o valor esperado é
+     distribuído proporcionalmente à meta de cada mês em aberto — aproximação
+     assumida e declarada, mas muito mais próxima da realidade do que ignorar
+     R$ 741 mil já em negociação. */
+  const pendingTargets = baseline.targets.filter((target) => target.month > baseline.lastClosedMonth);
+  const pendingTargetSum = pendingTargets.reduce((sum, target) => sum + target.target, 0);
+  const pipelineExpected = (baseline.pipeline.openValue * assumptions.pipelineWinRatePct) / 100;
+
   const months: ForecastMonth[] = baseline.targets.map((target) => {
     const isClosed = target.month <= baseline.lastClosedMonth;
     const isCurrent = target.month === baseline.currentMonth;
     const paidRevenueTarget = (target.target * assumptions.paidSharePct) / 100;
-    const wonNeeded = assumptions.paidTicket > 0 ? paidRevenueTarget / assumptions.paidTicket : 0;
+    const pipelineShare = isClosed || pendingTargetSum <= 0 ? 0 : target.target / pendingTargetSum;
+    const paidRevenueFromPipeline = Math.min(pipelineExpected * pipelineShare, paidRevenueTarget);
+    const paidRevenueToGenerate = Math.max(0, paidRevenueTarget - paidRevenueFromPipeline);
+    const wonNeeded = assumptions.paidTicket > 0 ? paidRevenueToGenerate / assumptions.paidTicket : 0;
     const conversationsNeeded =
       assumptions.conversationToWonPct > 0 ? (wonNeeded / assumptions.conversationToWonPct) * 100 : 0;
     const clicksNeeded =
@@ -1163,7 +1188,11 @@ export function buildForecast(
       target: target.target,
       realizedRevenue: monthlyRevenue.get(target.month) ?? (isClosed ? 0 : null),
       paidRevenueTarget,
+      paidRevenueFromPipeline,
+      paidRevenueToGenerate,
       paidRevenueRealized,
+      totalRevenueRealized: isClosed ? target.realized : null,
+      attainmentPct: isClosed ? target.attainmentPct : null,
       wonNeeded,
       conversationsNeeded,
       clicksNeeded,
@@ -1210,6 +1239,8 @@ export function buildForecast(
   const pending = months.filter((item) => item.status !== "realizado");
   const targetRemaining = pending.reduce((sum, item) => sum + item.target, 0);
   const paidRevenueRemaining = pending.reduce((sum, item) => sum + item.paidRevenueTarget, 0);
+  const pipelineApplied = pending.reduce((sum, item) => sum + item.paidRevenueFromPipeline, 0);
+  const paidRevenueToGenerate = pending.reduce((sum, item) => sum + item.paidRevenueToGenerate, 0);
   const spendRemaining = pending.reduce((sum, item) => sum + item.spendNeeded, 0);
   const conversationsRemaining = pending.reduce((sum, item) => sum + item.conversationsNeeded, 0);
   const wonRemaining = pending.reduce((sum, item) => sum + item.wonNeeded, 0);
@@ -1233,6 +1264,18 @@ export function buildForecast(
       value: paidRevenueRemaining,
       unit: "R$",
       detail: `${number(assumptions.paidSharePct, 1)}% da meta`
+    },
+    {
+      step: "Já coberto pelo pipeline aberto",
+      value: -pipelineApplied,
+      unit: "R$",
+      detail: `${baseline.pipeline.openDeals} negócios abertos × ${number(assumptions.pipelineWinRatePct, 1)}% de aproveitamento`
+    },
+    {
+      step: "Receita a gerar com mídia nova",
+      value: paidRevenueToGenerate,
+      unit: "R$",
+      detail: "o que sobra depois do pipeline"
     },
     {
       step: "Contratos a fechar",
@@ -1267,11 +1310,16 @@ export function buildForecast(
     totals: {
       targetRemaining,
       paidRevenueRemaining,
+      pipelineExpected,
+      paidRevenueToGenerate,
       spendRemaining,
       conversationsRemaining,
       wonRemaining,
       newCreativesRemaining,
-      impliedRoas: spendRemaining > 0 ? paidRevenueRemaining / spendRemaining : null
+      /* O retorno implícito mede a mídia nova contra a receita que ela precisa
+         gerar — misturar o pipeline aqui inflaria o número artificialmente. */
+      impliedRoas: spendRemaining > 0 ? paidRevenueToGenerate / spendRemaining : null,
+      pipelineCoversTarget: paidRevenueToGenerate <= 0 && paidRevenueRemaining > 0
     },
     chain
   };
@@ -1289,7 +1337,8 @@ export function defaultAssumptions(
     cpc: baseline.rates.cpc ?? 1,
     leadTimeDays: baseline.rates.leadTimeDays ?? 51,
     spendPerCreative: intelligence?.renewal.monthlySpendPerCreative ?? 800,
-    creativeLifeDays: intelligence?.renewal.usefulLifeDays ?? 30
+    creativeLifeDays: intelligence?.renewal.usefulLifeDays ?? 30,
+    pipelineWinRatePct: baseline.pipeline.winRatePct ?? 0
   };
 }
 

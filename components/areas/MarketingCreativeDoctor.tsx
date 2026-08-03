@@ -12,6 +12,7 @@ import {
   YAxis
 } from "recharts";
 import { chartTheme } from "@/lib/chart-theme";
+import { Collapsible } from "@/components/areas/Collapsible";
 import type { CreativeFact, CreativeIntelligence, CreativeVerdict } from "@/lib/areas/marketing-ai";
 
 const money = (value: number) =>
@@ -291,6 +292,10 @@ export function MarketingCreativeDoctor({ intelligence }: { intelligence: Creati
         </>
       ) : null}
 
+      <Collapsible
+        title="Retenção de vídeo e eficiência semanal"
+        hint="Curva por conceito e custo por conversa semana a semana"
+      >
       <div className="gia-chart-grid">
         {retention.concepts.length ? (
           <article className="gia-chart">
@@ -366,7 +371,12 @@ export function MarketingCreativeDoctor({ intelligence }: { intelligence: Creati
           </ResponsiveContainer>
         </article>
       </div>
+      </Collapsible>
 
+      <Collapsible
+        title="Picos e quedas de performance"
+        hint="As semanas mais eficientes e as mais caras, com o que estava no ar"
+      >
       <section className="gia-windows">
         <article>
           <header>
@@ -419,8 +429,13 @@ export function MarketingCreativeDoctor({ intelligence }: { intelligence: Creati
           </ul>
         </article>
       </section>
+      </Collapsible>
 
       {intelligence.copySignals.length ? (
+        <Collapsible
+          title="Elementos de copy × custo"
+          hint="Custo dos criativos com e sem cada elemento — correlação, não causa"
+        >
         <section className="gia-panel">
           <header>
             <strong>Elementos de copy × custo</strong>
@@ -463,11 +478,17 @@ export function MarketingCreativeDoctor({ intelligence }: { intelligence: Creati
             </table>
           </div>
         </section>
+        </Collapsible>
       ) : null}
 
+      <Collapsible
+        title="Todos os criativos com entrega no ano"
+        hint="Copy, retenção, custo e o porquê de cada veredito"
+        badge={`${intelligence.creatives.length} criativos`}
+      >
       <section className="gia-panel">
         <header>
-          <strong>Todos os criativos com entrega no ano</strong>
+          <strong>Tabela completa</strong>
           <span>
             {visible.length} de {intelligence.creatives.length} · clique no nome para abrir copy, retenção e o
             porquê do veredito
@@ -504,7 +525,12 @@ export function MarketingCreativeDoctor({ intelligence }: { intelligence: Creati
           </table>
         </div>
       </section>
+      </Collapsible>
 
+      <Collapsible
+        title="Política de renovação de criativos"
+        hint="Vida útil, concentração de verba e cadência sugerida"
+      >
       <section className="gia-renewal">
         <header>
           <strong>Política de renovação sugerida</strong>
@@ -576,6 +602,7 @@ export function MarketingCreativeDoctor({ intelligence }: { intelligence: Creati
           </article>
         </div>
       </section>
+      </Collapsible>
     </div>
   );
 }

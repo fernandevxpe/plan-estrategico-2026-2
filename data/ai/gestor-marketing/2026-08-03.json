@@ -5,14 +5,14 @@
   "factsGeneratedAt": "2026-08-03T02:16:13.310Z",
   "janela": "janeiro a julho de 2026",
   "base": "R$ 14.396,12 investidos em 2026, 253 criativos com entrega, 1.024 conversas iniciadas, 6.581 páginas carregadas e 760 mil impressões. Cruzado com 20 contratos ganhos de origem \"Tráfego Pago\" no Pipedrive, somando R$ 183.550.",
-  "resumo": "A conta está desligada no mês em que a meta mais cobra, com o melhor criativo do ano parado há 56 dias e 69% da verba concentrada num conceito que roda há 198 dias e performa exatamente na média. Mas o achado que muda a conversa não é de mídia: a taxa de conversa para contrato caiu de 5,97% para 0,79% enquanto o volume de conversa quase quadruplicou. Estamos comprando mais conversa e menos intenção — e nenhuma verba de tráfego compensa isso.",
+  "resumo": "A conta está desligada, o melhor criativo do ano está parado há 56 dias e 69% da verba se concentra num conceito que roda há 198 dias e performa exatamente na média. A boa notícia é que o buraco não é de orçamento: descontando os 94 negócios de tráfego pago já em aberto, a fatia da meta atribuída ao canal exige cerca de R$ 1.450 por mês de mídia nova — menos do que a conta já vinha investindo. O problema real é outro: a taxa de conversa para contrato caiu de 5,97% para 0,79% enquanto o volume de conversa quase quadruplicou. Estamos comprando mais conversa e menos intenção.",
   "secoes": [
     {
       "id": "conta-parada",
       "titulo": "1. O ponto de partida: a conta está desligada",
       "tom": "critico",
       "paragrafos": [
-        "Zero campanhas ativas, zero anúncios ativos, última entrega em 29/07 e R$ 0,00 investidos em agosto. O cálculo reverso exige R$ 3.325 do mês. Isso não é um detalhe operacional: com ciclo mediano de venda de 49 dias, a verba de agosto é para faturar em outubro. Cada dia parado empurra receita para novembro.",
+        "Zero campanhas ativas, zero anúncios ativos, última entrega em 29/07 e R$ 0,00 investidos em agosto. O plano corrigido pede cerca de R$ 1.546 no mês. Isso não é um detalhe operacional: com ciclo mediano de venda de 49 dias, a verba de agosto é para faturar em outubro. Cada dia parado empurra receita para novembro.",
         "E não é só agosto. Junho realizou R$ 2.594 contra R$ 3.023 exigidos; julho realizou R$ 1.004 contra R$ 3.224 — 31% do plano, uma queda de 61% num mês em que a exigência subia. Setembro e outubro já nascem com déficit, e nenhuma verba nova conserta isso retroativamente."
       ]
     },
@@ -186,32 +186,37 @@
       "titulo": "10. A matemática da meta",
       "tom": "critico",
       "paragrafos": [
-        "Faltam R$ 1.190.400 de meta entre agosto e dezembro. Mantida a fatia histórica de 20,1% do tráfego pago, o caminho reverso é: R$ 238.934 de receita paga ÷ R$ 9.178 de ticket = 26 contratos; ÷ 2,37% de fechamento = 1.099 conversas; ÷ 5,5% de clique para conversa = 20.132 cliques; × R$ 0,78 de CPC = R$ 15.618 de mídia.",
-        "Três problemas com isso. Escala: R$ 15.618 é mais do que a conta investiu no ano inteiro (R$ 14.396) e precisa acontecer em cinco meses em vez de sete. Calendário: a verba só vira contrato dois meses depois, então os R$ 3.325 de agosto são para faturar em outubro — e agosto está em R$ 0,00. Premissa: o cálculo usa 2,37%, a taxa agregada das coortes maduras, mas as duas últimas rodaram 1,12% e 0,79%.",
-        "No cenário conservador — CPC de R$ 2,01, 3,82% de clique para conversa e 1,12% de fechamento — a mesma meta exige cerca de R$ 138 mil de mídia, nove vezes o plano base."
+        "Faltam R$ 1.190.400 de meta entre agosto e dezembro. Mantida a fatia histórica de 20,1% do tráfego pago, o canal precisa entregar R$ 238.934 no período. Mas boa parte disso já está no funil: existem 94 negócios de tráfego pago em aberto somando R$ 741.570 e, ao aproveitamento observado no canal (17,2% dos decididos viram ganho), esse pipeline vale cerca de R$ 127.857.",
+        "Descontando o pipeline, sobram R$ 111.077 para a mídia nova gerar do zero: 12 contratos ao ticket médio de R$ 9.178, 511 conversas à taxa de 2,37% e 9.359 cliques a 5,5% — R$ 7.260 de mídia ao CPC de R$ 0,78. Isso dá cerca de R$ 1.450 por mês, menos do que a conta vinha investindo entre março e junho.",
+        "A conclusão muda de figura em relação a uma leitura ingênua da meta: o tráfego pago não precisa de um salto de verba para cumprir a fatia dele. Precisa voltar a rodar. O buraco não é de orçamento, é de operação parada e de conversão em queda.",
+        "O que continua valendo é o calendário: com ciclo mediano de 49 dias, a verba de um mês só vira contrato dois meses depois. Junho e julho já ficaram abaixo do exigido (R$ 2.594 contra R$ 3.023 e R$ 1.004 contra R$ 3.224), então setembro e outubro já nascem com déficit."
       ],
       "tabela": {
         "colunas": [
           "Taxa conversa → contrato",
-          "Mídia necessária"
+          "Mídia nova necessária",
+          "Por mês"
         ],
         "linhas": [
           [
             "0,79% (coorte de maio)",
-            "~R$ 46,8 mil"
+            "~R$ 21,8 mil",
+            "~R$ 4.360"
           ],
           [
             "2,37% (base, coortes maduras)",
-            "R$ 15,6 mil"
+            "R$ 7,3 mil",
+            "~R$ 1.450"
           ],
           [
             "4,80% (coorte de fevereiro)",
-            "~R$ 7,7 mil"
+            "~R$ 3,6 mil",
+            "~R$ 715"
           ]
         ],
-        "nota": "O investimento necessário é inversamente proporcional à taxa de fechamento. É a variável de maior alavancagem do plano inteiro."
+        "nota": "Já descontado o pipeline aberto. O investimento é inversamente proporcional à taxa de fechamento — é a variável de maior alavancagem do plano."
       },
-      "destaque": "A leitura honesta: a meta de vendas não se resolve com verba de tráfego. Ou a taxa de conversa para contrato volta ao patamar de janeiro e fevereiro, ou o tráfego pago entrega menos que 20% da meta e a diferença vem de outro canal. Nenhuma otimização de criativo chega perto do efeito de recuperar essa taxa."
+      "destaque": "A leitura honesta: a meta do canal é alcançável com a verba que a conta já praticava, desde que ela volte a rodar. O risco não está no orçamento — está em ter 94 negócios abertos dependendo de um aproveitamento de 17,2% e uma taxa de conversa para contrato que caiu de 5,97% para 0,79%. Se o aproveitamento do pipeline cair pela metade, a exigência de mídia dobra."
     },
     {
       "id": "segunda-feira",
@@ -299,5 +304,17 @@
       ]
     }
   ],
-  "conclusao": "Em uma frase: a conta parou no mês de maior exigência, com o melhor criativo desligado há dois meses e 69% da verba num conceito mediano de 198 dias — mas o problema maior não está na mídia, está na queda de 5,97% para 0,79% na conversão de conversa em contrato, que nenhuma verba de tráfego compensa."
+  "conclusao": "Em uma frase: não falta verba, falta a conta ligada e a conversão de volta — descontado o pipeline aberto, a mídia nova exige cerca de R$ 1.450 por mês, mas a queda de 5,97% para 0,79% na conversa para contrato multiplica essa conta por três se não for revertida.",
+  "indicadores": {
+    "investidoNoAno": 14396.12,
+    "conversas": 1024,
+    "custoPorConversa": 14.21,
+    "conversaParaContratoPct": 2.37,
+    "midiaPorContrato": 599.88,
+    "retornoSobreMidia": 15.98,
+    "criativosFatigados": 30,
+    "conceitosAtivos": 7,
+    "investimentoExigidoNoMes": 1546,
+    "investidoNoMes": 0
+  }
 }

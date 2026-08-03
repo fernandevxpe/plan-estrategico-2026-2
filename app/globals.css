@@ -10478,3 +10478,51 @@ button.linkish {
   .gia-edition > header { flex-direction: column; }
   .gia-editions { justify-content: flex-start; }
 }
+
+/* ── blocos recolhíveis ── */
+.collapsible { border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden; }
+.collapsible + .collapsible { margin-top: 14px; }
+.collapsible > summary { display: flex; align-items: center; gap: 11px; padding: 15px 18px; cursor: pointer; list-style: none; user-select: none; }
+.collapsible > summary::-webkit-details-marker { display: none; }
+.collapsible > summary:hover { background: #fafafa; }
+.collapsible[open] > summary { border-bottom: 1px solid var(--line); }
+.collapsible-caret { flex-shrink: 0; width: 8px; height: 8px; border-right: 2px solid #94a3b8; border-bottom: 2px solid #94a3b8; transform: rotate(-45deg); transition: transform .15s ease; }
+details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
+.collapsible-title { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.collapsible-title strong { font-size: 15px; }
+.collapsible-title span { color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+.collapsible-badge { flex-shrink: 0; font-style: normal; font-size: 10.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: #f1f5f9; color: #475569; }
+.collapsible-body { padding: 16px 18px 18px; }
+.collapsible-body > .gia-panel,
+.collapsible-body > .gia-renewal { border: 0; padding: 0; background: transparent; }
+.collapsible-body > .gia-doctor { gap: 14px; }
+
+/* seções da edição também recolhem */
+.gia-section > summary { display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; }
+.gia-section > summary::-webkit-details-marker { display: none; }
+.gia-section > summary h4 { margin: 0; }
+.gia-section[open] > summary h4 { margin-bottom: 9px; }
+.gia-section-body { min-width: 0; }
+
+/* ── comparação entre edições ── */
+.gia-compare { display: grid; gap: 10px; margin: 0 0 20px; padding: 15px 17px; border: 1px solid #cbd5e1; border-radius: 13px; background: #f8fafc; }
+.gia-compare > header { display: grid; gap: 2px; }
+.gia-compare > header strong { font-size: 13.5px; }
+.gia-compare > header span { color: var(--muted); font-size: 11.5px; }
+.gia-compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 9px; }
+.gia-compare-grid article { display: grid; gap: 2px; padding: 11px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.gia-compare-grid span { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; line-height: 1.3; }
+.gia-compare-grid strong { font-size: 16px; }
+.gia-compare-grid small { font-size: 11px; font-weight: 700; }
+.gia-compare-grid small.up { color: #15803d; }
+.gia-compare-grid small.down { color: #b91c1c; }
+.gia-compare-grid small.flat { color: var(--muted); }
+
+.gia-forecast-note { margin: 0; padding: 12px 15px; border-radius: 11px; font-size: 12.5px; line-height: 1.55; border: 1px solid var(--line); background: #f8fafc; color: #334155; }
+.gia-forecast-note.is-good { border-color: #bbf7d0; background: #f0fdf4; color: #14532d; }
+.gia-forecast-kpis strong.is-good { color: #15803d; }
+
+@media (max-width: 620px) {
+  .collapsible > summary { padding: 13px 14px; }
+  .collapsible-body { padding: 13px 14px 15px; }
+}

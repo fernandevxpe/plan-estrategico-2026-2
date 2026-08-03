@@ -101,6 +101,20 @@ export type MarketingRevenueBaseline = {
   targets: MarketingGoalTarget[];
   monthly: MarketingBaselineMonth[];
   lagPairs: MarketingLagPair[];
+  /**
+   * Negócios de tráfego pago já no funil. Ignorar isso era o erro que inflava o
+   * plano: a projeção pedia que a mídia gerasse do zero uma receita que em boa
+   * parte já está em negociação.
+   */
+  pipeline: {
+    openDeals: number;
+    openValue: number;
+    wonDeals: number;
+    lostDeals: number;
+    /** Ganhos sobre decididos (ganhos + perdidos) no canal. */
+    winRatePct: number | null;
+    expectedValue: number;
+  };
   rates: {
     lagMonths: number;
     leadTimeDays: number | null;
@@ -155,6 +169,26 @@ export type MarketingGestorSection = {
   destaque?: string;
 };
 
+/**
+ * Fotografia dos números no dia da análise.
+ *
+ * Os indicadores da página são sempre recalculados sobre o dado mais recente,
+ * então sem este congelamento não haveria como comparar uma edição com a
+ * anterior — o "antes" simplesmente deixaria de existir.
+ */
+export type MarketingGestorSnapshot = {
+  investidoNoAno: number;
+  conversas: number;
+  custoPorConversa: number | null;
+  conversaParaContratoPct: number | null;
+  midiaPorContrato: number | null;
+  retornoSobreMidia: number | null;
+  criativosFatigados: number;
+  conceitosAtivos: number;
+  investimentoExigidoNoMes: number | null;
+  investidoNoMes: number;
+};
+
 export type MarketingGestorEdition = {
   /** AAAA-MM-DD — também é o nome do arquivo. */
   date: string;
@@ -165,6 +199,7 @@ export type MarketingGestorEdition = {
   janela: string;
   base: string;
   resumo: string;
+  indicadores?: MarketingGestorSnapshot;
   secoes: MarketingGestorSection[];
   conclusao: string;
 };
@@ -385,6 +420,10 @@ function buildRevenueBaseline(
 
   const latest = commercial.at(-1)!;
   const paidYtd = latest.wonYtd.channels.find((channel) => channel.key === PAID_CHANNEL);
+  const paidOpen = latest.openPotential.channels.find((channel) => channel.key === PAID_CHANNEL);
+  const paidLost = latest.lostYtd.channels.find((channel) => channel.key === PAID_CHANNEL);
+  const decidedDeals = (paidYtd?.deals ?? 0) + (paidLost?.deals ?? 0);
+  const pipelineWinRate = share(paidYtd?.deals ?? 0, decidedDeals);
 
   const warnings: string[] = [
     'A origem "Tráfego Pago" é preenchida manualmente no Pipedrive; não existe UTM/GCLID ligando o clique ao negócio.',
@@ -416,6 +455,14 @@ function buildRevenueBaseline(
       })),
     monthly,
     lagPairs,
+    pipeline: {
+      openDeals: paidOpen?.deals ?? 0,
+      openValue: paidOpen?.value ?? 0,
+      wonDeals: paidYtd?.deals ?? 0,
+      lostDeals: paidLost?.deals ?? 0,
+      winRatePct: pipelineWinRate,
+      expectedValue: ((paidOpen?.value ?? 0) * (pipelineWinRate ?? 0)) / 100
+    },
     rates: {
       lagMonths,
       leadTimeDays,

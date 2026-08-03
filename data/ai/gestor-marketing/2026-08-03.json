@@ -1,0 +1,303 @@
+{
+  "date": "2026-08-03",
+  "titulo": "A conta parou no mês de maior exigência — e o problema maior não está na mídia",
+  "model": "claude-opus-5",
+  "factsGeneratedAt": "2026-08-03T02:16:13.310Z",
+  "janela": "janeiro a julho de 2026",
+  "base": "R$ 14.396,12 investidos em 2026, 253 criativos com entrega, 1.024 conversas iniciadas, 6.581 páginas carregadas e 760 mil impressões. Cruzado com 20 contratos ganhos de origem \"Tráfego Pago\" no Pipedrive, somando R$ 183.550.",
+  "resumo": "A conta está desligada no mês em que a meta mais cobra, com o melhor criativo do ano parado há 56 dias e 69% da verba concentrada num conceito que roda há 198 dias e performa exatamente na média. Mas o achado que muda a conversa não é de mídia: a taxa de conversa para contrato caiu de 5,97% para 0,79% enquanto o volume de conversa quase quadruplicou. Estamos comprando mais conversa e menos intenção — e nenhuma verba de tráfego compensa isso.",
+  "secoes": [
+    {
+      "id": "conta-parada",
+      "titulo": "1. O ponto de partida: a conta está desligada",
+      "tom": "critico",
+      "paragrafos": [
+        "Zero campanhas ativas, zero anúncios ativos, última entrega em 29/07 e R$ 0,00 investidos em agosto. O cálculo reverso exige R$ 3.325 do mês. Isso não é um detalhe operacional: com ciclo mediano de venda de 49 dias, a verba de agosto é para faturar em outubro. Cada dia parado empurra receita para novembro.",
+        "E não é só agosto. Junho realizou R$ 2.594 contra R$ 3.023 exigidos; julho realizou R$ 1.004 contra R$ 3.224 — 31% do plano, uma queda de 61% num mês em que a exigência subia. Setembro e outubro já nascem com déficit, e nenhuma verba nova conserta isso retroativamente."
+      ]
+    },
+    {
+      "id": "colapso-conversao",
+      "titulo": "2. O achado central: a conversa barateou e parou de vender",
+      "tom": "critico",
+      "paragrafos": [
+        "Este é o número mais importante da conta, e ele não aparece em nenhum relatório do Meta. Cada linha cruza as conversas de um mês com os contratos que fecharam dois meses depois, que é o ciclo mediano observado."
+      ],
+      "tabela": {
+        "colunas": [
+          "Conversas em",
+          "Fecham em",
+          "Conversas",
+          "Investido",
+          "Contratos",
+          "Taxa",
+          "Mídia/contrato",
+          "Retorno"
+        ],
+        "linhas": [
+          [
+            "janeiro",
+            "março",
+            "67",
+            "R$ 1.566",
+            "4",
+            "5,97%",
+            "R$ 391",
+            "20,8×"
+          ],
+          [
+            "fevereiro",
+            "abril",
+            "125",
+            "R$ 1.960",
+            "6",
+            "4,80%",
+            "R$ 327",
+            "24,3×"
+          ],
+          [
+            "março",
+            "maio",
+            "137",
+            "R$ 2.214",
+            "4",
+            "2,92%",
+            "R$ 553",
+            "18,9×"
+          ],
+          [
+            "abril",
+            "junho",
+            "178",
+            "R$ 2.535",
+            "2",
+            "1,12%",
+            "R$ 1.267",
+            "9,4×"
+          ],
+          [
+            "maio",
+            "julho",
+            "253",
+            "R$ 2.525",
+            "2",
+            "0,79%",
+            "R$ 1.262",
+            "10,6×"
+          ]
+        ],
+        "nota": "As duas últimas linhas estão truncadas: com ciclo de 49 dias, parte dos negócios de abril e maio ainda vai fechar, então 1,12% e 0,79% vão subir um pouco. As três primeiras coortes já estão maduras."
+      },
+      "lista": [
+        "O volume de conversa quase quadruplicou: 67 → 253.",
+        "Os contratos caíram pela metade: de 4–6 por coorte para 2.",
+        "A mídia por contrato triplicou: R$ 391 → R$ 1.262."
+      ],
+      "destaque": "As três primeiras coortes já maduras mostram sozinhas 5,97% → 4,80% → 2,92%. A tendência não depende dos números truncados. Isso pode ser público mais frio, atendimento, oferta ou qualificação — os dados de mídia não separam essas hipóteses, mas apontam onde investigar. E é uma conversa com o comercial, não com o gestor de tráfego."
+    },
+    {
+      "id": "criativo-desligado",
+      "titulo": "3. O melhor criativo da conta está desligado há 56 dias",
+      "tom": "critico",
+      "paragrafos": [
+        "O conceito da vistoria predial obrigatória — estático, não vídeo — é o criativo mais eficiente que a conta já teve.",
+        "Por que funciona: a copy não vende laudo, cobra uma data. Abre perguntando qual foi a última vistoria predial obrigatória — uma informação que o síndico deveria ter e não tem — e transforma desconhecimento em risco pessoal antes de oferecer qualquer coisa. Quem clica já clicou sabendo que tem um problema."
+      ],
+      "lista": [
+        "R$ 1.188,31 investidos → 205 conversas a R$ 5,80 cada.",
+        "Mediana da conta: R$ 10,46. Ele roda 45% abaixo.",
+        "82% dos cliques externos viraram conversa — a maior taxa da conta, contra 30% do carro elétrico e 40% do LIE.",
+        "Receita estimada de R$ 46.543, retorno estimado de 39,2× sobre a mídia.",
+        "Última entrega: 08/06/2026."
+      ],
+      "destaque": "Roda em três execuções, todas abaixo da mediana: R$ 5,57, R$ 5,96 e R$ 4,79. A repetição do resultado em volumes diferentes descarta sorte de amostra — o ganho está no conceito, não numa peça específica. E ele foi cortado com score de desgaste 14, ou seja, antes de mostrar onde satura."
+    },
+    {
+      "id": "estatico-vs-video",
+      "titulo": "4. Estático está batendo vídeo",
+      "tom": "oportunidade",
+      "paragrafos": [
+        "Os três melhores custos por conversa da família [WPP] são todos estáticos: R$ 4,79, R$ 5,57 e R$ 5,96. Os vídeos ficam entre R$ 8,47 e R$ 19,99.",
+        "Nos vídeos, o gancho funciona e o miolo não. A taxa de view sobre impressão fica entre 92% e 96% nas peças de volume — quase todo mundo que recebe a impressão começa a assistir, então o primeiro segundo e a thumbnail estão certos. Mas a retenção a 100% cai para a faixa de 1,2% a 4,8%: a audiência evapora entre o marco de 25% e o fim."
+      ],
+      "destaque": "Conclusão desconfortável para quem investe em produção: vídeo nesta conta está pagando alcance, não conversão. O caminho é encurtar radicalmente — CTA antes dos 15 segundos, onde a audiência ainda está — e usar o orçamento de produção economizado para gerar mais estáticos de conformidade."
+    },
+    {
+      "id": "concentracao",
+      "titulo": "5. Dois terços da verba num criativo mediano",
+      "tom": "atencao",
+      "paragrafos": [
+        "O conceito do carro elétrico levou R$ 9.984 dos R$ 14.396 do ano — 69% — espalhado em 150 anúncios, e está no ar há 198 dias (13/01 a 29/07).",
+        "O problema não é ele ser ruim. É ele ser exatamente mediano: R$ 10,91 por conversa contra mediana de R$ 10,46, índice de custo 1,04. Dois terços da verba num criativo que performa na média.",
+        "E só 2 conceitos concentram 80% do gasto, de 15 conceitos distintos que a conta já produziu. Quando esse conceito cansar de vez, não há banco de criativos para absorver a verba."
+      ]
+    },
+    {
+      "id": "mix",
+      "titulo": "6. A troca de mix encareceu o clique em 4×",
+      "tom": "atencao",
+      "paragrafos": [
+        "A conta migrou de [LP] (compra clique e página) para [WPP] (compra conversa). É defensável — [WPP] é a única família com contrato rastreado atrás. Mas ninguém recalibrou a verba para isso."
+      ],
+      "lista": [
+        "CPC externo: R$ 0,62 (jan) → R$ 2,55 (jul).",
+        "Páginas carregadas: 1.245 → 145.",
+        "CTR: 6,29% (fev) → 1,80% (jul)."
+      ],
+      "destaque": "A mesma verba compra muito menos tráfego hoje do que comprava em janeiro. E as campanhas [LP] consumiram R$ 3.272 sem gerar uma única conversa registrada — sem instrumentação na página, essa verba é cega para qualquer cálculo de retorno."
+    },
+    {
+      "id": "picos",
+      "titulo": "7. Os picos provam a tese",
+      "tom": "neutro",
+      "paragrafos": [
+        "Melhor semana do ano — 25/05: 47 conversas a R$ 8,54, com apenas R$ 401,53. Os dois estáticos da vistoria levaram 15% da verba e entregaram 22 das 47 conversas: 47% do resultado com um sétimo do dinheiro.",
+        "Semana de 01/06: 64 conversas a R$ 8,58. Duas peças, 47% do orçamento, 58% das conversas. Foi a última semana com o estático no ar.",
+        "Pior semana do ano — 06/07: 5 conversas a R$ 50,02 cada. É a primeira semana desde maio sem nenhum estático no ar. Dois dos cinco principais anúncios entregaram zero conversa somando 34% da verba."
+      ],
+      "destaque": "Isso é praticamente um teste controlado: tirou o criativo de conversão, sobrou alcance, o custo sextuplicou."
+    },
+    {
+      "id": "copy",
+      "titulo": "8. O que a copy vencedora tem em comum",
+      "tom": "neutro",
+      "paragrafos": [
+        "A copy que vence aqui não explica o serviço, cobra uma pendência. O vencedor pergunta por uma data. O segundo melhor ângulo, o do carro elétrico, impõe um prazo externo que o condomínio não controla. Os criativos que descrevem o laudo, listam benefícios técnicos ou falam de segurança em abstrato ficam todos acima da mediana.",
+        "Um único elemento tem amostra suficiente para virar regra: CTA explícito no texto — presente em 20 dos 28 criativos com volume, com custo de R$ 9,10 contra R$ 11,92 nos que não têm, 31% mais barato. Os outros elementos que a análise mede (gatilho de risco, prova técnica, público nomeado) estão em quase toda a conta, então não existe grupo de controle. Ausência de sinal aqui é falta de variação, não prova de irrelevância."
+      ]
+    },
+    {
+      "id": "renovacao",
+      "titulo": "9. Renovação: não existe política, existe inércia",
+      "tom": "atencao",
+      "paragrafos": [
+        "Os números da própria conta definem a cadência que falta."
+      ],
+      "lista": [
+        "Uma execução sustenta entrega por 53 dias medianos antes de ser trocada.",
+        "Mas o mesmo conceito fica no ar 168 dias medianos — o principal, 198.",
+        "30 criativos já estão com desgaste alto ou crítico.",
+        "Um conceito absorve cerca de R$ 1.323 por mês antes de saturar."
+      ],
+      "destaque": "O plano exige R$ 3.023–3.325 por mês, o que significa 3 conceitos rodando simultaneamente no mínimo. Com vida útil de 53 dias, isso pede 6 peças ativas e 3 novas por mês, em cadência de 21 dias — para a substituta já estar aprendendo quando a anterior começa a cansar."
+    },
+    {
+      "id": "matematica-meta",
+      "titulo": "10. A matemática da meta",
+      "tom": "critico",
+      "paragrafos": [
+        "Faltam R$ 1.190.400 de meta entre agosto e dezembro. Mantida a fatia histórica de 20,1% do tráfego pago, o caminho reverso é: R$ 238.934 de receita paga ÷ R$ 9.178 de ticket = 26 contratos; ÷ 2,37% de fechamento = 1.099 conversas; ÷ 5,5% de clique para conversa = 20.132 cliques; × R$ 0,78 de CPC = R$ 15.618 de mídia.",
+        "Três problemas com isso. Escala: R$ 15.618 é mais do que a conta investiu no ano inteiro (R$ 14.396) e precisa acontecer em cinco meses em vez de sete. Calendário: a verba só vira contrato dois meses depois, então os R$ 3.325 de agosto são para faturar em outubro — e agosto está em R$ 0,00. Premissa: o cálculo usa 2,37%, a taxa agregada das coortes maduras, mas as duas últimas rodaram 1,12% e 0,79%.",
+        "No cenário conservador — CPC de R$ 2,01, 3,82% de clique para conversa e 1,12% de fechamento — a mesma meta exige cerca de R$ 138 mil de mídia, nove vezes o plano base."
+      ],
+      "tabela": {
+        "colunas": [
+          "Taxa conversa → contrato",
+          "Mídia necessária"
+        ],
+        "linhas": [
+          [
+            "0,79% (coorte de maio)",
+            "~R$ 46,8 mil"
+          ],
+          [
+            "2,37% (base, coortes maduras)",
+            "R$ 15,6 mil"
+          ],
+          [
+            "4,80% (coorte de fevereiro)",
+            "~R$ 7,7 mil"
+          ]
+        ],
+        "nota": "O investimento necessário é inversamente proporcional à taxa de fechamento. É a variável de maior alavancagem do plano inteiro."
+      },
+      "destaque": "A leitura honesta: a meta de vendas não se resolve com verba de tráfego. Ou a taxa de conversa para contrato volta ao patamar de janeiro e fevereiro, ou o tráfego pago entrega menos que 20% da meta e a diferença vem de outro canal. Nenhuma otimização de criativo chega perto do efeito de recuperar essa taxa."
+    },
+    {
+      "id": "segunda-feira",
+      "titulo": "11. O que eu faria na segunda-feira",
+      "tom": "oportunidade",
+      "paragrafos": [
+        "Na ordem em que devem ser executados."
+      ],
+      "listaOrdenada": true,
+      "lista": [
+        "Religar os dois estáticos da vistoria predial (adIds 120240849642880193 e 120234763351640193) com o dobro da verba diária. Custo zero de produção, resultado conhecido, melhor peça da conta.",
+        "Arquivar a campanha de reconhecimento — R$ 196 com CTR de 0,12% e zero clique externo — e os dois conjuntos [IG] isolados, que custaram R$ 19,99 e R$ 18,27 por conversa contra mediana de R$ 10,46.",
+        "Subir agosto para R$ 3.325, em degraus ao longo da semana e não de uma vez, para preservar o aprendizado de criativos voltando do zero.",
+        "Sentar com o comercial sobre a queda de 5,97% para 0,79%. É a variável de maior alavancagem do plano inteiro.",
+        "Produzir 3 estáticos novos no tema de datas e prazos vencidos, um por semana.",
+        "Instrumentar a landing page com evento de conversa ou formulário rastreado antes de reativar qualquer campanha [LP].",
+        "Acompanhar conversa para contrato por coorte semanalmente, não só custo por conversa. Foi exatamente essa leitura isolada que fez maio parecer o melhor mês do ano quando ele é a pior coorte de conversão."
+      ]
+    },
+    {
+      "id": "temas",
+      "titulo": "12. Temas para os próximos criativos",
+      "tom": "neutro",
+      "paragrafos": [
+        "Cinco ângulos derivados do que já funcionou nesta conta, com o formato sugerido e o motivo."
+      ],
+      "tabela": {
+        "colunas": [
+          "Tema",
+          "Ângulo",
+          "Formato",
+          "Por quê"
+        ],
+        "linhas": [
+          [
+            "Datas e prazos vencidos",
+            "Perguntar por uma obrigação com data que o síndico não sabe responder — última vistoria, validade do laudo, prazo do AVCB, revisão do quadro.",
+            "Estático, headline em pergunta",
+            "É a mecânica exata do criativo de R$ 5,80 por conversa e 82% de conversa por clique."
+          ],
+          [
+            "Responsabilidade pessoal do síndico",
+            "O que recai sobre a pessoa do síndico, e não sobre o condomínio, quando algo dá errado na elétrica.",
+            "Estático ou carrossel curto",
+            "Isola o gatilho de risco pessoal e dá o grupo de controle que hoje não existe."
+          ],
+          [
+            "Urgência regulatória do carregamento veicular",
+            "Manter a promessa do conceito de maior volume, com abertura nova e corpo encurtado.",
+            "Vídeo de até 20s, CTA antes dos 15",
+            "O gancho está validado (92,9% de view sobre impressão), mas o corpo perde a audiência e a execução roda há 198 dias."
+          ],
+          [
+            "Custo do erro versus custo do laudo",
+            "Comparação direta entre o valor de um laudo e o custo de uma obra corretiva ou interdição.",
+            "Estático com dois números lado a lado",
+            "Nenhum criativo da conta ancora preço. É o ângulo mais óbvio ainda não testado."
+          ],
+          [
+            "Prova de execução em condomínio vizinho",
+            "Caso real e localizado, por bairro de Recife, com o que foi encontrado no laudo.",
+            "Estático com foto de campo ou carrossel",
+            "A conta não tem nenhuma peça de prova social. Para decisão colegiada de síndico e conselho, referência de vizinhança reduz atrito."
+          ]
+        ]
+      }
+    },
+    {
+      "id": "limitacoes",
+      "titulo": "13. O que esta análise não sabe",
+      "tom": "neutro",
+      "paragrafos": [
+        "Cada limitação abaixo muda a leitura de alguma conclusão acima. Nenhuma delas invalida a direção geral."
+      ],
+      "lista": [
+        "Não existe UTM, GCLID ou Meta Click ID ligando clique a negócio. A origem \"Tráfego Pago\" é preenchida à mão no Pipedrive, e toda receita por criativo aqui é rateio pela taxa média da coorte — serve para ordenar criativos entre si, não para fechar caixa.",
+        "As coortes de abril e maio ainda estão maturando; as taxas de 1,12% e 0,79% vão subir.",
+        "Conversas iniciadas seguem a janela de atribuição do Meta e não são pessoas únicas.",
+        "O Chatwoot só cobre a partir de 04/05/2026, então o volume real de atendimento antes disso é desconhecido.",
+        "Custo por resultado só é comparável dentro da mesma família: [WPP] compra conversa, [LP] compra página. Nenhum número desta análise compara as duas.",
+        "A retenção de vídeo vem dos marcos de 25%, 50%, 75% e 100% do Meta — não dá para apontar o segundo exato em que a audiência cai.",
+        "A relação entre copy e custo é correlação sobre 28 criativos com volume. Não estabelece causa e não substitui teste A/B.",
+        "A projeção assume que a fatia de 20,1% do tráfego pago na receita se mantém. Se o mix de canais mudar, todo o cálculo muda junto.",
+        "O ciclo de 49 dias é a mediana ponderada das medianas mensais. A distribuição tem cauda longa."
+      ]
+    }
+  ],
+  "conclusao": "Em uma frase: a conta parou no mês de maior exigência, com o melhor criativo desligado há dois meses e 69% da verba num conceito mediano de 198 dias — mas o problema maior não está na mídia, está na queda de 5,97% para 0,79% na conversão de conversa em contrato, que nenhuma verba de tráfego compensa."
+}

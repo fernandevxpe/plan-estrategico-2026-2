@@ -1,5 +1,6 @@
-import { readFile } from 'node:fs/promises';
-import { readProcessed, resolveDataFile } from "@/lib/data/processed-store";
+import { readdir, readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { dataPath, readProcessed } from "@/lib/data/processed-store";
 import type { Analysis, GoalPlan } from '@/lib/analysis/types';
 import type { RevenueFunnelDashboard } from '@/lib/areas/build-revenue-funnel-dashboard';
 
@@ -129,65 +130,43 @@ export type MarketingRevenueBaseline = {
 };
 
 /**
- * Parecer do Gestor IA.
+ * Registro de análises do Gestor IA.
  *
- * É escrito em sessão sobre os fatos já calculados e versionado em
- * `data/ai/marketing-gestor.json` — não há chamada de modelo em runtime. Para
- * atualizar, refaz-se a análise em sessão e o arquivo entra pelo deploy.
+ * Cada edição é escrita em sessão sobre os fatos já calculados e versionada em
+ * `data/ai/gestor-marketing/AAAA-MM-DD.json` — não há chamada de modelo em
+ * runtime. Uma análise nova é um arquivo novo; as antigas ficam para comparar
+ * o que foi dito com o que aconteceu depois.
  */
-export type MarketingGestorFinding = {
+export type MarketingGestorTable = {
+  colunas: string[];
+  linhas: string[][];
+  nota?: string;
+};
+
+export type MarketingGestorSection = {
+  id: string;
   titulo: string;
-  texto: string;
-  evidencia: string;
-  severidade: string;
+  /** Ênfase visual da seção; `neutro` quando não é um alerta. */
+  tom?: 'critico' | 'atencao' | 'oportunidade' | 'neutro';
+  paragrafos: string[];
+  lista?: string[];
+  listaOrdenada?: boolean;
+  tabela?: MarketingGestorTable;
+  destaque?: string;
 };
 
-export type MarketingGestorDecision = {
-  adId: string;
+export type MarketingGestorEdition = {
+  /** AAAA-MM-DD — também é o nome do arquivo. */
+  date: string;
   titulo: string;
-  decisao: string;
-  motivo: string;
-  evidencia: string;
-  acao: string;
-};
-
-export type MarketingGestorReport = {
-  resumoExecutivo: string;
-  diagnostico: MarketingGestorFinding[];
-  vencedores: Array<{
-    adId: string;
-    titulo: string;
-    porqueFuncionou: string;
-    elementosCopy: string[];
-    elementosVideo: string[];
-    licaoReplicavel: string;
-  }>;
-  decisoes: MarketingGestorDecision[];
-  picos: Array<{
-    periodo: string;
-    oQueAconteceu: string;
-    causaProvavel: string;
-    confianca: string;
-    comoRepetir: string;
-  }>;
-  leituraCopy: string;
-  leituraVideo: string;
-  cadenciaDias: number;
-  criativosPorMes: number;
-  criativosAtivosIdeal: number;
-  justificativaRenovacao: string;
-  temas: Array<{ tema: string; angulo: string; formato: string; porque: string }>;
-  leituraPrevisao: string;
-  riscos: MarketingGestorFinding[];
-  proximosPassos: Array<{ ordem: number; acao: string; prazo: string; impactoEsperado: string }>;
-  limitacoes: string[];
-};
-
-export type MarketingGestorPublication = {
-  generatedAt: string;
   model: string;
+  /** `syncedAt` do marketing.json sobre o qual a análise foi escrita. */
   factsGeneratedAt: string;
-  report: MarketingGestorReport;
+  janela: string;
+  base: string;
+  resumo: string;
+  secoes: MarketingGestorSection[];
+  conclusao: string;
 };
 
 export type MarketingDashboard = {
@@ -222,17 +201,39 @@ export type MarketingDashboard = {
     note: string;
   };
   revenueBaseline: MarketingRevenueBaseline | null;
-  gestorReport: MarketingGestorPublication | null;
+  /** Edições da análise, da mais recente para a mais antiga. */
+  gestorEditions: MarketingGestorEdition[];
 };
 
-/** Volume primeiro, repositório como reserva — mesmo contrato dos processados. */
-async function readGestorReport(): Promise<MarketingGestorPublication | null> {
-  try {
-    const target = await resolveDataFile('ai', 'marketing-gestor.json');
-    return JSON.parse(await readFile(target, 'utf8')) as MarketingGestorPublication;
-  } catch {
-    return null;
+const GESTOR_DIR = 'gestor-marketing';
+
+/**
+ * Lê o registro de análises. Volume primeiro, repositório como reserva — mesmo
+ * contrato dos artefatos processados. Uma edição corrompida não derruba as
+ * outras: o arquivo é ignorado e o resto do histórico continua servindo.
+ */
+async function readGestorEditions(): Promise<MarketingGestorEdition[]> {
+  const roots = [dataPath('ai', GESTOR_DIR), path.join(process.cwd(), 'data', 'ai', GESTOR_DIR)];
+  for (const root of roots) {
+    let files: string[];
+    try {
+      files = (await readdir(root)).filter((name) => name.endsWith('.json'));
+    } catch {
+      continue;
+    }
+    if (!files.length) continue;
+
+    const editions: MarketingGestorEdition[] = [];
+    for (const name of files.sort()) {
+      try {
+        editions.push(JSON.parse(await readFile(path.join(root, name), 'utf8')) as MarketingGestorEdition);
+      } catch (error) {
+        console.error(`Edição do Gestor IA ignorada (${name}):`, error);
+      }
+    }
+    if (editions.length) return editions.sort((a, b) => b.date.localeCompare(a.date));
   }
+  return [];
 }
 
 const PAID_CHANNEL = 'Tráfego Pago';
@@ -275,7 +276,7 @@ function addMonths(month: string, delta: number) {
 function buildRevenueBaseline(
   analysis: Analysis,
   funnel: RevenueFunnelDashboard | null,
-  marketing: Omit<MarketingDashboard, 'attribution' | 'revenueBaseline' | 'gestorReport'>
+  marketing: Omit<MarketingDashboard, 'attribution' | 'revenueBaseline' | 'gestorEditions'>
 ): MarketingRevenueBaseline | null {
   const planning = analysis.planning2026;
   const commercial = [...(analysis.commercialMonthly ?? [])].sort((a, b) => a.month.localeCompare(b.month));
@@ -443,9 +444,9 @@ function buildRevenueBaseline(
 }
 
 export async function buildMarketingDashboard(analysis: Analysis): Promise<MarketingDashboard> {
-  const data = await readProcessed<Omit<MarketingDashboard, 'attribution' | 'revenueBaseline' | 'gestorReport'>>('marketing.json');
+  const data = await readProcessed<Omit<MarketingDashboard, 'attribution' | 'revenueBaseline' | 'gestorEditions'>>('marketing.json');
   const funnel = await readProcessed<RevenueFunnelDashboard>('revenue-funnel.json').catch(() => null);
-  const gestorReport = await readGestorReport();
+  const gestorEditions = await readGestorEditions();
   const latest = [...(analysis.commercialMonthly ?? [])].sort((a, b) => b.month.localeCompare(a.month))[0];
   const paidWon = latest?.wonYtd.channels.find((row) => row.key === 'Tráfego Pago');
   const paidOpen = latest?.openPotential.channels.find((row) => row.key === 'Tráfego Pago');
@@ -455,7 +456,7 @@ export async function buildMarketingDashboard(analysis: Analysis): Promise<Marke
 
   return {
     ...data,
-    gestorReport,
+    gestorEditions,
     revenueBaseline: buildRevenueBaseline(analysis, funnel, data),
     attribution: {
       metaSpendYtd: spend,

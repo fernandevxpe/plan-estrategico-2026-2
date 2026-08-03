@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type {
   MarketingDashboard,
-  MarketingGestorDecision as Decision,
-  MarketingGestorFinding as Finding
+  MarketingGestorEdition,
+  MarketingGestorSection
 } from "@/lib/areas/build-marketing-dashboard";
 import { applyRevenueEstimates, buildCreativeIntelligence } from "@/lib/areas/marketing-ai";
 import { MarketingCreativeDoctor } from "@/components/areas/MarketingCreativeDoctor";
@@ -15,59 +15,60 @@ const money = (value: number) =>
 const decimal = (value: number, digits = 2) => value.toLocaleString("pt-BR", { maximumFractionDigits: digits });
 const percent = (value: number | null | undefined, digits = 2) =>
   value == null ? "—" : `${decimal(value, digits)}%`;
+const editionLabel = (date: string) =>
+  new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 
-const SEVERITY_LABEL: Record<string, string> = {
-  critico: "Crítico",
-  atencao: "Atenção",
-  oportunidade: "Oportunidade",
-  positivo: "Positivo"
-};
-
-function FindingList({ items }: { items: Finding[] }) {
+function Section({ section }: { section: MarketingGestorSection }) {
   return (
-    <ul className="gia-findings">
-      {items.map((item, index) => (
-        <li key={`${index}-${item.titulo}`} className={`gia-finding gia-sev-${item.severidade}`}>
-          <header>
-            <strong>{item.titulo}</strong>
-            <span>{SEVERITY_LABEL[item.severidade] ?? item.severidade}</span>
-          </header>
-          <p>{item.texto}</p>
-          <small>{item.evidencia}</small>
-        </li>
+    <article className={`gia-section gia-tone-${section.tom ?? "neutro"}`} id={`gia-${section.id}`}>
+      <h4>{section.titulo}</h4>
+      {section.paragrafos.map((paragraph, index) => (
+        <p key={index}>{paragraph}</p>
       ))}
-    </ul>
-  );
-}
 
-function CallList({ items, tone }: { items: Decision[]; tone: string }) {
-  if (!items.length) return <p className="marketing-empty">Nada nesta lista no recorte atual.</p>;
-  return (
-    <ul className={`gia-calls gia-calls-${tone}`}>
-      {items.map((item, index) => (
-        <li key={`${index}-${item.adId}`}>
-          <strong>{item.titulo}</strong>
-          <p>{item.motivo}</p>
-          <small>{item.evidencia}</small>
-          <b>{item.acao}</b>
-        </li>
-      ))}
-    </ul>
-  );
-}
+      {section.tabela ? (
+        <div className="table-wrap">
+          <table className="marketing-table gia-section-table">
+            <thead>
+              <tr>
+                {section.tabela.colunas.map((column) => (
+                  <th key={column}>{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {section.tabela.linhas.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex}>{cell}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {section.tabela.nota ? <small className="gia-table-note">{section.tabela.nota}</small> : null}
+        </div>
+      ) : null}
 
-/** O modelo devolve uma lista só; a separação por decisão acontece aqui. */
-function groupDecisions(items: Decision[]) {
-  const normalize = (value: string) =>
-    value
-      .toLocaleLowerCase("pt-BR")
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "");
-  return {
-    estender: items.filter((item) => /estend|escal/.test(normalize(item.decisao))),
-    renovar: items.filter((item) => /renov/.test(normalize(item.decisao))),
-    aposentar: items.filter((item) => /aposent|pausa|corta|matar/.test(normalize(item.decisao)))
-  };
+      {section.lista?.length ? (
+        section.listaOrdenada ? (
+          <ol className="gia-section-list">
+            {section.lista.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ol>
+        ) : (
+          <ul className="gia-section-list">
+            {section.lista.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )
+      ) : null}
+
+      {section.destaque ? <p className="gia-destaque">{section.destaque}</p> : null}
+    </article>
+  );
 }
 
 export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
@@ -76,11 +77,12 @@ export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
     [data]
   );
   const baseline = data.revenueBaseline;
-  const publication = data.gestorReport;
-  const report = publication?.report ?? null;
-  const decisions = useMemo(() => groupDecisions(report?.decisoes ?? []), [report]);
-  const stale = publication != null && publication.factsGeneratedAt !== data.syncedAt;
-
+  const editions = data.gestorEditions;
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const edition: MarketingGestorEdition | null =
+    editions.find((item) => item.date === selectedDate) ?? editions[0] ?? null;
+  const isCurrent = edition != null && edition.date === editions[0]?.date;
+  const stale = edition != null && edition.factsGeneratedAt !== data.syncedAt;
   const rates = baseline?.rates;
 
   return (
@@ -90,22 +92,37 @@ export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
           <span className="gia-kicker">GESTOR IA</span>
           <h2>Análise completa do investimento em tráfego pago</h2>
           <p>
-            Os números saem do Meta Ads Insights e do Pipedrive e são calculados aqui, de forma
-            determinística. O parecer abaixo é escrito sobre esses fatos já prontos — nenhuma métrica da
-            página vem de modelo de linguagem.
+            Os números saem do Meta Ads Insights e do Pipedrive e são calculados aqui, de forma determinística.
+            A análise abaixo é escrita sobre esses fatos já prontos — nenhuma métrica da página vem de modelo de
+            linguagem.
           </p>
         </div>
         <div className="gia-hero-actions">
-          {publication ? (
-            <small>
-              Parecer de {new Date(publication.generatedAt).toLocaleDateString("pt-BR")} · {publication.model}
-              <br />
-              sobre os dados sincronizados em{" "}
-              {new Date(publication.factsGeneratedAt).toLocaleDateString("pt-BR")}
-              {stale ? " · os dados de marketing mudaram desde então" : ""}
-            </small>
+          {editions.length ? (
+            <>
+              <span className="gia-edition-label">
+                {editions.length === 1 ? "1 análise registrada" : `${editions.length} análises registradas`}
+              </span>
+              <div className="gia-editions" role="group" aria-label="Edição da análise">
+                {editions.map((item, index) => (
+                  <button
+                    key={item.date}
+                    type="button"
+                    className={edition?.date === item.date ? "active" : ""}
+                    onClick={() => setSelectedDate(item.date)}
+                  >
+                    {new Date(`${item.date}T12:00:00`).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "2-digit"
+                    })}
+                    {index === 0 ? <em>atual</em> : null}
+                  </button>
+                ))}
+              </div>
+            </>
           ) : (
-            <small>Nenhum parecer publicado. A análise numérica abaixo independe disso.</small>
+            <small>Nenhuma análise registrada. Os indicadores abaixo independem disso.</small>
           )}
         </div>
       </header>
@@ -184,138 +201,51 @@ export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
         </ul>
       </section>
 
-      {report ? (
-        <>
-          <section className="gia-summary">
-            <header>
-              <strong>Parecer do gestor</strong>
-              <span>Leitura qualitativa sobre os fatos calculados nesta página</span>
-            </header>
-            <p>{report.resumoExecutivo}</p>
-          </section>
-
-          <section className="gia-panel">
-            <header>
-              <strong>Diagnóstico</strong>
-              <span>O que os dados mostram sobre a operação</span>
-            </header>
-            <FindingList items={report.diagnostico} />
-          </section>
-
-          {report.vencedores.length ? (
-            <section className="gia-panel">
-              <header>
-                <strong>Criativos que deram certo — e por quê</strong>
-                <span>Leitura de copy e vídeo por trás do resultado</span>
-              </header>
-              <div className="gia-winner-notes">
-                {report.vencedores.map((item) => (
-                  <article key={item.adId}>
-                    <strong>{item.titulo}</strong>
-                    <p>{item.porqueFuncionou}</p>
-                    <div className="gia-winner-cols">
-                      <div>
-                        <small>Copy</small>
-                        <ul>
-                          {item.elementosCopy.map((element) => (
-                            <li key={element}>{element}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <small>Vídeo</small>
-                        <ul>
-                          {item.elementosVideo.length ? (
-                            item.elementosVideo.map((element) => <li key={element}>{element}</li>)
-                          ) : (
-                            <li>Criativo estático</li>
-                          )}
-                        </ul>
-                      </div>
-                    </div>
-                    <b>{item.licaoReplicavel}</b>
-                  </article>
-                ))}
+      {edition ? (
+        <article className="gia-edition">
+          <header>
+            <div>
+              <span className="gia-edition-date">
+                Análise de {editionLabel(edition.date)}
+                {isCurrent ? null : <em className="gia-edition-old">edição anterior</em>}
+              </span>
+              <h3>{edition.titulo}</h3>
+              <p className="gia-edition-base">{edition.base}</p>
+            </div>
+            <dl className="gia-edition-meta">
+              <div>
+                <dt>Janela</dt>
+                <dd>{edition.janela}</dd>
               </div>
-              <div className="gia-reading">
-                <article>
-                  <strong>Leitura de copy</strong>
-                  <p>{report.leituraCopy}</p>
-                </article>
-                <article>
-                  <strong>Leitura de vídeo</strong>
-                  <p>{report.leituraVideo}</p>
-                </article>
+              <div>
+                <dt>Dados de</dt>
+                <dd>{new Date(edition.factsGeneratedAt).toLocaleDateString("pt-BR")}</dd>
               </div>
-            </section>
+              <div>
+                <dt>Escrita por</dt>
+                <dd>{edition.model}</dd>
+              </div>
+            </dl>
+          </header>
+
+          {stale ? (
+            <p className="gia-edition-stale">
+              Os dados de marketing foram sincronizados depois desta análise (
+              {new Date(data.syncedAt).toLocaleDateString("pt-BR")}). Os indicadores e a calculadora abaixo já
+              refletem os números novos; o texto desta edição não.
+            </p>
           ) : null}
 
-          <section className="gia-panel">
-            <header>
-              <strong>Decisão por criativo</strong>
-              <span>Estender, renovar ou aposentar — com o dado que sustenta a chamada</span>
-            </header>
-            <div className="gia-calls-grid">
-              <div>
-                <h4>Estender / escalar</h4>
-                <CallList items={decisions.estender} tone="good" />
-              </div>
-              <div>
-                <h4>Renovar</h4>
-                <CallList items={decisions.renovar} tone="warn" />
-              </div>
-              <div>
-                <h4>Aposentar</h4>
-                <CallList items={decisions.aposentar} tone="stop" />
-              </div>
-            </div>
-          </section>
+          <p className="gia-edition-resumo">{edition.resumo}</p>
 
-          <section className="gia-panel">
-            <header>
-              <strong>Picos e quedas de performance</strong>
-              <span>Quando rendeu mais, por quê, e o que dá para repetir</span>
-            </header>
-            <ul className="gia-peaks">
-              {report.picos.map((peak, index) => (
-                <li key={`${index}-${peak.periodo}`}>
-                  <header>
-                    <strong>{peak.periodo}</strong>
-                    <span className={`gia-confidence gia-confidence-${peak.confianca}`}>
-                      confiança {peak.confianca}
-                    </span>
-                  </header>
-                  <p>{peak.oQueAconteceu}</p>
-                  <p className="gia-cause">
-                    <b>Causa provável:</b> {peak.causaProvavel}
-                  </p>
-                  <small>{peak.comoRepetir}</small>
-                </li>
-              ))}
-            </ul>
-          </section>
+          <div className="gia-sections">
+            {edition.secoes.map((section) => (
+              <Section key={section.id} section={section} />
+            ))}
+          </div>
 
-          <section className="gia-panel">
-            <header>
-              <strong>Plano de renovação de criativos</strong>
-              <span>
-                Cadência de {report.cadenciaDias} dias · {report.criativosPorMes} novos por mês ·{" "}
-                {report.criativosAtivosIdeal} ativos simultâneos
-              </span>
-            </header>
-            <p className="gia-plan-note">{report.justificativaRenovacao}</p>
-            <div className="gia-themes">
-              {report.temas.map((theme, index) => (
-                <article key={`${index}-${theme.tema}`}>
-                  <strong>{theme.tema}</strong>
-                  <span>{theme.angulo}</span>
-                  <em>{theme.formato}</em>
-                  <p>{theme.porque}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-        </>
+          <p className="gia-edition-conclusao">{edition.conclusao}</p>
+        </article>
       ) : null}
 
       <section className="gia-panel">
@@ -332,14 +262,6 @@ export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
       {baseline ? (
         <section className="gia-panel">
           <MarketingForecastPanel baseline={baseline} intelligence={intelligence} />
-          {report ? (
-            <div className="gia-reading gia-reading-single">
-              <article>
-                <strong>Leitura da previsão</strong>
-                <p>{report.leituraPrevisao}</p>
-              </article>
-            </div>
-          ) : null}
         </section>
       ) : (
         <div className="gia-alert">
@@ -350,49 +272,6 @@ export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
           </span>
         </div>
       )}
-
-      {report ? (
-        <>
-          <section className="gia-panel">
-            <header>
-              <strong>Riscos</strong>
-              <span>O que pode derrubar o plano</span>
-            </header>
-            <FindingList items={report.riscos} />
-          </section>
-
-          <section className="gia-panel">
-            <header>
-              <strong>Próximos passos</strong>
-              <span>Na ordem em que devem ser executados</span>
-            </header>
-            <ol className="gia-steps">
-              {report.proximosPassos
-                .slice()
-                .sort((a, b) => a.ordem - b.ordem)
-                .map((step, index) => (
-                  <li key={`${index}-${step.ordem}`}>
-                    <strong>{step.acao}</strong>
-                    <span>{step.prazo}</span>
-                    <small>{step.impactoEsperado}</small>
-                  </li>
-                ))}
-            </ol>
-          </section>
-
-          <section className="gia-panel gia-limits">
-            <header>
-              <strong>O que esta análise não sabe</strong>
-              <span>Declarado pelo próprio parecer</span>
-            </header>
-            <ul>
-              {report.limitacoes.map((limit, index) => (
-                <li key={`${index}-${limit.slice(0, 40)}`}>{limit}</li>
-              ))}
-            </ul>
-          </section>
-        </>
-      ) : null}
     </section>
   );
 }

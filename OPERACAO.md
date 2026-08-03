@@ -12,11 +12,24 @@ lidas na própria plataforma em `/auditorias`.
 |---|---|
 | **Produção** | Railway · projeto `xpe-plataforma` · serviço `web` |
 | **URL** | https://web-production-ee3c4.up.railway.app |
+| **Vercel** | Redireciona (308) para a URL acima — ver abaixo |
 | **Acesso** | Basic Auth — usuário `xpe`, senha nas variáveis do Railway (`DASHBOARD_AUTH_PASSWORD`) |
 | **Dados** | Volume persistente montado em `/data` |
 | **Sync** | Diário às 08:00 BRT, dentro do próprio serviço |
 
 O deploy é automático a cada push na `main`.
+
+### Por que o Vercel só redireciona
+
+O Vercel é serverless: não tem volume persistente nem processo longo, então nunca vai rodar o
+sync diário. Se continuasse servindo páginas, mostraria para sempre o snapshot congelado no
+momento do build — duas URLs com números diferentes, que é o pior cenário para confiança nos
+indicadores.
+
+O middleware detecta o ambiente (`process.env.VERCEL`) e redireciona para `PRIMARY_APP_URL`
+antes da autenticação, já que o destino tem a dele. Links antigos continuam funcionando.
+
+Para reverter, basta remover a variável `PRIMARY_APP_URL` do projeto no Vercel.
 
 ---
 
@@ -54,11 +67,20 @@ railway variables --set CHAVE=valor    # definir
 | `CLICKUP_API_TOKEN` · `CLICKUP_TEAM_ID` | configuradas | Tarefas e projetos |
 | `META_AD_ACCOUNT_ID` · `META_BUSINESS_ID` · `META_PAGE_ID` · `META_INSTAGRAM_ACCOUNT_ID` · `META_PIXEL_ID` | configuradas | IDs da conta de anúncios |
 | **`META_ACCESS_TOKEN`** | **faltando** | Sem ela, marketing não atualiza |
-| **`CHATWOOT_BASE_URL` · `CHATWOOT_API_ACCESS_TOKEN`** | **faltando** | Sem elas, pré-vendas não atualiza |
+| `CHATWOOT_BASE_URL` · `CHATWOOT_ACCOUNT_ID` | configuradas | Endereço da instância |
+| **`CHATWOOT_API_ACCESS_TOKEN`** | **faltando** | Sem ela, pré-vendas não atualiza |
 | `DASHBOARD_AUTH_USER` · `DASHBOARD_AUTH_PASSWORD` | configuradas | Acesso à plataforma |
 
-Enquanto as três faltarem, o pipeline roda mesmo assim: Pipedrive e ClickUp atualizam
+Enquanto as duas faltarem, o pipeline roda mesmo assim: Pipedrive e ClickUp atualizam
 normalmente e o indicador no topo da tela mostra quantas fontes ficaram para trás.
+
+As duas que faltam existem no projeto do Vercel, mas estão marcadas como **sensíveis** — o
+Vercel não devolve o valor nem por `env pull` nem pelo painel, por design. Precisam ser
+geradas de novo na origem:
+
+- `META_ACCESS_TOKEN` — Meta Business Manager → System User → gerar token com `ads_read`,
+  `pages_read_engagement` e `instagram_basic`
+- `CHATWOOT_API_ACCESS_TOKEN` — Chatwoot → Perfil → Access Token
 
 ---
 

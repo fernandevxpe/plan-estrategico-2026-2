@@ -13,6 +13,7 @@ highlights:
   - "Indicador de frescor mostra quando uma fonte específica para de atualizar"
   - "Sync travava sem erro no 429: retry-after sem teto, sem timeout e sem watchdog"
   - "Cota diária do Pipedrive é limite rígido: sync caiu de ~1.020 para ~180 requisições"
+  - "Vercel redireciona para a produção real — uma única fonte de verdade"
 ---
 
 ## Por que mudar
@@ -159,5 +160,16 @@ visível, mas o log por estágio é o que permite achar a causa.
   Railway. Os IDs da Meta foram migrados do Vercel, mas o token vem redigido na exportação.
   Sem eles, marketing e pré-vendas continuam servindo o último dado conhecido — sinalizado no
   indicador de frescor.
-- O projeto no Vercel continua publicando a cada push e servirá o snapshot semente, cada vez
-  mais defasado. Vale desligar para não existirem duas URLs com números diferentes.
+## Consolidação em uma única produção
+
+O projeto no Vercel continuava publicando a cada push. Como é serverless — sem volume
+persistente e sem processo longo —, ele nunca rodaria o sync diário e serviria para sempre o
+snapshot congelado no build. Duas URLs com números diferentes é o pior cenário possível para
+confiança em indicador.
+
+O middleware passou a detectar o ambiente Vercel e redirecionar (308) para a produção real,
+antes da autenticação, já que o destino tem a dele. Links e favoritos antigos continuam
+funcionando e passam a cair no dado vivo. Reversível removendo a variável `PRIMARY_APP_URL`.
+
+Verificado: o caminho é preservado no redirecionamento, o Vercel não entrega conteúdo sem
+autenticação, e o Railway não define `VERCEL`, então não existe risco de laço.

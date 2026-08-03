@@ -9644,3 +9644,34 @@ html { scroll-behavior: smooth; }
   .topbar-right { width: 100%; justify-content: flex-start; gap: 10px; }
   .topbar-inner { flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
 }
+
+/* Polimento geral de leitura e densidade */
+.page-header h1 { letter-spacing: -0.02em; }
+.page-header p { line-height: 1.6; font-size: 13.5px; }
+
+/* Tabelas de dados: cabeçalho fixo em listas longas */
+.ci-table-wrap, .md-table-wrap, .audits-body { scrollbar-width: thin; }
+
+/* Cartões clicáveis com alvo de toque adequado e feedback */
+.page-link-card { transition: border-color .15s ease, transform .15s ease; }
+.page-link-card:hover { border-color: var(--blue); transform: translateY(-1px); }
+@media (prefers-reduced-motion: reduce) { .page-link-card:hover { transform: none; } }
+
+/* Números tabulares em toda métrica — colunas param de dançar */
+.ci-stat strong, .audits-count strong, .brief-primary strong, .brief-card strong,
+.ci-split strong, .freshness { font-variant-numeric: tabular-nums; }
+
+/* Sidebar de áreas: hierarquia mais legível com 15 áreas */
+.areas-nav-item.child { padding-left: 22px; font-size: 12.5px; opacity: .88; }
+.areas-nav-item.child::before { content: "└"; position: absolute; left: 9px; opacity: .35; font-size: 10px; }
+.areas-nav-item { position: relative; }
+
+/* Impressão: relatórios de auditoria saem legíveis em PDF */
+@media print {
+  .topbar, .skip-link, .audits-toc, .audits-timeline, .ci-periods, .ci-seg, .nav { display: none !important; }
+  .audits-layout { grid-template-columns: 1fr; }
+  .audits-body { border: 0; box-shadow: none; padding: 0; }
+  .md { max-width: none; font-size: 11pt; }
+  .md .md-h2 { break-after: avoid; }
+  .md .md-table-wrap, .md .md-code { break-inside: avoid; }
+}

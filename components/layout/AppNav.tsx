@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 
 /**
  * Agrupado por pergunta que o gestor está fazendo, não por módulo técnico.
- * As rotas /comercial, /metas, /pos-venda e /plano-pro existiam mas não
- * apareciam em lugar nenhum — só chegava nelas quem digitasse a URL.
  */
 const GROUPS = [
   {
@@ -21,9 +19,8 @@ const GROUPS = [
     label: "Para onde vamos",
     links: [
       { href: "/planejamento", label: "Planejamento" },
-      { href: "/metas", label: "Metas" },
-      { href: "/mix", label: "Mix" },
-      { href: "/plano-pro", label: "Plano Pro" }
+      { href: "/metas", label: "Plano de ação" },
+      { href: "/mix", label: "Serviços" }
     ]
   },
   {

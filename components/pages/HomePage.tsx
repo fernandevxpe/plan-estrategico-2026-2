@@ -27,7 +27,7 @@ export function HomePage({ analysis, generatedAt, criticalFindings }: Props) {
   const quickLinks = [
     { href: "/areas/diretor-comercial", title: "Diretor Comercial", desc: "Canais, perdas, ciclo e reuniões mês a mês" },
     { href: "/planejamento", title: "Planejamento", desc: "Metas Pipedrive, gráficos e comparação" },
-    { href: "/mix", title: "Mix de vendas", desc: "Receita, esforço e participação por produto" },
+    { href: "/mix", title: "Serviços", desc: "Receita, esforço e participação por produto" },
     { href: "/areas", title: "Áreas", desc: "Planejamento por área de negócio" },
     { href: "/investigacao", title: "Investigação", desc: "Alertas, recordes e funil profundo" },
     { href: "/gestao-xpe", title: "Gestão XPE", desc: "Gargalos, motores e indicadores semanais" }

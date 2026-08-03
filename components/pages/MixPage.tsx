@@ -33,7 +33,7 @@ export function MixPage({ analysis, generatedAt }: Props) {
       {filterBar}
 
       <div className="page-header">
-        <h1>Mix de vendas</h1>
+        <h1>Serviços</h1>
         <p>
           Leitura financeira e operacional por produto: receita rateada entre etiquetas do negócio,
           quantidade de fechamentos por escopo, participação percentual de faturamento e de esforço.

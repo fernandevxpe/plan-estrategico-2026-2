@@ -8,8 +8,17 @@ import type {
   MarketingPerformanceRow,
   MarketingPeriodKey
 } from "@/lib/areas/build-marketing-dashboard";
+import {
+  adsForCampaign,
+  buildAdCampaignIndex,
+  buildAdHistory,
+  buildCampaignHistory,
+  summarizeHistory,
+  type MarketingHistoryPoint
+} from "@/lib/areas/marketing-history";
 import { AreaDetailPanel } from "@/components/areas/AreasOverview";
 import { MarketingCreativesTab } from "@/components/areas/MarketingCreativesTab";
+import { MarketingHistoryChart, MarketingHistorySparkline } from "@/components/areas/MarketingHistoryCharts";
 import { MarketingTrendChart } from "@/components/areas/MarketingTrendChart";
 
 const BASE_PERIODS: Array<{ key: MarketingPeriodKey; label: string }> = [
@@ -31,6 +40,10 @@ type AdDelivery = {
   firstDate: string | null;
   lastDate: string | null;
 };
+
+type Focus =
+  | { type: "campaign"; id: string; name: string }
+  | { type: "ad"; id: string; name: string; campaignName?: string };
 
 function dailyWindow(data: MarketingDashboard, period: MarketingPeriodKey) {
   if (/^\d{4}-\d{2}$/.test(period)) return data.daily.filter((row) => row.date.startsWith(period));
@@ -63,20 +76,29 @@ function buildAdDeliveryMap(
   return out;
 }
 
-function deliveryLabel(delivery: AdDelivery | undefined) {
-  if (!delivery?.firstDate || !delivery.lastDate) return "Sem entrega no período";
-  if (delivery.firstDate === delivery.lastDate) {
-    return `${delivery.activeDays} dia · ${shortDate(delivery.firstDate)}`;
+function deliveryLabel(delivery: AdDelivery | undefined, lifetime?: AdDelivery | null) {
+  const source = lifetime?.firstDate ? lifetime : delivery;
+  if (!source?.firstDate || !source.lastDate) return "Sem entrega registrada";
+  if (source.firstDate === source.lastDate) {
+    return `${source.activeDays} dia · ${shortDate(source.firstDate)}`;
   }
-  return `${delivery.activeDays} dias · ${shortDate(delivery.firstDate)} → ${shortDate(delivery.lastDate)}`;
+  return `${source.activeDays} dias · ${shortDate(source.firstDate)} → ${shortDate(source.lastDate)}`;
 }
 
 function AdCreativeCard({
   row,
-  delivery
+  delivery,
+  lifetime,
+  history,
+  selected,
+  onOpen
 }: {
   row: MarketingPerformanceRow;
   delivery?: AdDelivery;
+  lifetime?: AdDelivery | null;
+  history: MarketingHistoryPoint[];
+  selected: boolean;
+  onOpen: () => void;
 }) {
   const cpc = row.clicks ? row.spend / row.clicks : null;
   const status =
@@ -87,7 +109,7 @@ function AdCreativeCard({
         : row.effectiveStatus ?? "—";
 
   return (
-    <article className="marketing-creative-card">
+    <article className={selected ? "marketing-creative-card is-selected" : "marketing-creative-card"}>
       {row.creative?.thumbnailUrl ? (
         <img src={row.creative.thumbnailUrl} alt="" loading="lazy" />
       ) : (
@@ -99,7 +121,7 @@ function AdCreativeCard({
           <em className={row.effectiveStatus === "ACTIVE" ? "is-on" : ""}>{status}</em>
         </div>
         <strong title={row.adName}>{row.adName}</strong>
-        <p className="marketing-creative-delivery">{deliveryLabel(delivery)}</p>
+        <p className="marketing-creative-delivery">{deliveryLabel(delivery, lifetime)}</p>
         <dl className="marketing-creative-metrics">
           <div>
             <dt>Investido</dt>
@@ -134,22 +156,151 @@ function AdCreativeCard({
             <dd>{integer(row.video100)}</dd>
           </div>
         </dl>
-        {row.creative?.permalink ? (
-          <a href={row.creative.permalink} target="_blank" rel="noreferrer">
-            Abrir publicação ↗
-          </a>
-        ) : null}
+        <div className="marketing-creative-spark-wrap">
+          <div className="marketing-spark-legend">
+            <span className="is-spend">Invest.</span>
+            <span className="is-clicks">Cliques</span>
+            <span className="is-conv">Conversas</span>
+            <em>histórico completo</em>
+          </div>
+          <MarketingHistorySparkline data={history} />
+        </div>
+        <div className="marketing-creative-actions">
+          <button type="button" onClick={onOpen}>
+            Ver histórico completo
+          </button>
+          {row.creative?.permalink ? (
+            <a href={row.creative.permalink} target="_blank" rel="noreferrer">
+              Publicação ↗
+            </a>
+          ) : null}
+        </div>
       </div>
     </article>
+  );
+}
+
+function FocusPanel({
+  focus,
+  history,
+  campaignAds,
+  onClose,
+  onOpenAd
+}: {
+  focus: Focus;
+  history: MarketingHistoryPoint[];
+  campaignAds: MarketingPerformanceRow[];
+  onClose: () => void;
+  onOpenAd: (row: MarketingPerformanceRow) => void;
+}) {
+  const summary = summarizeHistory(history);
+
+  return (
+    <section className="marketing-panel marketing-focus-panel" id="marketing-focus">
+      <header>
+        <div>
+          <strong>
+            {focus.type === "campaign" ? "Campanha" : "Anúncio"} · {focus.name}
+          </strong>
+          <span>
+            {focus.type === "ad" && focus.campaignName ? `${focus.campaignName} · ` : ""}
+            Histórico do lançamento até o último dia com entrega
+            {summary.firstDate && summary.lastDate
+              ? ` · ${shortDate(summary.firstDate)} → ${shortDate(summary.lastDate)} (${summary.days} dias)`
+              : ""}
+          </span>
+        </div>
+        <button type="button" className="marketing-focus-close" onClick={onClose}>
+          Fechar
+        </button>
+      </header>
+
+      <div className="marketing-focus-kpis">
+        <article>
+          <span>Investido (vida)</span>
+          <strong>{money(summary.spend)}</strong>
+        </article>
+        <article>
+          <span>Cliques</span>
+          <strong>{integer(summary.outboundClicks || summary.clicks)}</strong>
+        </article>
+        <article>
+          <span>Conversas</span>
+          <strong>{integer(summary.conversations)}</strong>
+        </article>
+        <article>
+          <span>CPC</span>
+          <strong>{summary.cpc == null ? "—" : money(summary.cpc)}</strong>
+        </article>
+        <article>
+          <span>Custo/conversa</span>
+          <strong>
+            {summary.costPerConversation == null ? "—" : money(summary.costPerConversation)}
+          </strong>
+        </article>
+      </div>
+
+      <MarketingHistoryChart data={history} height={300} />
+
+      {focus.type === "campaign" ? (
+        <div className="marketing-focus-ads">
+          <header>
+            <strong>Anúncios desta campanha</strong>
+            <span>{campaignAds.length} com investimento no período</span>
+          </header>
+          {campaignAds.length ? (
+            <div className="table-wrap">
+              <table className="marketing-table">
+                <thead>
+                  <tr>
+                    <th>Anúncio</th>
+                    <th>Investimento</th>
+                    <th>Cliques</th>
+                    <th>Conversas</th>
+                    <th>Custo/conv.</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {campaignAds.map((row) => (
+                    <tr key={row.adId}>
+                      <td>{row.adName}</td>
+                      <td>{money(row.spend)}</td>
+                      <td>{integer(row.outboundClicks || row.clicks)}</td>
+                      <td>{integer(row.conversations)}</td>
+                      <td>{row.costPerConversation == null ? "—" : money(row.costPerConversation)}</td>
+                      <td>
+                        <button type="button" className="marketing-link-btn" onClick={() => onOpenAd(row)}>
+                          Histórico
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="marketing-empty">Nenhum anúncio com entrega neste recorte de período.</p>
+          )}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
 export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; data: MarketingDashboard }) {
   const [period, setPeriod] = useState<MarketingPeriodKey>("last30d");
   const [view, setView] = useState<"overview" | "creatives">("overview");
+  const [focus, setFocus] = useState<Focus | null>(null);
+
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("view") === "creatives") setView("creatives");
   }, []);
+
+  useEffect(() => {
+    setFocus(null);
+  }, [period]);
+
   const monthPeriods = useMemo(
     () =>
       Object.keys(data.periods)
@@ -172,10 +323,35 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
     .sort((a, b) => b.spend - a.spend || b.conversations - a.conversations || b.videoViews - a.videoViews)
     .slice(0, 12);
   const daily = useMemo(() => dailyWindow(data, period), [data, period]);
+  const adIndex = useMemo(() => buildAdCampaignIndex(data), [data]);
   const deliveryByAd = useMemo(() => {
     const dates = new Set(daily.map((row) => row.date));
     return buildAdDeliveryMap(data.adDaily ?? [], dates);
   }, [data.adDaily, daily]);
+  const lifetimeByAd = useMemo(() => {
+    const allDates = new Set((data.adDaily ?? []).map((row) => row.date));
+    return buildAdDeliveryMap(data.adDaily ?? [], allDates);
+  }, [data.adDaily]);
+
+  const adHistoryCache = useMemo(() => {
+    const cache = new Map<string, MarketingHistoryPoint[]>();
+    for (const row of ads) {
+      if (!row.adId) continue;
+      cache.set(row.adId, buildAdHistory(data.adDaily ?? [], row.adId));
+    }
+    return cache;
+  }, [ads, data.adDaily]);
+
+  const focusHistory = useMemo(() => {
+    if (!focus) return [];
+    if (focus.type === "ad") return buildAdHistory(data.adDaily ?? [], focus.id);
+    return buildCampaignHistory(data.adDaily ?? [], adIndex, focus.id);
+  }, [focus, data.adDaily, adIndex]);
+
+  const focusCampaignAds = useMemo(() => {
+    if (!focus || focus.type !== "campaign") return [];
+    return adsForCampaign(data.adPeriods[period], focus.id);
+  }, [focus, data.adPeriods, period]);
 
   const media = useMemo(() => {
     const reference = new Date(data.syncedAt);
@@ -194,6 +370,23 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
       .sort((a, b) => b.views - a.views || b.interactions - a.interactions)
       .slice(0, 12);
   }, [data, period]);
+
+  function openCampaign(row: MarketingPerformanceRow) {
+    if (!row.campaignId) return;
+    setFocus({ type: "campaign", id: row.campaignId, name: row.campaignName ?? "Campanha" });
+    requestAnimationFrame(() => document.getElementById("marketing-focus")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
+  function openAd(row: MarketingPerformanceRow) {
+    if (!row.adId) return;
+    setFocus({
+      type: "ad",
+      id: row.adId,
+      name: row.adName ?? "Anúncio",
+      campaignName: row.campaignName
+    });
+    requestAnimationFrame(() => document.getElementById("marketing-focus")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
 
   return (
     <div className="marketing-page">
@@ -283,11 +476,11 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
               <strong>Campanhas no período</strong>
               <span>
                 {campaigns.length} com entrega · {data.totals.campaigns} cadastradas ·{" "}
-                {data.totals.activeCampaigns} ativas agora
+                {data.totals.activeCampaigns} ativas agora · clique na campanha para o histórico
               </span>
             </header>
             <div className="table-wrap">
-              <table className="marketing-table">
+              <table className="marketing-table marketing-campaign-table">
                 <thead>
                   <tr>
                     <th>Campanha</th>
@@ -297,18 +490,33 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
                     <th>Cliques</th>
                     <th>Conversas</th>
                     <th>Custo/conversa</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {campaigns.map((row) => (
-                    <tr key={row.campaignId}>
-                      <td>{row.campaignName}</td>
+                    <tr
+                      key={row.campaignId}
+                      className={
+                        focus?.type === "campaign" && focus.id === row.campaignId ? "is-selected" : undefined
+                      }
+                    >
+                      <td>
+                        <button type="button" className="marketing-link-btn" onClick={() => openCampaign(row)}>
+                          {row.campaignName}
+                        </button>
+                      </td>
                       <td>{row.objective ?? "—"}</td>
                       <td>{money(row.spend)}</td>
                       <td>{integer(row.reach)}</td>
                       <td>{integer(row.outboundClicks)}</td>
                       <td>{integer(row.conversations)}</td>
                       <td>{row.costPerConversation == null ? "—" : money(row.costPerConversation)}</td>
+                      <td>
+                        <button type="button" className="marketing-link-btn" onClick={() => openCampaign(row)}>
+                          Histórico
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -316,10 +524,20 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
             </div>
           </section>
 
+          {focus ? (
+            <FocusPanel
+              focus={focus}
+              history={focusHistory}
+              campaignAds={focusCampaignAds}
+              onClose={() => setFocus(null)}
+              onOpenAd={openAd}
+            />
+          ) : null}
+
           <section className="marketing-panel">
             <header>
               <strong>Melhores anúncios</strong>
-              <span>Ordenado por investimento no período · entrega e eficiência no card</span>
+              <span>Sparkline = vida toda do anúncio · métricas do card = período selecionado</span>
             </header>
             <div className="marketing-creative-grid">
               {ads.map((row) => (
@@ -327,6 +545,10 @@ export function MarketingAreaPage({ area, data }: { area: AreaDashboardItem; dat
                   key={row.adId}
                   row={row}
                   delivery={row.adId ? deliveryByAd.get(row.adId) : undefined}
+                  lifetime={row.adId ? lifetimeByAd.get(row.adId) : null}
+                  history={row.adId ? adHistoryCache.get(row.adId) ?? [] : []}
+                  selected={focus?.type === "ad" && focus.id === row.adId}
+                  onOpen={() => openAd(row)}
                 />
               ))}
             </div>

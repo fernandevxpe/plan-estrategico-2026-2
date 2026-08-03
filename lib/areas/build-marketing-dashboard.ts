@@ -47,6 +47,8 @@ export type MarketingPerformanceRow = MarketingMetrics & {
 export type MarketingDailyCreativeRow = Pick<MarketingMetrics, 'spend' | 'impressions' | 'clicks' | 'linkClicks' | 'outboundClicks' | 'landingPageViews' | 'conversations' | 'videoViews' | 'video100'> & {
   date: string;
   adId: string;
+  campaignId?: string | null;
+  campaignName?: string | null;
 };
 
 export type MarketingDashboard = {

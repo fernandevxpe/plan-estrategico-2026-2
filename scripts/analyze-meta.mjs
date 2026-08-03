@@ -108,6 +108,8 @@ function normalizeAdDailyRow(row) {
   return {
     date: row.date_start,
     adId: row.ad_id,
+    campaignId: row.campaign_id ?? null,
+    campaignName: row.campaign_name ?? null,
     spend: metrics.spend,
     impressions: metrics.impressions,
     clicks: metrics.clicks,

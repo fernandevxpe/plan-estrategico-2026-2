@@ -2,21 +2,24 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { GestaoCatalog, WeeklyRecord, WeeklyRecordsFile } from "@/lib/gestao-xpe/catalog-types";
 import { GESTAO_CATALOG_PATH, GESTAO_WEEKLY_RECORDS_PATH } from "@/lib/gestao-xpe/paths";
-import { dataPath } from "@/lib/data/processed-store";
+import { dataPath, resolveDataFile } from "@/lib/data/processed-store";
 import { weekKeyToIsoDates } from "@/lib/gestao-xpe/week-utils";
 
 // Esses dois arquivos são gravados pela plataforma (lançamentos semanais), então
 // precisam viver no volume: no container o disco é descartado a cada deploy.
-function catalogFile() {
-  return dataPath(GESTAO_CATALOG_PATH.replace(/^data\//, ""));
-}
+const CATALOG_REL = GESTAO_CATALOG_PATH.replace(/^data\//, "");
+const RECORDS_REL = GESTAO_WEEKLY_RECORDS_PATH.replace(/^data\//, "");
 
-function recordsFile() {
-  return dataPath(GESTAO_WEEKLY_RECORDS_PATH.replace(/^data\//, ""));
-}
+// Escrita sempre no volume — é o que sobrevive ao redeploy.
+const catalogFile = () => dataPath(CATALOG_REL);
+const recordsFile = () => dataPath(RECORDS_REL);
+
+// Leitura aceita a cópia do repositório enquanto o volume não foi semeado.
+const catalogSource = () => resolveDataFile(CATALOG_REL);
+const recordsSource = () => resolveDataFile(RECORDS_REL);
 
 export async function loadGestaoCatalog(): Promise<GestaoCatalog> {
-  const raw = await readFile(catalogFile(), "utf8");
+  const raw = await readFile(await catalogSource(), "utf8");
   return JSON.parse(raw) as GestaoCatalog;
 }
 
@@ -31,7 +34,7 @@ export async function saveGestaoCatalog(catalog: GestaoCatalog): Promise<GestaoC
 
 export async function loadWeeklyRecords(): Promise<WeeklyRecordsFile> {
   try {
-    const raw = await readFile(recordsFile(), "utf8");
+    const raw = await readFile(await recordsSource(), "utf8");
     return JSON.parse(raw) as WeeklyRecordsFile;
   } catch {
     return { version: 1, semanas: {} };

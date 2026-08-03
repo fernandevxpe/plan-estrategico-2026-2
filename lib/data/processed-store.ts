@@ -61,7 +61,32 @@ export async function readProcessed<T>(file: string, fallback?: T): Promise<T> {
 export const processedDir = PROCESSED_DIR;
 export const dataRoot = DATA_ROOT;
 
-/** Caminho dentro da raiz de dados — respeita o volume quando DATA_DIR existe. */
+const SEED_ROOT = path.join(process.cwd(), "data");
+
+/**
+ * Caminho de ESCRITA: sempre o volume, porque é o único lugar que sobrevive a
+ * um redeploy.
+ */
 export function dataPath(...segments: string[]) {
   return path.join(DATA_ROOT, ...segments);
+}
+
+/**
+ * Caminho de LEITURA: volume primeiro, repositório como reserva.
+ *
+ * Durante o `next build` a variável DATA_DIR já existe mas o volume ainda não
+ * foi montado. Sem essa reserva a pré-renderização quebra procurando arquivos
+ * num diretório vazio.
+ */
+export async function resolveDataFile(...segments: string[]) {
+  const preferred = path.join(DATA_ROOT, ...segments);
+  if (DATA_ROOT === SEED_ROOT) return preferred;
+
+  const { access } = await import("node:fs/promises");
+  try {
+    await access(preferred);
+    return preferred;
+  } catch {
+    return path.join(SEED_ROOT, ...segments);
+  }
 }

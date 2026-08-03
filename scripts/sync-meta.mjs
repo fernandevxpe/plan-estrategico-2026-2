@@ -79,11 +79,21 @@ const insightFields = [
   'video_p25_watched_actions', 'video_p50_watched_actions', 'video_p75_watched_actions', 'video_p100_watched_actions'
 ].join(',');
 
+const monthPeriods = {};
+for (let cursor = new Date(`${yearStart}T12:00:00Z`); cursor <= new Date(`${today}T12:00:00Z`); cursor.setUTCMonth(cursor.getUTCMonth() + 1)) {
+  const year = cursor.getUTCFullYear();
+  const month = cursor.getUTCMonth();
+  const key = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const monthEnd = new Date(Date.UTC(year, month + 1, 0, 12)).toISOString().slice(0, 10);
+  monthPeriods[key] = { since: `${key}-01`, until: monthEnd < today ? monthEnd : today };
+}
+
 const periods = {
   last7d: { since: new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10), until: today },
   last30d: { since: new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10), until: today },
   month: { since: monthStart, until: today },
-  ytd: { since: yearStart, until: today }
+  ytd: { since: yearStart, until: today },
+  ...monthPeriods
 };
 
 console.log('Meta: validando ativos e coletando anúncios...');

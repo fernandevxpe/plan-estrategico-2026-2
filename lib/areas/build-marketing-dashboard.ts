@@ -1,7 +1,7 @@
 import marketingJson from '@/data/processed/marketing.json';
 import type { Analysis } from '@/lib/analysis/types';
 
-export type MarketingPeriodKey = 'last7d' | 'last30d' | 'month' | 'ytd';
+export type MarketingPeriodKey = 'last7d' | 'last30d' | 'month' | 'ytd' | `${number}-${number}`;
 
 export type MarketingMetrics = {
   spend: number;

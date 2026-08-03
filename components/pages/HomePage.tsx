@@ -26,7 +26,7 @@ export function HomePage({ analysis, criticalFindings }: Props) {
 
   const quickLinks = [
     { href: "/comercial", title: "Comercial", desc: "Meta, realizado e projeção do ritmo de vendas" },
-    { href: "/areas/diretor-comercial", title: "Diretor Comercial", desc: "Canais, perdas, ciclo e reuniões mês a mês" },
+    { href: "/areas/vendas", title: "Vendas", desc: "Canais, perdas, ciclo e reuniões mês a mês" },
     { href: "/planejamento", title: "Planejamento", desc: "Metas Pipedrive, gráficos e comparação" },
     { href: "/mix", title: "Serviços", desc: "Receita, esforço e participação por produto" },
     { href: "/areas", title: "Áreas", desc: "Planejamento por área de negócio" },
@@ -61,7 +61,7 @@ export function HomePage({ analysis, criticalFindings }: Props) {
         <section className="home-critical" aria-label="Pontos críticos do ano">
           <header>
             <h2>Precisa de decisão agora</h2>
-            <Link href="/areas/diretor-comercial">Ver diagnóstico completo →</Link>
+            <Link href="/areas/vendas">Ver diagnóstico completo →</Link>
           </header>
           <ol>
             {criticalFindings.map((finding) => (

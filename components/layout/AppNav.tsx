@@ -25,7 +25,7 @@ const GROUPS = [
   {
     label: "Onde agir",
     links: [
-      { href: "/areas/diretor-comercial", label: "Diretor Comercial" },
+      { href: "/areas/vendas", label: "Vendas" },
       { href: "/areas", label: "Áreas" },
       { href: "/investigacao", label: "Investigação" },
       { href: "/gestao-xpe", label: "Gestão XPE" },

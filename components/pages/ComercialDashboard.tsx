@@ -184,10 +184,10 @@ export function ComercialDashboard({ analysis }: Props) {
       <header className="comercial-header">
         <div>
           <h1>Comercial</h1>
-          <p>Meta, realizado e projeção do ritmo de vendas. Operação do time fica no Diretor Comercial.</p>
+          <p>Meta, realizado e projeção do ritmo de vendas. Operação do time fica em Vendas.</p>
         </div>
-        <Link className="comercial-director-link" href="/areas/diretor-comercial">
-          Análise do diretor
+        <Link className="comercial-director-link" href="/areas/vendas">
+          Abrir Vendas
           <ArrowRight size={16} />
         </Link>
       </header>
@@ -355,7 +355,7 @@ export function ComercialDashboard({ analysis }: Props) {
       <p className="comercial-footnote">
         <Target size={14} /> Conv. fechados = ganhos / (ganhos + perdidos). Para canais, perdas, ciclo e
         reuniões por vendedor, use{" "}
-        <Link href="/areas/diretor-comercial">Diretor Comercial</Link>.
+        <Link href="/areas/vendas">Vendas</Link>.
       </p>
     </section>
   );

@@ -13,18 +13,27 @@ export type AreaDefinition = {
 
 export const AREA_DEFINITIONS: AreaDefinition[] = [
   {
+    id: "marketing",
+    name: "Marketing",
+    shortName: "Marketing",
+    description: "Tráfego pago, aquisição, conteúdo e geração de demanda qualificada.",
+    parentId: null,
+    status: "executando",
+    lead: "Marketing"
+  },
+  {
+    id: "pre-vendas",
+    name: "Pré-vendas",
+    shortName: "Pré-vendas",
+    description: "Conversas iniciadas, atendimento, qualificação e conversão do tráfego em oportunidades reais.",
+    parentId: null,
+    status: "monitorando",
+    lead: "Pré-vendas"
+  },
+  {
     id: "vendas",
     name: "Vendas",
     shortName: "Vendas",
-    description: "Funil comercial, fechamentos, conversão e capacidade da equipe de 2 comerciais.",
-    parentId: null,
-    status: "executando",
-    lead: "Diretor Comercial"
-  },
-  {
-    id: "diretor-comercial",
-    name: "Diretor Comercial",
-    shortName: "Diretor",
     description:
       "Operação comercial do CRM: canais, perdas, ciclo, reuniões e meta × realizado.",
     parentId: null,
@@ -85,24 +94,6 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     lead: "Operação obras",
     businessTypes: ["OBRA"],
     serviceMatch: ["Obras eletricas"]
-  },
-  {
-    id: "marketing",
-    name: "Marketing",
-    shortName: "Marketing",
-    description: "Tráfego pago, aquisição, conteúdo e geração de demanda qualificada.",
-    parentId: null,
-    status: "executando",
-    lead: "Marketing"
-  },
-  {
-    id: "pre-vendas",
-    name: "Pré-vendas",
-    shortName: "Pré-vendas",
-    description: "Conversas iniciadas, atendimento, qualificação e conversão do tráfego em oportunidades reais.",
-    parentId: null,
-    status: "monitorando",
-    lead: "Pré-vendas"
   },
   {
     id: "eventos",

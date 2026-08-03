@@ -216,6 +216,7 @@ npm run sync:all                   # rodar o pipeline inteiro localmente
 | Escrita em `process.cwd()` some no redeploy | `dataPath()` aponta para o volume; `resolveDataFile()` lê com reserva no repositório |
 | Rotas sem link no menu | `components/layout/AppNav.tsx` agrupa e expõe todas |
 | `tsconfig.tsbuildinfo` versionado | Gitignorado — colidia com o cache do Nixpacks e derrubava o build |
+| `retry-after` do 429 obedecido sem teto | Limitado a 30s + timeout de 60s por requisição + watchdog de 20 min por etapa |
 
 `npm run test:commercial-intel` trava os números contra a análise do diretor de 31/07/2026.
 

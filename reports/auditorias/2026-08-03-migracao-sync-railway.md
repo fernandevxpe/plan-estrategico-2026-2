@@ -11,6 +11,7 @@ highlights:
   - "Dados saíram do bundle JavaScript: 4,5 MB a menos e atualização sem redeploy"
   - "Arquivos que a plataforma escreve foram para o volume — antes sumiam a cada deploy"
   - "Indicador de frescor mostra quando uma fonte específica para de atualizar"
+  - "Sync travava sem erro no 429: retry-after sem teto, sem timeout e sem watchdog"
 ---
 
 ## Por que mudar
@@ -82,6 +83,35 @@ Dois deploys falharam antes de subir:
 O workflow do GitHub Actions foi reaproveitado como CI: roda typecheck e build com
 `DATA_DIR=/data` apontando para um volume inexistente, que é exatamente a condição em que os
 dois deploys quebraram.
+
+## O sync que "travou" — e não estava travado
+
+A primeira execução em produção ficou 25 minutos no primeiro estágio. Os sinais eram
+contraditórios: processo vivo, memória estável, **CPU em zero**, nenhum log novo, nenhum erro.
+
+A causa foi uma combinação de três omissões que só apareceram juntas:
+
+1. `getJson` usava `fetch` sem `AbortSignal`. Uma conexão pendurada esperava indefinidamente.
+2. No 429, o código obedecia ao `retry-after` da API sem teto. O Pipedrive devolve valores
+   que passam de uma hora — o processo dormia vivo, o que explica a CPU zerada.
+3. O agendador não tinha limite por etapa. Como a trava `running` só volta a `false` no fim
+   do pipeline, **nenhuma rodada seguinte aconteceria** enquanto aquela estivesse dormindo.
+
+O gatilho foi o próprio processo de deploy: cada push reiniciava o container e disparava um
+novo sync na subida, e as tentativas acumuladas estouraram o limite de requisições da conta.
+Um `GET /v1/users` isolado confirmou o diagnóstico devolvendo 429.
+
+**Correções aplicadas:**
+
+- `retry-after` limitado a 30 segundos — falhar rápido e tentar na próxima rodada é melhor
+  que segurar o pipeline
+- timeout de 60 segundos por requisição
+- watchdog de 20 minutos por etapa, que mata o processo e libera o pipeline
+- log por estágio, porque a ausência de qualquer log foi o que tornou o diagnóstico lento
+
+A lição se aplica além deste caso: **um processo dormindo é indistinguível de um processo
+trabalhando se nada for registrado.** O indicador de frescor na plataforma cobre o sintoma
+visível, mas o log por estágio é o que permite achar a causa.
 
 ## Estado final
 

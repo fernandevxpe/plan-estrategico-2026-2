@@ -46,10 +46,33 @@ type Focus =
   | { type: "ad"; id: string; name: string; campaignName?: string };
 
 function dailyWindow(data: MarketingDashboard, period: MarketingPeriodKey) {
-  if (/^\d{4}-\d{2}$/.test(period)) return data.daily.filter((row) => row.date.startsWith(period));
-  const take =
-    period === "last7d" ? 7 : period === "last30d" ? 30 : period === "month" ? 31 : data.daily.length;
-  return data.daily.slice(-take);
+  const syncedDay = data.syncedAt.slice(0, 10);
+  const addDays = (iso: string, n: number) => {
+    const dt = new Date(`${iso}T12:00:00Z`);
+    dt.setUTCDate(dt.getUTCDate() + n);
+    return dt.toISOString().slice(0, 10);
+  };
+
+  let since: string;
+  let until: string = syncedDay;
+  if (/^\d{4}-\d{2}$/.test(period)) {
+    since = `${period}-01`;
+    const [y, m] = period.split("-").map(Number) as [number, number];
+    const endMonth = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+    until = endMonth < syncedDay ? endMonth : syncedDay;
+  } else if (period === "last7d") {
+    since = addDays(syncedDay, -7);
+  } else if (period === "last30d") {
+    since = addDays(syncedDay, -30);
+  } else if (period === "month") {
+    since = `${syncedDay.slice(0, 7)}-01`;
+  } else if (period === "ytd") {
+    since = `${syncedDay.slice(0, 4)}-01-01`;
+  } else {
+    return data.daily;
+  }
+
+  return data.daily.filter((row) => row.date >= since && row.date <= until);
 }
 
 function buildAdDeliveryMap(

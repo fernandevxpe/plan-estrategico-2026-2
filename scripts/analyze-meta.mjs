@@ -117,6 +117,7 @@ function normalizeAdDailyRow(row) {
     outboundClicks: metrics.outboundClicks,
     landingPageViews: metrics.landingPageViews,
     conversations: metrics.conversations,
+    leads: metrics.leads,
     videoViews: metrics.videoViews,
     video100: metrics.video100
   };

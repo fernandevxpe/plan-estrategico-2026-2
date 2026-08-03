@@ -7,7 +7,6 @@ import {
   BarChart3,
   BriefcaseBusiness,
   Database,
-  Repeat2,
   Target,
   TrendingUp
 } from "lucide-react";
@@ -20,21 +19,20 @@ import {
 } from "@/components/charts";
 import { ObraSubgroupsPanel } from "@/components/mix/ObraSubgroupsPanel";
 import type { Analysis, BusinessTypeMonthly, ExecutiveKpis, PlanningFilters } from "@/lib/analysis/types";
-import { filterBusinessTypes, filterFunnel, filterWonDeals } from "@/lib/analysis/metrics";
+import { filterBusinessTypes, filterFunnel } from "@/lib/analysis/metrics";
 import {
   brl,
   formatGrowth,
   monthLabel,
   NEW_DEALS_CONVERSION_SHORT,
-  number,
-  serviceClass
+  number
 } from "@/lib/analysis/format";
 
 type Props = {
   analysis: Analysis;
   filters: PlanningFilters;
   kpis: ExecutiveKpis;
-  view?: "all" | "comercial" | "mix" | "pos-venda";
+  view?: "all" | "comercial" | "mix";
 };
 
 function weightedAverage(rows: { value: number; weight: number }[]) {
@@ -81,8 +79,6 @@ export function DashboardSections({ analysis, filters, kpis, view = "all" }: Pro
   }, [analysis.businessTypeMonthly, filters.year]);
   const [selectedMixMonth, setSelectedMixMonth] = useState<string | null>(filters.selectedMonth);
   const [selectedMixTypes, setSelectedMixTypes] = useState<string[]>([]);
-  const wonDealsFiltered = [...filterWonDeals(analysis, filters)].sort((a, b) => b.value - a.value);
-  const topWonDeals = wonDealsFiltered.slice(0, 12);
   const latestFunnel = funnelRows.at(-1);
   const matureRows = funnelRows.filter((row) => row.isMatureCohort);
   const matureConversion = weightedAverage(
@@ -95,10 +91,6 @@ export function DashboardSections({ analysis, filters, kpis, view = "all" }: Pro
       .filter((row) => row.closedConversionPct != null)
       .map((row) => ({ value: row.closedConversionPct ?? 0, weight: row.closedDealsFromCohort ?? 0 }))
   );
-  const repeatRevenue = analysis.repeatSalesByAccount.reduce((sum, item) => sum + item.repeatRevenue, 0);
-  const cnpjCoveragePct = analysis.cnpjCoverage.organizations
-    ? (analysis.cnpjCoverage.organizationsWithCnpj / analysis.cnpjCoverage.organizations) * 100
-    : 0;
   const growthRows =
     filters.year === "2025"
       ? analysis.growthComparison
@@ -112,7 +104,6 @@ export function DashboardSections({ analysis, filters, kpis, view = "all" }: Pro
     revenueK: Math.round(item.wonRevenue / 1000)
   }));
   const typeLeaders = topTypes(businessTypes);
-  const postSalesConfidence = analysis.postSalesConfidence;
   const obraDeals = analysis.obraSubgroups?.deals ?? [];
 
   useEffect(() => {
@@ -165,7 +156,6 @@ export function DashboardSections({ analysis, filters, kpis, view = "all" }: Pro
 
   const showCommercial = view === "all" || view === "comercial";
   const showMix = view === "all" || view === "mix";
-  const showPostSales = view === "all" || view === "pos-venda";
 
   return (
     <>
@@ -469,92 +459,6 @@ export function DashboardSections({ analysis, filters, kpis, view = "all" }: Pro
                   <td className="right">{brl.format(item.averageTicket)}</td>
                   <td className="right">{formatGrowth(item.revenueMoMPct)}</td>
                   <td className="right">{formatGrowth(item.revenueYoYPct)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
-        </>
-      ) : null}
-
-      {showPostSales ? (
-        <>
-      <section className="dashboard-grid" id="pos-venda">
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Pós-venda por confiança</h2>
-              <span>CNPJ exato separado de aproximações por conta</span>
-            </div>
-            <Repeat2 size={18} />
-          </div>
-          <div className="mini-grid">
-            <div className="mini">
-              <span className="metric-label">CNPJ exato</span>
-              <strong>{postSalesConfidence?.cnpjExact.accounts ?? analysis.postSalesByCnpj.length}</strong>
-              <small>{brl.format(postSalesConfidence?.cnpjExact.repeatRevenue ?? 0)}</small>
-            </div>
-            <div className="mini">
-              <span className="metric-label">Conta normalizada</span>
-              <strong>{postSalesConfidence?.accountName.accounts ?? analysis.repeatSalesByAccount.length}</strong>
-              <small>{brl.format(postSalesConfidence?.accountName.repeatRevenue ?? repeatRevenue)}</small>
-            </div>
-            <div className="mini">
-              <span className="metric-label">Multi-serviço no mês</span>
-              <strong>{postSalesConfidence?.sameMonthMultiService.accounts ?? 0}</strong>
-              <small>{brl.format(postSalesConfidence?.sameMonthMultiService.revenue ?? 0)}</small>
-            </div>
-            <div className="mini">
-              <span className="metric-label">Cobertura CNPJ</span>
-              <strong>{number.format(cnpjCoveragePct)}%</strong>
-              <small>{analysis.cnpjCoverage.organizationsWithCnpj}/{analysis.cnpjCoverage.organizations}</small>
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Principais contas recorrentes</h2>
-              <span>Ordenado por receita repetida</span>
-            </div>
-          </div>
-          {analysis.repeatSalesByAccount.slice(0, 5).map((item) => (
-            <div className="service-row" key={item.key}>
-              <div className="service-header">
-                <strong>{item.organization ?? "Não informado"}</strong>
-                <span className={`pill ${item.cnpj ? "green" : "amber"}`}>{item.cnpj ? "CNPJ" : "Conta"}</span>
-              </div>
-              <p className="metric-note">
-                {item.wonDeals} fechamentos · repetição {brl.format(item.repeatRevenue)} · {item.firstWonMonth} a {item.lastWonMonth}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <details className="appendix-details compact-details">
-        <summary>Fechamentos e recorrência detalhados</summary>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Mês</th>
-                <th>Negócio</th>
-                <th>Cliente</th>
-                <th>Tipo principal</th>
-                <th className="right">Valor</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topWonDeals.map((deal) => (
-                <tr key={deal.id}>
-                  <td>{deal.wonMonth}</td>
-                  <td><strong>{deal.title}</strong></td>
-                  <td className="muted">{deal.organization ?? "Não informado"}</td>
-                  <td><span className={`pill ${serviceClass(deal.service)}`}>{deal.primaryBusinessType ?? deal.service}</span></td>
-                  <td className="right"><strong>{brl.format(deal.value)}</strong></td>
                 </tr>
               ))}
             </tbody>

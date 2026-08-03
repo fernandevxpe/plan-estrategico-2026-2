@@ -9,18 +9,17 @@ import { usePlanningFilters } from "@/components/planning/usePlanningFilters";
 type Props = {
   analysis: Analysis;
   generatedAt: string;
-  view: "comercial" | "mix" | "pos-venda";
+  view: "comercial" | "mix";
   title: string;
   description: string;
 };
 
-export function ThemedDashboardPage({ analysis, generatedAt, view, title, description }: Props) {
-  const { filters, filterBar } = usePlanningFilters(analysis, generatedAt);
+export function ThemedDashboardPage({ analysis, view, title, description }: Props) {
+  const { filters } = usePlanningFilters(analysis);
   const kpis = useMemo(() => getExecutiveKpis(analysis, filters.scenario), [analysis, filters.scenario]);
 
   return (
     <>
-      {filterBar}
       <div className="page-header">
         <h1>{title}</h1>
         <p>{description}</p>

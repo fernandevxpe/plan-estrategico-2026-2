@@ -15,8 +15,8 @@ type Props = {
   criticalFindings: IntelExecutiveFinding[];
 };
 
-export function HomePage({ analysis, generatedAt, criticalFindings }: Props) {
-  const { filters, filterBar } = usePlanningFilters(analysis, generatedAt);
+export function HomePage({ analysis, criticalFindings }: Props) {
+  const { filters } = usePlanningFilters(analysis);
   const kpis = useMemo(() => getExecutiveKpis(analysis, filters.scenario), [analysis, filters.scenario]);
   const latestHighAlert = useMemo(
     () => [...analysis.deepAnalysis.performanceAlerts].reverse().find((alert) => alert.severity === "high"),
@@ -35,8 +35,6 @@ export function HomePage({ analysis, generatedAt, criticalFindings }: Props) {
 
   return (
     <>
-      {filterBar}
-
       <section className="executive-brief" aria-label="Resumo executivo de decisão">
         <article className="brief-primary">
           <span className="brief-kicker">Forecast recomendado</span>

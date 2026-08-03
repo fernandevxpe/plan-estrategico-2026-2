@@ -11,8 +11,7 @@ const GROUPS = [
     label: "Como estamos",
     links: [
       { href: "/", label: "Resumo" },
-      { href: "/comercial", label: "Comercial" },
-      { href: "/pos-venda", label: "Pós-venda" }
+      { href: "/comercial", label: "Comercial" }
     ]
   },
   {

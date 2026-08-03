@@ -169,24 +169,41 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - [ ] **Etapa 9** — Análise de estrutura UI + sistema de templates
 - [ ] **Etapa 10** — Preparação para deploy (Vercel + Supabase cloud)
 
-### Pendência operacional — ativar sync diário (GitHub Actions)
+### Sync diário — Railway (resolvido em 03/08/2026)
 
-O workflow existe em `.github/workflows/daily-sync.yml` (cron 08:00 BRT + disparo manual).
+O GitHub Actions rodava um sync que **nunca funcionou** (secrets do Pipedrive nunca
+cadastradas) e que, se funcionasse, commitaria ~8 MB de artefato por dia no repositório.
+Foi substituído.
 
-**Estado em 03/08/2026:** o workflow falha desde que foi criado — `PIPEDRIVE_API_KEY ausente`.
-Os secrets da Meta e do Chatwoot foram cadastrados, os do Pipedrive/ClickUp não. Enquanto isso
-não for resolvido, **não existe atualização diária**: toda a base em produção veio de execuções
-manuais locais.
+**Arquitetura atual:**
 
-- [x] **Commit + push** — workflow, scripts, `vercel.json` (`build:app`), `data/processed/`, `base-estrategica/`, `reports/`
-- [ ] **Secrets no GitHub** — faltam `PIPEDRIVE_API_KEY`, `CLICKUP_API_TOKEN`, `CLICKUP_TEAM_ID`:
-  ```bash
-  gh secret set PIPEDRIVE_API_KEY   # cole o valor de .env.local
-  gh secret set CLICKUP_API_TOKEN
-  gh secret set CLICKUP_TEAM_ID
-  gh workflow run "Daily sync" && gh run watch
-  ```
-- [ ] **Validar** — Actions → Daily sync → Run workflow → conferir commit automático + redeploy Vercel
+```
+Railway · projeto xpe-plataforma · serviço web (Nixpacks)
+├── volume persistente montado em /data          ← DATA_DIR=/data
+│   ├── raw/         dados brutos das APIs (não versionado, ~80 MB)
+│   ├── processed/   artefatos que a plataforma lê
+│   ├── gestao-xpe/  lançamentos semanais (a plataforma ESCREVE aqui)
+│   └── sync-state.json  resultado da última rodada
+├── scripts/server.mjs      sobe o Next e o agendador no mesmo processo
+└── scripts/scheduler.mjs   pipeline diário às 08:00 BRT (11:00 UTC)
+```
+
+- `lib/data/processed-store.ts` lê do volume em runtime, com cache invalidado por mtime.
+  Nada de `import x from "@/data/processed/*.json"`: isso congelava o dado no build.
+- As rotas têm `revalidate = 300`, então o dado novo aparece em até 5 minutos.
+- O repositório guarda um snapshot semente, usado no build e na primeira subida do volume.
+  Ele **não** é atualizado diariamente — o git não cresce.
+- Etapas opcionais (Meta, Chatwoot) podem falhar sem derrubar o resto; o indicador de
+  frescor no topo da plataforma mostra quais fontes pararam de atualizar.
+
+**Comandos úteis:**
+
+```bash
+railway link --project xpe-plataforma --service web
+railway logs                       # acompanhar o agendador
+railway variables                  # conferir credenciais
+npm run sync:all                   # rodar o pipeline inteiro localmente
+```
 
 ### Armadilhas já corrigidas (não reintroduzir)
 
@@ -194,8 +211,11 @@ manuais locais.
 |---|---|
 | `/v1/activities` sem `user_id=0` devolve só a agenda do dono do token | `scripts/sync-data.mjs` passa `user_id: '0'` — 2.467 → 10.812 atividades |
 | Janela de análise fixa em jan-mai/2026 | `scripts/analyze.mjs` deriva a janela do calendário (`CURRENT_MONTH`, `LAST_CLOSED_MONTH`) |
-| Runtime lendo `data/raw/` (gitignored, ausente na Vercel) | `data/processed/crm-snapshot.json` via `scripts/build-crm-snapshot.mjs` |
+| Runtime lendo `data/raw/` (gitignored, ausente no deploy) | `data/processed/crm-snapshot.json` via `scripts/build-crm-snapshot.mjs` |
+| `import` estático de JSON congela o dado no build | `lib/data/processed-store.ts` + `revalidate = 300` |
+| Escrita em `process.cwd()` some no redeploy | `dataPath()` aponta para o volume; `resolveDataFile()` lê com reserva no repositório |
 | Rotas sem link no menu | `components/layout/AppNav.tsx` agrupa e expõe todas |
+| `tsconfig.tsbuildinfo` versionado | Gitignorado — colidia com o cache do Nixpacks e derrubava o build |
 
 `npm run test:commercial-intel` trava os números contra a análise do diretor de 31/07/2026.
 

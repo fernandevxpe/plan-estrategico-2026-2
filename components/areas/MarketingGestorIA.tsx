@@ -1,7 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { MarketingDashboard } from "@/lib/areas/build-marketing-dashboard";
+import { useMemo } from "react";
+import type {
+  MarketingDashboard,
+  MarketingGestorDecision as Decision,
+  MarketingGestorFinding as Finding
+} from "@/lib/areas/build-marketing-dashboard";
 import { applyRevenueEstimates, buildCreativeIntelligence } from "@/lib/areas/marketing-ai";
 import { MarketingCreativeDoctor } from "@/components/areas/MarketingCreativeDoctor";
 import { MarketingForecastPanel } from "@/components/areas/MarketingForecastPanel";
@@ -11,51 +15,6 @@ const money = (value: number) =>
 const decimal = (value: number, digits = 2) => value.toLocaleString("pt-BR", { maximumFractionDigits: digits });
 const percent = (value: number | null | undefined, digits = 2) =>
   value == null ? "—" : `${decimal(value, digits)}%`;
-
-/* Espelha o schema da rota; mantido frouxo porque o parecer é conteúdo, não estado. */
-type Finding = { titulo: string; texto: string; evidencia: string; severidade: string };
-type Decision = {
-  adId: string;
-  titulo: string;
-  decisao: string;
-  motivo: string;
-  evidencia: string;
-  acao: string;
-};
-type Report = {
-  resumoExecutivo: string;
-  diagnostico: Finding[];
-  vencedores: Array<{
-    adId: string;
-    titulo: string;
-    porqueFuncionou: string;
-    elementosCopy: string[];
-    elementosVideo: string[];
-    licaoReplicavel: string;
-  }>;
-  decisoes: Decision[];
-  picos: Array<{ periodo: string; oQueAconteceu: string; causaProvavel: string; confianca: string; comoRepetir: string }>;
-  leituraCopy: string;
-  leituraVideo: string;
-  cadenciaDias: number;
-  criativosPorMes: number;
-  criativosAtivosIdeal: number;
-  justificativaRenovacao: string;
-  temas: Array<{ tema: string; angulo: string; formato: string; porque: string }>;
-  leituraPrevisao: string;
-  riscos: Finding[];
-  proximosPassos: Array<{ ordem: number; acao: string; prazo: string; impactoEsperado: string }>;
-  limitacoes: string[];
-};
-
-type CachedReport = {
-  generatedAt: string;
-  model: string;
-  author: "sessao" | "api";
-  report: Report;
-  usage: { inputTokens: number; outputTokens: number } | null;
-  factsGeneratedAt: string;
-};
 
 const SEVERITY_LABEL: Record<string, string> = {
   critico: "Crítico",
@@ -117,47 +76,10 @@ export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
     [data]
   );
   const baseline = data.revenueBaseline;
-
-  const [state, setState] = useState<{ available: boolean; model: string; cached: CachedReport | null } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    fetch("/api/marketing/gestor-ia")
-      .then((response) => response.json())
-      .then((payload) => {
-        if (active) setState(payload);
-      })
-      .catch(() => {
-        if (active) setState({ available: false, model: "claude-opus-5", cached: null });
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const generate = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/marketing/gestor-ia", { method: "POST" });
-      const payload = await response.json();
-      if (!response.ok) {
-        setError(payload?.error ?? "Falha ao gerar o parecer.");
-        return;
-      }
-      setState(payload);
-    } catch {
-      setError("Não foi possível falar com a API. Verifique a conexão e tente de novo.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const report = state?.cached?.report ?? null;
+  const publication = data.gestorReport;
+  const report = publication?.report ?? null;
   const decisions = useMemo(() => groupDecisions(report?.decisoes ?? []), [report]);
-  const stale = state?.cached != null && state.cached.factsGeneratedAt !== data.syncedAt;
+  const stale = publication != null && publication.factsGeneratedAt !== data.syncedAt;
 
   const rates = baseline?.rates;
 
@@ -168,30 +90,22 @@ export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
           <span className="gia-kicker">GESTOR IA</span>
           <h2>Análise completa do investimento em tráfego pago</h2>
           <p>
-            Os números saem do Meta Ads Insights e do Pipedrive e são calculados aqui, de forma determinística. O
-            modelo {state?.model ?? "claude-opus-5"} recebe esses fatos prontos e escreve a leitura — ele não
-            calcula métrica nem inventa número.
+            Os números saem do Meta Ads Insights e do Pipedrive e são calculados aqui, de forma
+            determinística. O parecer abaixo é escrito sobre esses fatos já prontos — nenhuma métrica da
+            página vem de modelo de linguagem.
           </p>
         </div>
         <div className="gia-hero-actions">
-          <button type="button" className="gia-generate" onClick={generate} disabled={loading || state?.available === false}>
-            {loading ? "Analisando…" : report ? "Refazer análise" : "Gerar análise"}
-          </button>
-          {state?.cached ? (
+          {publication ? (
             <small>
-              {state.cached.author === "sessao"
-                ? "Parecer escrito em sessão e versionado no repositório"
-                : "Parecer gerado pela API"}
-              {" · "}
-              {new Date(state.cached.generatedAt).toLocaleDateString("pt-BR")}
-              {stale ? " · dados de marketing mudaram desde então" : ""}
+              Parecer de {new Date(publication.generatedAt).toLocaleDateString("pt-BR")} · {publication.model}
+              <br />
+              sobre os dados sincronizados em{" "}
+              {new Date(publication.factsGeneratedAt).toLocaleDateString("pt-BR")}
+              {stale ? " · os dados de marketing mudaram desde então" : ""}
             </small>
           ) : (
-            <small>
-              {state?.available === false
-                ? "ANTHROPIC_API_KEY não configurada — a análise numérica abaixo continua funcionando"
-                : "Nenhum parecer gerado ainda"}
-            </small>
+            <small>Nenhum parecer publicado. A análise numérica abaixo independe disso.</small>
           )}
         </div>
       </header>
@@ -210,8 +124,6 @@ export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
           </span>
         </div>
       ) : null}
-
-      {error ? <div className="gia-alert is-error">{error}</div> : null}
 
       <section className="gia-reliability">
         <header>
@@ -277,10 +189,7 @@ export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
           <section className="gia-summary">
             <header>
               <strong>Parecer do gestor</strong>
-              <span>
-                {state?.cached?.model} · sobre os dados sincronizados em{" "}
-                {state?.cached ? new Date(state.cached.factsGeneratedAt).toLocaleDateString("pt-BR") : "—"}
-              </span>
+              <span>Leitura qualitativa sobre os fatos calculados nesta página</span>
             </header>
             <p>{report.resumoExecutivo}</p>
           </section>

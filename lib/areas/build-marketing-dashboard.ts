@@ -1,4 +1,5 @@
-import { readProcessed } from "@/lib/data/processed-store";
+import { readFile } from 'node:fs/promises';
+import { readProcessed, resolveDataFile } from "@/lib/data/processed-store";
 import type { Analysis, GoalPlan } from '@/lib/analysis/types';
 import type { RevenueFunnelDashboard } from '@/lib/areas/build-revenue-funnel-dashboard';
 
@@ -127,6 +128,68 @@ export type MarketingRevenueBaseline = {
   warnings: string[];
 };
 
+/**
+ * Parecer do Gestor IA.
+ *
+ * É escrito em sessão sobre os fatos já calculados e versionado em
+ * `data/ai/marketing-gestor.json` — não há chamada de modelo em runtime. Para
+ * atualizar, refaz-se a análise em sessão e o arquivo entra pelo deploy.
+ */
+export type MarketingGestorFinding = {
+  titulo: string;
+  texto: string;
+  evidencia: string;
+  severidade: string;
+};
+
+export type MarketingGestorDecision = {
+  adId: string;
+  titulo: string;
+  decisao: string;
+  motivo: string;
+  evidencia: string;
+  acao: string;
+};
+
+export type MarketingGestorReport = {
+  resumoExecutivo: string;
+  diagnostico: MarketingGestorFinding[];
+  vencedores: Array<{
+    adId: string;
+    titulo: string;
+    porqueFuncionou: string;
+    elementosCopy: string[];
+    elementosVideo: string[];
+    licaoReplicavel: string;
+  }>;
+  decisoes: MarketingGestorDecision[];
+  picos: Array<{
+    periodo: string;
+    oQueAconteceu: string;
+    causaProvavel: string;
+    confianca: string;
+    comoRepetir: string;
+  }>;
+  leituraCopy: string;
+  leituraVideo: string;
+  cadenciaDias: number;
+  criativosPorMes: number;
+  criativosAtivosIdeal: number;
+  justificativaRenovacao: string;
+  temas: Array<{ tema: string; angulo: string; formato: string; porque: string }>;
+  leituraPrevisao: string;
+  riscos: MarketingGestorFinding[];
+  proximosPassos: Array<{ ordem: number; acao: string; prazo: string; impactoEsperado: string }>;
+  limitacoes: string[];
+};
+
+export type MarketingGestorPublication = {
+  generatedAt: string;
+  model: string;
+  factsGeneratedAt: string;
+  report: MarketingGestorReport;
+};
+
 export type MarketingDashboard = {
   generatedAt: string;
   syncedAt: string;
@@ -159,7 +222,18 @@ export type MarketingDashboard = {
     note: string;
   };
   revenueBaseline: MarketingRevenueBaseline | null;
+  gestorReport: MarketingGestorPublication | null;
 };
+
+/** Volume primeiro, repositório como reserva — mesmo contrato dos processados. */
+async function readGestorReport(): Promise<MarketingGestorPublication | null> {
+  try {
+    const target = await resolveDataFile('ai', 'marketing-gestor.json');
+    return JSON.parse(await readFile(target, 'utf8')) as MarketingGestorPublication;
+  } catch {
+    return null;
+  }
+}
 
 const PAID_CHANNEL = 'Tráfego Pago';
 
@@ -201,7 +275,7 @@ function addMonths(month: string, delta: number) {
 function buildRevenueBaseline(
   analysis: Analysis,
   funnel: RevenueFunnelDashboard | null,
-  marketing: Omit<MarketingDashboard, 'attribution' | 'revenueBaseline'>
+  marketing: Omit<MarketingDashboard, 'attribution' | 'revenueBaseline' | 'gestorReport'>
 ): MarketingRevenueBaseline | null {
   const planning = analysis.planning2026;
   const commercial = [...(analysis.commercialMonthly ?? [])].sort((a, b) => a.month.localeCompare(b.month));
@@ -369,8 +443,9 @@ function buildRevenueBaseline(
 }
 
 export async function buildMarketingDashboard(analysis: Analysis): Promise<MarketingDashboard> {
-  const data = await readProcessed<Omit<MarketingDashboard, 'attribution' | 'revenueBaseline'>>('marketing.json');
+  const data = await readProcessed<Omit<MarketingDashboard, 'attribution' | 'revenueBaseline' | 'gestorReport'>>('marketing.json');
   const funnel = await readProcessed<RevenueFunnelDashboard>('revenue-funnel.json').catch(() => null);
+  const gestorReport = await readGestorReport();
   const latest = [...(analysis.commercialMonthly ?? [])].sort((a, b) => b.month.localeCompare(a.month))[0];
   const paidWon = latest?.wonYtd.channels.find((row) => row.key === 'Tráfego Pago');
   const paidOpen = latest?.openPotential.channels.find((row) => row.key === 'Tráfego Pago');
@@ -380,6 +455,7 @@ export async function buildMarketingDashboard(analysis: Analysis): Promise<Marke
 
   return {
     ...data,
+    gestorReport,
     revenueBaseline: buildRevenueBaseline(analysis, funnel, data),
     attribution: {
       metaSpendYtd: spend,

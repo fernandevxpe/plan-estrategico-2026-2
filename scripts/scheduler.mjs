@@ -35,16 +35,36 @@ async function writeState(patch) {
   return state;
 }
 
-function run(command, args) {
+/** Teto por etapa. Um sync pendurado numa requisição sem resposta bloquearia
+ *  todas as rodadas seguintes, porque `running` nunca voltaria a false. */
+const STEP_TIMEOUT_MS = Number(process.env.SYNC_STEP_TIMEOUT_MS ?? 20 * 60_000);
+
+function run(command, args, timeoutMs = STEP_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: 'inherit',
       env: { ...process.env, DATA_DIR }
     });
-    child.on('error', reject);
-    child.on('exit', (code) =>
-      code === 0 ? resolve() : reject(new Error(`${command} ${args.join(' ')} saiu com código ${code}`))
-    );
+
+    const watchdog = setTimeout(() => {
+      log(`etapa passou de ${Math.round(timeoutMs / 60000)} min, encerrando processo`);
+      child.kill('SIGKILL');
+    }, timeoutMs);
+
+    child.on('error', (error) => {
+      clearTimeout(watchdog);
+      reject(error);
+    });
+    child.on('exit', (code, signal) => {
+      clearTimeout(watchdog);
+      if (signal === 'SIGKILL') {
+        reject(new Error(`${args[0]} excedeu ${Math.round(timeoutMs / 60000)} min e foi encerrado`));
+        return;
+      }
+      code === 0
+        ? resolve()
+        : reject(new Error(`${command} ${args.join(' ')} saiu com código ${code}`));
+    });
   });
 }
 

@@ -22,22 +22,53 @@ async function readRawData(name, fallback) {
   }
 }
 
+/** Sem isto uma conexão pendurada trava o sync para sempre — foi o que aconteceu
+ *  na primeira execução no Railway: 20+ minutos parados numa requisição sem
+ *  resposta, com CPU zerada e nenhum erro. */
+const REQUEST_TIMEOUT_MS = Number(process.env.SYNC_REQUEST_TIMEOUT_MS ?? 60_000);
+/** Teto para o retry-after da API — ver o comentário no tratamento do 429. */
+const MAX_RETRY_DELAY_MS = Number(process.env.SYNC_MAX_RETRY_DELAY_MS ?? 30_000);
+
 async function getJson(url, options = {}) {
   const maxAttempts = 4;
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const response = await fetch(url, options);
-    if (response.ok) return response.json();
+  let lastError = null;
 
-    const body = await response.text();
-    const retryable = response.status === 429 || response.status >= 500;
-    if (!retryable || attempt === maxAttempts) {
-      throw new Error(`${response.status} ${response.statusText} for ${url}\n${body.slice(0, 800)}`);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+      });
+      if (response.ok) return response.json();
+
+      const body = await response.text();
+      const retryable = response.status === 429 || response.status >= 500;
+      if (!retryable || attempt === maxAttempts) {
+        throw new Error(`${response.status} ${response.statusText} for ${url}\n${body.slice(0, 800)}`);
+      }
+      // O Pipedrive responde 429 com um retry-after que pode passar de uma hora.
+      // Obedecer ao pé da letra fazia o sync "travar": processo vivo, CPU zerada,
+      // nenhum log, por tempo indefinido. Melhor falhar rápido e tentar de novo
+      // na próxima rodada do que segurar o pipeline inteiro.
+      const retryAfter = Number(response.headers.get('retry-after') || 0);
+      const suggested = retryAfter > 0 ? retryAfter * 1_000 : 500 * (2 ** (attempt - 1));
+      const delayMs = Math.min(suggested, MAX_RETRY_DELAY_MS);
+      if (response.status === 429) {
+        console.warn(
+          `  429 do Pipedrive (tentativa ${attempt}/${maxAttempts}), aguardando ${Math.round(delayMs / 1000)}s`
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    } catch (error) {
+      // Timeout e queda de rede são transitórios; erro de status já saiu acima.
+      const transient = error.name === 'TimeoutError' || error.name === 'AbortError' || error.cause;
+      if (!transient || attempt === maxAttempts) throw error;
+      lastError = error;
+      console.warn(`  tentativa ${attempt}/${maxAttempts} falhou (${error.name}), repetindo...`);
+      await new Promise((resolve) => setTimeout(resolve, 1_000 * 2 ** (attempt - 1)));
     }
-    const retryAfter = Number(response.headers.get('retry-after') || 0);
-    const delayMs = retryAfter > 0 ? retryAfter * 1_000 : 500 * (2 ** (attempt - 1));
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
-  throw new Error(`Falha inesperada ao consultar ${url}`);
+  throw lastError ?? new Error(`Falha inesperada ao consultar ${url}`);
 }
 
 async function fetchPipedriveCollection(path, params = {}) {
@@ -109,6 +140,7 @@ async function fetchGoalProgress(goalId, start, end) {
 // cada intervalo de sazonalidade (mês/trimestre/semana), permitindo comparar meta x realizado.
 async function enrichGoalsWithResults(goals) {
   const enriched = [];
+  console.log(`Enriquecendo ${goals.length} meta(s) com o realizado...`);
   for (const goal of goals) {
     const start = goal.duration?.start;
     const end = goal.duration?.end;
@@ -122,11 +154,13 @@ async function enrichGoalsWithResults(goals) {
     }
 
     enriched.push({ ...goal, totalProgress, intervalResults });
+    console.log(`  meta "${goal.title}" (${intervalResults.length} intervalos)`);
   }
   return enriched;
 }
 
 async function syncPipedrive() {
+  console.log('Pipedrive: baixando coleções...');
   const [deals, dealFields, orgFields, organizations, pipelines, stages, users, activities, activityTypes, products, goalsRaw] =
     await Promise.all([
       fetchPipedriveCollection('deals', { status: 'all_not_deleted' }),
@@ -143,6 +177,8 @@ async function syncPipedrive() {
       fetchPipedriveCollection('products'),
       fetchPipedriveGoals()
     ]);
+
+  console.log(`Pipedrive: ${deals.length} negócios, ${activities.length} atividades, ${organizations.length} organizações.`);
 
   const goals = await enrichGoalsWithResults(goalsRaw);
 

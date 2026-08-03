@@ -15,6 +15,7 @@
     "analyze": "node scripts/analyze.mjs",
     "analyze:meta": "node scripts/analyze-meta.mjs",
     "analyze:presales": "node scripts/analyze-presales.mjs",
+    "analyze:presales-bot": "node scripts/analyze-presales-bot.mjs",
     "analyze:revenue-funnel": "node scripts/analyze-revenue-funnel.mjs",
     "analyze:commercial-intel": "node scripts/analyze-commercial-intel.mjs",
     "build:crm-snapshot": "node scripts/build-crm-snapshot.mjs",

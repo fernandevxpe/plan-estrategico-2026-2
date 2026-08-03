@@ -77,6 +77,7 @@ const STEPS = [
   { name: 'sync Pipedrive + ClickUp', script: 'scripts/sync-data.mjs', required: true },
   { name: 'sync Meta Ads + Instagram', script: 'scripts/sync-meta.mjs', required: false },
   { name: 'sync Chatwoot', script: 'scripts/sync-chatwoot.mjs', required: false },
+  { name: 'análise do bot de pré-vendas', script: 'scripts/analyze-presales-bot.mjs', required: false },
   { name: 'análise principal', script: 'scripts/analyze.mjs', required: true },
   { name: 'análise de marketing', script: 'scripts/analyze-meta.mjs', required: false },
   { name: 'análise de pré-vendas', script: 'scripts/analyze-presales.mjs', required: false },

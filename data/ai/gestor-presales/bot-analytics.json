@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-08-03T19:15:51.118Z",
+  "source": "Supabase n8n_chat_histories (somente agregados; conteúdo e session_id descartados)",
+  "scopeNote": "Memória histórica do bot sem timestamp por mensagem e sem chave validada com o Chatwoot. Percentuais descrevem esta base separada e não devem ser somados às conversas operacionais.",
+  "methodNote": "Classificação determinística por palavras-chave v1. Categorias podem se sobrepor e sinais de objeção não substituem auditoria amostral.",
+  "totals": { "sessions": 1141, "messages": 11548, "humanMessages": 5774, "botMessages": 5774 },
+  "conversationShape": {
+    "medianHumanTurns": 4,
+    "p75HumanTurns": 8,
+    "singleHumanTurn": 376,
+    "singleHumanTurnPct": 32.95354951796669,
+    "endsAwaitingAnswer": 679,
+    "endsAwaitingAnswerPct": 59.50920245398773,
+    "oneTurnAwaitingAnswer": 374,
+    "oneTurnAwaitingAnswerPct": 32.778264680105174
+  },
+  "objectives": [
+    { "label": "Carregamento/veículo elétrico", "count": 838, "sessionsPct": 73.44434706397897 },
+    { "label": "Laudo/inspeção elétrica", "count": 147, "sessionsPct": 12.883435582822086 },
+    { "label": "Orçamento/preço", "count": 92, "sessionsPct": 8.06310254163015 },
+    { "label": "Empresa/comercial", "count": 52, "sessionsPct": 4.557405784399649 },
+    { "label": "Obras/projetos", "count": 25, "sessionsPct": 2.1910604732690624 },
+    { "label": "Energia/medição", "count": 14, "sessionsPct": 1.2269938650306749 }
+  ],
+  "objections": [
+    { "label": "Preço/orçamento", "count": 51, "sessionsPct": 4.469763365468887 },
+    { "label": "Autoridade/assembleia", "count": 42, "sessionsPct": 3.6809815950920246 },
+    { "label": "Prazo/urgência", "count": 34, "sessionsPct": 2.9798422436459244 },
+    { "label": "Só informação", "count": 23, "sessionsPct": 2.0157756354075373 },
+    { "label": "Localidade/atendimento", "count": 1, "sessionsPct": 0.0876424189307625 }
+  ],
+  "profiles": [
+    { "label": "Não identificado", "count": 993, "sessionsPct": 87.02892199824716 },
+    { "label": "Morador/condômino", "count": 95, "sessionsPct": 8.326029798422436 },
+    { "label": "Síndico", "count": 39, "sessionsPct": 3.4180543382997373 },
+    { "label": "Técnico/engenheiro", "count": 19, "sessionsPct": 1.6652059596844873 },
+    { "label": "Administradora", "count": 8, "sessionsPct": 0.7011393514461 },
+    { "label": "Empresa/facilities", "count": 0, "sessionsPct": 0 }
+  ],
+  "outcomeSignals": [
+    { "label": "Sinal de handoff", "count": 717, "sessionsPct": 62.8396143733567 },
+    { "label": "Sinal de agenda/visita", "count": 117, "sessionsPct": 10.254163014899213 },
+    { "label": "Sinal de orçamento/proposta", "count": 45, "sessionsPct": 3.943908851884312 }
+  ]
+}

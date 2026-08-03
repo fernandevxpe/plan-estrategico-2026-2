@@ -5,6 +5,7 @@ import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, 
 import type { AreaDashboardItem } from "@/lib/areas/types";
 import type { PresalesDailyRow, PresalesDashboard } from "@/lib/areas/build-presales-dashboard";
 import { AreaDetailPanel } from "@/components/areas/AreasOverview";
+import { PresalesGestorIA } from "@/components/areas/PresalesGestorIA";
 
 type Aggregation = "day" | "week" | "month";
 type TimelineRow = PresalesDailyRow & { key: string; label: string; gapDays: number };
@@ -61,6 +62,9 @@ export function PresalesAreaPage({ area, data }: { area: AreaDashboardItem; data
   const timeline = useMemo(() => aggregate(filtered, aggregation), [filtered, aggregation]);
   const monthly = useMemo(() => aggregate(data.daily, "month"), [data.daily]);
   const gapDates = filtered.filter((row) => row.suspectedGap).map((row) => row.date);
+  const reliableFiltered = filtered.filter((row) => !row.suspectedGap);
+  const reliableContacts = reliableFiltered.reduce((sum, row) => sum + row.contactInitiated, 0);
+  const dailyRate = reliableFiltered.length ? reliableContacts / reliableFiltered.length : 0;
 
   return (
     <div className="presales-page">
@@ -81,6 +85,15 @@ export function PresalesAreaPage({ area, data }: { area: AreaDashboardItem; data
         <article><span>Chatwoot / clique externo</span><strong>{percent(totals.chatwootPerOutboundClickPct)}</strong><small>Correlação observada, todas as origens</small></article>
         <article><span>Conversas atribuídas Meta</span><strong>{integer(totals.metaConversations)}</strong><small>Janela de atribuição da plataforma</small></article>
         <article className={totals.suspectedGaps ? "warning" : "ok"}><span>Dias suspeitos de lacuna</span><strong>{integer(totals.suspectedGaps)}</strong><small>{totals.suspectedGaps ? "Não tratados como zero real" : "Nenhuma lacuna detectada"}</small></article>
+      </section>
+
+      <section className="presales-rate-strip">
+        <header><div><strong>Taxa de novas conversas</strong><span>Run rate do período selecionado, excluindo dias marcados como lacuna</span></div><b>{integer(reliableFiltered.length)} dias confiáveis</b></header>
+        <div>
+          <article><span>Por dia</span><strong>{dailyRate.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong><small>média por dia calendário</small></article>
+          <article><span>Por semana</span><strong>{(dailyRate * 7).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong><small>demanda prevista em 7 dias</small></article>
+          <article><span>Por mês</span><strong>{integer(dailyRate * 30.44)}</strong><small>run rate de 30,44 dias</small></article>
+        </div>
       </section>
 
       <section className="presales-funnel">
@@ -121,6 +134,7 @@ export function PresalesAreaPage({ area, data }: { area: AreaDashboardItem; data
       </section>
 
       <AreaDetailPanel area={area} compact />
+      <PresalesGestorIA data={data} />
     </div>
   );
 }

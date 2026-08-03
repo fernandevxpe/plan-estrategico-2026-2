@@ -353,6 +353,39 @@
 .presales-method dl div { display: flex; justify-content: space-between; gap: 15px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .presales-method dt { color: var(--muted); font-size: 11px; }
 .presales-method dd { margin: 0; font-size: 11px; font-weight: 900; }
+.presales-rate-strip { padding: 15px; border: 1px solid #99f6e4; border-radius: 14px; background: linear-gradient(145deg, #f0fdfa, #fff); }
+.presales-rate-strip > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
+.presales-rate-strip > header div { display: grid; gap: 2px; }
+.presales-rate-strip > header span, .presales-rate-strip > header b { color: var(--muted); font-size: 10.5px; }
+.presales-rate-strip > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.presales-rate-strip article, .presales-demand-strip article { display: grid; gap: 3px; padding: 12px 13px; border: 1px solid #ccfbf1; border-radius: 11px; background: #fff; }
+.presales-rate-strip article span, .presales-demand-strip span { color: #0f766e; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
+.presales-rate-strip article strong, .presales-demand-strip strong { font-size: 21px; }
+.presales-rate-strip article small, .presales-demand-strip small { color: var(--muted); font-size: 10.5px; }
+.presales-gia .gia-hero { border-color: #99f6e4; background: linear-gradient(140deg, #ecfdf5, #fff 60%); }
+.presales-gia .gia-kicker, .presales-gia .gia-edition-date { color: #047857; }
+.presales-gia .gia-editions button.active { border-color: #059669; background: #ecfdf5; color: #047857; }
+.presales-gia .gia-editions button.active em { background: #059669; }
+.presales-demand-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; }
+.presales-instrumentation { padding: 17px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.presales-instrumentation > header { display: grid; gap: 2px; margin-bottom: 12px; }
+.presales-instrumentation > header span { color: var(--muted); font-size: 11px; }
+.presales-instrumentation .presales-table th, .presales-instrumentation .presales-table td { text-align: left; white-space: normal; vertical-align: top; }
+.presales-instrumentation .presales-table td:nth-child(2) { font-size: 9.5px; font-weight: 900; letter-spacing: .04em; }
+.presales-document { box-shadow: 0 14px 40px rgba(15, 118, 110, .06); }
+.presales-bot-intelligence { display: grid; gap: 14px; padding: 18px; border: 1px solid #a5f3fc; border-radius: 15px; background: linear-gradient(145deg, #ecfeff, #fff 48%); }
+.presales-bot-intelligence > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.presales-bot-intelligence > header > div { display: grid; gap: 3px; }
+.presales-bot-intelligence h3 { margin: 0; font-size: 18px; }
+.presales-bot-intelligence header p { max-width: 82ch; margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+.presales-bot-intelligence header small { flex-shrink: 0; color: var(--muted); font-size: 10px; }
+.presales-bot-reading { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.presales-bot-reading article { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.presales-bot-reading article > strong { font-size: 13px; }
+.presales-bot-reading ul { display: grid; gap: 0; margin: 9px 0 0; padding: 0; list-style: none; }
+.presales-bot-reading li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); color: #475569; font-size: 11px; }
+.presales-bot-reading li b { color: var(--ink); white-space: nowrap; }
+.presales-bot-method { margin: 0; padding: 11px 13px; border-left: 3px solid #0891b2; background: #ecfeff; color: #155e75; font-size: 11px; line-height: 1.5; }
 
 @media (max-width: 900px) {
   .marketing-kpis, .marketing-instagram-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -365,6 +398,8 @@
   .presales-relationship { grid-template-columns: 1fr; }
   .presales-funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .presales-funnel article::after { display: none !important; }
+  .presales-demand-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .presales-bot-reading { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 620px) {
@@ -385,6 +420,9 @@
   .presales-periods { justify-content: flex-start; }
   .presales-kpis, .presales-funnel { grid-template-columns: 1fr; }
   .presales-hero > div:last-child { min-width: 0; }
+  .presales-rate-strip > header { align-items: stretch; flex-direction: column; }
+  .presales-rate-strip > div, .presales-demand-strip { grid-template-columns: 1fr; }
+  .presales-bot-intelligence > header { flex-direction: column; }
 }
 
 * {

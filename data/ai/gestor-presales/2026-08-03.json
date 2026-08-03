@@ -1,0 +1,128 @@
+{
+  "date": "2026-08-03",
+  "titulo": "O bot responde em segundos, mas a operação ainda não prova que o humano qualificou o lead",
+  "model": "GPT-5 Codex",
+  "factsGeneratedAt": "2026-08-03T02:58:01.097Z",
+  "janela": "4 de maio a 31 de julho de 2026",
+  "base": "569 conversas do Chatwoot, sendo 425 iniciadas por contatos e 144 pela empresa, cruzadas por dia com investimento e tráfego da Meta Ads. A série cobre 89 dias, com 19 dias classificados como possível lacuna de integração. A camada qualitativa usa separadamente 11.548 mensagens de 1.141 sessões da memória histórica do bot, sem timestamps ou vínculo individual validado com o Chatwoot.",
+  "resumo": "A operação tem uma camada automática muito rápida e cobre 97,65% das entradas com alguma primeira resposta, mas essa é justamente a principal armadilha do painel: resposta registrada não significa atendimento humano nem qualificação. A mediana de 28 segundos e 95,66% em até cinco minutos indicam automação. Na memória histórica do bot, 32,78% das sessões param depois de uma única fala do contato enquanto o bot termina aguardando resposta; 59,51% de todas as sessões terminam com uma pergunta do bot. Ao mesmo tempo, 320 das 425 conversas do Chatwoot iniciadas por contatos continuam abertas. O maior ganho agora não virá de acelerar o bot; virá de reduzir a interrupção do diálogo, provar o handoff humano e ligar a qualificação à oportunidade.",
+  "secoes": [
+    {
+      "id": "demanda",
+      "titulo": "1. Demanda: volume relevante, com julho inutilizável para tendência",
+      "tom": "atencao",
+      "paragrafos": [
+        "Maio registrou 220 conversas iniciadas por contatos e junho, 184. Julho mostra somente 21, mas contém 17 dias suspeitos de desconexão entre Chatwoot e Meta. Portanto, a queda aparente de julho não pode ser tratada como retração real da demanda.",
+        "Nos dias não marcados como lacuna, a cadência equivale a cerca de 6 contatos por dia, 42 por semana e 185 por mês. Em dias com alguma entrada, o ritmo médio sobe para aproximadamente 7 contatos. Essa faixa é mais útil para dimensionar atendimento do que uma previsão pontual."
+      ],
+      "destaque": "Primeira decisão: restaurar e monitorar a coleta do Chatwoot. Sem continuidade de dados, qualquer comparação semanal ou mensal pode confundir falha técnica com mudança comercial."
+    },
+    {
+      "id": "resposta",
+      "titulo": "2. Resposta: o melhor indicador atual é do bot, não da equipe",
+      "tom": "critico",
+      "paragrafos": [
+        "Das 425 entradas espontâneas, 415 possuem primeira resposta e 10 não possuem. A cobertura registrada é 97,65%. A mediana até a resposta é 0,47 minuto, o P90 é 0,75 minuto e 95,66% das respostas chegam em até cinco minutos.",
+        "Esse padrão é incompatível com usar a métrica como SLA humano: há respostas em segundos durante todas as horas do dia. O resultado positivo é que a automação acolhe o contato rapidamente. O problema é que o painel atual não mede quanto tempo o lead espera até um atendente assumir, nem se essa passagem chega a acontecer. Também existem 14 respostas registradas depois de uma hora; somadas às 10 entradas sem resposta, são 24 exceções que precisam de auditoria."
+      ],
+      "destaque": "Preservar o bot como diferencial de disponibilidade, mas criar dois SLAs: bot em até 1 minuto e primeira resposta humana em até 5 minutos no horário comercial / até o início do próximo turno fora dele."
+    },
+    {
+      "id": "abandono",
+      "titulo": "3. Abandono: um terço para depois da primeira resposta do bot",
+      "tom": "critico",
+      "paragrafos": [
+        "No Chatwoot, existem 10 contatos sem primeira resposta, equivalentes a 2,35% das entradas. Já a memória separada do bot permite enxergar a sequência: em 374 de 1.141 sessões (32,78%), o contato fala uma única vez, o bot responde com uma pergunta e não há nova fala registrada do contato.",
+        "Em 679 sessões (59,51%), a última mensagem do histórico é uma pergunta do bot sem resposta posterior. Isso é um proxy de diálogo interrompido, não uma taxa definitiva de perda: a memória não tem timestamps, pode não registrar atendimento humano em outro canal e não está individualmente conciliada ao Chatwoot. Mesmo com essa ressalva, o volume é grande demais para ser ignorado."
+      ],
+      "destaque": "Prioridade de teste: reduzir a primeira resposta do bot a uma pergunta simples e contextual, medir qual pergunta causa a saída e disparar follow-up quando não houver retorno. Hoje a mediana é de quatro falas do contato; o ponto crítico está antes da segunda."
+    },
+    {
+      "id": "backlog",
+      "titulo": "4. Status aberto: 75% das entradas estão sem desfecho operacional visível",
+      "tom": "critico",
+      "paragrafos": [
+        "Entre as conversas iniciadas por contatos, 320 permanecem abertas e 105 estão resolvidas. Isso representa 75,29% em aberto. Maio ainda concentra 181 abertas e junho, 138; portanto não se trata apenas de conversas recentes.",
+        "Status aberto não é sinônimo de lead ativo: pode significar fila real, conversa abandonada, ausência de rotina de encerramento ou uso do Chatwoot apenas como caixa de entrada. Em qualquer cenário, o indicador impede o gestor de distinguir demanda atual de estoque morto."
+      ],
+      "destaque": "Criar motivos obrigatórios de encerramento: qualificado, desqualificado, sem resposta, duplicado, atendimento concluído e transferido ao comercial. Revisar diariamente conversas abertas há mais de 24 horas."
+    },
+    {
+      "id": "horarios",
+      "titulo": "5. Horários: cobertura precisa atravessar almoço, noite e fim de semana",
+      "tom": "oportunidade",
+      "paragrafos": [
+        "Os maiores picos horários aparecem às 9h, 13h e 16h. O intervalo de 12h a 17h concentra 151 entradas, 35,5% do total. Das 18h às 23h ainda chegam 107 entradas, 25,2%, e entre 0h e 6h chegam outras 49.",
+        "Segunda-feira lidera com 91 entradas; terça e quinta vêm em seguida, com 69 e 68. Fins de semana somam 91 contatos. Isso confirma que limitar o processo humano ao horário comercial sem uma passagem de turno formal deixa parte relevante da demanda envelhecer."
+      ],
+      "lista": [
+        "Reforçar a janela 8h–10h para absorver a noite e o pico das 9h.",
+        "Garantir cobertura entre 12h–14h; o almoço coincide com um dos maiores volumes.",
+        "Criar plantão leve ou fila priorizada para 18h–23h e fins de semana.",
+        "Medir SLA humano por faixa horária, sem misturar bot e equipe."
+      ]
+    },
+    {
+      "id": "qualidade",
+      "titulo": "6. Qualidade, objetivos e objeções: veículo elétrico domina a procura",
+      "tom": "atencao",
+      "paragrafos": [
+        "A classificação agregada encontra tema de carregamento ou veículo elétrico em 838 das 1.141 sessões (73,44%). Laudo ou inspeção elétrica aparece em 147 (12,88%) e orçamento/preço em 92 (8,06%). As categorias se sobrepõem e foram detectadas por palavras-chave, mas a concentração do primeiro tema é inequívoca.",
+        "Os sinais de objeção mais frequentes são preço/orçamento (51 sessões), autoridade/assembleia (42), prazo/urgência (34) e busca apenas por informação (23). A baixa contagem não significa objeção rara: a regra é conservadora e muitos diálogos podem expressar a mesma barreira sem usar os termos previstos.",
+        "O perfil explícito é o maior ponto cego: 993 sessões (87,03%) não contêm declaração reconhecível de papel. Entre as identificadas, morador/condômino lidera com 95, seguido de síndico com 39, técnico/engenheiro com 19 e administradora com 8. Isso reforça a necessidade de perguntar autoridade logo no início."
+      ],
+      "lista": [
+        "Morador interessado em recarga, mas ainda sem autoridade — perfil declarado mais frequente e que precisa de trilha para mobilizar o condomínio.",
+        "Síndico ou administradora de condomínio com poder de levar a pauta à assembleia.",
+        "Gestor predial, facilities, manutenção ou responsável técnico com demanda de conformidade elétrica.",
+        "Empresa/proprietário de imóvel com prazo regulatório, expansão de carga ou risco identificado.",
+        "Parceiro técnico ou indicador, que deve seguir funil separado do cliente final."
+      ],
+      "destaque": "Taxonomia mínima recomendada para qualificar: perfil do decisor + serviço + problema declarado + urgência/prazo + localidade + autoridade + orçamento/faixa + próximo passo aceito. Guardar somente a classificação agregada no BI preserva privacidade sem perder inteligência."
+    },
+    {
+      "id": "oportunidade",
+      "titulo": "7. Oportunidade: o Chatwoot termina antes de provar resultado comercial",
+      "tom": "critico",
+      "paragrafos": [
+        "A base não liga uma conversa a uma pessoa ou negócio no Pipedrive. Assim, não sabemos quantas entradas viram lead qualificado, oportunidade, reunião, proposta, ganho ou receita. A comparação com Meta é agregada por dia e não substitui atribuição individual.",
+        "Sem essa ponte, otimizar apenas por conversa pode aumentar volume e reduzir intenção — exatamente o risco já identificado no marketing. O pré-vendas precisa ser avaliado por oportunidade qualificada e receita gerada, não apenas por resposta."
+      ],
+      "destaque": "Adicionar contact_id/deal_id ao handoff e medir o funil: conversa → humano → qualificado → oportunidade → reunião → proposta → ganho, sempre por origem, campanha, serviço e atendente."
+    },
+    {
+      "id": "diferenciais",
+      "titulo": "8. O que já fazemos melhor e deve ser preservado",
+      "tom": "oportunidade",
+      "paragrafos": [
+        "A disponibilidade automática é consistente: o contato recebe retorno registrado em segundos, inclusive à noite e no fim de semana. A separação entre conversas iniciadas pelo contato e pela empresa também evita inflar aquisição espontânea com prospecção ativa.",
+        "O painel já torna lacunas de integração visíveis em vez de preencher dias ausentes como zero. Essa disciplina é um diferencial de gestão: impede decisões baseadas em dados aparentemente completos, mas falsos."
+      ],
+      "lista": [
+        "Resposta automática rápida e disponibilidade 24/7.",
+        "Separação auditável entre entrada espontânea e iniciativa da empresa.",
+        "Cruzamento diário Chatwoot × Meta com alerta de lacuna.",
+        "Privacidade: nenhuma mensagem ou dado pessoal exposto no dashboard."
+      ]
+    },
+    {
+      "id": "plano",
+      "titulo": "9. Plano de ação de 30 dias",
+      "tom": "oportunidade",
+      "paragrafos": [
+        "A prioridade é transformar o Chatwoot de contador de conversas em instrumento de gestão do processo. A sequência abaixo resolve primeiro a confiabilidade, depois o atendimento e por fim a inteligência qualitativa."
+      ],
+      "listaOrdenada": true,
+      "lista": [
+        "Dias 1–3: restaurar token e monitoramento; alertar quando Chatwoot zerar com tráfego Meta ativo.",
+        "Dias 1–7: capturar autoria bot/humano, primeira resposta humana, contagem de mensagens e timestamps de handoff sem armazenar conteúdo no BI.",
+        "Semana 1: limpar as 320 conversas abertas e adotar motivos padronizados de encerramento.",
+        "Semana 2: implantar campos obrigatórios de qualificação e chave Chatwoot ↔ Pipedrive.",
+        "Semana 3: medir abandono por etapa e uma cadência de follow-up de 0h, 24h, 72h e 7 dias.",
+        "Semana 4: classificar objetivos/objeções em agregados, auditar amostra humana e publicar conversão por perfil, origem e atendente."
+      ],
+      "destaque": "Meta operacional inicial: 100% das entradas com autoria da resposta identificada, 95% com resposta humana dentro do SLA, zero conversa aberta sem atividade por mais de 24 horas e 90% dos handoffs com campos mínimos de qualificação."
+    }
+  ],
+  "conclusao": "O pré-vendas atual prova que a empresa consegue responder rapidamente, mas ainda não prova que atende, qualifica ou converte bem. O gargalo não é velocidade do bot; é a zona invisível entre a saudação automática e a oportunidade no Pipedrive. Instrumentar essa passagem, limpar o estoque aberto e medir abandono por etapa criará a base para descobrir os melhores perfis, objeções e práticas com evidência — e então o Gestor IA poderá comparar análises ao longo do tempo sem confundir hipótese com fato."
+}

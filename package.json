@@ -11,9 +11,12 @@
     "sync:pipedrive": "SYNC_SCOPE=pipedrive node scripts/sync-data.mjs",
     "sync:clickup": "SYNC_SCOPE=clickup node scripts/sync-data.mjs",
     "sync:meta": "node scripts/sync-meta.mjs",
+    "sync:chatwoot": "node scripts/sync-chatwoot.mjs",
     "analyze": "node scripts/analyze.mjs",
     "analyze:meta": "node scripts/analyze-meta.mjs",
+    "analyze:presales": "node scripts/analyze-presales.mjs",
     "test:meta": "node scripts/test-meta.mjs",
+    "test:presales": "node scripts/test-presales.mjs",
     "export:context": "node scripts/export-chat-context.mjs",
     "build": "npm run sync && npm run analyze && npm run export:context"
   },

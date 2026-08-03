@@ -29,6 +29,9 @@ jobs:
       META_INSTAGRAM_ACCOUNT_ID: ${{ secrets.META_INSTAGRAM_ACCOUNT_ID }}
       META_PIXEL_ID: ${{ secrets.META_PIXEL_ID }}
       META_GRAPH_API_VERSION: v24.0
+      CHATWOOT_BASE_URL: ${{ secrets.CHATWOOT_BASE_URL }}
+      CHATWOOT_API_ACCESS_TOKEN: ${{ secrets.CHATWOOT_API_ACCESS_TOKEN }}
+      CHATWOOT_ACCOUNT_ID: "1"
 
     steps:
       - name: Checkout
@@ -51,11 +54,17 @@ jobs:
       - name: Sync Meta Ads + Instagram
         run: npm run sync:meta
 
+      - name: Sync Chatwoot
+        run: npm run sync:chatwoot
+
       - name: Analyze data
         run: npm run analyze
 
       - name: Analyze marketing data
         run: npm run analyze:meta
+
+      - name: Analyze pre-sales data
+        run: npm run analyze:presales
 
       - name: Export chat context
         run: npm run export:context
@@ -69,5 +78,5 @@ jobs:
             echo "Nenhuma mudança nos artefatos processados."
             exit 0
           fi
-          git commit -m "chore: sync diário Pipedrive/ClickUp ($(date -u +%Y-%m-%d))"
+          git commit -m "chore: sincroniza bases diárias ($(date -u +%Y-%m-%d))"
           git push

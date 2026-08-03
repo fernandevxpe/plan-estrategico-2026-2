@@ -77,6 +77,15 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     lead: "Marketing"
   },
   {
+    id: "pre-vendas",
+    name: "Pré-vendas",
+    shortName: "Pré-vendas",
+    description: "Conversas iniciadas, atendimento, qualificação e conversão do tráfego em oportunidades reais.",
+    parentId: null,
+    status: "monitorando",
+    lead: "Pré-vendas"
+  },
+  {
     id: "eventos",
     name: "Eventos",
     shortName: "Eventos",

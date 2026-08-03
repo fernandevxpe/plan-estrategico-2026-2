@@ -126,10 +126,6 @@ export function FunnelStageStackedChart({
     }));
   }, [history, pipelineFilter, mode, selectedStageIds, metricMode, conversionMonths]);
 
-  if (!stages.length) {
-    return <p className="chart-empty">Selecione ao menos uma etapa do funil.</p>;
-  }
-
   const showTime = enabledTimeSeries.size > 0;
   const showDays = enabledTimeSeries.has("averageDaysToWin");
   const showAntigos = enabledTimeSeries.has("ganhosAntigosSharePct");
@@ -159,6 +155,10 @@ export function FunnelStageStackedChart({
     }
     return items;
   }, [stages, metricMode, enabledTimeSeries]);
+
+  if (!stages.length) {
+    return <p className="chart-empty">Selecione ao menos uma etapa do funil.</p>;
+  }
 
   return (
     <ResponsiveContainer width="100%" height="100%">

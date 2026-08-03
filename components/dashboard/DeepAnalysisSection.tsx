@@ -101,7 +101,7 @@ export function DeepAnalysisSection({ analysis }: Props) {
                 <YAxis yAxisId="money" orientation="right" tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`} tickLine={false} axisLine={false} width={44} />
                 <Tooltip formatter={(value, name) => [name === "Receita" ? brl.format(Number(value)) : `${value} dias`, name]} />
                 <Legend />
-                <Bar yAxisId="days" dataKey="averageDays" name="Média dias" fill="#2368a0" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="days" dataKey="averageDays" name="Média dias" fill="#bc13fe" radius={[4, 4, 0, 0]} />
                 <Line yAxisId="money" type="monotone" dataKey="revenue" name="Receita" stroke="#21a67a" strokeWidth={2} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
@@ -139,7 +139,7 @@ export function DeepAnalysisSection({ analysis }: Props) {
                 <Tooltip formatter={(value) => brl.format(Number(value))} />
                 <Legend />
                 <Bar dataKey="newRevenue" name="Novos" stackId="a" fill="#21a67a" />
-                <Bar dataKey="repeatRevenue" name="Recorrentes" stackId="a" fill="#2368a0" />
+                <Bar dataKey="repeatRevenue" name="Recorrentes" stackId="a" fill="#bc13fe" />
               </BarChart>
             </ResponsiveContainer>
           </div>

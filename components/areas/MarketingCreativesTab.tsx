@@ -125,7 +125,7 @@ export function MarketingCreativesTab({ data, period }: { data: MarketingDashboa
         </article>
         <article className="marketing-panel marketing-chart-panel">
           <header><strong>Cliques × conversas</strong><span>Eficiência do tráfego</span></header>
-          {timeline.length ? <ResponsiveContainer width="100%" height={300}><ComposedChart data={timeline}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis /><Tooltip formatter={(value) => integer(Number(value))} /><Bar dataKey="outboundClicks" name="Cliques externos" fill="#93c5fd" radius={[4, 4, 0, 0]} /><Line type="monotone" dataKey="conversations" name="Conversas iniciadas" stroke="#16a34a" strokeWidth={2.5} /></ComposedChart></ResponsiveContainer> : <div className="marketing-empty">Sem ações no período selecionado.</div>}
+          {timeline.length ? <ResponsiveContainer width="100%" height={300}><ComposedChart data={timeline}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis /><Tooltip formatter={(value) => integer(Number(value))} /><Bar dataKey="outboundClicks" name="Cliques externos" fill="#d8b4fe" radius={[4, 4, 0, 0]} /><Line type="monotone" dataKey="conversations" name="Conversas iniciadas" stroke="#16a34a" strokeWidth={2.5} /></ComposedChart></ResponsiveContainer> : <div className="marketing-empty">Sem ações no período selecionado.</div>}
         </article>
       </section>
 

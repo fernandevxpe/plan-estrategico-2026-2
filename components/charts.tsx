@@ -17,6 +17,9 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { chartTheme, mixColors } from "@/lib/chart-theme";
+
+export { mixColors };
 
 type MonthlyChartItem = {
   label: string;
@@ -68,22 +71,7 @@ const brl = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0
 });
 
-const colors = ["#21a67a", "#2368a0", "#b67818", "#0f766e"];
-
-const mixColors = [
-  "#21a67a",
-  "#2368a0",
-  "#b67818",
-  "#0f766e",
-  "#7c5cbe",
-  "#c8553d",
-  "#5b8c5a",
-  "#7a6a3a",
-  "#3f7cac",
-  "#9b5de5",
-  "#c47f2c",
-  "#4b5563"
-];
+const colors = [chartTheme.green, chartTheme.purple, chartTheme.amber, chartTheme.teal];
 
 export function RevenueChart({ data }: { data: MonthlyChartItem[] }) {
   return (
@@ -107,18 +95,18 @@ export function RevenueChart({ data }: { data: MonthlyChartItem[] }) {
           labelFormatter={(label) => `Mês: ${label}`}
         />
         <Legend />
-        <Bar yAxisId="count" dataKey="createdDeals" name="Novos negócios" fill="#2368a0" fillOpacity={0.55} radius={[4, 4, 0, 0]} />
-        <Line yAxisId="count" type="monotone" dataKey="wonDeals" name="Fechados" stroke="#b67818" strokeWidth={3} dot={{ r: 4 }} />
+        <Bar yAxisId="count" dataKey="createdDeals" name="Novos negócios" fill={chartTheme.purple} fillOpacity={0.7} radius={[4, 4, 0, 0]} />
+        <Line yAxisId="count" type="monotone" dataKey="wonDeals" name="Fechados" stroke={chartTheme.amber} strokeWidth={3} dot={{ r: 4 }} />
         <Area
           yAxisId="money"
           type="monotone"
           dataKey="wonRevenue"
           name="Receita"
-          fill="#21a67a"
+          fill={chartTheme.green}
           fillOpacity={0.14}
-          stroke="#21a67a"
+          stroke={chartTheme.green}
           strokeWidth={3}
-          dot={{ r: 5, fill: "#21a67a", stroke: "#fff", strokeWidth: 2 }}
+          dot={{ r: 5, fill: chartTheme.green, stroke: "#fff", strokeWidth: 2 }}
           activeDot={{ r: 7 }}
         />
       </ComposedChart>
@@ -172,8 +160,8 @@ export function YearComparisonChart({ data }: { data: GrowthComparisonItem[] }) 
         <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
         <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
         <Legend />
-        <Bar dataKey="revenue2025" name="Receita 2025" fill="#9fb2bd" radius={[4, 4, 0, 0]} />
-        <Line type="monotone" dataKey="revenue2026" name="Receita 2026" stroke="#21a67a" strokeWidth={3} dot={{ r: 4 }} />
+        <Bar dataKey="revenue2025" name="Receita 2025" fill={chartTheme.slate} radius={[4, 4, 0, 0]} />
+        <Line type="monotone" dataKey="revenue2026" name="Receita 2026" stroke={chartTheme.green} strokeWidth={3} dot={{ r: 4 }} />
       </ComposedChart>
     </ResponsiveContainer>
   );
@@ -188,10 +176,10 @@ export function ProjectionChart({ data }: { data: ProjectionMonthItem[] }) {
         <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
         <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
         <Legend />
-        <Bar dataKey="baselineRevenue2025" name="2025 realizado" fill="#9fb2bd" radius={[4, 4, 0, 0]} />
-        <Line type="monotone" dataKey="runRateRevenue" name="Ritmo atual" stroke="#2368a0" strokeWidth={2} dot={false} />
-        <Line type="monotone" dataKey="projectedRevenue" name="Base ponderada" stroke="#21a67a" strokeWidth={3} dot={{ r: 4 }} />
-        <Line type="monotone" dataKey="seasonalRevenue" name="Sazonal 2025" stroke="#b67818" strokeWidth={2} dot={false} />
+        <Bar dataKey="baselineRevenue2025" name="2025 realizado" fill={chartTheme.slate} radius={[4, 4, 0, 0]} />
+        <Line type="monotone" dataKey="runRateRevenue" name="Ritmo atual" stroke={chartTheme.purple} strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="projectedRevenue" name="Base ponderada" stroke={chartTheme.green} strokeWidth={3} dot={{ r: 4 }} />
+        <Line type="monotone" dataKey="seasonalRevenue" name="Sazonal 2025" stroke={chartTheme.amber} strokeWidth={2} dot={false} />
       </ComposedChart>
     </ResponsiveContainer>
   );
@@ -288,5 +276,3 @@ export function RevenueShareMixChart({
     </ResponsiveContainer>
   );
 }
-
-export { mixColors };

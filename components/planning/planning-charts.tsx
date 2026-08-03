@@ -74,7 +74,7 @@ export function GoalProgressChart({ goal, currentMonth }: { goal: GoalPlan; curr
           formatter={(value, name) => [value == null ? "—" : formatGoalValue(Number(value), goal.unit), name]}
         />
         <Legend />
-        <Bar dataKey="realized" name="Realizado" fill="#2368a0" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="realized" name="Realizado" fill="#bc13fe" radius={[4, 4, 0, 0]} />
         <Line
           type="monotone"
           dataKey="target"
@@ -418,7 +418,7 @@ export function PipelineSnapshotChart({ data }: { data: PipelineStageRow[] }) {
         <XAxis type="number" tickLine={false} axisLine={false} allowDecimals={false} />
         <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={108} />
         <Tooltip formatter={(value) => [count.format(Number(value)), "Negócios"]} />
-        <Bar dataKey="deals" name="Negócios" fill="#2368a0" radius={[0, 4, 4, 0]} />
+        <Bar dataKey="deals" name="Negócios" fill="#bc13fe" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -511,14 +511,14 @@ export function GoalsAttainmentOverviewChart({ data }: { data: GoalAttainmentRow
           ]}
         />
         <Legend />
-        <Bar dataKey="attainmentCap" name="% realizado YTD" fill="#2368a0" radius={[0, 4, 4, 0]} />
+        <Bar dataKey="attainmentCap" name="% realizado YTD" fill="#bc13fe" radius={[0, 4, 4, 0]} />
         <Bar dataKey="projectedCap" name="Projeção fim de ano" fill="#21a67a" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
 }
 
-const colors = ["#21a67a", "#2368a0", "#b67818", "#0f766e", "#64727a"];
+const colors = ["#21a67a", "#bc13fe", "#b67818", "#0f766e", "#64727a"];
 
 export function AnnualBridgeChart({ data }: { data: BridgeItem[] }) {
   return (
@@ -532,7 +532,7 @@ export function AnnualBridgeChart({ data }: { data: BridgeItem[] }) {
           {data.map((entry) => (
             <Cell
               key={entry.label}
-              fill={entry.type === "total" ? "#21a67a" : entry.type === "base" ? "#9fb2bd" : "#2368a0"}
+              fill={entry.type === "total" ? "#21a67a" : entry.type === "base" ? "#9fb2bd" : "#bc13fe"}
             />
           ))}
         </Bar>
@@ -551,7 +551,7 @@ export function QuarterlyChart({ data }: { data: QuarterlySeriesItem[] }) {
         <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
         <Legend />
         <Bar dataKey="revenue2025" name="2025 realizado" fill="#9fb2bd" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="revenue2026" name="2026 realizado" fill="#2368a0" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="revenue2026" name="2026 realizado" fill="#bc13fe" radius={[4, 4, 0, 0]} />
         <Line
           type="monotone"
           dataKey="revenue2026Projected"
@@ -587,7 +587,7 @@ export function Timeline2026Chart({ data }: { data: Timeline2026Item[] }) {
         <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
         <Tooltip formatter={(value, name) => [value == null ? "—" : brl.format(Number(value)), name]} />
         <Legend />
-        <Bar dataKey="actual" name="Realizado" fill="#2368a0" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="actual" name="Realizado" fill="#bc13fe" radius={[4, 4, 0, 0]} />
         <Line
           type="monotone"
           dataKey="projected"

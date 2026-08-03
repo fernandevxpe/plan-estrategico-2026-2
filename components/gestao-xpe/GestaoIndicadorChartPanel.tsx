@@ -23,7 +23,7 @@ import {
   type HistoryViewConfig
 } from "@/lib/gestao-xpe/indicator-history-view";
 
-const SERIES_COLORS = ["#21a67a", "#2368a0", "#b67818", "#0f766e", "#7c5cbe", "#c8553d"];
+const SERIES_COLORS = ["#21a67a", "#bc13fe", "#b67818", "#0f766e", "#7c5cbe", "#c8553d"];
 
 const GRANULARITY_OPTIONS: { id: GestaoPeriodo; short: string; label: string }[] = [
   { id: "semanal", short: "Sem.", label: "Semanal" },

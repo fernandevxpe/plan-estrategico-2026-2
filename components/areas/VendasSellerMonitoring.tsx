@@ -201,7 +201,7 @@ export function VendasSellerMonitoring({ rows }: Props) {
                 <YAxis tickFormatter={compactMoney} tick={{ fontSize: 10 }} width={48} />
                 <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="consultoria" name="Consultoria" stackId="sales" fill="#2563eb" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="consultoria" name="Consultoria" stackId="sales" fill="#bc13fe" radius={[3, 3, 0, 0]} />
                 <Bar dataKey="obras" name="Obras" stackId="sales" fill="#0f766e" radius={[3, 3, 0, 0]} />
                 <Line dataKey="metaTotal" name="Meta total" stroke="#dc2626" strokeWidth={2.2} dot={{ r: 2 }} />
               </ComposedChart>

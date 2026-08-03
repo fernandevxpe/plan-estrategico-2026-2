@@ -61,10 +61,10 @@ export function goalIntervalsWithProgress(goal: GoalPlan, currentMonth: string) 
 }
 
 export const GOAL_COMPARE_COLORS = [
-  "#2368a0",
+  "#bc13fe",
   "#21a67a",
   "#b67818",
-  "#7c3aed",
+  "#9b2fd4",
   "#e5484d",
   "#0f766e"
 ] as const;

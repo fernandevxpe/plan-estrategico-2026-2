@@ -45,7 +45,7 @@ export function CommercialPlanningForecastPanel({ data }: { data: CommercialPlan
         <div className="chart-box commercial-forecast-chart">
           <ResponsiveContainer width="100%" height="100%"><ComposedChart data={rows} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
             <CartesianGrid stroke="#dce5e8" vertical={false} /><XAxis dataKey="label" tickLine={false} axisLine={false} /><YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} /><Tooltip content={<CurrencyTooltip />} /><Legend />
-            <Bar dataKey="targetRevenue" name="Meta" fill="#9fb2bd" radius={[4, 4, 0, 0]} /><Bar dataKey="actualRevenue" name="Realizado" fill="#2368a0" radius={[4, 4, 0, 0]} /><Line dataKey="forecastRevenue" name="Forecast final" type="monotone" stroke="#21a67a" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 3 }} connectNulls={false} />
+            <Bar dataKey="targetRevenue" name="Meta" fill="#9fb2bd" radius={[4, 4, 0, 0]} /><Bar dataKey="actualRevenue" name="Realizado" fill="#bc13fe" radius={[4, 4, 0, 0]} /><Line dataKey="forecastRevenue" name="Forecast final" type="monotone" stroke="#21a67a" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 3 }} connectNulls={false} />
           </ComposedChart></ResponsiveContainer>
         </div>
       </section>
@@ -54,7 +54,7 @@ export function CommercialPlanningForecastPanel({ data }: { data: CommercialPlan
         <div className="chart-box commercial-forecast-chart">
           <ResponsiveContainer width="100%" height="100%"><ComposedChart data={rows} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
             <CartesianGrid stroke="#dce5e8" vertical={false} /><XAxis dataKey="label" tickLine={false} axisLine={false} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} width={36} /><Tooltip content={<CountTooltip />} /><Legend />
-            <Bar dataKey="targetWonDeals" name="Meta equivalente" fill="#9fb2bd" radius={[4, 4, 0, 0]} /><Bar dataKey="actualWonDeals" name="Realizado" fill="#2368a0" radius={[4, 4, 0, 0]} /><Line dataKey="forecastWonDeals" name="Forecast final" type="monotone" stroke="#21a67a" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 3 }} connectNulls={false} />
+            <Bar dataKey="targetWonDeals" name="Meta equivalente" fill="#9fb2bd" radius={[4, 4, 0, 0]} /><Bar dataKey="actualWonDeals" name="Realizado" fill="#bc13fe" radius={[4, 4, 0, 0]} /><Line dataKey="forecastWonDeals" name="Forecast final" type="monotone" stroke="#21a67a" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 3 }} connectNulls={false} />
           </ComposedChart></ResponsiveContainer>
         </div>
       </section>

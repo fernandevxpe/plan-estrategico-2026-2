@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import type { AreaDashboardItem } from "@/lib/areas/types";
@@ -10,6 +10,7 @@ import type {
   IntelMonth,
   IntelScope
 } from "@/lib/areas/build-commercial-intel";
+import { resolveExecutiveFindings } from "@/lib/areas/build-commercial-intel-findings";
 
 type Basis = "value" | "deals";
 type Lens = "aberto" | "ganho" | "perdido" | "ritmo";
@@ -178,7 +179,23 @@ export function CommercialIntelPage({
     []
   );
 
-  const criticalCount = data.executive?.filter((item) => item.priority === "critica" || item.priority === "alta").length ?? 0;
+  const periodDiagnosis = useMemo(
+    () =>
+      resolveExecutiveFindings({
+        monthKey,
+        scope,
+        yearExecutive: data.executive ?? []
+      }),
+    [monthKey, scope, data.executive]
+  );
+  const criticalCount = periodDiagnosis.findings.filter(
+    (item) => item.priority === "critica" || item.priority === "alta"
+  ).length;
+  const [diagOpen, setDiagOpen] = useState(true);
+
+  useEffect(() => {
+    setDiagOpen(criticalCount > 0 || periodDiagnosis.findings.length <= 4);
+  }, [monthKey, scopeId, criticalCount, periodDiagnosis.findings.length]);
 
   return (
     <div className="ci-page">
@@ -231,18 +248,26 @@ export function CommercialIntelPage({
         ))}
       </section>
 
-      {data.executive?.length ? (
-        <details className="ci-fold" open={criticalCount > 0}>
+      {periodDiagnosis.findings.length ? (
+        <details
+          className="ci-fold ci-exec-fold"
+          open={diagOpen}
+          onToggle={(event) => setDiagOpen((event.target as HTMLDetailsElement).open)}
+        >
           <summary>
-            Diagnóstico executivo
-            <span>
+            <span className="ci-fold-title">
+              Diagnóstico executivo
+              <small>{periodDiagnosis.label}</small>
+            </span>
+            <span className="ci-fold-meta">
               {criticalCount > 0
-                ? `${criticalCount} ponto(s) críticos/altos`
-                : `${data.executive.length} achados`}
+                ? `${criticalCount} crítico(s)/alto(s) · ${periodDiagnosis.findings.length} achados`
+                : `${periodDiagnosis.findings.length} achados`}
+              <em className="ci-fold-action">{diagOpen ? "Encolher" : "Expandir"}</em>
             </span>
           </summary>
           <ol className="ci-exec-list">
-            {data.executive.map((finding) => (
+            {periodDiagnosis.findings.map((finding) => (
               <li key={finding.id} className={`is-${finding.priority}`}>
                 <span className="ci-exec-flag">{finding.priority}</span>
                 <div>

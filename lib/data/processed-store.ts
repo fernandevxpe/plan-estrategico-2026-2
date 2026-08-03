@@ -1,6 +1,6 @@
 import "server-only";
 
-import { readFile } from "node:fs/promises";
+import { access, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 /**
@@ -29,7 +29,6 @@ const cache = new Map<string, CacheEntry>();
 
 async function readJsonFrom(dir: string, file: string) {
   const target = path.join(dir, file);
-  const { stat } = await import("node:fs/promises");
   const info = await stat(target);
   const cached = cache.get(target);
   if (cached && cached.mtimeMs === info.mtimeMs) return cached.value;
@@ -82,7 +81,6 @@ export async function resolveDataFile(...segments: string[]) {
   const preferred = path.join(DATA_ROOT, ...segments);
   if (DATA_ROOT === SEED_ROOT) return preferred;
 
-  const { access } = await import("node:fs/promises");
   try {
     await access(preferred);
     return preferred;

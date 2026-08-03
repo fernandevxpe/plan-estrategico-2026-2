@@ -123,13 +123,15 @@ export async function runPipeline(trigger = 'agendado') {
     log(`pipeline concluído em ${Math.round(durationMs / 1000)}s com ${failures.length} etapa(s) opcional(is) falhando`);
     return { ok: true, failures };
   } catch (error) {
+    // Volume cheio ou sem permissão faria o writeState estourar aqui dentro do
+    // catch, transformando uma falha de sync numa queda do servidor.
     await writeState({
       lastRunAt: startedAt.toISOString(),
       lastFinishedAt: new Date().toISOString(),
       lastStatus: 'erro',
       lastError: error.message,
       lastFailures: failures
-    });
+    }).catch((writeError) => log('não consegui registrar o estado do sync:', writeError.message));
     log('pipeline falhou:', error.message);
     return { ok: false, error: error.message, failures };
   } finally {
@@ -149,9 +151,14 @@ export function startScheduler() {
   const schedule = () => {
     const delay = millisUntilNextRun();
     log(`próximo sync em ${Math.round(delay / 60000)} min (${SYNC_HOUR_UTC}:00 UTC)`);
-    setTimeout(async () => {
-      await runPipeline('agendado');
-      schedule();
+    setTimeout(() => {
+      // Agendador e servidor web dividem o mesmo processo. Uma rejeição não
+      // tratada aqui derrubaria a plataforma inteira por causa do sync — e,
+      // pior, `schedule()` nunca mais seria chamado, matando o agendador em
+      // silêncio. O catch garante que o próximo horário sempre seja marcado.
+      runPipeline('agendado')
+        .catch((error) => log('pipeline lançou exceção não tratada:', error?.message ?? error))
+        .finally(schedule);
     }, delay).unref?.();
   };
   schedule();
@@ -159,16 +166,18 @@ export function startScheduler() {
   if (RUN_ON_BOOT) {
     // Um deploy pode acontecer depois do horário do dia; sem isso o volume
     // ficaria com o dado do build até a virada seguinte.
-    readState().then((state) => {
-      const last = state.lastRunAt ? new Date(state.lastRunAt).getTime() : 0;
-      const hoursSince = (Date.now() - last) / 3_600_000;
-      if (hoursSince >= 20) {
-        log(`último sync há ${Math.round(hoursSince)}h, rodando na subida`);
-        runPipeline('boot');
-      } else {
+    readState()
+      .then((state) => {
+        const last = state.lastRunAt ? new Date(state.lastRunAt).getTime() : 0;
+        const hoursSince = (Date.now() - last) / 3_600_000;
+        if (hoursSince >= 20) {
+          log(`último sync há ${Math.round(hoursSince)}h, rodando na subida`);
+          return runPipeline('boot');
+        }
         log(`último sync há ${Math.round(hoursSince)}h, não precisa rodar agora`);
-      }
-    });
+        return null;
+      })
+      .catch((error) => log('sync na subida falhou:', error?.message ?? error));
   }
 }
 

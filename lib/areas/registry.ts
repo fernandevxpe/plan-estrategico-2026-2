@@ -26,7 +26,7 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     name: "Diretor Comercial",
     shortName: "Diretor",
     description:
-      "Canais de origem, motivos de perda, ciclo de vendas, reuniões e metas — a análise mensal do diretor, apurada direto do CRM.",
+      "Operação comercial do CRM: canais, perdas, ciclo, reuniões e meta × realizado.",
     parentId: null,
     status: "monitorando",
     lead: "Diretor Comercial"

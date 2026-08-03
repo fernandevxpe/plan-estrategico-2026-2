@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import type { AreaDashboardItem } from "@/lib/areas/types";
 import type {
   CommercialIntelDashboard,
@@ -25,9 +26,11 @@ const monthLabel = (month: string) =>
     .replace(".", "")
     .replace(" de ", "/");
 
-/** Paleta estável por posição: a mesma origem mantém a cor entre os gráficos. */
-const SERIES = ["#2563eb", "#0ea5e9", "#14b8a6", "#f59e0b", "#a855f7", "#ef4444", "#64748b", "#84cc16", "#ec4899", "#0891b2"];
+/** Paleta alinhada à marca XPE (roxo) + contraste operacional. */
+const SERIES = ["#6d28d9", "#8b5cf6", "#14b8a6", "#f59e0b", "#a855f7", "#ef4444", "#64748b", "#84cc16", "#ec4899", "#0f766e"];
 const UNTRACKED = "#94a3b8";
+const PURPLE = "#6d28d9";
+const PURPLE_SOFT = "#c4b5fd";
 
 function DistributionBars({ rows, basis, limit = 8 }: { rows: IntelDistributionRow[]; basis: Basis; limit?: number }) {
   const sorted = useMemo(
@@ -149,13 +152,41 @@ export function CommercialIntelPage({
     return streak;
   }, [trend]);
 
+  const revenueLegend = useLegendToggle();
+  const winLossLegend = useLegendToggle();
+  const meetingsLegend = useLegendToggle();
+  const revenueSeries = useMemo(
+    () => [
+      { dataKey: "receita", name: "Receita", color: PURPLE, type: "square" as const },
+      { dataKey: "meta", name: "Meta", color: "#ef4444", type: "line" as const }
+    ],
+    []
+  );
+  const winLossSeries = useMemo(
+    () => [
+      { dataKey: "ganhos", name: "Ganhos", color: "#14b8a6", type: "square" as const },
+      { dataKey: "perdidos", name: "Perdidos", color: "#ef4444", type: "square" as const },
+      { dataKey: "winRate", name: "Win rate", color: PURPLE, type: "line" as const }
+    ],
+    []
+  );
+  const meetingsSeries = useMemo(
+    () => [
+      { dataKey: "reunioesSemana", name: "Reuniões/semana", color: PURPLE, type: "square" as const },
+      { dataKey: "metaReunioes", name: "Meta/semana", color: "#ef4444", type: "line" as const }
+    ],
+    []
+  );
+
+  const criticalCount = data.executive?.filter((item) => item.priority === "critica" || item.priority === "alta").length ?? 0;
+
   return (
     <div className="ci-page">
       <section className="ci-toolbar">
         <div>
-          <strong>Análise do diretor comercial</strong>
+          <strong>Leitura operacional do CRM</strong>
           <span>
-            {data.source} · sincronizado em{" "}
+            {data.source} · sync{" "}
             {data.syncedAt ? new Date(data.syncedAt).toLocaleString("pt-BR") : "—"}
           </span>
         </div>
@@ -201,12 +232,16 @@ export function CommercialIntelPage({
       </section>
 
       {data.executive?.length ? (
-        <section className="ci-exec">
-          <header>
-            <h3>Diagnóstico executivo</h3>
-            <span>Cadeia causal do ano, derivada dos números — ordenada por urgência</span>
-          </header>
-          <ol>
+        <details className="ci-fold" open={criticalCount > 0}>
+          <summary>
+            Diagnóstico executivo
+            <span>
+              {criticalCount > 0
+                ? `${criticalCount} ponto(s) críticos/altos`
+                : `${data.executive.length} achados`}
+            </span>
+          </summary>
+          <ol className="ci-exec-list">
             {data.executive.map((finding) => (
               <li key={finding.id} className={`is-${finding.priority}`}>
                 <span className="ci-exec-flag">{finding.priority}</span>
@@ -255,13 +290,16 @@ export function CommercialIntelPage({
               </li>
             ))}
           </ol>
-        </section>
+        </details>
       ) : null}
 
       {data.dataQuality.length ? (
-        <section className="ci-alerts">
-          <h3>Onde o dado ainda não sustenta a análise</h3>
-          <ul>
+        <details className="ci-fold">
+          <summary>
+            Qualidade dos dados
+            <span>{data.dataQuality.length} alerta(s)</span>
+          </summary>
+          <ul className="ci-alerts-list">
             {data.dataQuality.map((alert) => (
               <li key={alert.title} className={`is-${alert.severity}`}>
                 <strong>{alert.title}</strong>
@@ -269,7 +307,7 @@ export function CommercialIntelPage({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ) : null}
 
       <section className="ci-stats">
@@ -456,27 +494,51 @@ export function CommercialIntelPage({
               <span>Barras: receita ganha · linha: meta do Pipedrive</span>
             </header>
             <div className="ci-chart">
-              <ResponsiveContainer width="100%" height={280}>
-                <ComposedChart data={trend} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
-                  <Tooltip
-                    formatter={(value: number, name: string) =>
-                      name === "Negócios" ? num(value) : money(value)
-                    }
-                  />
-                  <Bar dataKey="receita" name="Receita" radius={[4, 4, 0, 0]}>
-                    {trend.map((row) => (
-                      <Cell
-                        key={row.month}
-                        fill={row.parcial ? "#c7d2fe" : row.atingimento != null && row.atingimento < 100 ? "#f59e0b" : "#2563eb"}
-                      />
-                    ))}
-                  </Bar>
-                  <Line dataKey="meta" name="Meta" stroke="#ef4444" strokeWidth={2} dot={false} />
-                </ComposedChart>
-              </ResponsiveContainer>
+              <ChartWithLegend
+                series={revenueSeries}
+                hidden={revenueLegend.hidden}
+                onToggle={revenueLegend.toggle}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={trend} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) =>
+                        name === "Negócios" ? num(value) : money(value)
+                      }
+                    />
+                    <Bar
+                      dataKey="receita"
+                      name="Receita"
+                      radius={[4, 4, 0, 0]}
+                      hide={revenueLegend.isHidden("receita")}
+                    >
+                      {trend.map((row) => (
+                        <Cell
+                          key={row.month}
+                          fill={
+                            row.parcial
+                              ? PURPLE_SOFT
+                              : row.atingimento != null && row.atingimento < 100
+                                ? "#f59e0b"
+                                : PURPLE
+                          }
+                        />
+                      ))}
+                    </Bar>
+                    <Line
+                      dataKey="meta"
+                      name="Meta"
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      dot={false}
+                      hide={revenueLegend.isHidden("meta")}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </ChartWithLegend>
             </div>
           </article>
         </section>
@@ -506,17 +568,42 @@ export function CommercialIntelPage({
               <span>Win rate na linha</span>
             </header>
             <div className="ci-chart">
-              <ResponsiveContainer width="100%" height={260}>
-                <ComposedChart data={trend} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number, name: string) => (name === "Win rate" ? pct(value) : num(value))} />
-                  <Bar dataKey="ganhos" name="Ganhos" fill="#14b8a6" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="perdidos" name="Perdidos" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                  <Line dataKey="winRate" name="Win rate" stroke="#2563eb" strokeWidth={2} dot={false} />
-                </ComposedChart>
-              </ResponsiveContainer>
+              <ChartWithLegend
+                series={winLossSeries}
+                hidden={winLossLegend.hidden}
+                onToggle={winLossLegend.toggle}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={trend} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(value: number, name: string) => (name === "Win rate" ? pct(value) : num(value))} />
+                    <Bar
+                      dataKey="ganhos"
+                      name="Ganhos"
+                      fill="#14b8a6"
+                      radius={[4, 4, 0, 0]}
+                      hide={winLossLegend.isHidden("ganhos")}
+                    />
+                    <Bar
+                      dataKey="perdidos"
+                      name="Perdidos"
+                      fill="#ef4444"
+                      radius={[4, 4, 0, 0]}
+                      hide={winLossLegend.isHidden("perdidos")}
+                    />
+                    <Line
+                      dataKey="winRate"
+                      name="Win rate"
+                      stroke={PURPLE}
+                      strokeWidth={2}
+                      dot={false}
+                      hide={winLossLegend.isHidden("winRate")}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </ChartWithLegend>
             </div>
           </article>
         </section>
@@ -530,16 +617,35 @@ export function CommercialIntelPage({
               <span>Atividades do tipo Reunião concluídas no Pipedrive</span>
             </header>
             <div className="ci-chart">
-              <ResponsiveContainer width="100%" height={240}>
-                <ComposedChart data={trend} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => num(value, 1)} />
-                  <Bar dataKey="reunioesSemana" name="Reuniões/semana" fill="#6d28d9" radius={[4, 4, 0, 0]} />
-                  <Line dataKey="metaReunioes" name="Meta/semana" stroke="#ef4444" strokeWidth={2} dot={false} />
-                </ComposedChart>
-              </ResponsiveContainer>
+              <ChartWithLegend
+                series={meetingsSeries}
+                hidden={meetingsLegend.hidden}
+                onToggle={meetingsLegend.toggle}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={trend} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(value: number) => num(value, 1)} />
+                    <Bar
+                      dataKey="reunioesSemana"
+                      name="Reuniões/semana"
+                      fill={PURPLE}
+                      radius={[4, 4, 0, 0]}
+                      hide={meetingsLegend.isHidden("reunioesSemana")}
+                    />
+                    <Line
+                      dataKey="metaReunioes"
+                      name="Meta/semana"
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      dot={false}
+                      hide={meetingsLegend.isHidden("metaReunioes")}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </ChartWithLegend>
             </div>
           </article>
 
@@ -625,9 +731,12 @@ export function CommercialIntelPage({
         </section>
       ) : null}
 
-      <section className="ci-method">
-        <h3>Como cada número é apurado</h3>
-        <dl>
+      <details className="ci-fold">
+        <summary>
+          Como cada número é apurado
+          <span>metodologia</span>
+        </summary>
+        <dl className="ci-method-list">
           {Object.entries(data.methodology).map(([key, text]) => (
             <div key={key}>
               <dt>{key}</dt>
@@ -635,7 +744,7 @@ export function CommercialIntelPage({
             </div>
           ))}
         </dl>
-      </section>
+      </details>
     </div>
   );
 }

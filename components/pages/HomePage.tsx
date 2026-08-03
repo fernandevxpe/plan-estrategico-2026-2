@@ -25,6 +25,7 @@ export function HomePage({ analysis, criticalFindings }: Props) {
   const mainInsight = analysis.planningSummary.insights[0];
 
   const quickLinks = [
+    { href: "/comercial", title: "Comercial", desc: "Meta, realizado e projeção do ritmo de vendas" },
     { href: "/areas/diretor-comercial", title: "Diretor Comercial", desc: "Canais, perdas, ciclo e reuniões mês a mês" },
     { href: "/planejamento", title: "Planejamento", desc: "Metas Pipedrive, gráficos e comparação" },
     { href: "/mix", title: "Serviços", desc: "Receita, esforço e participação por produto" },

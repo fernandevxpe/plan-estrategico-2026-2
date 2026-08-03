@@ -5,7 +5,6 @@ import {
   Bar,
   CartesianGrid,
   ComposedChart,
-  Legend,
   Line,
   ResponsiveContainer,
   Tooltip,
@@ -13,6 +12,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import type { CommercialFunnelChartRow } from "@/lib/analysis/planning-pipedrive";
 import type { CommercialFunnelScope } from "@/lib/analysis/types";
 import { brl } from "@/lib/analysis/format";
@@ -67,6 +67,17 @@ function formatValue(value: number, kind: SeriesKind) {
 export function CommercialFunnelChart({ data, scope, onScopeChange }: { data: CommercialFunnelChartRow[]; scope: CommercialFunnelScope; onScopeChange: (scope: CommercialFunnelScope) => void }) {
   const [view, setView] = useState<ViewId>("revenue");
   const config = VIEWS[view];
+  const { hidden, isHidden, toggle } = useLegendToggle();
+  const legendSeries = useMemo(
+    () =>
+      config.series.map((item) => ({
+        dataKey: String(item.id),
+        name: item.label,
+        color: item.color,
+        type: (item.type === "bar" ? "square" : "line") as "square" | "line"
+      })),
+    [config]
+  );
   const hasRight = config.series.some((item) => item.axis === "right");
   const leftKind = config.series.find((item) => item.axis === "left")?.kind ?? "count";
   const tooltip = useMemo(() => ({ active, payload, label }: TooltipProps<number, string>) => {
@@ -96,8 +107,35 @@ export function CommercialFunnelChart({ data, scope, onScopeChange }: { data: Co
           <XAxis dataKey="label" tickLine={false} axisLine={false} />
           <YAxis yAxisId="left" tickFormatter={(value) => leftKind === "currency" ? `${Math.round(Number(value) / 1000)}k` : leftKind === "percent" ? `${Math.round(Number(value))}%` : String(Math.round(Number(value)))} tickLine={false} axisLine={false} width={48} domain={leftKind === "percent" ? [0, 100] : [0, "auto"]} />
           {hasRight ? <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${Math.round(Number(value))}d`} tickLine={false} axisLine={false} width={42} domain={[0, "auto"]} /> : null}
-          <Tooltip content={tooltip} /><Legend />
-          {config.series.map((item) => item.type === "bar" ? <Bar key={String(item.id)} yAxisId={item.axis} dataKey={item.id} name={item.label} fill={item.color} radius={[4, 4, 0, 0]} /> : <Line key={String(item.id)} yAxisId={item.axis} dataKey={item.id} name={item.label} type="monotone" stroke={item.color} strokeWidth={2.5} strokeDasharray={item.dash} dot={{ r: 3 }} connectNulls={false} />)}
+          <Tooltip content={tooltip} />
+          <ToggleLegend series={legendSeries} hidden={hidden} onToggle={toggle} />
+          {config.series.map((item) =>
+            item.type === "bar" ? (
+              <Bar
+                key={String(item.id)}
+                yAxisId={item.axis}
+                dataKey={item.id}
+                name={item.label}
+                fill={item.color}
+                radius={[4, 4, 0, 0]}
+                hide={isHidden(String(item.id))}
+              />
+            ) : (
+              <Line
+                key={String(item.id)}
+                yAxisId={item.axis}
+                dataKey={item.id}
+                name={item.label}
+                type="monotone"
+                stroke={item.color}
+                strokeWidth={2.5}
+                strokeDasharray={item.dash}
+                dot={{ r: 3 }}
+                connectNulls={false}
+                hide={isHidden(String(item.id))}
+              />
+            )
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

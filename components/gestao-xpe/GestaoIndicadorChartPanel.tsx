@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ReferenceLine,
@@ -12,6 +11,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import { LineChart as LineChartIcon, X } from "lucide-react";
 import type { GestaoCatalog, GestaoPeriodo } from "@/lib/gestao-xpe/catalog-types";
 import type { IndicatorHistoryPayload, IndicatorHistorySeries } from "@/lib/gestao-xpe/indicator-history";
@@ -94,16 +94,18 @@ function formatTooltipValue(
 
 function ChartMetaLines({
   series,
-  colorById
+  colorById,
+  isHidden
 }: {
   series: IndicatorHistorySeries[];
   colorById: Record<string, string>;
+  isHidden: (dataKey: string) => boolean;
 }) {
   return (
     <>
       {series.map((s) => {
         const hasMeta = s.points.some((p) => p.meta !== null);
-        if (!hasMeta) return null;
+        if (!hasMeta || isHidden(s.id)) return null;
         return (
           <Line
             key={`${s.id}-meta`}
@@ -252,6 +254,18 @@ export function GestaoIndicadorChartPanel({
     });
     return map;
   }, [selectedIds]);
+
+  const { hidden, isHidden, toggle } = useLegendToggle();
+  const legendSeries = useMemo(
+    () =>
+      viewedSeries.map((s) => ({
+        dataKey: s.id,
+        name: s.nome,
+        color: colorById[s.id] ?? SERIES_COLORS[0],
+        type: "line" as const
+      })),
+    [viewedSeries, colorById]
+  );
 
   const chartYAxis = useMemo(() => {
     const moeda = viewedSeries.some((s) => s.tipo === "moeda");
@@ -411,6 +425,9 @@ export function GestaoIndicadorChartPanel({
                               formatTooltipValue(value, name, viewedSeries)
                             }
                           />
+                          {viewedSeries.length > 1 ? (
+                            <ToggleLegend series={legendSeries} hidden={hidden} onToggle={toggle} />
+                          ) : null}
                           {viewedSeries.map((s) => (
                             <Line
                               key={s.id}
@@ -421,9 +438,10 @@ export function GestaoIndicadorChartPanel({
                               strokeWidth={2.5}
                               dot={{ r: 4, fill: colorById[s.id] }}
                               connectNulls
+                              hide={isHidden(s.id)}
                             />
                           ))}
-                          <ChartMetaLines series={viewedSeries} colorById={colorById} />
+                          <ChartMetaLines series={viewedSeries} colorById={colorById} isHidden={isHidden} />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -439,7 +457,9 @@ export function GestaoIndicadorChartPanel({
                           }
                           labelFormatter={(label) => `${periodTooltip} ${label}`}
                         />
-                        <Legend formatter={(value) => viewedSeries.find((s) => s.id === value)?.nome ?? value} />
+                        {viewedSeries.length > 1 ? (
+                          <ToggleLegend series={legendSeries} hidden={hidden} onToggle={toggle} />
+                        ) : null}
                         {highlightLabel ? (
                           <ReferenceLine
                             x={highlightLabel}
@@ -459,9 +479,10 @@ export function GestaoIndicadorChartPanel({
                             dot={{ r: 3, fill: colorById[s.id] }}
                             activeDot={{ r: 5 }}
                             connectNulls
+                            hide={isHidden(s.id)}
                           />
                         ))}
-                        <ChartMetaLines series={viewedSeries} colorById={colorById} />
+                        <ChartMetaLines series={viewedSeries} colorById={colorById} isHidden={isHidden} />
                       </LineChart>
                     </ResponsiveContainer>
                   )}

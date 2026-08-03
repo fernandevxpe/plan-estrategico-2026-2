@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   ComposedChart,
-  Legend,
   Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
 } from "recharts";
+import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import {
   MARGIN_STACK_KEYS,
   type VendasUnitEconomicsDashboard,
@@ -28,6 +28,36 @@ type Props = {
 
 export function VendasUnitEconomicsSection({ unitEconomics, embedded = false }: Props) {
   const [activeScenario, setActiveScenario] = useState<"one-hire" | "two-hires">("one-hire");
+  const marginStackLegend = useLegendToggle();
+  const payrollLegend = useLegendToggle();
+  const marginTrendLegend = useLegendToggle();
+  const cumulativeLegend = useLegendToggle();
+  const marginStackSeries = useMemo(
+    () => MARGIN_STACK_KEYS.map((item) => ({ dataKey: item.key, name: item.key, color: item.color, type: "square" as const })),
+    []
+  );
+  const payrollSeries = useMemo(
+    () => [
+      { dataKey: "Fixo", name: "Fixo", color: "#f59e0b", type: "square" as const },
+      { dataKey: "Comissão", name: "Comissão", color: "#fb923c", type: "square" as const }
+    ],
+    []
+  );
+  const marginTrendSeries = useMemo(
+    () => [
+      { dataKey: "cacPct", name: "CAC % receita", color: "#a78bfa", type: "square" as const },
+      { dataKey: "margemPct", name: "Margem bruta %", color: "#08704f", type: "line" as const }
+    ],
+    []
+  );
+  const cumulativeSeries = useMemo(
+    () => [
+      { dataKey: "receitaAcum", name: "Receita acum.", color: "#cbd5e1", type: "square" as const },
+      { dataKey: "margemAcum", name: "Margem acum.", color: "#21a67a", type: "square" as const },
+      { dataKey: "cacPctAcum", name: "CAC acum. % receita", color: "#7c3aed", type: "line" as const }
+    ],
+    []
+  );
   const [scenarioA, scenarioB] = unitEconomics.scenarios;
   const active = activeScenario === "one-hire" ? scenarioA : scenarioB;
   const assumptions = unitEconomics.assumptions;
@@ -175,9 +205,9 @@ export function VendasUnitEconomicsSection({ unitEconomics, embedded = false }: 
                   formatter={(value, name) => [brl.format(Number(value)), name]}
                   labelFormatter={(label) => `Mês: ${label}`}
                 />
-                <Legend />
+                <ToggleLegend series={marginStackSeries} hidden={marginStackLegend.hidden} onToggle={marginStackLegend.toggle} />
                 {MARGIN_STACK_KEYS.map((item) => (
-                  <Bar key={item.key} dataKey={item.key} stackId="margin" fill={item.color} radius={[2, 2, 0, 0]} />
+                  <Bar key={item.key} dataKey={item.key} stackId="margin" fill={item.color} radius={[2, 2, 0, 0]} hide={marginStackLegend.isHidden(item.key)} />
                 ))}
               </BarChart>
             </ResponsiveContainer>
@@ -203,9 +233,9 @@ export function VendasUnitEconomicsSection({ unitEconomics, embedded = false }: 
                   width={48}
                 />
                 <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
-                <Legend />
-                <Bar dataKey="Fixo" stackId="payroll" fill="#f59e0b" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="Comissão" stackId="payroll" fill="#fb923c" radius={[2, 2, 0, 0]} />
+                <ToggleLegend series={payrollSeries} hidden={payrollLegend.hidden} onToggle={payrollLegend.toggle} />
+                <Bar dataKey="Fixo" stackId="payroll" fill="#f59e0b" radius={[2, 2, 0, 0]} hide={payrollLegend.isHidden("Fixo")} />
+                <Bar dataKey="Comissão" stackId="payroll" fill="#fb923c" radius={[2, 2, 0, 0]} hide={payrollLegend.isHidden("Comissão")} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -227,9 +257,9 @@ export function VendasUnitEconomicsSection({ unitEconomics, embedded = false }: 
                 <XAxis dataKey="label" tickLine={false} axisLine={false} />
                 <YAxis tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} width={42} />
                 <Tooltip formatter={(value, name) => [`${number.format(Number(value))}%`, name]} />
-                <Legend />
-                <Bar dataKey="cacPct" name="CAC % receita" fill="#a78bfa" radius={[3, 3, 0, 0]} />
-                <Line type="monotone" dataKey="margemPct" name="Margem bruta %" stroke="#08704f" strokeWidth={2} dot />
+                <ToggleLegend series={marginTrendSeries} hidden={marginTrendLegend.hidden} onToggle={marginTrendLegend.toggle} />
+                <Bar dataKey="cacPct" name="CAC % receita" fill="#a78bfa" radius={[3, 3, 0, 0]} hide={marginTrendLegend.isHidden("cacPct")} />
+                <Line type="monotone" dataKey="margemPct" name="Margem bruta %" stroke="#08704f" strokeWidth={2} dot hide={marginTrendLegend.isHidden("margemPct")} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -268,9 +298,9 @@ export function VendasUnitEconomicsSection({ unitEconomics, embedded = false }: 
                     return [brl.format(Number(value)), name];
                   }}
                 />
-                <Legend />
-                <Bar yAxisId="left" dataKey="receitaAcum" name="Receita acum." fill="#cbd5e1" radius={[2, 2, 0, 0]} />
-                <Bar yAxisId="left" dataKey="margemAcum" name="Margem acum." fill="#21a67a" radius={[2, 2, 0, 0]} />
+                <ToggleLegend series={cumulativeSeries} hidden={cumulativeLegend.hidden} onToggle={cumulativeLegend.toggle} />
+                <Bar yAxisId="left" dataKey="receitaAcum" name="Receita acum." fill="#cbd5e1" radius={[2, 2, 0, 0]} hide={cumulativeLegend.isHidden("receitaAcum")} />
+                <Bar yAxisId="left" dataKey="margemAcum" name="Margem acum." fill="#21a67a" radius={[2, 2, 0, 0]} hide={cumulativeLegend.isHidden("margemAcum")} />
                 <Line
                   yAxisId="right"
                   type="monotone"
@@ -279,6 +309,7 @@ export function VendasUnitEconomicsSection({ unitEconomics, embedded = false }: 
                   stroke="#7c3aed"
                   strokeWidth={2}
                   dot
+                  hide={cumulativeLegend.isHidden("cacPctAcum")}
                 />
               </ComposedChart>
             </ResponsiveContainer>

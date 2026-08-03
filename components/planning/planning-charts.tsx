@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -15,6 +16,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import type { BridgeItem, GoalPlan, QuarterlySeriesItem, Timeline2026Item } from "@/lib/analysis/types";
 import type { FunnelMonthRow, GoalAttainmentRow, PipelineStageRow } from "@/lib/analysis/planning-pipedrive";
 import {
@@ -48,6 +50,15 @@ function intervalLabel(goal: GoalPlan, start: string) {
 
 /** Meta x realizado por intervalo (mês/trimestre) de uma meta específica do Pipedrive. */
 export function GoalProgressChart({ goal, currentMonth }: { goal: GoalPlan; currentMonth: string }) {
+  const { hidden, isHidden, toggle } = useLegendToggle();
+  const series = useMemo(
+    () => [
+      { dataKey: "realized", name: "Realizado", color: "#6d28d9", type: "square" as const },
+      { dataKey: "target", name: "Meta", color: "#b67818", type: "line" as const }
+    ],
+    []
+  );
+
   const data = goal.intervals.map((interval) => {
     const isFuture = (interval.monthKey ?? "0000-00") > currentMonth;
     return {
@@ -73,8 +84,8 @@ export function GoalProgressChart({ goal, currentMonth }: { goal: GoalPlan; curr
         <Tooltip
           formatter={(value, name) => [value == null ? "—" : formatGoalValue(Number(value), goal.unit), name]}
         />
-        <Legend />
-        <Bar dataKey="realized" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} />
+        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
+        <Bar dataKey="realized" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={isHidden("realized")} />
         <Line
           type="monotone"
           dataKey="target"
@@ -83,6 +94,7 @@ export function GoalProgressChart({ goal, currentMonth }: { goal: GoalPlan; curr
           strokeWidth={3}
           strokeDasharray="6 4"
           dot={{ r: 3 }}
+          hide={isHidden("target")}
         />
       </ComposedChart>
     </ResponsiveContainer>
@@ -91,6 +103,15 @@ export function GoalProgressChart({ goal, currentMonth }: { goal: GoalPlan; curr
 
 /** Acumulado realizado x meta acumulada ao longo do ano. */
 export function GoalCumulativeChart({ goal, currentMonth }: { goal: GoalPlan; currentMonth: string }) {
+  const { hidden, isHidden, toggle } = useLegendToggle();
+  const series = useMemo(
+    () => [
+      { dataKey: "metaAcum", name: "Meta acumulada", color: "#b67818", type: "line" as const },
+      { dataKey: "realizadoAcum", name: "Realizado acumulado", color: "#21a67a", type: "line" as const }
+    ],
+    []
+  );
+
   let cumTarget = 0;
   let cumRealized = 0;
   const data = goal.intervals.map((interval) => {
@@ -120,7 +141,7 @@ export function GoalCumulativeChart({ goal, currentMonth }: { goal: GoalPlan; cu
         <Tooltip
           formatter={(value, name) => [value == null ? "—" : formatGoalValue(Number(value), goal.unit), name]}
         />
-        <Legend />
+        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
         <Line
           type="monotone"
           dataKey="metaAcum"
@@ -129,6 +150,7 @@ export function GoalCumulativeChart({ goal, currentMonth }: { goal: GoalPlan; cu
           strokeWidth={3}
           strokeDasharray="6 4"
           dot={false}
+          hide={isHidden("metaAcum")}
         />
         <Line
           type="monotone"
@@ -138,6 +160,7 @@ export function GoalCumulativeChart({ goal, currentMonth }: { goal: GoalPlan; cu
           strokeWidth={3}
           connectNulls
           dot={{ r: 3 }}
+          hide={isHidden("realizadoAcum")}
         />
       </ComposedChart>
     </ResponsiveContainer>
@@ -426,6 +449,17 @@ export function PipelineSnapshotChart({ data }: { data: PipelineStageRow[] }) {
 
 /** Funil comercial 2026: criado x ganho x pipeline aberto. */
 export function Funnel2026Chart({ data }: { data: FunnelMonthRow[] }) {
+  const { hidden, isHidden, toggle } = useLegendToggle();
+  const series = useMemo(
+    () => [
+      { dataKey: "wonValue", name: "Ganho (R$)", color: "#21a67a", type: "square" as const },
+      { dataKey: "createdValue", name: "Criado (R$)", color: "#9fb2bd", type: "square" as const },
+      { dataKey: "openValue", name: "Pipeline aberto", color: "#b67818", type: "line" as const },
+      { dataKey: "conversionPct", name: "Conversão", color: "#7c3aed", type: "line" as const }
+    ],
+    []
+  );
+
   if (!data.length) return null;
 
   return (
@@ -455,9 +489,9 @@ export function Funnel2026Chart({ data }: { data: FunnelMonthRow[] }) {
             return [brl.format(Number(value)), name];
           }}
         />
-        <Legend />
-        <Bar yAxisId="left" dataKey="wonValue" name="Ganho (R$)" fill="#21a67a" radius={[4, 4, 0, 0]} />
-        <Bar yAxisId="left" dataKey="createdValue" name="Criado (R$)" fill="#9fb2bd" radius={[4, 4, 0, 0]} />
+        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
+        <Bar yAxisId="left" dataKey="wonValue" name="Ganho (R$)" fill="#21a67a" radius={[4, 4, 0, 0]} hide={isHidden("wonValue")} />
+        <Bar yAxisId="left" dataKey="createdValue" name="Criado (R$)" fill="#9fb2bd" radius={[4, 4, 0, 0]} hide={isHidden("createdValue")} />
         <Line
           yAxisId="left"
           type="monotone"
@@ -466,6 +500,7 @@ export function Funnel2026Chart({ data }: { data: FunnelMonthRow[] }) {
           stroke="#b67818"
           strokeWidth={2.5}
           dot={{ r: 3 }}
+          hide={isHidden("openValue")}
         />
         <Line
           yAxisId="right"
@@ -476,6 +511,7 @@ export function Funnel2026Chart({ data }: { data: FunnelMonthRow[] }) {
           strokeWidth={2}
           strokeDasharray="4 3"
           dot={{ r: 2 }}
+          hide={isHidden("conversionPct")}
         />
       </ComposedChart>
     </ResponsiveContainer>
@@ -484,6 +520,15 @@ export function Funnel2026Chart({ data }: { data: FunnelMonthRow[] }) {
 
 /** % da meta YTD e projeção de fechamento para todas as metas. */
 export function GoalsAttainmentOverviewChart({ data }: { data: GoalAttainmentRow[] }) {
+  const { hidden, isHidden, toggle } = useLegendToggle();
+  const series = useMemo(
+    () => [
+      { dataKey: "attainmentCap", name: "% realizado YTD", color: "#6d28d9", type: "square" as const },
+      { dataKey: "projectedCap", name: "Projeção fim de ano", color: "#21a67a", type: "square" as const }
+    ],
+    []
+  );
+
   if (!data.length) return null;
 
   const chartData = data.map((row) => ({
@@ -510,9 +555,9 @@ export function GoalsAttainmentOverviewChart({ data }: { data: GoalAttainmentRow
             name === "attainmentCap" ? "% realizado YTD" : "Projeção fim de ano"
           ]}
         />
-        <Legend />
-        <Bar dataKey="attainmentCap" name="% realizado YTD" fill="#6d28d9" radius={[0, 4, 4, 0]} />
-        <Bar dataKey="projectedCap" name="Projeção fim de ano" fill="#21a67a" radius={[0, 4, 4, 0]} />
+        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
+        <Bar dataKey="attainmentCap" name="% realizado YTD" fill="#6d28d9" radius={[0, 4, 4, 0]} hide={isHidden("attainmentCap")} />
+        <Bar dataKey="projectedCap" name="Projeção fim de ano" fill="#21a67a" radius={[0, 4, 4, 0]} hide={isHidden("projectedCap")} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -542,6 +587,16 @@ export function AnnualBridgeChart({ data }: { data: BridgeItem[] }) {
 }
 
 export function QuarterlyChart({ data }: { data: QuarterlySeriesItem[] }) {
+  const { hidden, isHidden, toggle } = useLegendToggle();
+  const series = useMemo(
+    () => [
+      { dataKey: "revenue2025", name: "2025 realizado", color: "#9fb2bd", type: "square" as const },
+      { dataKey: "revenue2026", name: "2026 realizado", color: "#6d28d9", type: "square" as const },
+      { dataKey: "revenue2026Projected", name: "2026 projetado", color: "#21a67a", type: "line" as const }
+    ],
+    []
+  );
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={data} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
@@ -549,9 +604,9 @@ export function QuarterlyChart({ data }: { data: QuarterlySeriesItem[] }) {
         <XAxis dataKey="label" tickLine={false} axisLine={false} />
         <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
         <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
-        <Legend />
-        <Bar dataKey="revenue2025" name="2025 realizado" fill="#9fb2bd" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="revenue2026" name="2026 realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} />
+        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
+        <Bar dataKey="revenue2025" name="2025 realizado" fill="#9fb2bd" radius={[4, 4, 0, 0]} hide={isHidden("revenue2025")} />
+        <Bar dataKey="revenue2026" name="2026 realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={isHidden("revenue2026")} />
         <Line
           type="monotone"
           dataKey="revenue2026Projected"
@@ -560,6 +615,7 @@ export function QuarterlyChart({ data }: { data: QuarterlySeriesItem[] }) {
           strokeWidth={3}
           strokeDasharray="6 4"
           dot={{ r: 4 }}
+          hide={isHidden("revenue2026Projected")}
         />
       </ComposedChart>
     </ResponsiveContainer>
@@ -567,6 +623,16 @@ export function QuarterlyChart({ data }: { data: QuarterlySeriesItem[] }) {
 }
 
 export function Timeline2026Chart({ data }: { data: Timeline2026Item[] }) {
+  const { hidden, isHidden, toggle } = useLegendToggle();
+  const series = useMemo(
+    () => [
+      { dataKey: "actual", name: "Realizado", color: "#6d28d9", type: "square" as const },
+      { dataKey: "projected", name: "Projetado", color: "#21a67a", type: "line" as const },
+      { dataKey: "combined", name: "Linha 2026", color: "#0f766e", type: "line" as const }
+    ],
+    []
+  );
+
   const chartData = data.map((item) => ({
     label: item.label,
     actual: item.kind === "projected" ? null : item.revenue,
@@ -586,8 +652,8 @@ export function Timeline2026Chart({ data }: { data: Timeline2026Item[] }) {
         <XAxis dataKey="label" tickLine={false} axisLine={false} />
         <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} />
         <Tooltip formatter={(value, name) => [value == null ? "—" : brl.format(Number(value)), name]} />
-        <Legend />
-        <Bar dataKey="actual" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} />
+        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
+        <Bar dataKey="actual" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={isHidden("actual")} />
         <Line
           type="monotone"
           dataKey="projected"
@@ -597,8 +663,9 @@ export function Timeline2026Chart({ data }: { data: Timeline2026Item[] }) {
           strokeDasharray="6 4"
           connectNulls
           dot={{ r: 4 }}
+          hide={isHidden("projected")}
         />
-        <Line type="monotone" dataKey="combined" name="Linha 2026" stroke="#0f766e" strokeWidth={2} connectNulls dot={false} />
+        <Line type="monotone" dataKey="combined" name="Linha 2026" stroke="#0f766e" strokeWidth={2} connectNulls dot={false} hide={isHidden("combined")} />
       </ComposedChart>
     </ResponsiveContainer>
   );

@@ -5,13 +5,13 @@ import {
   Bar,
   CartesianGrid,
   ComposedChart,
-  Legend,
   Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
 } from "recharts";
+import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import type {
   CommercialBreakdownRow,
   CommercialPeriodKind,
@@ -81,6 +81,24 @@ function RevenueGoalCard({ label, goal, featured = false }: { label: string; goa
 export function VendasSellerMonitoring({ rows }: Props) {
   const [seller, setSeller] = useState<CommercialSellerMonitoring["seller"]>("TIME");
   const [kind, setKind] = useState<CommercialPeriodKind>("month");
+  const salesLegend = useLegendToggle();
+  const activityLegend = useLegendToggle();
+  const salesSeries = useMemo(
+    () => [
+      { dataKey: "consultoria", name: "Consultoria", color: "#6d28d9", type: "square" as const },
+      { dataKey: "obras", name: "Obras", color: "#0f766e", type: "square" as const },
+      { dataKey: "metaTotal", name: "Meta total", color: "#dc2626", type: "line" as const }
+    ],
+    []
+  );
+  const activitySeries = useMemo(
+    () => [
+      { dataKey: "atividades", name: "Atividades/sem.", color: "#d97706", type: "square" as const },
+      { dataKey: "metaAtividade", name: "Meta atividade", color: "#7c3aed", type: "line" as const },
+      { dataKey: "conversao", name: "Conversão", color: "#16a34a", type: "line" as const }
+    ],
+    []
+  );
   const periodOptions = useMemo(
     () => rows.filter((row) => row.seller === "TIME" && row.periodKind === kind).reverse(),
     [rows, kind]
@@ -200,10 +218,10 @@ export function VendasSellerMonitoring({ rows }: Props) {
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} minTickGap={18} />
                 <YAxis tickFormatter={compactMoney} tick={{ fontSize: 10 }} width={48} />
                 <Tooltip formatter={(value, name) => [brl.format(Number(value)), name]} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="consultoria" name="Consultoria" stackId="sales" fill="#6d28d9" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="obras" name="Obras" stackId="sales" fill="#0f766e" radius={[3, 3, 0, 0]} />
-                <Line dataKey="metaTotal" name="Meta total" stroke="#dc2626" strokeWidth={2.2} dot={{ r: 2 }} />
+                <ToggleLegend series={salesSeries} hidden={salesLegend.hidden} onToggle={salesLegend.toggle} wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="consultoria" name="Consultoria" stackId="sales" fill="#6d28d9" radius={[3, 3, 0, 0]} hide={salesLegend.isHidden("consultoria")} />
+                <Bar dataKey="obras" name="Obras" stackId="sales" fill="#0f766e" radius={[3, 3, 0, 0]} hide={salesLegend.isHidden("obras")} />
+                <Line dataKey="metaTotal" name="Meta total" stroke="#dc2626" strokeWidth={2.2} dot={{ r: 2 }} hide={salesLegend.isHidden("metaTotal")} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -227,10 +245,10 @@ export function VendasSellerMonitoring({ rows }: Props) {
                     name
                   ]}
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar yAxisId="activity" dataKey="atividades" name="Atividades/sem." fill="#d97706" radius={[3, 3, 0, 0]} />
-                <Line yAxisId="activity" dataKey="metaAtividade" name="Meta atividade" stroke="#7c3aed" strokeWidth={2} dot={false} />
-                <Line yAxisId="pct" dataKey="conversao" name="Conversão" stroke="#16a34a" strokeWidth={2.2} connectNulls dot={{ r: 2 }} />
+                <ToggleLegend series={activitySeries} hidden={activityLegend.hidden} onToggle={activityLegend.toggle} wrapperStyle={{ fontSize: 11 }} />
+                <Bar yAxisId="activity" dataKey="atividades" name="Atividades/sem." fill="#d97706" radius={[3, 3, 0, 0]} hide={activityLegend.isHidden("atividades")} />
+                <Line yAxisId="activity" dataKey="metaAtividade" name="Meta atividade" stroke="#7c3aed" strokeWidth={2} dot={false} hide={activityLegend.isHidden("metaAtividade")} />
+                <Line yAxisId="pct" dataKey="conversao" name="Conversão" stroke="#16a34a" strokeWidth={2.2} connectNulls dot={{ r: 2 }} hide={activityLegend.isHidden("conversao")} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useMemo, useState } from "react";
+import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import type { CommercialFunnelScope, CommercialPlanningByScope } from "@/lib/analysis/types";
 import { brl, number } from "@/lib/analysis/format";
 
@@ -23,6 +24,24 @@ function CountTooltip({ active, payload, label }: { active?: boolean; payload?: 
 
 export function CommercialPlanningForecastPanel({ data }: { data: CommercialPlanningByScope | undefined }) {
   const [scope, setScope] = useState<CommercialFunnelScope>("collective");
+  const revenueLegend = useLegendToggle();
+  const countLegend = useLegendToggle();
+  const revenueSeries = useMemo(
+    () => [
+      { dataKey: "targetRevenue", name: "Meta", color: "#9fb2bd", type: "square" as const },
+      { dataKey: "actualRevenue", name: "Realizado", color: "#6d28d9", type: "square" as const },
+      { dataKey: "forecastRevenue", name: "Forecast final", color: "#21a67a", type: "line" as const }
+    ],
+    []
+  );
+  const countSeries = useMemo(
+    () => [
+      { dataKey: "targetWonDeals", name: "Meta equivalente", color: "#9fb2bd", type: "square" as const },
+      { dataKey: "actualWonDeals", name: "Realizado", color: "#6d28d9", type: "square" as const },
+      { dataKey: "forecastWonDeals", name: "Forecast final", color: "#21a67a", type: "line" as const }
+    ],
+    []
+  );
   if (!data?.[scope]?.length) return null;
   const rows = data[scope];
   const ticket = rows[0]?.averageTicketYtd ?? 0;
@@ -44,8 +63,8 @@ export function CommercialPlanningForecastPanel({ data }: { data: CommercialPlan
         <h4>Valor mensal (R$)</h4>
         <div className="chart-box commercial-forecast-chart">
           <ResponsiveContainer width="100%" height="100%"><ComposedChart data={rows} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
-            <CartesianGrid stroke="#dce5e8" vertical={false} /><XAxis dataKey="label" tickLine={false} axisLine={false} /><YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} /><Tooltip content={<CurrencyTooltip />} /><Legend />
-            <Bar dataKey="targetRevenue" name="Meta" fill="#9fb2bd" radius={[4, 4, 0, 0]} /><Bar dataKey="actualRevenue" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} /><Line dataKey="forecastRevenue" name="Forecast final" type="monotone" stroke="#21a67a" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 3 }} connectNulls={false} />
+            <CartesianGrid stroke="#dce5e8" vertical={false} /><XAxis dataKey="label" tickLine={false} axisLine={false} /><YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} /><Tooltip content={<CurrencyTooltip />} /><ToggleLegend series={revenueSeries} hidden={revenueLegend.hidden} onToggle={revenueLegend.toggle} />
+            <Bar dataKey="targetRevenue" name="Meta" fill="#9fb2bd" radius={[4, 4, 0, 0]} hide={revenueLegend.isHidden("targetRevenue")} /><Bar dataKey="actualRevenue" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={revenueLegend.isHidden("actualRevenue")} /><Line dataKey="forecastRevenue" name="Forecast final" type="monotone" stroke="#21a67a" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 3 }} connectNulls={false} hide={revenueLegend.isHidden("forecastRevenue")} />
           </ComposedChart></ResponsiveContainer>
         </div>
       </section>
@@ -53,8 +72,8 @@ export function CommercialPlanningForecastPanel({ data }: { data: CommercialPlan
         <h4>Fechamentos mensais</h4>
         <div className="chart-box commercial-forecast-chart">
           <ResponsiveContainer width="100%" height="100%"><ComposedChart data={rows} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
-            <CartesianGrid stroke="#dce5e8" vertical={false} /><XAxis dataKey="label" tickLine={false} axisLine={false} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} width={36} /><Tooltip content={<CountTooltip />} /><Legend />
-            <Bar dataKey="targetWonDeals" name="Meta equivalente" fill="#9fb2bd" radius={[4, 4, 0, 0]} /><Bar dataKey="actualWonDeals" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} /><Line dataKey="forecastWonDeals" name="Forecast final" type="monotone" stroke="#21a67a" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 3 }} connectNulls={false} />
+            <CartesianGrid stroke="#dce5e8" vertical={false} /><XAxis dataKey="label" tickLine={false} axisLine={false} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} width={36} /><Tooltip content={<CountTooltip />} /><ToggleLegend series={countSeries} hidden={countLegend.hidden} onToggle={countLegend.toggle} />
+            <Bar dataKey="targetWonDeals" name="Meta equivalente" fill="#9fb2bd" radius={[4, 4, 0, 0]} hide={countLegend.isHidden("targetWonDeals")} /><Bar dataKey="actualWonDeals" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={countLegend.isHidden("actualWonDeals")} /><Line dataKey="forecastWonDeals" name="Forecast final" type="monotone" stroke="#21a67a" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 3 }} connectNulls={false} hide={countLegend.isHidden("forecastWonDeals")} />
           </ComposedChart></ResponsiveContainer>
         </div>
       </section>

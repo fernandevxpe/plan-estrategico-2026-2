@@ -1,17 +1,18 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Bar,
   CartesianGrid,
   Cell,
   ComposedChart,
-  Legend,
   Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
 } from "recharts";
+import { ToggleLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import type { CompositionChartRow } from "@/lib/analysis/mix-goal-composition";
 import type { MixGoalMetric, MixGoalViewMode } from "@/lib/analysis/mix-goal-composition";
 import { brl } from "@/lib/analysis/format";
@@ -35,6 +36,20 @@ function formatMetric(value: number, metric: MixGoalMetric) {
 }
 
 export function MixGoalCompositionChart({ data, types, metric, mode, currentMonth }: Props) {
+  const { hidden, isHidden, toggle } = useLegendToggle();
+  const series = useMemo(
+    () => [
+      ...types.map((item) => ({
+        dataKey: item.type,
+        name: item.type,
+        color: item.color,
+        type: "square" as const
+      })),
+      { dataKey: "meta", name: "Meta", color: "#17333a", type: "line" as const }
+    ],
+    [types]
+  );
+
   const yFormatter =
     metric === "revenue"
       ? (value: number) => `${Math.round(value / 1000)}k`
@@ -92,7 +107,7 @@ export function MixGoalCompositionChart({ data, types, metric, mode, currentMont
             return `${label}${suffix}`;
           }}
         />
-        <Legend />
+        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
         {types.map((item) => (
           <Bar
             key={item.type}
@@ -102,6 +117,7 @@ export function MixGoalCompositionChart({ data, types, metric, mode, currentMont
             stackId="mix"
             fill={item.color}
             radius={[2, 2, 0, 0]}
+            hide={isHidden(item.type)}
           >
             {data.map((entry) => (
               <Cell
@@ -121,6 +137,7 @@ export function MixGoalCompositionChart({ data, types, metric, mode, currentMont
           strokeWidth={2.5}
           dot={{ r: 3 }}
           connectNulls
+          hide={isHidden("meta")}
         />
       </ComposedChart>
     </ResponsiveContainer>

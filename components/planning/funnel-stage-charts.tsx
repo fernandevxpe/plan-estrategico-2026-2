@@ -5,13 +5,13 @@ import {
   Bar,
   CartesianGrid,
   ComposedChart,
-  Legend,
   Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
 } from "recharts";
+import { ToggleLegend, useLegendToggle, type LegendSeries } from "@/components/charts/useLegendToggle";
 import type { ConversionMonthRow } from "@/lib/analysis/types";
 import type { FunnelStageChartRow } from "@/lib/analysis/conversion-metrics";
 import {
@@ -133,6 +133,32 @@ export function FunnelStageStackedChart({
   const showTime = enabledTimeSeries.size > 0;
   const showDays = enabledTimeSeries.has("averageDaysToWin");
   const showAntigos = enabledTimeSeries.has("ganhosAntigosSharePct");
+  const { hidden, isHidden, toggle } = useLegendToggle();
+  const series = useMemo((): LegendSeries[] => {
+    const items: LegendSeries[] = stages.map((stage, index) => ({
+      dataKey: metricKey(stage.stageId, metricMode),
+      name: stage.label,
+      color: stageColor(index),
+      type: "square" as const
+    }));
+    if (enabledTimeSeries.has("averageDaysToWin")) {
+      items.push({
+        dataKey: "averageDaysToWin",
+        name: "Média dias até ganho",
+        color: "#14b8a6",
+        type: "line" as const
+      });
+    }
+    if (enabledTimeSeries.has("ganhosAntigosSharePct")) {
+      items.push({
+        dataKey: "ganhosAntigosSharePct",
+        name: "Ganhos antigos (>1M)",
+        color: "#64748b",
+        type: "line" as const
+      });
+    }
+    return items;
+  }, [stages, metricMode, enabledTimeSeries]);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -189,7 +215,7 @@ export function FunnelStageStackedChart({
             />
           }
         />
-        <Legend />
+        <ToggleLegend series={series} hidden={hidden} onToggle={toggle} />
         {stages.map((stage, index) => (
           <Bar
             key={`${stage.pipelineId}-${stage.stageId}`}
@@ -200,6 +226,7 @@ export function FunnelStageStackedChart({
             fill={stageColor(index)}
             radius={index === stages.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
             opacity={selectedMonth ? 0.72 : 1}
+            hide={isHidden(metricKey(stage.stageId, metricMode))}
           />
         ))}
         {enabledTimeSeries.has("averageDaysToWin") ? (
@@ -212,6 +239,7 @@ export function FunnelStageStackedChart({
             strokeWidth={2.5}
             dot={{ r: 3 }}
             connectNulls
+            hide={isHidden("averageDaysToWin")}
           />
         ) : null}
         {enabledTimeSeries.has("ganhosAntigosSharePct") ? (
@@ -225,6 +253,7 @@ export function FunnelStageStackedChart({
             strokeDasharray="5 4"
             dot={{ r: 2 }}
             connectNulls
+            hide={isHidden("ganhosAntigosSharePct")}
           />
         ) : null}
       </ComposedChart>

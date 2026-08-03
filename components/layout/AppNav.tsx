@@ -27,9 +27,7 @@ const GROUPS = [
     links: [
       { href: "/areas/vendas", label: "Vendas" },
       { href: "/areas", label: "Áreas" },
-      { href: "/investigacao", label: "Investigação" },
-      { href: "/gestao-xpe", label: "Gestão XPE" },
-      { href: "/auditorias", label: "Auditorias" }
+      { href: "/gestao-xpe", label: "Gestão XPE" }
     ]
   }
 ];

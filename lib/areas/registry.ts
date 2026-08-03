@@ -13,6 +13,15 @@ export type AreaDefinition = {
 
 export const AREA_DEFINITIONS: AreaDefinition[] = [
   {
+    id: "funil-360",
+    name: "Funil 360°",
+    shortName: "Funil 360°",
+    description: "Visão consolidada da verba de mídia ao fechamento, com taxas, custos, perdas e tempo por etapa.",
+    parentId: null,
+    status: "monitorando",
+    lead: "Marketing + Pré-vendas + Comercial"
+  },
+  {
     id: "marketing",
     name: "Marketing",
     shortName: "Marketing",
@@ -39,15 +48,6 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     parentId: null,
     status: "monitorando",
     lead: "Diretor Comercial"
-  },
-  {
-    id: "funil-360",
-    name: "Funil 360°",
-    shortName: "Funil 360°",
-    description: "Visão consolidada da verba de mídia ao fechamento, com taxas, custos, perdas e tempo por etapa.",
-    parentId: null,
-    status: "monitorando",
-    lead: "Marketing + Pré-vendas + Comercial"
   },
   {
     id: "consultoria",
@@ -105,6 +105,15 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     lead: "A definir (urgente)"
   },
   {
+    id: "automacoes-ferramentas",
+    name: "Automações e Ferramentas",
+    shortName: "Automações",
+    description: "App offline campo + plataforma web + ClickUp — 6 módulos de serviço, testes e automação por gargalo.",
+    parentId: null,
+    status: "executando",
+    lead: "Tech + Operação"
+  },
+  {
     id: "smart-charging",
     name: "Smart Charging",
     shortName: "Smart Charging",
@@ -113,15 +122,6 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
     status: "executando",
     lead: "Diogo + Macgyver (FW/HW)",
     businessTypes: ["ICV - Inspeção de carregador veicular", "Instalação de Carregador Eletrico", "LCC - Laudo Carregador Coletivo"]
-  },
-  {
-    id: "automacoes-ferramentas",
-    name: "Automações e Ferramentas",
-    shortName: "Automações",
-    description: "App offline campo + plataforma web + ClickUp — 6 módulos de serviço, testes e automação por gargalo.",
-    parentId: null,
-    status: "executando",
-    lead: "Tech + Operação",
   },
   {
     id: "medidores-iot",

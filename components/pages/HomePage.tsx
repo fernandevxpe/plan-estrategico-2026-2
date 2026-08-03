@@ -30,7 +30,6 @@ export function HomePage({ analysis, criticalFindings }: Props) {
     { href: "/planejamento", title: "Planejamento", desc: "Metas Pipedrive, gráficos e comparação" },
     { href: "/mix", title: "Serviços", desc: "Receita, esforço e participação por produto" },
     { href: "/areas", title: "Áreas", desc: "Planejamento por área de negócio" },
-    { href: "/investigacao", title: "Investigação", desc: "Alertas, recordes e funil profundo" },
     { href: "/gestao-xpe", title: "Gestão XPE", desc: "Gargalos, motores e indicadores semanais" }
   ];
 

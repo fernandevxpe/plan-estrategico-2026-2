@@ -51,6 +51,7 @@ type Report = {
 type CachedReport = {
   generatedAt: string;
   model: string;
+  author: "sessao" | "api";
   report: Report;
   usage: { inputTokens: number; outputTokens: number } | null;
   factsGeneratedAt: string;
@@ -178,7 +179,11 @@ export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
           </button>
           {state?.cached ? (
             <small>
-              Parecer de {new Date(state.cached.generatedAt).toLocaleString("pt-BR")}
+              {state.cached.author === "sessao"
+                ? "Parecer escrito em sessão e versionado no repositório"
+                : "Parecer gerado pela API"}
+              {" · "}
+              {new Date(state.cached.generatedAt).toLocaleDateString("pt-BR")}
               {stale ? " · dados de marketing mudaram desde então" : ""}
             </small>
           ) : (
@@ -273,7 +278,8 @@ export function MarketingGestorIA({ data }: { data: MarketingDashboard }) {
             <header>
               <strong>Parecer do gestor</strong>
               <span>
-                {state?.model} · {state?.cached?.usage ? `${state.cached.usage.outputTokens} tokens de saída` : "—"}
+                {state?.cached?.model} · sobre os dados sincronizados em{" "}
+                {state?.cached ? new Date(state.cached.factsGeneratedAt).toLocaleDateString("pt-BR") : "—"}
               </span>
             </header>
             <p>{report.resumoExecutivo}</p>

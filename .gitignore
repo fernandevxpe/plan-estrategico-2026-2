@@ -9,4 +9,3 @@ node_modules/
 tsconfig.tsbuildinfo
 *.tsbuildinfo
 next-env.d.ts
-data/ai/

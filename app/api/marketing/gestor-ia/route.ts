@@ -11,12 +11,18 @@ import {
   type CreativeIntelligence
 } from "@/lib/areas/marketing-ai";
 import { loadDashboardData } from "@/lib/data/load-dashboard";
-import { dataPath } from "@/lib/data/processed-store";
+import { dataPath, resolveDataFile } from "@/lib/data/processed-store";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const MODEL = "claude-opus-5";
+
+/**
+ * O parecer publicado é escrito em sessão e versionado em `data/ai/`. A leitura
+ * tenta primeiro o volume — onde uma regeneração pela API grava — e cai no
+ * arquivo do repositório, que é o que sobe no deploy.
+ */
 const CACHE_DIR = dataPath("ai");
 const CACHE_FILE = path.join(CACHE_DIR, "marketing-gestor.json");
 
@@ -332,6 +338,8 @@ Escreva o parecer completo seguindo o schema. Priorize decisão em cima de descr
 type CachedReport = {
   generatedAt: string;
   model: string;
+  /** `sessao` = escrito em sessão e versionado; `api` = gerado pelo botão. */
+  author: "sessao" | "api";
   report: unknown;
   usage: { inputTokens: number; outputTokens: number } | null;
   factsGeneratedAt: string;
@@ -339,7 +347,9 @@ type CachedReport = {
 
 async function readCache(): Promise<CachedReport | null> {
   try {
-    return JSON.parse(await readFile(CACHE_FILE, "utf8")) as CachedReport;
+    const target = await resolveDataFile("ai", "marketing-gestor.json");
+    const parsed = JSON.parse(await readFile(target, "utf8")) as CachedReport;
+    return { ...parsed, author: parsed.author ?? "api" };
   } catch {
     return null;
   }
@@ -409,6 +419,7 @@ export async function POST() {
     const payload: CachedReport = {
       generatedAt: new Date().toISOString(),
       model: MODEL,
+      author: "api",
       report,
       usage: { inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens },
       factsGeneratedAt: facts.dashboard.syncedAt

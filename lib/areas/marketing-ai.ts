@@ -125,6 +125,17 @@ export type CreativeFact = {
   confidence: "alta" | "media" | "baixa";
 };
 
+export type ConceptFamily = {
+  kind: ResultKind;
+  label: string;
+  spend: number;
+  results: number;
+  outboundClicks: number;
+  conversations: number;
+  costPerResult: number | null;
+  sharePct: number;
+};
+
 export type ConceptFact = {
   conceptId: string;
   hook: string;
@@ -140,6 +151,15 @@ export type ConceptFact = {
   outboundClicks: number;
   conversations: number;
   videoViews: number;
+  /**
+   * O mesmo texto costuma rodar em `[WPP]` e `[LP]` ao mesmo tempo. Somar
+   * conversa com página carregada num denominador só produzia custos falsos
+   * (R$ 0,91 "por conversa" onde o real era R$ 26,82), então todo custo aqui
+   * usa só a família que concentra a verba do conceito.
+   */
+  mixedFamily: boolean;
+  families: ConceptFamily[];
+  primarySpend: number;
   results: number;
   resultKind: ResultKind;
   costPerResult: number | null;
@@ -630,6 +650,27 @@ export function buildCreativeIntelligence(data: MarketingDashboard): CreativeInt
   }
 
   /* Conceitos = mesmo texto de anúncio rodando em vários adIds/conjuntos. */
+  const conceptFamilies = new Map<string, Map<ResultKind, ConceptFamily>>();
+  for (const item of creatives) {
+    const byKind = conceptFamilies.get(item.conceptId) ?? new Map<ResultKind, ConceptFamily>();
+    const bucket = byKind.get(item.resultKind) ?? {
+      kind: item.resultKind,
+      label: RESULT_LABEL[item.resultKind],
+      spend: 0,
+      results: 0,
+      outboundClicks: 0,
+      conversations: 0,
+      costPerResult: null,
+      sharePct: 0
+    };
+    bucket.spend += item.spend;
+    bucket.results += item.results;
+    bucket.outboundClicks += item.outboundClicks;
+    bucket.conversations += item.conversations;
+    byKind.set(item.resultKind, bucket);
+    conceptFamilies.set(item.conceptId, byKind);
+  }
+
   const conceptMap = new Map<string, ConceptFact>();
   for (const item of creatives) {
     const current = conceptMap.get(item.conceptId) ?? {
@@ -647,6 +688,9 @@ export function buildCreativeIntelligence(data: MarketingDashboard): CreativeInt
       outboundClicks: 0,
       conversations: 0,
       videoViews: 0,
+      mixedFamily: false,
+      families: [],
+      primarySpend: 0,
       results: 0,
       resultKind: item.resultKind,
       costPerResult: null,
@@ -669,7 +713,6 @@ export function buildCreativeIntelligence(data: MarketingDashboard): CreativeInt
     current.outboundClicks += item.outboundClicks;
     current.conversations += item.conversations;
     current.videoViews += item.videoViews;
-    current.results += item.results;
     current.isVideo = current.isVideo || item.isVideo;
     if (item.firstDate && (!current.firstDate || item.firstDate < current.firstDate)) current.firstDate = item.firstDate;
     if (item.lastDate && (!current.lastDate || item.lastDate > current.lastDate)) current.lastDate = item.lastDate;
@@ -699,18 +742,35 @@ export function buildCreativeIntelligence(data: MarketingDashboard): CreativeInt
   const concepts = [...conceptMap.values()]
     .map((concept) => {
       const video = videoByConcept.get(concept.conceptId) ?? { v25: 0, v50: 0, v75: 0, v100: 0 };
-      const benchmark = benchmarks[concept.resultKind].medianCostPerResult;
-      const costPerResult = safeDiv(concept.spend, concept.results);
+      const families = [...(conceptFamilies.get(concept.conceptId)?.values() ?? [])]
+        .map((family) => ({
+          ...family,
+          costPerResult: safeDiv(family.spend, family.results),
+          sharePct: pct(family.spend, concept.spend) ?? 0
+        }))
+        .sort((a, b) => b.spend - a.spend);
+      const primary = families[0]!;
+      const benchmark = benchmarks[primary.kind].medianCostPerResult;
       return {
         ...concept,
         activeDays: conceptDays.get(concept.conceptId)?.size ?? 0,
         spanDays:
           concept.firstDate && concept.lastDate ? daysBetween(concept.firstDate, concept.lastDate) + 1 : 0,
-        costPerResult,
+        mixedFamily: families.length > 1,
+        families,
+        resultKind: primary.kind,
+        primarySpend: primary.spend,
+        results: primary.results,
+        costPerResult: primary.costPerResult,
         ctr: pct(concept.clicks, concept.impressions),
         cpc: safeDiv(concept.spend, concept.outboundClicks || concept.clicks),
         outboundSharePct: pct(concept.outboundClicks, concept.clicks),
-        conversationPerClickPct: pct(concept.conversations, concept.outboundClicks || concept.clicks),
+        /* Só a família de conversa tem conversa; usar o clique do conceito
+           inteiro jogaria o clique de [LP] no denominador. */
+        conversationPerClickPct: pct(
+          primary.conversations,
+          primary.outboundClicks || concept.clicks
+        ),
         video100Pct: pct(video.v100, concept.videoViews),
         viewRatePct: pct(concept.videoViews, concept.impressions),
         retentionCurve: [
@@ -720,7 +780,7 @@ export function buildCreativeIntelligence(data: MarketingDashboard): CreativeInt
           { point: "75%", viewers: video.v75, pct: pct(video.v75, concept.videoViews) },
           { point: "100%", viewers: video.v100, pct: pct(video.v100, concept.videoViews) }
         ],
-        costIndex: benchmark && costPerResult ? costPerResult / benchmark : null
+        costIndex: benchmark && primary.costPerResult ? primary.costPerResult / benchmark : null
       };
     })
     .sort((a, b) => b.spend - a.spend);

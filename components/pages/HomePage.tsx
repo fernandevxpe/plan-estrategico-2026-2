@@ -7,14 +7,15 @@ import { getExecutiveKpis } from "@/lib/analysis/metrics";
 import { ExecutiveSummary } from "@/components/planning/ExecutiveSummary";
 import { usePlanningFilters } from "@/components/planning/usePlanningFilters";
 import { brl, formatGrowth, monthLabel } from "@/lib/analysis/format";
-import { buildCommercialIntelDashboard } from "@/lib/areas/build-commercial-intel";
+import type { IntelExecutiveFinding } from "@/lib/areas/build-commercial-intel";
 
 type Props = {
   analysis: Analysis;
   generatedAt: string;
+  criticalFindings: IntelExecutiveFinding[];
 };
 
-export function HomePage({ analysis, generatedAt }: Props) {
+export function HomePage({ analysis, generatedAt, criticalFindings }: Props) {
   const { filters, filterBar } = usePlanningFilters(analysis, generatedAt);
   const kpis = useMemo(() => getExecutiveKpis(analysis, filters.scenario), [analysis, filters.scenario]);
   const latestHighAlert = useMemo(
@@ -22,11 +23,6 @@ export function HomePage({ analysis, generatedAt }: Props) {
     [analysis.deepAnalysis.performanceAlerts]
   );
   const mainInsight = analysis.planningSummary.insights[0];
-  // Os achados críticos abrem o painel: sem isso o gestor precisa caçar o problema.
-  const criticalFindings = useMemo(
-    () => buildCommercialIntelDashboard().executive.filter((item) => item.priority === "critica").slice(0, 5),
-    []
-  );
 
   const quickLinks = [
     { href: "/areas/diretor-comercial", title: "Diretor Comercial", desc: "Canais, perdas, ciclo e reuniões mês a mês" },

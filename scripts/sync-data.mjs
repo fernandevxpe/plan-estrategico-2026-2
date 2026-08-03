@@ -1,9 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { loadEnv } from './lib/env.mjs';
+import { rawDirUrl, ensureDataDirs } from './lib/paths.mjs';
+ensureDataDirs();
 
 loadEnv();
 
-const outDir = new URL('../data/raw/', import.meta.url);
+const outDir = rawDirUrl;
 await mkdir(outDir, { recursive: true });
 
 const now = new Date().toISOString();

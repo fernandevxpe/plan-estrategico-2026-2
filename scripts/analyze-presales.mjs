@@ -1,8 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { rawDirUrl, processedDirUrl, ensureDataDirs } from './lib/paths.mjs';
+ensureDataDirs();
 
-const raw = JSON.parse(await readFile(new URL('../data/raw/chatwoot-conversations.json', import.meta.url), 'utf8'));
-const marketing = JSON.parse(await readFile(new URL('../data/processed/marketing.json', import.meta.url), 'utf8'));
-const processedDir = new URL('../data/processed/', import.meta.url);
+const raw = JSON.parse(await readFile(new URL('chatwoot-conversations.json', rawDirUrl), 'utf8'));
+const marketing = JSON.parse(await readFile(new URL('marketing.json', processedDirUrl), 'utf8'));
+const processedDir = processedDirUrl;
 await mkdir(processedDir, { recursive: true });
 
 const dateInRecife = (value) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Recife', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value));

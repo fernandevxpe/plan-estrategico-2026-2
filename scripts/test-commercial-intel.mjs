@@ -1,12 +1,14 @@
 // Trava a inteligência comercial contra a análise que o diretor comercial
 // apresentou em 31/07/2026. Se o pipeline voltar a divergir, o build falha.
 import { readFile } from 'node:fs/promises';
+import { rawDirUrl, processedDirUrl, ensureDataDirs } from './lib/paths.mjs';
+ensureDataDirs();
 
 const intel = JSON.parse(
-  await readFile(new URL('../data/processed/commercial-intel.json', import.meta.url), 'utf8')
+  await readFile(new URL('commercial-intel.json', processedDirUrl), 'utf8')
 );
 const snapshot = JSON.parse(
-  await readFile(new URL('../data/processed/crm-snapshot.json', import.meta.url), 'utf8')
+  await readFile(new URL('crm-snapshot.json', processedDirUrl), 'utf8')
 );
 
 const consultoria = intel.scopes.find((scope) => scope.id === 'consultoria');

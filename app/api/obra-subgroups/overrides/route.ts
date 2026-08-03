@@ -1,8 +1,9 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { ObraSubgroupOverridesFile } from "@/lib/obra-subgroups/constants";
+import { dataPath } from "@/lib/data/processed-store";
 
-const OVERRIDES_PATH = path.join(process.cwd(), "data/obra-subgroup-overrides.json");
+const OVERRIDES_PATH = dataPath("obra-subgroup-overrides.json");
 
 async function readOverridesFile(): Promise<ObraSubgroupOverridesFile> {
   const raw = await readFile(OVERRIDES_PATH, "utf8");

@@ -32,7 +32,8 @@ const GROUPS = [
       { href: "/areas/diretor-comercial", label: "Diretor Comercial" },
       { href: "/areas", label: "Áreas" },
       { href: "/investigacao", label: "Investigação" },
-      { href: "/gestao-xpe", label: "Gestão XPE" }
+      { href: "/gestao-xpe", label: "Gestão XPE" },
+      { href: "/auditorias", label: "Auditorias" }
     ]
   }
 ];

@@ -1,0 +1,115 @@
+{
+  "generatedAt": "2026-08-03T04:38:15.221Z",
+  "total": 1,
+  "latest": "2026-08-03-auditoria-plataforma",
+  "audits": [
+    {
+      "slug": "2026-08-03-auditoria-plataforma",
+      "file": "2026-08-03-auditoria-plataforma.md",
+      "title": "Auditoria da plataforma e validação da análise do diretor",
+      "date": "2026-08-03",
+      "author": "Claude Opus 5",
+      "kind": "auditoria",
+      "scope": "Plataforma · Pipedrive · Meta Ads · Chatwoot · Projeções 2026",
+      "summary": "Sync diário nunca funcionou, 77% dos dados de atividade estavam invisíveis e as projeções estavam congeladas em jan-mai. A análise do diretor comercial confere em 26 de 26 verificações.",
+      "highlights": [
+        "Sync diário falhou em 100% das execuções: PIPEDRIVE_API_KEY nunca foi cadastrada",
+        "Atividades subiram de 2.467 para 10.812 ao corrigir user_id=0 no Pipedrive",
+        "Run rate corrigido de R$ 177.429 para R$ 219.006/mês (+R$ 499k na projeção do ano)",
+        "Meta do ano exige +30% sobre o ritmo atual",
+        "92% do funil aberto travado na etapa Negociação",
+        "Zero campanhas ativas na Meta em agosto"
+      ],
+      "words": 1549,
+      "readingMinutes": 8,
+      "sections": [
+        {
+          "level": 2,
+          "text": "Sumário",
+          "id": "sumario"
+        },
+        {
+          "level": 2,
+          "text": "1. O achado mais grave: não existe atualização diária",
+          "id": "1-o-achado-mais-grave-nao-existe-atualizacao-diaria"
+        },
+        {
+          "level": 2,
+          "text": "2. 77% dos dados de atividade estavam invisíveis",
+          "id": "2-77-dos-dados-de-atividade-estavam-invisiveis"
+        },
+        {
+          "level": 2,
+          "text": "3. As projeções estavam congeladas em jan–mai",
+          "id": "3-as-projecoes-estavam-congeladas-em-janmai"
+        },
+        {
+          "level": 2,
+          "text": "4. O módulo Gestão XPE quebrava em produção",
+          "id": "4-o-modulo-gestao-xpe-quebrava-em-producao"
+        },
+        {
+          "level": 2,
+          "text": "5. Validação da análise do diretor comercial",
+          "id": "5-validacao-da-analise-do-diretor-comercial"
+        },
+        {
+          "level": 3,
+          "text": "Três divergências encontradas",
+          "id": "tres-divergencias-encontradas"
+        },
+        {
+          "level": 2,
+          "text": "6. Leitura estratégica de 2026",
+          "id": "6-leitura-estrategica-de-2026"
+        },
+        {
+          "level": 3,
+          "text": "O gap real",
+          "id": "o-gap-real"
+        },
+        {
+          "level": 3,
+          "text": "Gargalo 1 — Consultoria abaixo da meta há 5 meses seguidos",
+          "id": "gargalo-1-consultoria-abaixo-da-meta-ha-5-meses-seguidos"
+        },
+        {
+          "level": 3,
+          "text": "Gargalo 2 — 92% do funil aberto travado em uma única etapa",
+          "id": "gargalo-2-92-do-funil-aberto-travado-em-uma-unica-etapa"
+        },
+        {
+          "level": 3,
+          "text": "Gargalo 3 — 62% das perdas são falha de follow-up",
+          "id": "gargalo-3-62-das-perdas-sao-falha-de-follow-up"
+        },
+        {
+          "level": 3,
+          "text": "Gargalo 4 — A mídia parou e o efeito ainda não apareceu",
+          "id": "gargalo-4-a-midia-parou-e-o-efeito-ainda-nao-apareceu"
+        },
+        {
+          "level": 3,
+          "text": "Gargalo 5 — 29% do funil aberto sem valor preenchido",
+          "id": "gargalo-5-29-do-funil-aberto-sem-valor-preenchido"
+        },
+        {
+          "level": 3,
+          "text": "A oportunidade",
+          "id": "a-oportunidade"
+        },
+        {
+          "level": 2,
+          "text": "7. UX e navegação",
+          "id": "7-ux-e-navegacao"
+        },
+        {
+          "level": 2,
+          "text": "8. O que ficou automatizado",
+          "id": "8-o-que-ficou-automatizado"
+        }
+      ],
+      "body": "\n## Sumário\n\nAuditoria completa da plataforma de gestão XPE: integridade das integrações, validação\ndos números contra o CRM, revisão das projeções de 2026 e leitura estratégica dos\nindicadores. Quatro defeitos críticos foram encontrados e corrigidos; a análise mensal do\ndiretor comercial foi validada linha a linha contra o Pipedrive.\n\n---\n\n## 1. O achado mais grave: não existe atualização diária\n\nO workflow `Daily sync` falhou **em 100% das execuções** — todos os dias, há pelo menos\n11 dias, sempre em cerca de 25 segundos:\n\n```\nError: PIPEDRIVE_API_KEY ausente em .env.local\n```\n\nOs secrets da Meta e do Chatwoot foram cadastrados em 03/08/2026 de madrugada. Os do\nPipedrive e do ClickUp nunca foram. Toda a base que estava em produção veio de execuções\nmanuais na máquina local.\n\n**Ação pendente (requer acesso humano ao GitHub):**\n\n```bash\ngh secret set PIPEDRIVE_API_KEY\ngh secret set CLICKUP_API_TOKEN\ngh secret set CLICKUP_TEAM_ID\ngh workflow run \"Daily sync\" && gh run watch\n```\n\nO workflow foi preparado com Node 22, os novos passos de análise e dois testes de\nvalidação que quebram o build se os números divergirem.\n\n---\n\n## 2. 77% dos dados de atividade estavam invisíveis\n\nO endpoint `/v1/activities` do Pipedrive devolve **apenas a agenda do dono do token**\nquando `user_id` não é informado.\n\n| Métrica | Antes | Depois |\n| --- | ---: | ---: |\n| Atividades sincronizadas | 2.467 | 10.812 |\n| Usuários representados | 1 | 2 |\n| Reuniões na base | 142 | 1.576 |\n| Reuniões em julho/2026 | 0 | 78 |\n\nA plataforma acreditava que o time comercial não realizava reuniões desde março. O número\nde 17 reuniões por semana que o diretor reportava era real — a plataforma é que estava cega.\n\n**Correção:** `scripts/sync-data.mjs` passa `user_id: '0'` na coleta de atividades.\n\n---\n\n## 3. As projeções estavam congeladas em jan–mai\n\nO motor de projeção (`analyze.mjs` e seis builders de área) tinha a janela de análise fixa,\ncom junho tratado como mês parcial. Junho (R$ 333.210) e julho (R$ 312.686) — os dois\nmelhores meses do ano — ficavam fora do cálculo.\n\n| Métrica | Antes | Depois |\n| --- | ---: | ---: |\n| Run rate mensal | R$ 177.429 | R$ 219.006 |\n| Projeção do ano (ritmo atual) | R$ 2.129.152 | R$ 2.628.073 |\n| Fechamentos/mês | 15,4 | 18,7 |\n\nA plataforma subestimava o negócio em **R$ 499 mil**. A janela agora deriva do calendário e\navança sozinha a cada virada de mês.\n\n---\n\n## 4. O módulo Gestão XPE quebrava em produção\n\n`crm-deals-server.ts` e `crm-activities-server.ts` liam `data/raw/` em tempo de execução.\nComo `data/raw/` é gitignored (mais de 70 MB), esses arquivos nunca chegaram à Vercel: o\nmódulo funcionava apenas na máquina local.\n\n**Correção:** recorte versionado em `data/processed/crm-snapshot.json`, gerado por\n`scripts/build-crm-snapshot.mjs` a cada sync. As nove rotas foram testadas e respondem 200\ncom dados reais.\n\n---\n\n## 5. Validação da análise do diretor comercial\n\nCada afirmação da análise de 31/07/2026 foi conferida contra o Pipedrive. **O diretor está\ncorreto.**\n\n| Afirmação | Diretor | Apurado |\n| --- | ---: | ---: |\n| Ganhos consultoria 2026 | 102 | 102 |\n| Perdidos 2026 | 202 | 202 |\n| Pós-venda (ganhos) | 24% | 23,5% |\n| Tráfego pago (ganhos) | 20% | 19,6% |\n| Síndico da base (ganhos) | 15% | 14,7% |\n| Relacionamento XPE | 76% | 76,5% |\n| Caiu de prioridade | 40% | 39,6% |\n| Tentativas esgotadas | 23% | 22,8% |\n| Barrado em assembleia | 12% | 12,4% |\n| Concorrente | 12% | 11,9% |\n| Perdas por tráfego pago | 48% | 47,5% |\n| Reuniões por semana (julho) | 17 | 17,6 |\n| Abaixo da meta de consultoria | 18% | 18,3% |\n\n### Três divergências encontradas\n\n1. **\"41 dias no funil\"** é a mediana (39,6 dias), não a média — que é 72,8 dias. A\n   distância entre as duas revela uma cauda de negócios muito antigos parados. A métrica\n   escolhida está certa; vale explicitar qual é.\n\n2. **\"Sem tracking\" foi omitido das perdas.** São 24 negócios (11,9%), o terceiro maior\n   \"canal\" de perda do ano. É o buraco dos 17% que faltavam para fechar a lista.\n\n3. **A conta dos 52% de relacionamento não fecha sozinha.** Síndicos, administradoras e\n   sucesso do cliente somam 47,9%; chega-se a 52% apenas incluindo pós-venda. Em uma\n   mensagem as indicações avulsas são contadas junto com o tráfego, em outra junto com o\n   relacionamento.\n\n---\n\n## 6. Leitura estratégica de 2026\n\n### O gap real\n\nRealizado de janeiro a julho: **R$ 1.533.043**, equivalente a 123% da meta acumulada. O\nnúmero consolidado parece confortável, mas:\n\n- Meta do ano: R$ 2.952.211\n- Faltam R$ 1.419.168 em 5 meses, ou R$ 283.834 por mês\n- Ritmo atual: R$ 219.006 por mês\n- **Necessário: +30% sobre o ritmo atual**\n\n### Gargalo 1 — Consultoria abaixo da meta há 5 meses seguidos\n\nAtingimento mensal: 94%, 82%, 85%, 83%, 82%. Obras está a 161,7% da meta e compensa o\nresultado consolidado. O motor principal desacelera enquanto o número agregado sorri.\n\n### Gargalo 2 — 92% do funil aberto travado em uma única etapa\n\n| Etapa | Negócios | Valor |\n| --- | ---: | ---: |\n| Negociação | 170 | R$ 1.785.200 |\n| Elaboração de Proposta | 28 | R$ 115.600 |\n| Fechamento | 3 | R$ 26.500 |\n| Visita de Diagnóstico | 11 | R$ 16.470 |\n| Aguardando Agendamento | 16 | R$ 0 |\n| Relacionamento | 34 | R$ 0 |\n\nTrês negócios em Fechamento contra 170 em Negociação. Ou a etapa é pulada na prática, ou a\nnegociação virou depósito de oportunidades sem desfecho.\n\n### Gargalo 3 — 62% das perdas são falha de follow-up\n\n\"Caiu de prioridade\" (80 negócios) e \"Tentativas esgotadas\" (46) somam 126 negócios e\n**R$ 1.295.950**. Apenas 24 perdas foram para concorrente. A empresa não perde para o\nmercado — perde para o silêncio. A metodologia BANT proposta pelo diretor ataca exatamente\nessa fatia.\n\n### Gargalo 4 — A mídia parou e o efeito ainda não apareceu\n\n| Mês | Investimento | Conversas |\n| --- | ---: | ---: |\n| Abril | R$ 2.535 | 178 |\n| Maio | R$ 2.525 | 253 |\n| Junho | R$ 2.594 | 209 |\n| Julho | R$ 1.005 | 55 |\n| Agosto | R$ 0 | 0 |\n\nZero campanhas ativas. O potencial criado caiu de 202% para 79% da meta em julho. Com ciclo\nmediano de 40 dias, isso vira queda de fechamento em setembro e outubro — exatamente quando\nseriam necessários R$ 283 mil por mês. Saldo da conta de anúncios: R$ 274,16.\n\n### Gargalo 5 — 29% do funil aberto sem valor preenchido\n\n77 de 262 negócios abertos estão com R$ 0. O potencial real é maior que os R$ 1,94 milhão\napurados, mas não é possível dizer quanto.\n\n### A oportunidade\n\nEficiência por canal em 2026:\n\n| Canal | Win rate | Ganhos/Perdas | Receita |\n| --- | ---: | ---: | ---: |\n| Pós-Venda base XPE | 73% | 24/9 | R$ 247.186 |\n| Indicação Avulsa | 73% | 8/3 | R$ 70.750 |\n| Síndico Profissional Base | 65% | 15/8 | R$ 115.420 |\n| Indicação de Cliente XPE | 57% | 12/9 | R$ 102.750 |\n| Sucesso do Cliente | 38% | 6/10 | R$ 47.500 |\n| Administradora Cond. | 24% | 9/28 | R$ 82.500 |\n| Tráfego Pago | 17% | 20/96 | R$ 183.550 |\n\nPós-venda converte 4,3 vezes melhor que tráfego pago e já é o maior gerador de receita. Mas\na cobertura de CNPJ está em 259 de 1.655 organizações (15,6%) — não há como operar pós-venda\nsistematicamente sem saber quem é quem.\n\n> **Recomendação:** não cortar o tráfego, que alimenta o topo e sustenta autoridade no\n> segmento. Corrigir a qualificação **antes** da proposta: 96 perdas vindas de tráfego\n> consomem capacidade comercial que renderia mais aplicada na base. E resolver o cadastro de\n> CNPJ, que é o desbloqueio do canal que converte a 73%.\n\n---\n\n## 7. UX e navegação\n\n**Corrigido:** quatro rotas (`/comercial`, `/metas`, `/pos-venda`, `/plano-pro`) existiam e\neram compiladas, mas não tinham link em lugar nenhum — cerca de 30% da plataforma só era\nacessível digitando a URL. O menu passou a agrupar por pergunta: *Como estamos*, *Para onde\nvamos*, *Onde agir*.\n\n**Corrigido:** o Resumo abria com o forecast. Agora abre com \"Precisa de decisão agora\",\nlistando os achados críticos antes que o gestor precise procurá-los.\n\n**Pendente de investigação:** o Chatwoot tem 19 dias de lacuna suspeita em 89, e 396 de 569\nconversas seguem abertas (70%). A plataforma marca as lacunas corretamente, mas vale\ninvestigar a estabilidade da conexão antes de tirar conclusões sobre conversão de pré-vendas.\n\n---\n\n## 8. O que ficou automatizado\n\n- Nova área **Diretor Comercial** (`/areas/diretor-comercial`) com canais de origem, motivos\n  de perda, ciclo de vendas, reuniões contra meta e metas do Pipedrive, mês a mês.\n- **Diagnóstico executivo** gerado a partir dos números, ordenado por urgência, exibido na\n  área e com os itens críticos abrindo o Resumo.\n- `npm run test:commercial-intel` trava 26 verificações contra esta análise. Se o pipeline\n  divergir, o build falha.\n"
+    }
+  ]
+}

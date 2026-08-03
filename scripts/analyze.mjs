@@ -1,9 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { buildFunnelStageHistory } from './lib/funnel-stage-history.mjs';
 import { buildConversionAnalytics } from './lib/conversion-analytics.mjs';
+import { rawDirUrl, processedDirUrl, ensureDataDirs } from './lib/paths.mjs';
+ensureDataDirs();
 
-const rawDir = new URL('../data/raw/', import.meta.url);
-const processedDir = new URL('../data/processed/', import.meta.url);
+const rawDir = rawDirUrl;
+const processedDir = processedDirUrl;
 const reportsDir = new URL('../reports/', import.meta.url);
 await mkdir(processedDir, { recursive: true });
 await mkdir(reportsDir, { recursive: true });

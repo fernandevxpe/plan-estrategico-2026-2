@@ -1,6 +1,6 @@
 # Projeções operacionais 2x e 3x
 
-Gerado em: 03/08/2026, 01:13:54
+Gerado em: 03/08/2026, 01:55:38
 
 Compare os dois cenários de crescimento usados no dashboard.
 

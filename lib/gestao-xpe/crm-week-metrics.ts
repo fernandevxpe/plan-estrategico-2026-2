@@ -7,12 +7,12 @@ import { periodAnchorToDateRange, weekKeyToIsoDates } from "@/lib/gestao-xpe/wee
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Analysis } from "@/lib/analysis/types";
+import { readProcessed } from "@/lib/data/processed-store";
 
 export type { CrmWeekMetrics } from "@/lib/gestao-xpe/crm-week-sync";
 
 async function loadAnalysis(): Promise<Analysis> {
-  const file = path.join(process.cwd(), "data/processed/analysis.json");
-  return JSON.parse(await readFile(file, "utf8")) as Analysis;
+    return await readProcessed<any>("analysis.json") as Analysis;
 }
 
 export async function buildCrmWeekMetrics(

@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { loadCrmSnapshot } from "@/lib/gestao-xpe/crm-snapshot";
+import { processedDir } from "@/lib/data/processed-store";
 import { MAIN_PIPELINE_ID } from "@/lib/gestao-xpe/pipeline-config";
 import { pipedriveDateInRange } from "@/lib/gestao-xpe/pipedrive-datetime";
 
@@ -121,7 +122,7 @@ export async function loadPipelineDeals(pipelineId = MAIN_PIPELINE_ID): Promise<
 }
 
 export async function loadWonDealRows(): Promise<WonDealRow[]> {
-  const file = path.join(process.cwd(), "data/processed/won-deals.csv");
+  const file = path.join(processedDir, "won-deals.csv");
   const raw = await readFile(file, "utf8");
   const lines = raw.split("\n").slice(1);
   const rows: WonDealRow[] = [];

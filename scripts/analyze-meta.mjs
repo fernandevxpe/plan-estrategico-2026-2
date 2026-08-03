@@ -1,7 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { rawDirUrl, processedDirUrl, ensureDataDirs } from './lib/paths.mjs';
+ensureDataDirs();
 
-const rawDir = new URL('../data/raw/', import.meta.url);
-const processedDir = new URL('../data/processed/', import.meta.url);
+const rawDir = rawDirUrl;
+const processedDir = processedDirUrl;
 await mkdir(processedDir, { recursive: true });
 
 async function readRaw(name) {

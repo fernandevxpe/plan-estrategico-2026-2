@@ -1,4 +1,4 @@
-import presalesJson from '@/data/processed/presales.json';
+import { readProcessed } from "@/lib/data/processed-store";
 
 export type PresalesDailyRow = {
   date: string;
@@ -40,6 +40,6 @@ export type PresalesDashboard = {
   conversations: Array<{ id: number; inboxId: number; createdAt: string; updatedAt: string; firstReplyAt: string | null; status: string; initiatedBy: 'contact' | 'company' | 'unknown'; firstMessageAt: string | null }>;
 };
 
-export function buildPresalesDashboard(): PresalesDashboard {
-  return structuredClone(presalesJson) as unknown as PresalesDashboard;
+export function buildPresalesDashboard(): Promise<PresalesDashboard> {
+  return readProcessed<PresalesDashboard>("presales.json");
 }

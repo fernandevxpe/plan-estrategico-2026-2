@@ -1,6 +1,6 @@
 # Áreas estratégicas — XPE Consultoria
 
-Gerado em: 03/08/2026, 01:13:54
+Gerado em: 03/08/2026, 01:55:38
 
 Todas as 11 áreas em um único documento. Para conversar sobre uma área específica, referencie a seção pelo nome.
 
@@ -509,7 +509,7 @@ CRM, ClickUp, automações internas e produtividade da operação.
 
 
 ### Destaques
-- 1.633 tarefas ClickUp
+- 0 tarefas ClickUp
 - 1.743 negócios no Pipedrive
 - 4 alerta(s) de qualidade de dados
 

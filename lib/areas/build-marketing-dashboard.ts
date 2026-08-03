@@ -1,4 +1,4 @@
-import marketingJson from '@/data/processed/marketing.json';
+import { readProcessed } from "@/lib/data/processed-store";
 import type { Analysis } from '@/lib/analysis/types';
 
 export type MarketingPeriodKey = 'last7d' | 'last30d' | 'month' | 'ytd' | `${number}-${number}`;
@@ -82,8 +82,8 @@ export type MarketingDashboard = {
   };
 };
 
-export function buildMarketingDashboard(analysis: Analysis): MarketingDashboard {
-  const data = structuredClone(marketingJson) as unknown as Omit<MarketingDashboard, 'attribution'>;
+export async function buildMarketingDashboard(analysis: Analysis): Promise<MarketingDashboard> {
+  const data = await readProcessed<Omit<MarketingDashboard, 'attribution'>>('marketing.json');
   const latest = [...(analysis.commercialMonthly ?? [])].sort((a, b) => b.month.localeCompare(a.month))[0];
   const paidWon = latest?.wonYtd.channels.find((row) => row.key === 'Tráfego Pago');
   const paidOpen = latest?.openPotential.channels.find((row) => row.key === 'Tráfego Pago');

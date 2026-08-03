@@ -2,14 +2,17 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { GestaoCatalog, WeeklyRecord, WeeklyRecordsFile } from "@/lib/gestao-xpe/catalog-types";
 import { GESTAO_CATALOG_PATH, GESTAO_WEEKLY_RECORDS_PATH } from "@/lib/gestao-xpe/paths";
+import { dataPath } from "@/lib/data/processed-store";
 import { weekKeyToIsoDates } from "@/lib/gestao-xpe/week-utils";
 
+// Esses dois arquivos são gravados pela plataforma (lançamentos semanais), então
+// precisam viver no volume: no container o disco é descartado a cada deploy.
 function catalogFile() {
-  return path.join(process.cwd(), GESTAO_CATALOG_PATH);
+  return dataPath(GESTAO_CATALOG_PATH.replace(/^data\//, ""));
 }
 
 function recordsFile() {
-  return path.join(process.cwd(), GESTAO_WEEKLY_RECORDS_PATH);
+  return dataPath(GESTAO_WEEKLY_RECORDS_PATH.replace(/^data\//, ""));
 }
 
 export async function loadGestaoCatalog(): Promise<GestaoCatalog> {

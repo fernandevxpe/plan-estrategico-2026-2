@@ -1,13 +1,13 @@
 # Analise comercial e projetos - XPE Consultoria
 
-Gerado em: 03/08/2026, 01:13:54
+Gerado em: 03/08/2026, 01:55:38
 
 ## Resumo executivo
 
 - Negocios analisados no Pipedrive: 1080 em 2025-2026.
 - Negocios ganhos no periodo: 232, somando R$ 2.423.456.
 - Ticket medio geral dos negocios ganhos: R$ 10.446.
-- Tarefas/projetos encontrados no ClickUp: 1633; candidatos de producao ligados a projetos/operacao: 1268.
+- Tarefas/projetos encontrados no ClickUp: 0; candidatos de producao ligados a projetos/operacao: 0.
 - 2026-08 deve ser lido como parcial, pois a base foi extraida em 03/08/2026.
 - O Pipedrive nao trouxe produtos por negocio; a classificacao inicial de servico usa principalmente funil/etapa e, quando necessario, termos explicitos no titulo.
 - Para tipos de negocio, a fonte principal agora e a etiqueta comercial do Pipedrive: LIE, LDC, LCC, PIE, OBRA, PROJETOS, LSPDA, CDM, ICV e instalacao de carregador.
@@ -309,6 +309,6 @@ Gerado em: 03/08/2026, 01:13:54
 
 ## Pontos de atencao para cruzamento Pipedrive x ClickUp
 
-- Ha 118 negocio(s) ganhos sem correspondencia simples por nome em tarefas candidatas de producao do ClickUp.
+- Ha 232 negocio(s) ganhos sem correspondencia simples por nome em tarefas candidatas de producao do ClickUp.
 - Listas de teste/dev/copia foram excluidas da contagem de projetos candidatos do ClickUp.
 - Para granularidade fina de servicos, o ideal e padronizar um campo obrigatorio no Pipedrive ou preencher produtos por negocio; hoje o CRM separa com confianca principalmente "Laudos e consultoria condominial" vs "Obras eletricas".

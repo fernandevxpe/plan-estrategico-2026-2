@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build:app": "next build",
-    "start": "next start",
+    "start": "node scripts/server.mjs",
     "sync": "node scripts/sync-data.mjs",
     "sync:pipedrive": "SYNC_SCOPE=pipedrive node scripts/sync-data.mjs",
     "sync:clickup": "SYNC_SCOPE=clickup node scripts/sync-data.mjs",
@@ -23,7 +23,10 @@
     "test:presales": "node scripts/test-presales.mjs",
     "test:revenue-funnel": "node scripts/test-revenue-funnel.mjs",
     "export:context": "node scripts/export-chat-context.mjs",
-    "build": "npm run sync && npm run analyze && npm run analyze:commercial-intel && npm run build:crm-snapshot && npm run export:context"
+    "build": "npm run sync && npm run analyze && npm run analyze:commercial-intel && npm run build:crm-snapshot && npm run build:audits && npm run export:context",
+    "start:next": "next start",
+    "sync:all": "node scripts/scheduler.mjs --once",
+    "build:audits": "node scripts/build-audit-index.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

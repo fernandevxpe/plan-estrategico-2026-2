@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
+import { rawDirUrl, processedDirUrl, ensureDataDirs } from './lib/paths.mjs';
+ensureDataDirs();
 
-const raw = await readFile(new URL('../data/processed/revenue-funnel.json', import.meta.url), 'utf8');
+const raw = await readFile(new URL('revenue-funnel.json', processedDirUrl), 'utf8');
 const data = JSON.parse(raw);
 const checks = [];
 const check = (name, condition, detail) => checks.push({ name, status: condition ? 'PASS' : 'FAIL', detail });

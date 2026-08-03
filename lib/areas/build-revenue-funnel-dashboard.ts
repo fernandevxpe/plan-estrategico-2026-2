@@ -1,4 +1,4 @@
-import revenueFunnelJson from "@/data/processed/revenue-funnel.json";
+import { readProcessed } from "@/lib/data/processed-store";
 
 export type RevenuePeriodKind = "month" | "quarter" | "semester" | "year";
 export type RevenueScope = "all" | "consulting" | "works";
@@ -75,6 +75,6 @@ export type RevenueFunnelDashboard = {
   periods: RevenueFunnelPeriod[];
 };
 
-export function buildRevenueFunnelDashboard(): RevenueFunnelDashboard {
-  return revenueFunnelJson as RevenueFunnelDashboard;
+export function buildRevenueFunnelDashboard(): Promise<RevenueFunnelDashboard> {
+  return readProcessed<RevenueFunnelDashboard>("revenue-funnel.json");
 }

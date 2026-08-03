@@ -1,14 +1,16 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { rawDirUrl, processedDirUrl, ensureDataDirs } from './lib/paths.mjs';
+ensureDataDirs();
 
 const readJson = async (path) => JSON.parse(await readFile(new URL(path, import.meta.url), 'utf8'));
 const unwrap = (payload) => payload?.data ?? payload;
-const marketing = await readJson('../data/processed/marketing.json');
-const presales = await readJson('../data/processed/presales.json');
-const deals = unwrap(await readJson('../data/raw/pipedrive-deals.json')) ?? [];
-const stages = unwrap(await readJson('../data/raw/pipedrive-stages.json')) ?? [];
-const dealFields = unwrap(await readJson('../data/raw/pipedrive-deal-fields.json')) ?? [];
-const activities = unwrap(await readJson('../data/raw/pipedrive-activities.json')) ?? [];
-const flowPayload = unwrap(await readJson('../data/raw/pipedrive-deal-flows.json')) ?? {};
+const marketing = await readJson(new URL('marketing.json', processedDirUrl));
+const presales = await readJson(new URL('presales.json', processedDirUrl));
+const deals = unwrap(await readJson(new URL('pipedrive-deals.json', rawDirUrl))) ?? [];
+const stages = unwrap(await readJson(new URL('pipedrive-stages.json', rawDirUrl))) ?? [];
+const dealFields = unwrap(await readJson(new URL('pipedrive-deal-fields.json', rawDirUrl))) ?? [];
+const activities = unwrap(await readJson(new URL('pipedrive-activities.json', rawDirUrl))) ?? [];
+const flowPayload = unwrap(await readJson(new URL('pipedrive-deal-flows.json', rawDirUrl))) ?? {};
 const flowsByDeal = flowPayload.flows ?? {};
 
 const TIMEZONE = 'America/Recife';
@@ -291,6 +293,6 @@ const output = {
   periods
 };
 
-await mkdir(new URL('../data/processed/', import.meta.url), { recursive: true });
-await writeFile(new URL('../data/processed/revenue-funnel.json', import.meta.url), JSON.stringify(output, null, 2));
+await mkdir(processedDirUrl, { recursive: true });
+await writeFile(new URL('revenue-funnel.json', processedDirUrl), JSON.stringify(output, null, 2));
 console.log(JSON.stringify({ output: 'data/processed/revenue-funnel.json', periods: periods.length, journeys: journeys.length, latest: periods.filter((row) => row.kind === 'year').at(-1) }, null, 2));

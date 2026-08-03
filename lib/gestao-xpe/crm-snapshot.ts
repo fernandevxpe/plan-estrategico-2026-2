@@ -1,7 +1,6 @@
 import "server-only";
 
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+import { readProcessed } from "@/lib/data/processed-store";
 
 /**
  * Recorte do CRM que a Gestão XPE lê em runtime.
@@ -53,17 +52,11 @@ const EMPTY: CrmSnapshot = {
   activities: []
 };
 
-let cache: Promise<CrmSnapshot> | null = null;
-
+/**
+ * Sem cache próprio: `readProcessed` já guarda o parse em memória e o invalida
+ * pelo mtime do arquivo. Um cache aqui congelaria o snapshot até o restart e o
+ * sync diário deixaria de valer.
+ */
 export function loadCrmSnapshot(): Promise<CrmSnapshot> {
-  if (!cache) {
-    const file = path.join(process.cwd(), "data/processed/crm-snapshot.json");
-    cache = readFile(file, "utf8")
-      .then((raw) => JSON.parse(raw) as CrmSnapshot)
-      .catch((error) => {
-        console.error("crm-snapshot.json ausente ou inválido:", error);
-        return EMPTY;
-      });
-  }
-  return cache;
+  return readProcessed<CrmSnapshot>("crm-snapshot.json", EMPTY);
 }

@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
+import { rawDirUrl, processedDirUrl, ensureDataDirs } from './lib/paths.mjs';
+ensureDataDirs();
 
-const path = new URL('../data/processed/marketing.json', import.meta.url);
+const path = new URL('marketing.json', processedDirUrl);
 const raw = await readFile(path, 'utf8');
 const data = JSON.parse(raw);
 const checks = [];

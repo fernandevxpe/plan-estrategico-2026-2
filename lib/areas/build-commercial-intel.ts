@@ -1,4 +1,4 @@
-import commercialIntelJson from "@/data/processed/commercial-intel.json";
+import { readProcessed } from "@/lib/data/processed-store";
 
 export type IntelDistributionRow = {
   key: string;
@@ -176,6 +176,6 @@ export type CommercialIntelDashboard = {
   dataQuality: IntelDataQuality[];
 };
 
-export function buildCommercialIntelDashboard(): CommercialIntelDashboard {
-  return structuredClone(commercialIntelJson) as unknown as CommercialIntelDashboard;
+export function buildCommercialIntelDashboard(): Promise<CommercialIntelDashboard> {
+  return readProcessed<CommercialIntelDashboard>("commercial-intel.json");
 }

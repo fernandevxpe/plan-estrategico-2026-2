@@ -1,5 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { loadEnv } from './lib/env.mjs';
+import { rawDirUrl, processedDirUrl, ensureDataDirs } from './lib/paths.mjs';
+ensureDataDirs();
 
 loadEnv();
 
@@ -8,8 +10,8 @@ const token = process.env.CHATWOOT_API_ACCESS_TOKEN?.trim();
 const accountId = process.env.CHATWOOT_ACCOUNT_ID?.trim() || '1';
 if (!baseUrl || !token) throw new Error('Variáveis Chatwoot ausentes: CHATWOOT_BASE_URL e/ou CHATWOOT_API_ACCESS_TOKEN');
 
-const rawDir = new URL('../data/raw/', import.meta.url);
-const processedCache = new URL('../data/processed/presales.json', import.meta.url);
+const rawDir = rawDirUrl;
+const processedCache = new URL('presales.json', processedDirUrl);
 await mkdir(rawDir, { recursive: true });
 
 async function api(path, params = {}) {

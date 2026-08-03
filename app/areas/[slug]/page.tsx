@@ -63,10 +63,10 @@ export default async function AreaSlugPage({ params }: Props) {
   const eventos = slug === "eventos" ? buildEventosDashboard() : null;
 
   const obras = slug === "obras" ? buildObrasDashboard(analysis) : null;
-  const marketing = slug === "marketing" ? buildMarketingDashboard(analysis) : null;
-  const presales = slug === "pre-vendas" ? buildPresalesDashboard() : null;
-  const revenueFunnel = slug === "funil-360" ? buildRevenueFunnelDashboard() : null;
-  const commercialIntel = slug === "diretor-comercial" ? buildCommercialIntelDashboard() : null;
+  const marketing = slug === "marketing" ? await buildMarketingDashboard(analysis) : null;
+  const presales = slug === "pre-vendas" ? await buildPresalesDashboard() : null;
+  const revenueFunnel = slug === "funil-360" ? await buildRevenueFunnelDashboard() : null;
+  const commercialIntel = slug === "diretor-comercial" ? await buildCommercialIntelDashboard() : null;
 
   return (
     <AppShell>

@@ -1,8 +1,10 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { rawDirUrl, processedDirUrl, ensureDataDirs } from './lib/paths.mjs';
+ensureDataDirs();
 
-const processedDir = new URL('../data/processed/', import.meta.url);
-const rawDir = new URL('../data/raw/', import.meta.url);
+const processedDir = processedDirUrl;
+const rawDir = rawDirUrl;
 const areasDir = new URL('../data/areas/', import.meta.url);
 const outputDir = new URL('../base-estrategica/', import.meta.url);
 const attachmentsDir = new URL('../base-estrategica/anexos/', import.meta.url);

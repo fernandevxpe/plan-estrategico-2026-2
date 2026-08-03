@@ -23,6 +23,7 @@ import { getISOWeekKey, weekKeyToIsoDates, weekKeysForCrmHistory } from "@/lib/g
 import { buildWonAggregatesByWeek, wonValueForWeek } from "@/lib/gestao-xpe/won-week-aggregates";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { readProcessed } from "@/lib/data/processed-store";
 
 const CRM_ORIGINS = new Set<GestaoOrigemDado>(["crm", "crm_parcial", "crm_snapshot", "analise"]);
 
@@ -40,8 +41,7 @@ function isWeeklyVolumeId(id: string): id is keyof CrmWeeklyVolumeMaps {
 }
 
 async function loadAnalysis(): Promise<Analysis> {
-  const file = path.join(process.cwd(), "data/processed/analysis.json");
-  return JSON.parse(await readFile(file, "utf8")) as Analysis;
+    return await readProcessed<any>("analysis.json") as Analysis;
 }
 
 function crmValueForIndicator(

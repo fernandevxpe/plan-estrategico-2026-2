@@ -2,9 +2,11 @@
 // nunca vê esses arquivos. Este script recorta só o que a Gestão XPE lê em
 // runtime e grava em data/processed/, que é versionado e vai junto no deploy.
 import { readFile, writeFile } from 'node:fs/promises';
+import { rawDirUrl, processedDirUrl, ensureDataDirs } from './lib/paths.mjs';
+ensureDataDirs();
 
-const rawDir = new URL('../data/raw/', import.meta.url);
-const outDir = new URL('../data/processed/', import.meta.url);
+const rawDir = rawDirUrl;
+const outDir = processedDirUrl;
 
 async function readRaw(name) {
   try {

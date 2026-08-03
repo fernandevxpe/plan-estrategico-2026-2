@@ -1,8 +1,75 @@
 {
-  "generatedAt": "2026-08-03T04:38:15.221Z",
-  "total": 1,
-  "latest": "2026-08-03-auditoria-plataforma",
+  "generatedAt": "2026-08-03T05:09:02.135Z",
+  "total": 2,
+  "latest": "2026-08-03-migracao-sync-railway",
   "audits": [
+    {
+      "slug": "2026-08-03-migracao-sync-railway",
+      "file": "2026-08-03-migracao-sync-railway.md",
+      "title": "Migração do sync diário para o Railway",
+      "date": "2026-08-03",
+      "author": "Claude Opus 5",
+      "kind": "infraestrutura",
+      "scope": "Sync diário · Hospedagem · Persistência de dados",
+      "summary": "O sync automático saiu do GitHub Actions, onde nunca funcionou e engordaria o repositório, para um volume persistente no Railway com agendador interno. A plataforma inteira passou a rodar lá.",
+      "highlights": [
+        "GitHub Actions falhava 100% das execuções e commitaria ~8 MB por dia no git",
+        "Sync agora roda dentro do serviço e grava num volume persistente",
+        "Dados saíram do bundle JavaScript: 4,5 MB a menos e atualização sem redeploy",
+        "Arquivos que a plataforma escreve foram para o volume — antes sumiam a cada deploy",
+        "Indicador de frescor mostra quando uma fonte específica para de atualizar"
+      ],
+      "words": 624,
+      "readingMinutes": 3,
+      "sections": [
+        {
+          "level": 2,
+          "text": "Por que mudar",
+          "id": "por-que-mudar"
+        },
+        {
+          "level": 2,
+          "text": "Arquitetura escolhida",
+          "id": "arquitetura-escolhida"
+        },
+        {
+          "level": 2,
+          "text": "O que precisou mudar no código",
+          "id": "o-que-precisou-mudar-no-codigo"
+        },
+        {
+          "level": 3,
+          "text": "Dados saíram do bundle",
+          "id": "dados-sairam-do-bundle"
+        },
+        {
+          "level": 3,
+          "text": "Escrita passou a sobreviver ao deploy",
+          "id": "escrita-passou-a-sobreviver-ao-deploy"
+        },
+        {
+          "level": 3,
+          "text": "Falhas parciais deixaram de ser silenciosas",
+          "id": "falhas-parciais-deixaram-de-ser-silenciosas"
+        },
+        {
+          "level": 2,
+          "text": "Percalços do deploy",
+          "id": "percalcos-do-deploy"
+        },
+        {
+          "level": 2,
+          "text": "Estado final",
+          "id": "estado-final"
+        },
+        {
+          "level": 2,
+          "text": "Pendências",
+          "id": "pendencias"
+        }
+      ],
+      "body": "\n## Por que mudar\n\nA rodada anterior encontrou o sync diário quebrado: o workflow do GitHub Actions falhava em\ntodas as execuções porque `PIPEDRIVE_API_KEY` nunca foi cadastrada. Consertar os secrets\nresolveria a falha, mas manteria um problema de fundo: o workflow commitava os artefatos\nprocessados a cada execução — cerca de 8 MB por dia, quase 3 GB por ano de blobs no\nrepositório.\n\nA decisão foi tirar dado do controle de versão e usar infraestrutura que já existia.\n\n## Arquitetura escolhida\n\n```\nRailway · projeto xpe-plataforma · serviço web\n├── volume persistente em /data                  ← DATA_DIR=/data\n│   ├── raw/         dados brutos das APIs (~80 MB, nunca versionados)\n│   ├── processed/   artefatos que a plataforma lê\n│   ├── gestao-xpe/  lançamentos semanais (a plataforma escreve aqui)\n│   └── sync-state.json  resultado da última rodada\n├── scripts/server.mjs      sobe o Next e o agendador no mesmo processo\n└── scripts/scheduler.mjs   pipeline diário às 08:00 BRT\n```\n\nO volume do Railway só pode ser montado em um serviço, então servidor e agendador dividem o\nmesmo processo. Enquanto o pipeline leva cerca de um minuto por dia, separar em dois serviços\ncom um bucket S3 no meio adicionaria complexidade sem ganho.\n\n## O que precisou mudar no código\n\n### Dados saíram do bundle\n\nOnze módulos faziam `import x from \"@/data/processed/x.json\"`. Isso congela o conteúdo no\nmomento do build: mesmo com o sync gravando arquivos novos, a plataforma continuaria servindo\no dado antigo até um redeploy. E `marketing.json` sozinho colocava 4,5 MB dentro do\nJavaScript enviado ao navegador.\n\nTodos passaram por `lib/data/processed-store.ts`, que lê do disco com cache invalidado pelo\n`mtime` do arquivo. As rotas ganharam `revalidate = 300`, então o dado novo aparece em até\ncinco minutos.\n\n### Escrita passou a sobreviver ao deploy\n\nOs lançamentos semanais da Gestão XPE e os overrides de obras eram gravados em\n`process.cwd()`. No container isso significa disco efêmero: **todo lançamento seria perdido no\npróximo deploy**. Passaram a gravar no volume.\n\nA leitura tem reserva: `resolveDataFile()` tenta o volume e cai na cópia versionada. Sem isso\no `next build` quebrava, porque `DATA_DIR` já existe durante o build mas o volume só é montado\nem tempo de execução.\n\n### Falhas parciais deixaram de ser silenciosas\n\nO pipeline distingue etapas obrigatórias de opcionais. Se as credenciais da Meta faltarem, o\nPipedrive continua atualizando e o resultado fica registrado em `sync-state.json`. O indicador\nno topo da plataforma lê esse arquivo e mostra quantas fontes pararam de atualizar — antes,\num sync que rodava pela metade renovava o carimbo de data e escondia o dado velho.\n\n## Percalços do deploy\n\nDois deploys falharam antes de subir:\n\n1. `tsconfig.tsbuildinfo` tinha entrado em um commit anterior. O Nixpacks monta um cache\n   nesse caminho e falha ao encontrar um arquivo ali.\n2. A pré-renderização quebrou procurando `/data/gestao-xpe/gestao-dashboard.json` — o volume\n   ainda não existe durante o build.\n\nO workflow do GitHub Actions foi reaproveitado como CI: roda typecheck e build com\n`DATA_DIR=/data` apontando para um volume inexistente, que é exatamente a condição em que os\ndois deploys quebraram.\n\n## Estado final\n\n- Plataforma em produção no Railway, 16 rotas verificadas respondendo 200\n- Autenticação básica ativa (401 sem credencial)\n- Sync agendado para 08:00 BRT, com execução automática na subida quando a última rodada\n  tem mais de 20 horas\n- Repositório deixa de crescer com dado\n\n## Pendências\n\n- `META_ACCESS_TOKEN` e as credenciais do Chatwoot precisam ser coladas nas variáveis do\n  Railway. Os IDs da Meta foram migrados do Vercel, mas o token vem redigido na exportação.\n  Sem eles, marketing e pré-vendas continuam servindo o último dado conhecido — sinalizado no\n  indicador de frescor.\n- O projeto no Vercel continua publicando a cada push e servirá o snapshot semente, cada vez\n  mais defasado. Vale desligar para não existirem duas URLs com números diferentes.\n"
+    },
     {
       "slug": "2026-08-03-auditoria-plataforma",
       "file": "2026-08-03-auditoria-plataforma.md",

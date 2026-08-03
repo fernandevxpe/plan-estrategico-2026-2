@@ -2649,14 +2649,14 @@ tr:last-child td {
 }
 
 .commercial-funnel-chart-box {
-  min-height: 470px;
+  height: auto;
+  min-height: 0;
 }
 
 .commercial-funnel-chart-wrap {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  height: 100%;
 }
 
 .commercial-funnel-controls {
@@ -2676,12 +2676,12 @@ tr:last-child td {
 
 .commercial-funnel-legend-note {
   margin: 0;
-  max-width: 760px;
+  max-width: 820px;
 }
 
 .commercial-funnel-plot {
-  flex: 1 1 auto;
-  min-height: 330px;
+  height: 420px;
+  min-height: 420px;
 }
 
 .commercial-planning-forecast-panel {

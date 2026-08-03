@@ -140,24 +140,6 @@ export function PlanningPage({ analysis }: Props) {
 
       <PlanningKpiStrip groups={planningKpiGroups} />
 
-      <article className="card span-2">
-        <h3>Funil comercial 2026</h3>
-        <p className="chart-caption">
-          Acompanhe separadamente receita, volume do funil e qualidade dos fechamentos. Selecione o escopo e a visão desejada.
-        </p>
-        <div className="chart-box chart-box-tall commercial-funnel-chart-box">
-          <CommercialFunnelChart
-            data={commercialFunnelChart}
-            scope={funnelScope}
-            onScopeChange={setFunnelScope}
-          />
-        </div>
-      </article>
-
-      <CommercialPlanningForecastPanel data={analysis.commercialPlanningByScope} />
-
-      <FunnelStageHistoryPanel analysis={analysis} defaultMonth={currentMonth} />
-
       <div className="goal-compare-presets">
         <span className="goal-compare-presets-label">Atalhos:</span>
         {GOAL_COMPARISON_PRESETS.map((preset) => (
@@ -409,6 +391,24 @@ export function PlanningPage({ analysis }: Props) {
           </article>
         </>
       )}
+
+      <article className="card span-2">
+        <h3>Funil comercial 2026</h3>
+        <p className="chart-caption">
+          Acompanhe separadamente receita, volume do funil e qualidade dos fechamentos. Selecione o escopo e a visão desejada.
+        </p>
+        <div className="chart-box chart-box-tall commercial-funnel-chart-box">
+          <CommercialFunnelChart
+            data={commercialFunnelChart}
+            scope={funnelScope}
+            onScopeChange={setFunnelScope}
+          />
+        </div>
+      </article>
+
+      <CommercialPlanningForecastPanel data={analysis.commercialPlanningByScope} />
+
+      <FunnelStageHistoryPanel analysis={analysis} defaultMonth={currentMonth} />
     </section>
   );
 }

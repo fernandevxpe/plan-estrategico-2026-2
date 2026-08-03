@@ -24,11 +24,12 @@ type Series = { id: keyof CommercialFunnelChartRow; label: string; kind: SeriesK
 const VIEWS: Record<ViewId, { label: string; description: string; series: Series[] }> = {
   revenue: {
     label: "Receita e meta",
-    description: "Meta, realizado, valor ganho e valor criado. O pipeline aberto é mostrado como linha para não disputar a leitura das barras.",
+    description:
+      "Realizado = progresso oficial da meta no Pipedrive Goals (filtros da meta). Ganho = soma dos negócios ganhos no mês no escopo do funil. Podem divergir quando a meta usa pipelines/filtros diferentes do funil. Pipeline aberto aparece como linha.",
     series: [
       { id: "goalTarget", label: "Meta", kind: "currency", axis: "left", type: "bar", color: "#9fb2bd" },
-      { id: "goalRealized", label: "Realizado", kind: "currency", axis: "left", type: "bar", color: "#6d28d9" },
-      { id: "wonValue", label: "Ganho", kind: "currency", axis: "left", type: "bar", color: "#21a67a" },
+      { id: "goalRealized", label: "Realizado (meta)", kind: "currency", axis: "left", type: "bar", color: "#6d28d9" },
+      { id: "wonValue", label: "Ganho (funil)", kind: "currency", axis: "left", type: "bar", color: "#21a67a" },
       { id: "createdValue", label: "Criado", kind: "currency", axis: "left", type: "line", color: "#64748b" },
       { id: "openValue", label: "Pipeline aberto", kind: "currency", axis: "left", type: "line", color: "#b67818", dash: "4 3" }
     ]

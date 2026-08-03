@@ -218,18 +218,42 @@ async function syncPipedrive() {
 
   const funnelPipelineIds = [11, 14];
   const funnelDeals = deals.filter((deal) => funnelPipelineIds.includes(deal.pipeline_id));
-  let dealFlows = {};
+  const previousFlows = await readRawData('pipedrive-deal-flows.json', { flows: {}, fetchedAt: {} });
+  let dealFlows = { ...(previousFlows.flows ?? {}) };
+  const flowFetchedAt = { ...(previousFlows.fetchedAt ?? {}) };
+
   if (process.env.SKIP_DEAL_FLOWS === '1') {
-    const previous = await readRawData('pipedrive-deal-flows.json', { flows: {} });
-    dealFlows = previous.flows ?? {};
     console.log('SKIP_DEAL_FLOWS=1 — histórico de etapas preservado da última coleta.');
   } else {
-    console.log(`Buscando flow de ${funnelDeals.length} negócios (pipelines consultoria + obras)...`);
+    // O histórico de um negócio só muda quando o negócio muda. Rebuscar os 800+
+    // toda madrugada era a maior fonte de pressão sobre o limite da API — e foi
+    // o que estourou a cota na primeira execução em produção.
+    // Comparar como texto não serve: o Pipedrive devolve "2026-08-03 05:00:00"
+    // e o carimbo local é ISO com "T". Para a mesma data o espaço ordena antes
+    // do "T", então uma alteração do próprio dia passaria despercebida.
+    const toEpoch = (value) => {
+      if (!value) return null;
+      const normalized = String(value).includes('T') ? String(value) : `${String(value).replace(' ', 'T')}Z`;
+      const time = new Date(normalized).getTime();
+      return Number.isNaN(time) ? null : time;
+    };
+
+    const stale = funnelDeals.filter((deal) => {
+      const fetched = toEpoch(flowFetchedAt[String(deal.id)]);
+      if (fetched == null) return true;
+      const updated = toEpoch(deal.update_time ?? deal.add_time);
+      return updated == null || updated >= fetched;
+    });
+
+    console.log(
+      `Flow: ${stale.length} de ${funnelDeals.length} negócios mudaram desde a última coleta.`
+    );
+
     let index = 0;
-    for (const deal of funnelDeals) {
+    for (const deal of stale) {
       index += 1;
-      if (index % 25 === 0 || index === funnelDeals.length) {
-        console.log(`  flow ${index}/${funnelDeals.length}`);
+      if (index % 25 === 0 || index === stale.length) {
+        console.log(`  flow ${index}/${stale.length}`);
       }
       const token = process.env.PIPEDRIVE_API_KEY;
       const url = new URL(`https://api.pipedrive.com/v1/deals/${deal.id}/flow`);
@@ -237,13 +261,30 @@ async function syncPipedrive() {
       try {
         const json = await getJson(url);
         dealFlows[String(deal.id)] = json.data ?? [];
-      } catch {
-        dealFlows[String(deal.id)] = [];
+        flowFetchedAt[String(deal.id)] = now;
+      } catch (error) {
+        console.warn(`  flow do negócio ${deal.id} falhou: ${error.message}`);
+        // Sem marcar fetchedAt: a próxima rodada tenta de novo em vez de
+        // registrar um histórico vazio como se fosse verdade.
+        if (!(String(deal.id) in dealFlows)) dealFlows[String(deal.id)] = [];
       }
       await new Promise((resolve) => setTimeout(resolve, 40));
     }
+
+    // Negócios que saíram dos funis de interesse não precisam ocupar espaço.
+    const ativos = new Set(funnelDeals.map((deal) => String(deal.id)));
+    for (const id of Object.keys(dealFlows)) {
+      if (!ativos.has(id)) {
+        delete dealFlows[id];
+        delete flowFetchedAt[id];
+      }
+    }
   }
-  await writeJson('pipedrive-deal-flows.json', { pipelineIds: funnelPipelineIds, flows: dealFlows });
+  await writeJson('pipedrive-deal-flows.json', {
+    pipelineIds: funnelPipelineIds,
+    flows: dealFlows,
+    fetchedAt: flowFetchedAt
+  });
 
   return {
     deals: deals.length,

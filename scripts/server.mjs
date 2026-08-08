@@ -91,15 +91,26 @@ const hydrated = await hydrateProcessedData();
 if (!hydrated) await seedDatabaseFromVolume();
 await seedVolume();
 
+// Migrations antes de qualquer coisa ler o banco.
+//
+// Falha aqui NÃO derruba o processo: com restartPolicy ON_FAILURE, sair com
+// código 1 tiraria a plataforma inteira do ar — inclusive o painel comercial que
+// o time usa todo dia — por causa de uma migration financeira quebrada. O
+// resultado vai para o Next como FIN_SCHEMA_OK e só `/financeiro` degrada.
+const { runMigrationsOrDegrade } = await import('./lib/migrate.mjs');
+const schema = await runMigrationsOrDegrade();
+
 const { startScheduler } = await import('./scheduler.mjs');
 startScheduler();
 
 const port = process.env.PORT ?? '3000';
 console.log(`[server] subindo Next na porta ${port} (DATA_DIR=${DATA_DIR})`);
 
+// FIN_SCHEMA_OK precisa entrar no spawn: variável definida depois não alcança o
+// processo filho.
 const next = spawn('npx', ['next', 'start', '--port', port, '--hostname', '0.0.0.0'], {
   stdio: 'inherit',
-  env: process.env
+  env: { ...process.env, FIN_SCHEMA_OK: schema.ok ? '1' : '0' }
 });
 
 // Toda troca de deploy manda SIGTERM. Sair com código diferente de zero aqui faz

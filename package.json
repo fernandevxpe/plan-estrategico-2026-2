@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "predev": "node scripts/db-migrate.mjs --if-configured",
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "db:migrate:status": "node scripts/db-migrate.mjs --status",
+    "db:backup": "node scripts/db-backup.mjs",
     "build:app": "next build",
     "start": "node scripts/server.mjs",
     "sync": "node scripts/sync-data.mjs",

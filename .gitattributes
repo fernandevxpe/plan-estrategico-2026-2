@@ -1,0 +1,5 @@
+
+# SQL sempre com LF: o checksum das migrations é sobre o conteúdo, e um
+# checkout com autocrlf mudaria o hash de um arquivo idêntico — derrubando o
+# módulo financeiro no boot por deriva inexistente.
+*.sql text eol=lf

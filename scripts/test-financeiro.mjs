@@ -246,7 +246,6 @@ try {
   console.log('\n=== 8. Cobertura de classificação ===');
   // A meta do módulo é >98%. Este piso trava regressão: uma regra futura mal
   // ordenada que derrube a cobertura falha o teste em vez de passar despercebida.
-  const cobertura = (classif.classificado / classif.total) * 100;
   if (cobertura >= 90) {
     passes += 1;
     console.log(`  ✓ cobertura da receita acima de 90%: ${cobertura.toFixed(1)}%`);

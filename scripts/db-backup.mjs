@@ -37,16 +37,27 @@ const TABLES = [
   'fin_account',
   'fin_category',
   'fin_counterparty',
+  'fin_counterparty_alias',
   'fin_payee_account',
   'fin_contract',
   'fin_reserve',
+  'fin_rule',
   'fin_import_batch',
   'fin_statement_coverage',
   'fin_document',
   'fin_fiscal_document',
   'fin_transaction',
   'fin_settlement',
-  'fin_balance_snapshot'
+  'fin_balance_snapshot',
+  // Decisões humanas e trilha de auditoria: é o que NÃO se reconstrói
+  // reimportando o Asaas, e portanto o que mais justifica este backup existir.
+  'fin_classification_event',
+  'fin_review_item',
+  'fin_audit_log',
+  'fin_note',
+  'fin_saved_view',
+  'fin_chart',
+  'fin_reliability_snapshot'
 ];
 
 const KEEP_DAILY = 14; // backups mantidos antes de começar a podar

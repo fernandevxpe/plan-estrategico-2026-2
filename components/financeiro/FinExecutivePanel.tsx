@@ -154,7 +154,7 @@ export function FinExecutivePanel({ dados }: { dados: PainelExecutivo }) {
 
         {/* A tabela existe porque a barra responde "quanto" e o Throughput
             responde "quanto sobra" — e no doc 17 é o segundo que decide. */}
-        <div className="fin-table-wrap">
+        <div className="table-wrap">
           <table className="fin-table">
             <caption className="fin-painel-caption">
               Throughput = Receita − Custos Totalmente Variáveis (doc 17). Sem rateio de custo fixo: rateio serve para

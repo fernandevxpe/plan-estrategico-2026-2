@@ -166,11 +166,16 @@ export async function getPainelReembolsos(): Promise<PainelReembolsos> {
       [ENTITY]
     ),
     query<{ id: number; person_id: number; mes: string; total_cents: number; status: StatusReembolso }>(
+      // Teto no mês corrente, e não só piso: um parcelamento de 12 meses cria
+      // reembolsos até o ano que vem, e sem o teto a coluna "Total" somaria
+      // meses que a matriz não mostra — um total que não fecha com as células
+      // visíveis é um total que mente. O futuro comprometido aparece na coluna
+      // de previsão e na gaveta de parcelamentos, onde é o assunto.
       `SELECT r.id, r.person_id, r.reference_month::text AS mes, r.total_cents, r.status
          FROM fin_reimbursement r JOIN fin_entity e ON e.id = r.entity_id
-        WHERE e.slug = $1 AND r.reference_month >= $2::date
+        WHERE e.slug = $1 AND r.reference_month >= $2::date AND r.reference_month <= $3::date
         ORDER BY r.reference_month`,
-      [ENTITY, mesInicial]
+      [ENTITY, mesInicial, mesAtual]
     ),
     // Só os itens do mês corrente: a gaveta de cada pessoa abre com o mês que
     // está sendo montado. Puxar 12 meses de itens para todos multiplicaria o

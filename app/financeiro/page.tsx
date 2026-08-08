@@ -2,6 +2,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { FinShell } from "@/components/financeiro/FinShell";
 import { FinOverview } from "@/components/financeiro/FinOverview";
 import { getVisaoGeral } from "@/lib/financeiro/queries";
+import { getQualificacao } from "@/lib/financeiro/qualificacao";
 
 export const metadata = {
   title: "Financeiro — XPE"
@@ -18,7 +19,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function FinanceiroPage() {
-  const dados = await getVisaoGeral();
+  const [dados, qualificacao] = await Promise.all([getVisaoGeral(), getQualificacao()]);
 
   return (
     <AppShell>
@@ -30,7 +31,7 @@ export default async function FinanceiroPage() {
         </p>
       </div>
       <FinShell>
-        <FinOverview dados={dados} />
+        <FinOverview dados={dados} qualificacao={qualificacao} />
       </FinShell>
     </AppShell>
   );

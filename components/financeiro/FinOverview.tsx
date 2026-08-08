@@ -1,4 +1,6 @@
 import type { VisaoGeral } from "@/lib/financeiro/queries";
+import type { Qualificacao } from "@/lib/financeiro/qualificacao";
+import { FinQualificationPanel } from "./FinQualificationPanel";
 import { brlCents, brlCompact, dateLabel, pct } from "@/lib/financeiro/format";
 import { FinReliabilityPanel } from "./FinReliabilityPanel";
 import { FinRevenueChart } from "./FinRevenueChart";
@@ -10,7 +12,7 @@ import { FinRevenueChart } from "./FinRevenueChart";
  * manhã: posso confiar nisto? quanto tenho? quanto entrou? quem me deve? de onde
  * vem o dinheiro? do que dependo?
  */
-export function FinOverview({ dados }: { dados: VisaoGeral }) {
+export function FinOverview({ dados, qualificacao }: { dados: VisaoGeral; qualificacao?: Qualificacao }) {
   if (!dados.disponivel) {
     return (
       <section className="card fin-empty">
@@ -39,6 +41,8 @@ export function FinOverview({ dados }: { dados: VisaoGeral }) {
   return (
     <>
       <FinReliabilityPanel {...dados.confiabilidade} />
+
+      {qualificacao ? <FinQualificationPanel dados={qualificacao} /> : null}
 
       {contasSemExtrato.length ? (
         <div className="fin-alert" role="status">

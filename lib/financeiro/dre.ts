@@ -233,7 +233,10 @@ export type Dre = {
   periodo: DrePeriodo;
   periodoAnterior: DrePeriodo;
   opcoesPeriodo: { chave: string; rotulo: string }[];
+  /** As colunas efetivamente renderizadas — encolhe para duas quando há foco. */
   escopos: DreEscopo[];
+  /** Todos os núcleos, para o seletor continuar completo mesmo com foco ativo. */
+  nucleosDisponiveis: DreEscopo[];
   nucleoFoco: string | null;
   itens: DreItem[];
   receitaBrutaCents: number;
@@ -348,6 +351,7 @@ function dreIndisponivel(): Dre {
     periodoAnterior: vazio,
     opcoesPeriodo: [],
     escopos: [],
+    nucleosDisponiveis: [],
     nucleoFoco: null,
     itens: [],
     receitaBrutaCents: 0,
@@ -690,6 +694,7 @@ export async function getDre(opcoes: { periodo?: string; nucleo?: string } = {})
       periodoAnterior: anterior,
       opcoesPeriodo,
       escopos,
+      nucleosDisponiveis: todosEscopos.filter((e) => e.slug !== "global"),
       nucleoFoco,
       itens,
       receitaBrutaCents,

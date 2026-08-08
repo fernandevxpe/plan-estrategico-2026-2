@@ -10965,3 +10965,210 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .fin-preview.vazio { background: var(--surface-2); border-color: var(--line); }
 .fin-preview-titulo { margin: 0 0 3px; font-size: 15px; color: var(--ink); }
 .fin-preview-sub { margin: 0 0 10px; font-size: 12.5px; color: var(--muted); }
+
+/* ── Financeiro: painel executivo ── */
+/* Tudo aqui é APÊNDICE: nenhuma regra acima foi tocada. A hierarquia visual
+   segue a hierarquia da leitura — parágrafo > manchete > gráfico > risco >
+   lacuna — e a cor só aparece onde há mensagem. Cinza é o padrão. */
+
+.fin-painel-leitura { border-left: 4px solid var(--purple); }
+.fin-painel-leitura p { font-size: 14.5px; line-height: 1.72; color: var(--ink); margin: 0 0 12px; max-width: 78ch; }
+.fin-painel-leitura p:last-child { margin-bottom: 0; }
+/* O primeiro parágrafo é o que sobrevive à leitura de 10 segundos. */
+.fin-painel-leitura-abre { font-size: 16px !important; font-weight: 600; }
+
+.fin-painel-destaques { display: grid; grid-template-columns: repeat(auto-fit, minmax(216px, 1fr)); gap: 14px; }
+.fin-painel-destaque {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 18px; box-shadow: var(--shadow); border-top: 3px solid var(--fin-neutral);
+}
+.fin-painel-destaque.melhorando { border-top-color: var(--green); }
+.fin-painel-destaque.piorando { border-top-color: var(--amber); }
+/* Tracejado = o número existe mas a base dele não fecha. */
+.fin-painel-destaque.incerto { border-style: dashed; }
+.fin-painel-destaque-rotulo { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; margin: 0 0 6px; }
+.fin-painel-destaque-valor { font-size: 27px; font-weight: 700; color: var(--ink); margin: 0; font-variant-numeric: tabular-nums; line-height: 1.12; }
+.fin-painel-destaque-comp { font-size: 12px; color: var(--muted); margin: 7px 0 0; line-height: 1.5; }
+
+.fin-painel-seta { font-size: 11px; margin-left: 6px; vertical-align: middle; }
+.fin-painel-seta.melhorando { color: var(--green); }
+.fin-painel-seta.piorando { color: var(--amber); }
+.fin-painel-seta.estavel { color: var(--fin-neutral); }
+
+.fin-painel-grafico { display: flex; flex-direction: column; gap: 14px; }
+.fin-painel-grafico-head h3 { font-size: 18px; line-height: 1.4; margin: 0 0 6px; color: var(--ink); font-weight: 700; max-width: 74ch; }
+.fin-painel-grafico-head p { font-size: 12.5px; color: var(--muted); margin: 0; line-height: 1.55; max-width: 84ch; }
+.fin-painel-caption { caption-side: top; text-align: left; font-size: 12px; color: var(--muted); line-height: 1.5; padding: 4px 0 10px; max-width: 84ch; }
+
+.fin-painel-blocos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.fin-painel-ind { background: var(--surface-2); border-radius: 12px; padding: 14px 16px; border-left: 3px solid var(--fin-neutral); }
+.fin-painel-ind.tendencia-melhorando { border-left-color: var(--green); }
+.fin-painel-ind.tendencia-piorando { border-left-color: var(--amber); }
+.fin-painel-ind-rotulo { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; margin: 0 0 3px; }
+.fin-painel-ind-valor { font-size: 21px; font-weight: 700; color: var(--ink); margin: 0; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.fin-painel-ind-comp { font-size: 12px; color: var(--muted); margin: 4px 0 8px; line-height: 1.5; }
+.fin-painel-ind-veredito { font-size: 13.5px; color: var(--ink); margin: 0; line-height: 1.6; }
+/* A linha de ação é o fim de todo bloco: um indicador que não sugere o que
+   fazer é decoração cara. */
+.fin-painel-acao { font-size: 13px; color: var(--ink); margin: 10px 0 0; padding-top: 9px; border-top: 1px dashed var(--line); line-height: 1.6; }
+.fin-painel-acao strong { color: var(--purple); }
+.fin-painel-flag { display: inline-block; margin-left: 7px; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--amber); background: #fdf6e7; border-radius: 5px; padding: 2px 6px; font-weight: 600; }
+
+.fin-painel-top { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.fin-painel-top li { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: baseline; padding: 6px 8px; border-radius: 7px; font-size: 13px; }
+.fin-painel-top li:nth-child(odd) { background: var(--surface-2); }
+.fin-painel-top-pos { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.fin-painel-top-nome { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fin-painel-top-valor { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.fin-painel-lacunas { border-left: 4px solid var(--amber); }
+.fin-painel-lacunas-abre { font-size: 14px; line-height: 1.7; color: var(--ink); margin: 0 0 14px; max-width: 80ch; }
+.fin-painel-lacunas-lista { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 12px; }
+.fin-painel-lacunas-lista li { font-size: 13.5px; line-height: 1.6; color: var(--muted); max-width: 84ch; }
+.fin-painel-lacunas-lista strong { display: block; color: var(--ink); font-size: 14px; margin-bottom: 2px; }
+.fin-painel-lacunas-flags { font-size: 12.5px; color: var(--muted); margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--line); line-height: 1.55; }
+
+@media (max-width: 720px) {
+  .fin-painel-destaques { grid-template-columns: 1fr 1fr; }
+  .fin-painel-destaque-valor { font-size: 22px; }
+  .fin-painel-grafico-head h3 { font-size: 16px; }
+}
+
+@media print {
+  /* Este painel é apresentado a sócios. Impresso, cada bloco tem de sair
+     inteiro: um veredito partido entre duas páginas perde o sentido. */
+  .fin-painel-grafico, .fin-painel-ind, .fin-painel-destaque, .fin-painel-lacunas-lista li { break-inside: avoid; }
+  .fin-painel-leitura { border-left-width: 2px; }
+}
+
+/* ── Financeiro: painel de qualificação ────────────────────────────────────
+   Cada lacuna é um link para onde a decisão se toma. Indicador que não aponta
+   para o trabalho vira curiosidade.
+   ------------------------------------------------------------------------- */
+.fin-lacunas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.fin-lacuna {
+  display: flex; flex-direction: column; gap: 3px; text-decoration: none;
+  background: var(--surface-2); border-radius: 12px; padding: 13px 15px;
+  border-left: 4px solid var(--purple); transition: background .12s;
+}
+.fin-lacuna:hover { background: #f1ebff; }
+.fin-lacuna.alerta { border-left-color: var(--amber); background: #fdf6e7; }
+.fin-lacuna.alerta:hover { background: #fbefd6; }
+.fin-lacuna-valor { font-size: 20px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.15; }
+.fin-lacuna-rotulo { font-size: 12.5px; color: var(--ink); line-height: 1.4; }
+.fin-lacuna-acao { font-size: 12px; color: var(--purple); font-weight: 600; margin-top: 3px; }
+.fin-subtitulo { font-size: 13px; font-weight: 700; color: var(--ink); margin: 18px 0 8px; }
+
+/* ── Financeiro: DRE e indicadores ─────────────────────────────────────────
+   A DRE não é <table> de propósito: <details> não pode ser <tr>, e forçar
+   display:contents para caber numa grade quebra o widget de abrir/fechar em
+   parte dos navegadores. As colunas alinham por largura fixa em flex — mesmo
+   resultado visual, sem apostar em comportamento indefinido, e imprimível.
+   ------------------------------------------------------------------------- */
+
+/* Aviso de teto: mais forte que .fin-alert porque não é "atenção", é "o número
+   que você está lendo não é o que ele parece". */
+.fin-alert-forte {
+  display: grid; gap: 5px;
+  background: #fdf0ef; border-color: #e9b7b2; border-left-color: #c0392b; color: #7d2a20;
+}
+.fin-alert-forte strong { font-size: 14px; }
+.fin-alert-forte span { font-size: 12.5px; line-height: 1.55; opacity: .9; }
+
+/* --- Seletores de período e núcleo: links, não JavaScript --- */
+.fin-dre-controles { display: flex; flex-wrap: wrap; gap: 16px 26px; margin-bottom: 16px; }
+.fin-filter-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fin-filter-label {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); font-weight: 700; margin-right: 2px;
+}
+.fin-chip {
+  padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--card); color: var(--muted); font-size: 12.5px; font-weight: 600;
+  text-decoration: none; white-space: nowrap;
+}
+.fin-chip:hover { border-color: var(--purple); color: var(--purple); }
+.fin-chip.ativo { background: var(--purple); border-color: var(--purple); color: #fff; }
+
+/* --- A grade da DRE --- */
+.fin-dre-wrap { overflow-x: auto; }
+.fin-dre { min-width: calc(280px + var(--fin-dre-cols, 6) * 140px); }
+.fin-dre-row { display: flex; align-items: baseline; gap: 0; padding: 10px 8px; }
+.fin-dre-label { flex: 1 1 auto; min-width: 280px; display: flex; align-items: baseline; gap: 9px; }
+.fin-dre-cell {
+  flex: 0 0 140px; text-align: right; padding-left: 8px;
+  font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap;
+}
+.fin-dre-nome { display: grid; gap: 2px; min-width: 0; }
+.fin-dre-nome strong { font-size: 13.5px; }
+.fin-dre-nome em { font-style: normal; font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+.fin-dre-head {
+  border-bottom: 1px solid var(--line);
+  font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); font-weight: 700;
+}
+.fin-dre-head .fin-dre-cell { font-size: 11px; }
+
+.fin-dre-grupo { border-bottom: 1px solid #eef3f5; }
+.fin-dre-grupo > summary { cursor: pointer; list-style: none; }
+.fin-dre-grupo > summary::-webkit-details-marker { display: none; }
+.fin-dre-grupo > summary:hover { background: var(--surface-2); }
+/* O caret vive dentro de .fin-dre-label, então a regra de .collapsible (filho
+   direto de summary) não alcança. */
+.fin-dre-grupo[open] > summary .collapsible-caret { transform: rotate(45deg); }
+.fin-dre-grupo[open] > summary { background: var(--surface-2); }
+
+.fin-dre-body { padding: 2px 0 8px; background: #fbfcfd; }
+.fin-dre-item { padding: 7px 8px 7px 30px; font-size: 12.5px; }
+.fin-dre-item .fin-dre-label { min-width: 250px; }
+.fin-dre-item .fin-dre-nome em { font-size: 10.5px; }
+.fin-dre-vazio { margin: 0; padding: 10px 30px 12px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* Subtotal é a linha que alguém procura primeiro; tem de saltar sem gritar. */
+.fin-dre-subtotal { background: var(--surface-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.fin-dre-subtotal .fin-dre-nome strong { font-size: 14px; }
+
+.fin-dre-fora { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.fin-dre-fora > strong { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.fin-dre-fora ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.fin-dre-fora li { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px; flex-wrap: wrap; }
+.fin-dre-fora li > span:first-child { font-weight: 600; min-width: 170px; }
+.fin-dre-fora li em { font-style: normal; color: var(--muted); font-size: 11.5px; flex: 1 1 240px; }
+
+.fin-dre-evolucao-total td, .fin-dre-evolucao-total th { border-top: 2px solid var(--line); font-weight: 700; }
+
+/* --- Cartão de premissa: o número que NÃO é apuração --- */
+.fin-premissa {
+  display: grid; gap: 7px; margin: 0 0 16px;
+  padding: 14px 16px; border-radius: 12px;
+  border: 1px dashed var(--purple); background: #faf8ff; color: #40306b;
+}
+.fin-premissa strong { font-size: 13px; }
+.fin-premissa p { margin: 0; font-size: 12.5px; line-height: 1.6; }
+.fin-premissa code { font-size: 11.5px; }
+
+/* --- Indicadores --- */
+.fin-ind-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 14px; }
+.fin-ind-card { border: 1px solid var(--line); border-radius: 12px; padding: 13px 15px; background: var(--card); }
+.fin-ind-card.alerta { border-color: #e8d4a0; background: #fffdf7; }
+/* Ausência de dado tem aparência PRÓPRIA: sem isso "não medimos" e "vale zero"
+   ficam idênticos, e é assim que uma tela financeira mente sem mentir. */
+.fin-ind-card.indisponivel { background: repeating-linear-gradient(135deg, #fafbfc, #fafbfc 6px, #f2f5f7 6px, #f2f5f7 12px); }
+.fin-ind-card.indisponivel .fin-ind-valor { color: #b6c2c9; }
+.fin-ind-rotulo { margin: 0 0 5px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
+.fin-ind-valor { margin: 0; font-size: 22px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.15; }
+.fin-ind-hint { margin: 7px 0 0; font-size: 11px; color: var(--muted); line-height: 1.45; }
+.fin-ind-indisponivel { margin: 5px 0 0; font-size: 11.5px; font-weight: 600; color: #8a97a0; }
+
+.fin-delta { margin: 5px 0 0; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fin-delta span { font-weight: 400; color: var(--muted); font-size: 11px; }
+.fin-delta.bom { color: var(--green); }
+.fin-delta.ruim { color: #c0392b; }
+.fin-delta.neutro { color: var(--muted); }
+
+@media (max-width: 720px) {
+  .fin-dre-label { min-width: 220px; }
+  .fin-dre-item { padding-left: 18px; }
+  .fin-dre-fora li > span:first-child { min-width: 0; }
+}

@@ -131,11 +131,21 @@ export async function getQualificacao(): Promise<Qualificacao> {
 
       // Saída que aconteceu sem ter sido planejada: é o componente do índice
       // que mede se a empresa sabe o que vai gastar antes de gastar.
+      //
+      // Tarifa bancária fica FORA. São 8.743 lançamentos de centavos que somam
+      // R$ 11 mil no histórico — ninguém planeja tarifa de boleto, e deixá-las
+      // aqui fazia a linha dizer "8.743 saídas não planejadas", número que
+      // afoga a informação real (aluguel, folha, fornecedor) e ensina a ignorar
+      // o painel. Mesma lógica para movimentação financeira neutra.
       query<{ n: number; v: number }>(
         `SELECT count(*)::int AS n, COALESCE(SUM(abs(t.amount_cents)), 0) AS v
-           FROM fin_transaction t JOIN fin_entity e ON e.id = t.entity_id
+           FROM fin_transaction t
+           JOIN fin_entity e ON e.id = t.entity_id
+           LEFT JOIN fin_category c ON c.id = t.category_id
           WHERE e.slug = $1 AND t.amount_cents < 0
             AND t.transfer_status = 'nao' AND NOT t.is_split_parent
+            AND COALESCE(c.toc_class, '') <> 'neutro'
+            AND COALESCE(c.code, '') <> '4.05'
             AND NOT EXISTS (SELECT 1 FROM fin_settlement s WHERE s.transaction_id = t.id)`,
         [ENTITY]
       )

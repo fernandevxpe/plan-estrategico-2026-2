@@ -229,6 +229,35 @@ function variacaoPct(atual: number, anterior: number): number {
   return ((atual - anterior) / Math.abs(anterior)) * 100;
 }
 
+/**
+ * Número em pt-BR dentro das frases.
+ *
+ * `toFixed` produz "7.6", que num texto em português lê-se como sete mil e
+ * seiscentos. Numa frase sobre dias de caixa, é a diferença entre "acabou" e
+ * "está tranquilo".
+ */
+function num(valor: number, casas = 1): string {
+  return valor.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
+}
+
+function inteiro(valor: number): string {
+  return valor.toLocaleString("pt-BR");
+}
+
+/**
+ * A leitura do HHI, derivada e não escrita à mão.
+ *
+ * As faixas são as do Departamento de Justiça americano, que é a referência que
+ * qualquer conselho reconhece. Sem derivar, a frase "carteira pulverizada"
+ * continuaria no ar depois de a empresa ganhar um cliente de 40%.
+ */
+function leituraHhi(hhi: number): { adjetivo: string; frase: string } {
+  if (hhi < 1500) return { adjetivo: "pulverizada", frase: "nenhuma saída isolada derruba o ano" };
+  if (hhi < 2500)
+    return { adjetivo: "moderadamente concentrada", frase: "a saída de um cliente grande já muda o trimestre" };
+  return { adjetivo: "concentrada", frase: "a saída de um único cliente derruba o ano" };
+}
+
 function painelIndisponivel(): PainelExecutivo {
   const vazio: Grafico<never> = { titulo: "", subtitulo: "", dados: [], confiavel: false };
   return {
@@ -621,7 +650,7 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
       rotulo: "Caixa livre",
       formato: "brl",
       valor: saldoLivreCents,
-      comparacao: `${brlCents(saldo30dAtrasCents)} há 30 dias · equivale a ${diasDeEntradaCobertos.toFixed(1)} dias de entrada bruta`,
+      comparacao: `${brlCents(saldo30dAtrasCents)} há 30 dias · equivale a ${num(diasDeEntradaCobertos)} dias de entrada bruta`,
       tendencia: tendenciaDe(saldoCents, saldo30dAtrasCents, { toleranciaPct: 10 }),
       veredito:
         saidaEmTransito12mCents > saldoCents
@@ -646,8 +675,8 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
           ? `As quatro reservas somam ${brlCents(metaReservasCents)} de meta e ${brlCents(reservasSeparadasCents)} de saldo. A empresa opera sem colchão.`
           : `As reservas estão ${pct(pctReservaFinanciada, 0)} constituídas.`,
       acao:
-        pctReservaFinanciada < 5
-          ? `Definir um aporte mensal fixo. Com ${brlCents(entradaMediaDiariaCents)} de entrada média diária, separar um dia de faturamento por mês constrói a reserva de caixa em pouco mais de 4 anos — o que já diz que a meta ou o aporte precisam ser revistos.`
+        pctReservaFinanciada < 5 && entradaMediaDiariaCents > 0
+          ? `Definir um aporte mensal fixo. Separar um dia de faturamento por mês (${brlCents(entradaMediaDiariaCents)}) levaria ${num(metaReservasCents / entradaMediaDiariaCents / 12, 1)} anos para completar a meta — o que já diz que a meta ou o aporte precisam ser revistos, não que basta começar.`
           : null,
       confiavel: true
     };
@@ -847,13 +876,15 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
       rotulo: "Concentração da carteira",
       formato: "pct",
       valor: top10Pct,
-      comparacao: `HHI ${hhi} pontos (abaixo de 1.500 = pulverizado) · maior cliente ${pct(maiorClientePct, 1)}`,
+      comparacao: `HHI ${inteiro(hhi)} pontos (abaixo de 1.500 = pulverizado) · maior cliente ${pct(maiorClientePct, 1)}`,
       tendencia: "estavel",
-      veredito: `Os 10 maiores clientes somam ${pct(top10Pct, 0)} da receita identificada e o maior isolado, ${maiorCliente?.nome ?? "—"}, ${pct(maiorClientePct, 1)}. Com HHI de ${hhi} pontos, a carteira é pulverizada: nenhuma saída isolada derruba o ano.`,
+      veredito: `Os 10 maiores clientes somam ${pct(top10Pct, 0)} da receita identificada e o maior isolado, ${maiorCliente?.nome ?? "—"}, ${pct(maiorClientePct, 1)}. Com HHI de ${inteiro(hhi)} pontos, a carteira é ${leituraHhi(hhi).adjetivo}: ${leituraHhi(hhi).frase}.`,
       acao:
         maiorClientePct > 20
           ? `${maiorCliente?.nome ?? "O maior cliente"} passa de 20% da receita. Um contrato só respondendo por um quinto do faturamento é risco de continuidade, não relacionamento.`
-          : null,
+          : pctSemContraparte > 5
+            ? `Antes de levar esta conclusão ao conselho: ${pct(pctSemContraparte, 1)} da receita (${brlCompact(janelaAtual.sem_contraparte)}) entrou sem cliente identificado e está fora da conta. Se concentrada num só pagador, o maior cliente saltaria para ${pct(((maiorCliente?.total ?? 0) + janelaAtual.sem_contraparte) / (receita12mCents || 1) * 100, 1)} — identificar essa fatia é o que torna o número apresentável.`
+            : "Concentração saudável não é motivo para parar de medir: revisar trimestralmente, porque um contrato grande novo muda o quadro em um mês.",
       confiavel: pctSemContraparte < 15
     };
 
@@ -906,6 +937,11 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
       .filter((f) => f.faixa !== "a vencer")
       .reduce((s, f) => s + (f.abertoCents - f.recuperacaoEsperadaCents), 0);
     const top5VencidoCents = maioresVencidos.reduce((s, d) => s + d.aberto, 0);
+    // O custo de esperar, calculado e não estimado: o que hoje está entre 61 e
+    // 90 dias cruza a fronteira dos 90 no próximo mês, e a curva do módulo o
+    // desconta de 50% para 20%. A diferença é a perda que a inação cria.
+    const faixa61a90 = aging.find((f) => f.faixa === "61 a 90 dias");
+    const custoDeEsperarCents = Math.round((faixa61a90?.abertoCents ?? 0) * (0.5 - 0.2));
 
     const alongou = pmrDiasEmissao !== null && pmrDiasEmissaoAnterior !== null && pmrDiasEmissao - pmrDiasEmissaoAnterior > 3;
     const culpaDoPrazo =
@@ -917,20 +953,20 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
       rotulo: "Prazo médio de recebimento",
       formato: "dias",
       valor: pmrDiasEmissao ?? 0,
-      comparacao: `${pmrDiasEmissaoAnterior !== null ? `${pmrDiasEmissaoAnterior.toFixed(0)} dias nos 12 meses anteriores` : "sem base anterior"} · prazo concedido ${prazoConcedidoDias?.toFixed(0) ?? "—"} dias · atraso do cliente ${atrasoMedioDias?.toFixed(1) ?? "—"} dias`,
+      comparacao: `${pmrDiasEmissaoAnterior !== null ? `${num(pmrDiasEmissaoAnterior, 0)} dias nos 12 meses anteriores` : "sem base anterior"} · prazo concedido ${prazoConcedidoDias !== null ? num(prazoConcedidoDias, 0) : "—"} dias · atraso do cliente ${atrasoMedioDias !== null ? num(atrasoMedioDias) : "—"} dias`,
       tendencia: tendenciaDe(pmrDiasEmissao ?? 0, pmrDiasEmissaoAnterior ?? 0, {
         toleranciaPct: 8,
         maiorEhMelhor: false
       }),
       veredito: alongou
-        ? `Da emissão ao pagamento são ${pmrDiasEmissao!.toFixed(0)} dias, contra ${pmrDiasEmissaoAnterior!.toFixed(0)} no período anterior. ${
+        ? `Da emissão ao pagamento são ${num(pmrDiasEmissao!, 0)} dias, contra ${num(pmrDiasEmissaoAnterior!, 0)} no período anterior. ${
             culpaDoPrazo
-              ? `O alongamento vem do prazo que a própria XPE concede (${prazoConcedidoDiasAnterior!.toFixed(0)} → ${prazoConcedidoDias!.toFixed(0)} dias), não do cliente: ${pct(pctEmDia, 0)} continuam pagando em dia, contra ${pct(pctEmDiaAnterior, 0)} antes.`
+              ? `O alongamento vem do prazo que a própria XPE concede (${num(prazoConcedidoDiasAnterior!, 0)} → ${num(prazoConcedidoDias!, 0)} dias), não do cliente: ${pct(pctEmDia, 0)} continuam pagando em dia, contra ${pct(pctEmDiaAnterior, 0)} antes.`
               : `O cliente está pagando pior: em dia caiu de ${pct(pctEmDiaAnterior, 0)} para ${pct(pctEmDia, 0)}.`
           }`
-        : `Da emissão ao pagamento são ${pmrDiasEmissao?.toFixed(0) ?? "—"} dias e ${pct(pctEmDia, 0)} das cobranças são pagas até o vencimento — ciclo estável.`,
+        : `Da emissão ao pagamento são ${pmrDiasEmissao !== null ? num(pmrDiasEmissao, 0) : "—"} dias e ${pct(pctEmDia, 0)} das cobranças são pagas até o vencimento — ciclo estável.`,
       acao: culpaDoPrazo
-        ? `Cada dia de prazo concedido a mais imobiliza cerca de ${brlCents(Math.round(receita12mCents / 365))} de capital de giro. O alongamento de ${(prazoConcedidoDias! - prazoConcedidoDiasAnterior!).toFixed(0)} dias custa aproximadamente ${brlCompact(Math.round((receita12mCents / 365) * (prazoConcedidoDias! - prazoConcedidoDiasAnterior!)))} parados na carteira — decisão comercial, não financeira.`
+        ? `Cada dia de prazo concedido a mais imobiliza cerca de ${brlCents(Math.round(receita12mCents / 365))} de capital de giro. O alongamento de ${num(prazoConcedidoDias! - prazoConcedidoDiasAnterior!, 0)} dias custa aproximadamente ${brlCompact(Math.round((receita12mCents / 365) * (prazoConcedidoDias! - prazoConcedidoDiasAnterior!)))} parados na carteira — decisão comercial, não financeira.`
         : null,
       confiavel: (cicloAtual?.n ?? 0) > 30
     };
@@ -1038,9 +1074,9 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
         rotulo: "Cobertura de planejamento",
         formato: "pct",
         valor: nDocs ? (nPlanejados / nDocs) * 100 : 0,
-        comparacao: `${nPlanejados} de ${nDocs} documentos registrados antes do caixa`,
+        comparacao: `${inteiro(nPlanejados)} de ${inteiro(nDocs)} documentos registrados antes do caixa`,
         tendencia: "estavel",
-        veredito: `Nenhum dos ${nDocs} documentos foi registrado antes de o dinheiro se mover. Este painel descreve o passado; ele não prova que alguém planejou nada.`,
+        veredito: `${nPlanejados === 0 ? `Nenhum dos ${inteiro(nDocs)} documentos foi` : `Só ${inteiro(nPlanejados)} de ${inteiro(nDocs)} documentos foram`} registrado antes de o dinheiro se mover. Este painel descreve o passado; ele não prova que alguém planejou nada.`,
         acao: "Registrar contas a pagar na data em que se compromete, não na data em que se paga. É o que transforma o fluxo de caixa de retrovisor em previsão.",
         confiavel: true
       }
@@ -1058,7 +1094,7 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
 
     const graficoReceita: Grafico<SerieMes> = {
       titulo: `Receita ${crescimentoPct >= 0 ? "cresceu" : "caiu"} ${pct(Math.abs(crescimentoPct), 0)} em 12 meses, puxada por ${motorDoCrescimento?.nome ?? "—"}`,
-      subtitulo: `Média móvel de 3 meses em roxo. ${ultimoFechado ? `Último mês fechado: ${brlCents(ultimoFechado.receitaCents)}, ${crescimentoUltimoMes >= 0 ? "+" : "−"}${pct(Math.abs(crescimentoUltimoMes), 0)} contra o mesmo mês do ano anterior.` : ""} O mês corrente é parcial e está em cinza.`,
+      subtitulo: `Barras em cinza são o contexto; a linha verde da média móvel de 3 meses é a tendência. ${ultimoFechado ? `Último mês fechado: ${brlCents(ultimoFechado.receitaCents)}, ${crescimentoUltimoMes >= 0 ? "+" : "−"}${pct(Math.abs(crescimentoUltimoMes), 0)} contra o mesmo mês do ano anterior.` : ""} O mês corrente é parcial e aparece mais claro.`,
       dados: serie,
       confiavel: true
     };
@@ -1077,14 +1113,14 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
 
     const graficoAging: Grafico<FaixaAging> = {
       titulo: `${pct(pct90, 0)} do vencido passou de 90 dias — ${brlCents(perdaEsperadaCents)} da carteira em risco de perda`,
-      subtitulo: `${brlCents(vencidoCents)} vencidos em ${vencidoN} cobranças, contra ${brlCents(aging[0].abertoCents)} ainda a vencer. A barra de recuperação esperada aplica a curva do módulo (90% até 30 dias, 20% acima de 90).`,
+      subtitulo: `${brlCents(vencidoCents)} vencidos em ${vencidoN} cobranças. Os ${brlCents(aging[0].abertoCents)} ainda a vencer ficam fora do gráfico de propósito: na mesma escala, esmagariam as quatro faixas de atraso e a única pergunta que este gráfico responde deixaria de ser legível. A recuperação esperada de cada faixa (90% até 30 dias, 20% acima de 90) está no tooltip.`,
       dados: aging,
       confiavel: true
     };
 
     const graficoPareto: Grafico<LinhaPareto> = {
-      titulo: `Carteira pulverizada: os 10 maiores somam ${pct(top10Pct, 0)} da receita e nenhum passa de ${pct(maiorClientePct, 0)}`,
-      subtitulo: `HHI de ${hhi} pontos sobre ${clientesRows.length} clientes identificados nos últimos 12 meses (abaixo de 1.500 é considerado pulverizado). ${pct(pctSemContraparte, 1)} da receita não tem cliente identificado e fica fora deste gráfico.`,
+      titulo: `Carteira ${leituraHhi(hhi).adjetivo}: os 10 maiores somam ${pct(top10Pct, 0)} da receita e nenhum passa de ${pct(maiorClientePct, 1)}`,
+      subtitulo: `HHI de ${inteiro(hhi)} pontos sobre ${inteiro(clientesRows.length)} clientes identificados nos últimos 12 meses (abaixo de 1.500 é considerado pulverizado). ${pct(pctSemContraparte, 1)} da receita não tem cliente identificado e fica fora deste gráfico.`,
       dados: pareto,
       confiavel: pctSemContraparte < 15
     };
@@ -1099,9 +1135,9 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
     const leituraDoMes: string[] = [
       `Nos últimos 12 meses a XPE faturou ${brlCompact(receita12mCents)}, ${crescimentoPct >= 0 ? "acima" : "abaixo"} dos ${brlCompact(receita12mAnteriorCents)} do período anterior (${crescimentoPct >= 0 ? "+" : "−"}${pct(Math.abs(crescimentoPct), 0)}), e o ritmo dos últimos ${ultimos3.length} meses fechados projeta ${brlCompact(runRateCents)} por ano.`,
       `O crescimento veio ${Math.abs(efeitoVolumeCents) >= Math.abs(efeitoTicketCents) ? "principalmente de volume" : "principalmente de ticket"}: ${janelaAtual.n} cobranças contra ${janelaAnterior.n}, ticket médio de ${brlCents(ticketCents)} contra ${brlCents(ticketAnteriorCents)}, com a base de clientes indo de ${janelaAnterior.clientes} para ${janelaAtual.clientes}${motorDoCrescimento ? ` — ${motorDoCrescimento.nome} sozinho responde por ${pct(Math.abs(motorDoCrescimento.pctDoCrescimento), 0)} da variação` : ""}.`,
-      `A carteira é pulverizada (HHI ${hhi}, top 10 em ${pct(top10Pct, 0)}), mas só ${pct(pctMrrSobreRunRate, 0)} da receita está contratada: ${brlCents(mrrContratadoCents)} por mês em ${contratosAtivos} contratos. Os outros ${pct(100 - pctMrrSobreRunRate, 0)} precisam ser vendidos de novo todo ano.`,
-      `Do lado do caixa, ${brlCents(saldoLivreCents)} livres — ${diasDeEntradaCobertos.toFixed(1)} dias de entrada bruta — contra ${brlCents(aging[0].abertoCents)} a vencer e ${brlCents(vencidoCents)} vencidos, dos quais ${pct(pct90, 0)} já passaram de 90 dias.`,
-      `A prioridade da semana é a régua de cobrança: os cinco maiores títulos acima de 90 dias somam ${brlCents(top5VencidoCents)} e, pela curva de recuperação, cada mês parado converte mais ${brlCompact(Math.round(perdaEsperadaCents / 12))} em perda.`,
+      `A carteira é ${leituraHhi(hhi).adjetivo} (HHI ${inteiro(hhi)}, top 10 em ${pct(top10Pct, 0)}), mas só ${pct(pctMrrSobreRunRate, 0)} da receita está contratada: ${brlCents(mrrContratadoCents)} por mês em ${contratosAtivos} contratos. Os outros ${pct(100 - pctMrrSobreRunRate, 0)} precisam ser vendidos de novo todo ano.`,
+      `Do lado do caixa, ${brlCents(saldoLivreCents)} livres — ${num(diasDeEntradaCobertos)} dias de entrada bruta — contra ${brlCents(aging[0].abertoCents)} a vencer e ${brlCents(vencidoCents)} vencidos, dos quais ${pct(pct90, 0)} já passaram de 90 dias.`,
+      `A prioridade da semana é a régua de cobrança: os cinco maiores títulos acima de 90 dias somam ${brlCents(top5VencidoCents)}, e os ${brlCents(faixa61a90?.abertoCents ?? 0)} que hoje estão entre 61 e 90 dias cruzam essa fronteira no próximo mês — ${brlCents(custoDeEsperarCents)} de recuperação esperada que a espera destrói sozinha.`,
       `Este painel ainda não sabe se a empresa dá lucro: ${nContas - nComExtrato} das ${nContas} contas nunca tiveram extrato importado, a despesa registrada em 90 dias é de ${brlCents(despesa90dCents)} — só tarifas — e ${brlCompact(saidaEmTransito12mCents)} saíram do gateway para contas que este banco não enxerga.`
     ];
 
@@ -1117,7 +1153,7 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
       },
       {
         titulo: "Planejamento: zero documentos registrados antes do caixa",
-        detalhe: `Nenhum dos ${nDocs} documentos tem data de planejamento. Toda previsão de fluxo é reconstrução a partir do que já aconteceu, não compromisso registrado — o que impede medir se a empresa cumpre o que planeja.`
+        detalhe: `Nenhum dos ${inteiro(nDocs)} documentos tem data de planejamento. Toda previsão de fluxo é reconstrução a partir do que já aconteceu, não compromisso registrado — o que impede medir se a empresa cumpre o que planeja.`
       },
       {
         titulo: "Throughput: falta o denominador da restrição",

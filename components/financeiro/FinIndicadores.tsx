@@ -96,7 +96,7 @@ export function FinIndicadores({ dados, semDespesa }: { dados: Indicadores; semD
                     <p className={classeDelta(delta.sinal, indicador.melhorQuando)}>
                       {delta.texto} <span>vs. período anterior</span>
                     </p>
-                  ) : (
+                  ) : indicador.serieComparavel === false ? null : (
                     <p className="fin-delta neutro">
                       <span>sem série comparável</span>
                     </p>

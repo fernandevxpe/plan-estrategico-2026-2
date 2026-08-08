@@ -111,6 +111,13 @@ export function FinDre({ dados }: { dados: Dre }) {
           De {periodo.de.split("-").reverse().join("/")} a {periodo.ate.split("-").reverse().join("/")}, por data de
           competência (quando foi ganho), não por data de pagamento. Por isso o total aqui difere do da tela de
           Receitas, que soma por caixa. Clique numa linha para abrir as categorias.
+          {periodo.ate > dados.hoje ? (
+            <>
+              {" "}
+              <b>O período ainda está correndo</b> — a comparação com o anterior é contra uma janela já fechada, e
+              tende a parecer queda até o fim do mês.
+            </>
+          ) : null}
         </p>
 
         <div className="fin-dre-wrap">
@@ -248,7 +255,7 @@ export function FinDre({ dados }: { dados: Dre }) {
 
       <section className="card">
         <h2 className="card-title">Simples Nacional — estimativa do DAS</h2>
-        <div className="fin-premissa" role="note">
+        <div className="fin-dre-premissa" role="note">
           <strong>Este número é premissa, não apuração.</strong>
           <p>
             Alíquota efetiva estimada de <b>{pct(tributos.aliquotaEfetivaPct, 2)}</b> sobre um RBT12 de{" "}

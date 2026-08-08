@@ -17,12 +17,17 @@ import { usePathname } from "next/navigation";
 // clicar, e depois ele não clica na que funciona. "Importar" entra quando a
 // tela de upload de extrato estiver de pé.
 const TABS = [
+  // Painel primeiro: é a tela de abertura de quem decide.
+  { href: "/financeiro/painel", label: "Painel" },
   { href: "/financeiro", label: "Visão geral" },
   { href: "/financeiro/lancamentos", label: "Lançamentos" },
   { href: "/financeiro/receitas", label: "Receitas" },
   { href: "/financeiro/fluxo", label: "Fluxo de caixa" },
   { href: "/financeiro/planejamento", label: "Planejamento" },
+  { href: "/financeiro/contas", label: "Contas" },
+  { href: "/financeiro/reembolsos", label: "Reembolsos" },
   { href: "/financeiro/revisao", label: "Revisão" },
+  { href: "/financeiro/indicadores", label: "Indicadores" },
   { href: "/financeiro/regras", label: "Regras" },
   { href: "/financeiro/importar", label: "Importar" }
 ];

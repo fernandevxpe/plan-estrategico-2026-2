@@ -192,7 +192,12 @@ export function FinExecutivePanel({ dados }: { dados: PainelExecutivo }) {
                       {linha.ctvCents > 0 ? brlCents(linha.ctvCents) : "não registrado"}
                     </td>
                     <td className="num fin-table-money">{brlCents(linha.throughputCents)}</td>
-                    <td className="num fin-table-money">{pct(linha.margemThroughputPct, 1)}</td>
+                    {/* Margem de 100% ao lado de "CTV não registrado" seria lida
+                        como fato. Sem custo no ledger, a resposta honesta é que
+                        o número não existe ainda. */}
+                    <td className={linha.ctvCents > 0 ? "num fin-table-money" : "num fin-table-money fin-zero"}>
+                      {linha.ctvCents > 0 ? pct(linha.margemThroughputPct, 1) : "—"}
+                    </td>
                   </tr>
                 ))}
             </tbody>
@@ -300,8 +305,9 @@ export function FinExecutivePanel({ dados }: { dados: PainelExecutivo }) {
         </ol>
         {naoConfiaveis.length ? (
           <p className="fin-painel-lacunas-flags">
-            Indicadores marcados como dado incompleto nesta tela:{" "}
-            {naoConfiaveis.map((indicador) => indicador.rotulo).join(" · ")}.
+            {`Indicadores marcados como dado incompleto nesta tela: ${naoConfiaveis
+              .map((indicador) => indicador.rotulo)
+              .join(" · ")}.`}
           </p>
         ) : null}
       </section>

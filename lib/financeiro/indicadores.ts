@@ -48,6 +48,13 @@ export type Indicador = {
   alerta: boolean;
   /** Marca o `title` de honestidade: este número muda quando a despesa entrar. */
   dependeDeDespesa: boolean;
+  /**
+   * `false` quando o indicador JÁ É uma comparação (crescimento). Sem isto o
+   * cartão de crescimento imprime "sem série comparável" logo abaixo de um
+   * número que é, ele próprio, a comparação — e o leitor conclui que a tela não
+   * sabe o que está mostrando.
+   */
+  serieComparavel?: boolean;
 };
 
 export type Indicadores = {
@@ -155,11 +162,20 @@ export async function getIndicadores(dre: Dre): Promise<Indicadores> {
 
         // Ticket médio é por DOCUMENTO emitido, não por lançamento: uma cobrança
         // parcelada em 3× é um ticket, não três.
+        //
+        // O `COALESCE(c.dre_line, 'receita_bruta') = 'receita_bruta'` não é
+        // enfeite: sem ele o contador pega também os 12 documentos a receber
+        // classificados como recuperação de despesa (9.02), que a DRE joga em
+        // "não operacional". O cartão diria "100 documentos" ao lado de uma
+        // linha de DRE que diz 99, e quem notasse pararia de confiar nos dois.
         query<{ n_periodo: number; n_anterior: number }>(
           `SELECT count(*) FILTER (WHERE d.competence_date >= $2::date AND d.competence_date <= $3::date)::int AS n_periodo,
                   count(*) FILTER (WHERE d.competence_date >= $4::date AND d.competence_date <= $5::date)::int AS n_anterior
-             FROM fin_document d JOIN fin_entity e ON e.id = d.entity_id
-            WHERE e.slug = $1 AND d.direction = 'receber' AND d.status NOT IN ('cancelado', 'estornado')`,
+             FROM fin_document d
+             JOIN fin_entity e ON e.id = d.entity_id
+             LEFT JOIN fin_category c ON c.id = d.category_id
+            WHERE e.slug = $1 AND d.direction = 'receber' AND d.status NOT IN ('cancelado', 'estornado')
+              AND COALESCE(c.dre_line, 'receita_bruta') = 'receita_bruta'`,
           [ENTITY, periodo.de, periodo.ate, periodoAnterior.de, periodoAnterior.ate]
         ),
 
@@ -327,7 +343,8 @@ export async function getIndicadores(dre: Dre): Promise<Indicadores> {
             hint: `contra ${periodoAnterior.rotulo.toLowerCase()}`,
             indisponivelPor: receitaAnteriorCents ? null : "sem período anterior comparável",
             alerta: false,
-            dependeDeDespesa: false
+            dependeDeDespesa: false,
+            serieComparavel: false
           },
           {
             chave: "ticket",

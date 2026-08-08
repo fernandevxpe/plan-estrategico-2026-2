@@ -21,6 +21,7 @@ const TABS = [
   { href: "/financeiro/lancamentos", label: "Lançamentos" },
   { href: "/financeiro/receitas", label: "Receitas" },
   { href: "/financeiro/fluxo", label: "Fluxo de caixa" },
+  { href: "/financeiro/planejamento", label: "Planejamento" },
   { href: "/financeiro/revisao", label: "Revisão" },
   { href: "/financeiro/importar", label: "Importar" }
 ];

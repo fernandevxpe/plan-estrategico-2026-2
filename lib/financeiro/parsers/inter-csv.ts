@@ -60,6 +60,13 @@ export const interCsvParser: BankParser = {
         .map(({ i }) => i)
         .filter((i) => i !== -1)
     };
+
+    // A coluna de data do Inter chama-se "Data Lançamento" — e o filtro acima
+    // procura "lancamento". Sem esta exclusão, a data entrava na descrição
+    // ("02/03/2026 — Pix enviado: …"), o que além de feio atrapalha a
+    // classificação: a regra passa a ver um número de data no texto que deveria
+    // conter só o nome de quem recebeu.
+    col.texto = col.texto.filter((i) => i !== col.data && i !== col.valor && i !== col.saldo);
     if (!col.texto.length) {
       col.texto = names.map((_, i) => i).filter((i) => i !== col.data && i !== col.valor && i !== col.saldo);
     }

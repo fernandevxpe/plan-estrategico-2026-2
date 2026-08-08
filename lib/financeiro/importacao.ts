@@ -7,6 +7,7 @@ import { query, transaction } from "./db";
 import { detectParser, decodeStatement, parserById } from "./parsers/detect";
 import type { ParsedRow } from "./parsers/types";
 import { dedupeHash, normalizeDescription } from "@/scripts/lib/fin-normalize.mjs";
+import { classify } from "@/scripts/lib/fin-rules.mjs";
 
 /**
  * Importação de extrato bancário.
@@ -530,6 +531,97 @@ export async function confirmarLote(batchId: number, aceitarDivergencia = false)
       [lote.account_id, lote.declared_balance_cents ?? lote.computed_balance_cents]
     );
 
+    // FATO ESTRUTURAL CLASSIFICA NA HORA. Julgamento comercial, não.
+    //
+    // A regra deste módulo é que classificar acontece na fila de revisão, no
+    // desktop, quando der. Mas isso vale para o que exige JULGAMENTO — "este
+    // PIX foi laudo ou obra?". O tipo que o parser carimba (APLICACAO,
+    // RENDIMENTO, TRANSFER) é FATO da fonte, e adiar um fato tem consequência
+    // imediata: as 18 aplicações em caixinha do mês somam R$ 51.895 e
+    // apareceriam como ENTRADA na visão geral até alguém classificá-las à mão.
+    //
+    // Entram as de escopo 'transaction' e 'both' — nunca as de 'document'.
+    //
+    // A distinção não é técnica, é de natureza do dado. Do lado da RECEITA a
+    // descrição de extrato é o nome de quem pagou, e classificar por ali foi o
+    // bug que este módulo cometeu duas vezes; por isso as regras de receita são
+    // 'document'. Do lado da DESPESA quem recebeu É a informação: "RECEITA
+    // FEDERAL" é imposto, e adiar esse fato deixa R$ 13 mil de tributo sem
+    // categoria até alguém olhar.
+    //
+    // As de confiança baixa (PIX para pessoa física, 60) classificam E mandam
+    // para a fila: a categoria é palpite bom, não fato, e errar folha custa a
+    // DRE do mês.
+    const { rows: regras } = await client.query(
+      `SELECT id, name, priority, match_scope, conditions, actions, confidence
+         FROM fin_rule
+        WHERE status = 'ativa' AND match_scope IN ('transaction', 'both')
+        ORDER BY priority, id`
+    );
+
+    const { rows: categorias } = await client.query<{ id: number; code: string }>(
+      `SELECT c.id, c.code FROM fin_category c JOIN fin_entity e ON e.id = c.entity_id WHERE e.slug = $1`,
+      [ENTITY]
+    );
+    const categoriaPorCodigo = new Map(categorias.map((linha) => [linha.code, linha.id]));
+
+    const { rows: novas } = await client.query<{
+      id: number;
+      source_kind: string | null;
+      amount_cents: number;
+      description_norm: string;
+    }>(`SELECT id, source_kind, amount_cents, description_norm FROM fin_transaction WHERE import_batch_id = $1`, [
+      batchId
+    ]);
+
+    let classificados = 0;
+    for (const linha of novas) {
+      const acerto = classify(regras, {
+        scope: "transaction",
+        description_norm: linha.description_norm,
+        source_kind: linha.source_kind,
+        amount_cents: linha.amount_cents,
+        amount_abs: Math.abs(linha.amount_cents),
+        direction: linha.amount_cents >= 0 ? "receber" : "pagar"
+      });
+      if (!acerto) continue;
+
+      const acoes = acerto.actions as { category_code?: string; nucleo?: string; transfer?: boolean };
+      const categoriaId = acoes.category_code ? (categoriaPorCodigo.get(acoes.category_code) ?? null) : null;
+
+      await client.query(
+        `UPDATE fin_transaction
+            SET category_id = $2,
+                nucleo = COALESCE($3, nucleo),
+                transfer_status = CASE WHEN $4::boolean THEN 'em_transito' ELSE transfer_status END,
+                classified_by = 'fato_estrutural',
+                classified_rule_id = $5,
+                classified_reason = $6::jsonb,
+                classified_at = now(),
+                review_status = CASE WHEN $2::bigint IS NULL OR $7::int < 80 THEN 'pendente' ELSE 'ok' END
+          WHERE id = $1`,
+        [
+          linha.id,
+          categoriaId,
+          acoes.nucleo ?? null,
+          acoes.transfer === true,
+          acerto.rule.id,
+          JSON.stringify(acerto.rationale),
+          acerto.confidence
+        ]
+      );
+      // Sai da fila só o que foi classificado com confiança. O que casou com
+      // palpite continua pendente — é para isso que a fila existe.
+      if (categoriaId && (acerto.confidence ?? 0) >= 80) {
+        await client.query(
+          `UPDATE fin_review_item SET status = 'resolvido', resolved_at = now(), resolved_by = 'regra'
+            WHERE target_table = 'fin_transaction' AND target_id = $1`,
+          [linha.id]
+        );
+      }
+      classificados += 1;
+    }
+
     await client.query(
       `UPDATE fin_import_batch SET status = 'confirmado', inserted_count = $2, committed_at = now() WHERE id = $1`,
       [batchId, inseridos]
@@ -541,7 +633,7 @@ export async function confirmarLote(batchId: number, aceitarDivergencia = false)
       [lote.entity_id, batchId, JSON.stringify({ inseridos, arquivo: lote.file_name, conta: lote.conta_slug })]
     );
 
-    return { inseridos, batchId };
+    return { inseridos, classificados, batchId };
   });
 }
 

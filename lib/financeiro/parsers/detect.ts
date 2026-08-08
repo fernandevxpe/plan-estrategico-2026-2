@@ -1,4 +1,6 @@
 import { interCsvParser } from "./inter-csv";
+import { nubankCaixinhasPdfParser } from "./nubank-caixinhas-pdf";
+import { extractPdfText, isPdf } from "./pdf";
 import { nubankCsvParser } from "./nubank-csv";
 import { ofxParser } from "./ofx";
 import type { BankParser } from "./types";
@@ -10,7 +12,7 @@ import type { BankParser } from "./types";
  * ação de 15 segundos em uma de 2 minutos. Ele só corrige a CONTA quando o
  * palpite de conta estiver errado (um OFX serve a Inter e às duas da Caixa).
  */
-export const PARSERS: BankParser[] = [nubankCsvParser, interCsvParser, ofxParser];
+export const PARSERS: BankParser[] = [nubankCsvParser, interCsvParser, ofxParser, nubankCaixinhasPdfParser];
 
 /** Abaixo disso, é mais honesto dizer "não reconheci" que chutar. */
 const THRESHOLD = 0.5;
@@ -35,7 +37,21 @@ export function parserById(id: string): BankParser | null {
  * coincide com windows-1252 em todos os acentos do português.
  */
 export function decodeStatement(buffer: Buffer): string {
+  // PDF primeiro: o extrato de rendimentos do Nubank só existe nesse formato, e
+  // lido como texto ele é lixo binário. A extração usa o CMap do próprio
+  // arquivo, senão os dígitos sairiam deslocados e os VALORES entrariam errados
+  // sem erro nenhum — que é o pior desfecho possível num extrato.
+  if (isPdf(buffer)) {
+    const texto = extractPdfText(buffer);
+    if (texto.length > 50) return texto;
+    throw new Error(
+      "Este PDF não tem texto extraível — provavelmente é um escaneamento. " +
+        "Baixe o extrato pelo app do banco em vez de fotografar o papel."
+    );
+  }
+
   const utf8 = buffer.toString("utf8");
-  if (!utf8.includes("�")) return utf8;
+  if (!utf8.includes("\uFFFD")) return utf8;
   return buffer.toString("latin1");
 }
+

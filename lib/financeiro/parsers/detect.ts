@@ -1,5 +1,6 @@
 import { interCsvParser } from "./inter-csv";
 import { nubankCaixinhasPdfParser } from "./nubank-caixinhas-pdf";
+import { nubankContaPdfParser } from "./nubank-conta-pdf";
 import { extractPdfText, isPdf } from "./pdf";
 import { nubankCsvParser } from "./nubank-csv";
 import { ofxParser } from "./ofx";
@@ -12,7 +13,15 @@ import type { BankParser } from "./types";
  * ação de 15 segundos em uma de 2 minutos. Ele só corrige a CONTA quando o
  * palpite de conta estiver errado (um OFX serve a Inter e às duas da Caixa).
  */
-export const PARSERS: BankParser[] = [nubankCsvParser, interCsvParser, ofxParser, nubankCaixinhasPdfParser];
+export const PARSERS: BankParser[] = [
+  nubankCsvParser,
+  interCsvParser,
+  ofxParser,
+  // Caixinhas antes da conta corrente: os dois são PDF do Nubank, e o de
+  // rendimentos devolve 0 para o outro, então a ordem só documenta a intenção.
+  nubankCaixinhasPdfParser,
+  nubankContaPdfParser
+];
 
 /** Abaixo disso, é mais honesto dizer "não reconheci" que chutar. */
 const THRESHOLD = 0.5;

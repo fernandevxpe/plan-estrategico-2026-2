@@ -449,11 +449,16 @@ export async function confirmarLote(batchId: number, aceitarDivergencia = false)
       [batchId]
     );
 
-    let inseridos = 0;
-    for (const linha of linhas) {
+    // INSERÇÃO EM LOTE.
+    //
+    // A primeira versão fazia um INSERT por linha. O extrato do Nubank tem 815
+    // lançamentos, e com a classificação e a fila davam ~3.200 viagens até um
+    // Postgres remoto: oito minutos, tempo suficiente para o navegador desistir
+    // e o usuário achar que a plataforma travou. Em lotes de 200 são ~5 comandos.
+    const paraInserir = linhas.map((linha) => {
       const raw = linha.raw as ParsedRow;
-      // Linha forçada precisa de um hash diferente do que já existe, senão o
-      // índice único a rejeita — que é justamente o que ela quer contornar.
+      // Linha forçada precisa de hash diferente do que já existe, senão o índice
+      // único a rejeita — que é justamente o que ela quer contornar.
       const hash =
         linha.status === "forcado"
           ? dedupeHash({
@@ -465,17 +470,9 @@ export async function confirmarLote(batchId: number, aceitarDivergencia = false)
             })
           : linha.dedupe_hash;
 
-      const {
-        rows: [criada]
-      } = await client.query(
-        `INSERT INTO fin_transaction (
-           entity_id, account_id, posted_on, amount_cents, description_raw, description_norm,
-           balance_after_cents, source_kind, source, source_id, dedupe_hash,
-           import_batch_id, review_status, created_by
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pendente','ui')
-         ON CONFLICT (account_id, dedupe_version, dedupe_hash) DO NOTHING
-         RETURNING id`,
-        [
+      return {
+        rowId: linha.id,
+        valores: [
           lote.entity_id,
           lote.account_id,
           linha.posted_on,
@@ -484,32 +481,68 @@ export async function confirmarLote(batchId: number, aceitarDivergencia = false)
           normalizeDescription(linha.description_raw ?? ""),
           raw?.balanceAfterCents ?? null,
           raw?.sourceKind ?? null,
-          lote.adapter === "ofx" ? "import_ofx" : "import_csv",
+          lote.adapter.includes("ofx") ? "import_ofx" : lote.adapter.includes("pdf") ? "import_pdf" : "import_csv",
           raw?.sourceId ?? null,
           hash,
           batchId
         ]
+      };
+    });
+
+    const idsCriados = new Map<number, number>();
+    const COLUNAS = 12;
+    const POR_LOTE = 200;
+
+    for (let inicio = 0; inicio < paraInserir.length; inicio += POR_LOTE) {
+      const fatia = paraInserir.slice(inicio, inicio + POR_LOTE);
+      const marcadores = fatia
+        .map((_, i) => `(${Array.from({ length: COLUNAS }, (_, j) => `$${i * COLUNAS + j + 1}`).join(",")},'pendente','ui')`)
+        .join(",");
+
+      const { rows: criadas } = await client.query<{ id: number; dedupe_hash: string }>(
+        `INSERT INTO fin_transaction (
+           entity_id, account_id, posted_on, amount_cents, description_raw, description_norm,
+           balance_after_cents, source_kind, source, source_id, dedupe_hash,
+           import_batch_id, review_status, created_by
+         ) VALUES ${marcadores}
+         ON CONFLICT (account_id, dedupe_version, dedupe_hash) DO NOTHING
+         RETURNING id, dedupe_hash`,
+        fatia.flatMap((item) => item.valores)
       );
 
-      if (criada) {
-        inseridos += 1;
-        await client.query(`UPDATE fin_import_row SET status = 'importado', transaction_id = $2 WHERE id = $1`, [
-          linha.id,
-          criada.id
-        ]);
-        // Vai para a fila de revisão: classificar não acontece na importação.
-        await client.query(
-          `INSERT INTO fin_review_item (entity_id, target_table, target_id, reason, amount_cents)
-           VALUES ($1, 'fin_transaction', $2, 'sem_categoria', $3)
-           ON CONFLICT (target_table, target_id) DO NOTHING`,
-          [lote.entity_id, criada.id, linha.amount_cents]
-        );
-      } else {
-        await client.query(
-          `UPDATE fin_import_row SET status = 'duplicado', message = 'rejeitada pelo índice de duplicidade' WHERE id = $1`,
-          [linha.id]
-        );
+      const porHash = new Map(criadas.map((linha) => [linha.dedupe_hash, linha.id]));
+      for (const item of fatia) {
+        const id = porHash.get(String(item.valores[10]));
+        if (id) idsCriados.set(item.rowId, id);
       }
+    }
+
+    const inseridos = idsCriados.size;
+
+    // Marca de volta as linhas do preview, também em lote.
+    if (idsCriados.size) {
+      const pares = [...idsCriados.entries()];
+      await client.query(
+        `UPDATE fin_import_row r SET status = 'importado', transaction_id = v.tx
+           FROM (SELECT unnest($1::bigint[]) AS row_id, unnest($2::bigint[]) AS tx) v
+          WHERE r.id = v.row_id`,
+        [pares.map(([rowId]) => rowId), pares.map(([, tx]) => tx)]
+      );
+      await client.query(
+        `INSERT INTO fin_review_item (entity_id, target_table, target_id, reason, amount_cents)
+         SELECT $1, 'fin_transaction', t.id, 'sem_categoria', t.amount_cents
+           FROM fin_transaction t WHERE t.id = ANY($2)
+         ON CONFLICT (target_table, target_id) DO NOTHING`,
+        [lote.entity_id, [...idsCriados.values()]]
+      );
+    }
+
+    const naoInseridas = paraInserir.filter((item) => !idsCriados.has(item.rowId)).map((item) => item.rowId);
+    if (naoInseridas.length) {
+      await client.query(
+        `UPDATE fin_import_row SET status = 'duplicado', message = 'rejeitada pelo índice de duplicidade' WHERE id = ANY($1)`,
+        [naoInseridas]
+      );
     }
 
     if (lote.period_start) {
@@ -574,7 +607,22 @@ export async function confirmarLote(batchId: number, aceitarDivergencia = false)
       batchId
     ]);
 
-    let classificados = 0;
+    // CLASSIFICAÇÃO EM LOTE, pelo mesmo motivo.
+    //
+    // A avaliação das regras roda em JS (rápido, em memória); o que era lento
+    // era gravar linha a linha. Agrupa por resultado e emite um UPDATE por
+    // grupo — na prática, uma dezena de comandos em vez de 815.
+    type Decisao = {
+      ids: number[];
+      categoriaId: number | null;
+      nucleo: string | null;
+      transferencia: boolean;
+      regraId: number;
+      razao: string;
+      confianca: number;
+    };
+    const decisoes = new Map<string, Decisao>();
+
     for (const linha of novas) {
       const acerto = classify(regras, {
         scope: "transaction",
@@ -588,7 +636,25 @@ export async function confirmarLote(batchId: number, aceitarDivergencia = false)
 
       const acoes = acerto.actions as { category_code?: string; nucleo?: string; transfer?: boolean };
       const categoriaId = acoes.category_code ? (categoriaPorCodigo.get(acoes.category_code) ?? null) : null;
+      const chave = `${acerto.rule.id}`;
+      const atual = decisoes.get(chave);
+      if (atual) {
+        atual.ids.push(linha.id);
+      } else {
+        decisoes.set(chave, {
+          ids: [linha.id],
+          categoriaId,
+          nucleo: acoes.nucleo ?? null,
+          transferencia: acoes.transfer === true,
+          regraId: acerto.rule.id as number,
+          razao: JSON.stringify(acerto.rationale),
+          confianca: acerto.confidence ?? 0
+        });
+      }
+    }
 
+    let classificados = 0;
+    for (const decisao of decisoes.values()) {
       await client.query(
         `UPDATE fin_transaction
             SET category_id = $2,
@@ -599,27 +665,27 @@ export async function confirmarLote(batchId: number, aceitarDivergencia = false)
                 classified_reason = $6::jsonb,
                 classified_at = now(),
                 review_status = CASE WHEN $2::bigint IS NULL OR $7::int < 80 THEN 'pendente' ELSE 'ok' END
-          WHERE id = $1`,
+          WHERE id = ANY($1)`,
         [
-          linha.id,
-          categoriaId,
-          acoes.nucleo ?? null,
-          acoes.transfer === true,
-          acerto.rule.id,
-          JSON.stringify(acerto.rationale),
-          acerto.confidence
+          decisao.ids,
+          decisao.categoriaId,
+          decisao.nucleo,
+          decisao.transferencia,
+          decisao.regraId,
+          decisao.razao,
+          decisao.confianca
         ]
       );
-      // Sai da fila só o que foi classificado com confiança. O que casou com
-      // palpite continua pendente — é para isso que a fila existe.
-      if (categoriaId && (acerto.confidence ?? 0) >= 80) {
+      // Sai da fila só o que foi classificado com confiança. Palpite continua
+      // pendente — é para isso que a fila existe.
+      if (decisao.categoriaId && decisao.confianca >= 80) {
         await client.query(
           `UPDATE fin_review_item SET status = 'resolvido', resolved_at = now(), resolved_by = 'regra'
-            WHERE target_table = 'fin_transaction' AND target_id = $1`,
-          [linha.id]
+            WHERE target_table = 'fin_transaction' AND target_id = ANY($1)`,
+          [decisao.ids]
         );
       }
-      classificados += 1;
+      classificados += decisao.ids.length;
     }
 
     await client.query(

@@ -313,10 +313,14 @@ try {
        -- Sem estas quatro, acrescentar uma regra e reimportar dava categoria à
        -- cobrança mas deixava review_status='pendente' e a regra vencedora
        -- desatualizada — a fila de revisão nunca encolhia pelo lado do import.
-       review_status      = EXCLUDED.review_status,
+       review_status      = CASE
+         WHEN fin_document.review_status IN ('adiado', 'ignorado') THEN fin_document.review_status
+         WHEN COALESCE(EXCLUDED.category_id, fin_document.category_id) IS NULL THEN 'pendente'
+         WHEN fin_document.classified_by = 'humano' THEN 'ok'
+         ELSE EXCLUDED.review_status END,
        classified_by      = COALESCE(EXCLUDED.classified_by, fin_document.classified_by),
-       classified_rule_id = EXCLUDED.classified_rule_id,
-       classified_reason  = EXCLUDED.classified_reason,
+       classified_rule_id = COALESCE(EXCLUDED.classified_rule_id, fin_document.classified_rule_id),
+       classified_reason  = COALESCE(EXCLUDED.classified_reason, fin_document.classified_reason),
        classified_at      = COALESCE(EXCLUDED.classified_at, fin_document.classified_at),
        updated_at = now()
      RETURNING id, source_id`,
@@ -463,14 +467,23 @@ try {
        -- receita voltaria a contar em dobro.
        transfer_status = CASE WHEN fin_transaction.transfer_status = 'pareado'
                               THEN fin_transaction.transfer_status ELSE EXCLUDED.transfer_status END,
-       classified_by      = EXCLUDED.classified_by,
-       classified_rule_id = EXCLUDED.classified_rule_id,
-       classified_reason  = EXCLUDED.classified_reason,
-       classified_at      = EXCLUDED.classified_at,
-       -- 'resolvido' NÃO é valor válido aqui (pertence a fin_review_item.status),
-       -- então o ramo era morto e quem marcasse um lançamento como 'ignorado' ou
-       -- 'adiado' via a decisão ser desfeita todo sync, para sempre.
-       review_status = CASE WHEN fin_transaction.review_status IN ('adiado', 'ignorado') THEN fin_transaction.review_status ELSE EXCLUDED.review_status END,
+       -- COALESCE: quem classificou continua sendo quem classificou. Sem isto o
+       -- sync apagava 'humano' e a linha passava a dizer que ninguém a
+       -- classificou, enquanto a categoria (travada) era a da pessoa.
+       classified_by      = COALESCE(EXCLUDED.classified_by, fin_transaction.classified_by),
+       classified_rule_id = COALESCE(EXCLUDED.classified_rule_id, fin_transaction.classified_rule_id),
+       classified_reason  = COALESCE(EXCLUDED.classified_reason, fin_transaction.classified_reason),
+       classified_at      = COALESCE(EXCLUDED.classified_at, fin_transaction.classified_at),
+       -- review_status DERIVA da categoria que sobrou, não da que a regra achou
+       -- nesta rodada. As regras de texto não rodam contra o extrato, então
+       -- EXCLUDED vem sempre 'pendente' — atribuir direto devolvia à fila 3 mil
+       -- lançamentos já classificados por herança, toda madrugada.
+       --
+       -- 'adiado' e 'ignorado' são decisões humanas e vencem tudo.
+       review_status = CASE
+         WHEN fin_transaction.review_status IN ('adiado', 'ignorado') THEN fin_transaction.review_status
+         WHEN COALESCE(EXCLUDED.category_id, fin_transaction.category_id) IS NULL THEN 'pendente'
+         ELSE 'ok' END,
        category_id = CASE WHEN 'category_id' = ANY (fin_transaction.human_locked_fields) THEN fin_transaction.category_id ELSE COALESCE(EXCLUDED.category_id, fin_transaction.category_id) END,
        nucleo      = CASE WHEN 'nucleo'      = ANY (fin_transaction.human_locked_fields) THEN fin_transaction.nucleo      ELSE COALESCE(EXCLUDED.nucleo, fin_transaction.nucleo) END,
        updated_at = now()
@@ -549,6 +562,44 @@ try {
   );
   report.liquidacoes = settled;
   report.categorias_herdadas_do_documento = herdadas;
+
+  // -------------------------------------------------------------------------
+  // 5b. Assinaturas → contratos recorrentes
+  // -------------------------------------------------------------------------
+  // As 27 assinaturas ativas somam R$ 9 mil/mês — só ~5% da receita, mas são a
+  // única recorrência que a API conhece, e é delas + dos contratos manuais
+  // (PIAU, na migration 0011) que a camada L2 da previsão de caixa se alimenta.
+  // Upsert pela chave asaas_subscription_id: assinatura cancelada vira contrato
+  // encerrado, nunca é apagada — histórico de recorrência é dado, não lixo.
+  const subscriptions = await readRaw('asaas-subscriptions.json');
+  let contratosAtivos = 0;
+  for (const sub of subscriptions) {
+    const cp = counterpartyByAsaas.get(sub.customer);
+    const ativo = sub.status === 'ACTIVE' && !sub.deleted;
+    if (ativo) contratosAtivos += 1;
+    await client.query(
+      `INSERT INTO fin_contract (
+         entity_id, counterparty_id, name, direction, kind, amount_cents,
+         recurrence, day_of_month, asaas_subscription_id, confidence, status, notes
+       ) VALUES ($1, $2, $3, 'receber', 'assinatura', $4, 'mensal', $5, $6, 'contratado', $7, $8)
+       ON CONFLICT (entity_id, asaas_subscription_id) WHERE asaas_subscription_id IS NOT NULL
+       DO UPDATE SET amount_cents = EXCLUDED.amount_cents,
+                     status = EXCLUDED.status,
+                     day_of_month = EXCLUDED.day_of_month,
+                     updated_at = now()`,
+      [
+        entityId,
+        cp?.id ?? null,
+        (sub.description?.trim() || 'Assinatura Asaas').slice(0, 140),
+        cents(sub.value),
+        sub.nextDueDate ? Number(sub.nextDueDate.slice(8, 10)) : null,
+        sub.id,
+        ativo ? 'ativo' : 'encerrado',
+        null
+      ]
+    );
+  }
+  report.contratos_recorrentes = { assinaturas: subscriptions.length, ativas: contratosAtivos };
 
   // -------------------------------------------------------------------------
   // 6. Histórico da contraparte — o estágio que fecha a maior parte da lacuna

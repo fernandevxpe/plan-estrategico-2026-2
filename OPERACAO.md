@@ -164,3 +164,33 @@ Actions primeiro.
 **Lançamentos da Gestão XPE sumiram.** Não deveriam: gravam em `/data/gestao-xpe/`, que é o
 volume. Se sumirem, alguém apontou a escrita de volta para `process.cwd()` — veja a tabela de
 armadilhas em CONTEXTO.md.
+
+---
+
+## Módulo financeiro
+
+| | |
+|---|---|
+| **Banco** | Postgres do Railway (projeto `xpe-plataforma`, serviço `Postgres`) — via `FINANCE_DATABASE_URL` |
+| **Produção** | rede interna (`postgres.railway.internal`) |
+| **Local** | proxy TCP público (`altaria.proxy.rlwy.net:17642`) — local é só visualizador, o dado mora online |
+| **Fonte** | Asaas (API, 100% da receita) + extratos CSV/OFX por upload (despesa) |
+| **Sync** | 3 etapas no agendador diário (`sync Asaas`, `importação financeira`, `backup do financeiro`), todas `required: false` |
+| **Testes** | `node scripts/test-financeiro.mjs` — afirma números contra a API do Asaas |
+| **Backup** | diário, NDJSON gzipado em `xpe_artifacts` (`fin/backup/<data>/`), 14 retidos; restauração AINDA NÃO testada |
+
+A casa do ledger é DECLARADA (`FINANCE_DATABASE_URL`), nunca herdada de
+`DATABASE_URL` — essa variável tem valor diferente em cada ambiente, e herdá-la
+fez a primeira importação gravar num banco (Supabase antigo) enquanto a tela
+leria de outro. Se a variável sumir, `/financeiro` degrada e mostra o estado de
+indisponibilidade; o resto da plataforma segue de pé.
+
+Comandos úteis:
+
+```bash
+npm run db:migrate:status      # estado das migrations
+node scripts/sync-asaas.mjs    # incremental (45 dias); --full para histórico
+node scripts/import-asaas.mjs  # raw → ledger, idempotente
+node scripts/test-financeiro.mjs
+node scripts/db-backup.mjs
+```

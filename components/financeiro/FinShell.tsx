@@ -13,9 +13,15 @@ import { usePathname } from "next/navigation";
  * As abas não são as rotas do plano inteiro — só as que existem. Aba que leva a
  * tela vazia ensina o usuário a não clicar.
  */
+// Só entram abas cuja página EXISTE. Aba que leva a 404 ensina o usuário a não
+// clicar, e depois ele não clica na que funciona. "Importar" entra quando a
+// tela de upload de extrato estiver de pé.
 const TABS = [
   { href: "/financeiro", label: "Visão geral" },
-  { href: "/financeiro/lancamentos", label: "Lançamentos" }
+  { href: "/financeiro/lancamentos", label: "Lançamentos" },
+  { href: "/financeiro/receitas", label: "Receitas" },
+  { href: "/financeiro/fluxo", label: "Fluxo de caixa" },
+  { href: "/financeiro/revisao", label: "Revisão" }
 ];
 
 export function FinShell({ children }: { children: React.ReactNode }) {

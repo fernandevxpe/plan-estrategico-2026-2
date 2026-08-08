@@ -19,4 +19,9 @@ export function dedupeHash(input: {
   occurrenceIndex?: number;
 }): string;
 
+/**
+ * Converte texto/número monetário em centavos inteiros. Vazio/null → 0.
+ * LANÇA em entrada irreconhecível — quem importa extrato deve tratar o erro
+ * por linha em vez de deixar um 0 silencioso entrar no ledger.
+ */
 export function toCents(value: string | number | null | undefined): number;

@@ -132,24 +132,90 @@ export function dedupeHash({ accountSlug, sourceId, date, amountCents, descripti
   return createHash('sha256').update(basis, 'utf8').digest('hex');
 }
 
-/** Converte "1.234,56", "R$ 1.234,56", 1234.56 ou "-1234.56" em centavos inteiros. */
+/**
+ * Converte "1.234,56", "R$ 1.234,56", 1234.56 ou "-1234.56" em centavos inteiros.
+ *
+ * Endurecida para o que os extratos reais trazem e a versão anterior deixava
+ * passar como zero SILENCIOSO — e um zero silencioso num ledger é pior que uma
+ * importação que falha, porque ninguém procura o que não deu erro:
+ *
+ *   · "-R$ 1.234,56"  — o sinal antes do R$ fazia a âncora `^R\$` falhar;
+ *   · "−1.234,56"     — menos tipográfico U+2212, que o Inter usa em PDF→CSV;
+ *   · "1.234,56-"     — menos ao final, convenção contábil de OFX de banco;
+ *   · "R$ 1.234,56" com NBSP/U+202F no lugar do espaço (copiar/colar de app);
+ *   · "1.500"         — UM separador com TRÊS decimais é milhar (R$ 1.500,00),
+ *                       não R$ 1,50: nenhum banco imprime três casas de centavo.
+ *
+ * Entrada vazia continua 0 (célula vazia é "sem valor", não erro). Qualquer
+ * outra coisa irreconhecível LANÇA em vez de devolver 0.
+ */
 export function toCents(value) {
-  if (value === null || value === undefined || value === '') return 0;
-  if (typeof value === 'number') return Math.round(value * 100);
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error(`valor monetário irreconhecível: ${value}`);
+    return Math.round(value * 100);
+  }
 
-  let text = String(value).trim().replace(/^R\$\s*/i, '').replace(/\s/g, '');
-  const negative = text.startsWith('-') || /\(.*\)/.test(text);
-  text = text.replace(/[()-]/g, '');
+  const original = String(value);
+  // Célula em branco (ou só espaços) é "sem valor", não erro.
+  if (original.trim() === '') return 0;
+  // Espaços (inclusive NBSP e narrow NBSP), menos tipográfico e "R$" em
+  // QUALQUER posição — o sinal pode vir antes do símbolo da moeda. Se depois
+  // disso não sobrar nada ("R$" solto), a validação abaixo lança.
+  let text = original
+    .replace(/\s/g, '')
+    .replace(/−/g, '-')
+    .replace(/R\$/gi, '');
 
-  // Formato brasileiro ("1.234,56") vs internacional ("1,234.56"): decide pelo
-  // separador que aparece por último.
+  let negative = false;
+  if (/^\(.*\)$/.test(text)) {
+    negative = true;
+    text = text.slice(1, -1);
+  }
+  if (text.startsWith('+')) text = text.slice(1);
+  if (text.startsWith('-')) {
+    negative = true;
+    text = text.slice(1);
+  }
+  if (text.endsWith('-')) {
+    negative = true;
+    text = text.slice(0, -1);
+  }
+
+  // Depois de tirar sinal e moeda só podem restar dígitos e separadores. Se
+  // sobrar letra ou símbolo, o campo não é dinheiro — falhar aqui interrompe a
+  // importação em vez de gravar 0 no meio de um extrato.
+  if (!/^[\d.,]+$/.test(text) || !/\d/.test(text)) {
+    throw new Error(`valor monetário irreconhecível: "${original}"`);
+  }
+
   const lastComma = text.lastIndexOf(',');
   const lastDot = text.lastIndexOf('.');
-  if (lastComma > lastDot) text = text.replace(/\./g, '').replace(',', '.');
-  else text = text.replace(/,/g, '');
+
+  if (lastComma !== -1 && lastDot !== -1) {
+    // Dois separadores distintos: o que aparece por último é o decimal
+    // ("1.234,56" brasileiro vs "1,234.56" internacional).
+    if (lastComma > lastDot) text = text.replace(/\./g, '').replace(/,/g, '.');
+    else text = text.replace(/,/g, '');
+  } else if (lastComma !== -1 || lastDot !== -1) {
+    // UM tipo de separador. Ambíguo por natureza; a regra que não erra dinheiro:
+    // três dígitos depois do separador (ou o separador repetido, "1.234.567")
+    // é agrupamento de milhar — banco nenhum imprime três casas de centavo.
+    const sep = lastComma !== -1 ? ',' : '.';
+    const last = lastComma !== -1 ? lastComma : lastDot;
+    const digitsAfter = text.length - last - 1;
+    const occurrences = text.split(sep).length - 1;
+    if (occurrences > 1 || digitsAfter === 3) {
+      text = text.split(sep).join('');
+    } else if (sep === ',') {
+      text = text.replace(',', '.');
+    }
+  }
 
   const parsed = Number(text);
-  if (!Number.isFinite(parsed)) return 0;
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`valor monetário irreconhecível: "${original}"`);
+  }
   const cents = Math.round(parsed * 100);
   return negative ? -cents : cents;
 }

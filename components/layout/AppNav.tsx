@@ -19,6 +19,7 @@ const GROUPS = [
     label: "Para onde vamos",
     links: [
       { href: "/planejamento", label: "Planejamento" },
+      { href: "/financeiro/fluxo", label: "Caixa futuro" },
       { href: "/metas", label: "Plano de ação" },
       { href: "/mix", label: "Serviços" }
     ]

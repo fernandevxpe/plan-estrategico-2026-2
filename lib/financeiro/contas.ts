@@ -308,7 +308,11 @@ export async function getOpcoesContas(): Promise<OpcoesContas> {
       [ENTITY]
     )
   ]);
-  return { categorias, nucleos, contrapartes };
+  return {
+    categorias: categorias.map((c) => ({ code: c.code, name: c.name, kind: c.kind, dreLine: c.dre_line })),
+    nucleos,
+    contrapartes
+  };
 }
 
 // ---------------------------------------------------------------------------

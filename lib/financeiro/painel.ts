@@ -789,7 +789,16 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
     // ── Qualidade da receita ───────────────────────────────────────────────
     const comp = composicao[0] ?? { recorrente: 0, sem_categoria: 0, total: 0 };
     const pctRecorrenteProxy = comp.total ? (comp.recorrente / comp.total) * 100 : 0;
-    const { n: contratosAtivos, total: mrrContratadoCents } = contratos[0] ?? { n: 0, total: 0 };
+    const {
+      n: contratosAtivos,
+      total: mrrContratadoCents,
+      maior: maiorContratoCents,
+      maior_nome: maiorContratoNome
+    } = contratos[0] ?? { n: 0, total: 0, maior: 0, maior_nome: null };
+    // Quanto da recorrência depende de um contrato só. Vem do banco, nunca de um
+    // número escrito à mão: a PIAU pode renegociar amanhã e o painel tem de
+    // acompanhar sem alguém lembrar de editar uma constante.
+    const pctMaiorContrato = mrrContratadoCents ? (maiorContratoCents / mrrContratadoCents) * 100 : 0;
     const pctMrrSobreRunRate = runRateCents ? ((mrrContratadoCents * 12) / runRateCents) * 100 : 0;
 
     const totalIdentificado = clientesRows.reduce((s, c) => s + c.total, 0);
@@ -1005,10 +1014,10 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
         valor: maiorClientePct,
         comparacao: `${maiorCliente?.nome ?? "—"} · ${brlCompact(maiorCliente?.total ?? 0)} em 12 meses`,
         tendencia: maiorClientePct > 20 ? "piorando" : "estavel",
-        veredito: `${maiorCliente?.nome ?? "O maior cliente"} responde por ${pct(maiorClientePct, 1)} da receita identificada e por ${pct(mrrContratadoCents ? (1_500_000 / mrrContratadoCents) * 100 : 0, 0)} da receita contratada mensal — a concentração da carteira é baixa, mas a da RECORRÊNCIA não é.`,
+        veredito: `${maiorCliente?.nome ?? "O maior cliente"} responde por ${pct(maiorClientePct, 1)} da receita identificada. O maior contrato recorrente — ${maiorContratoNome ?? "—"}, ${brlCents(maiorContratoCents)} por mês — vale ${pct(pctMaiorContrato, 0)} de toda a receita contratada: a concentração da carteira é baixa, mas a da RECORRÊNCIA não é.`,
         acao:
-          maiorClientePct > 10
-            ? "A carteira pulverizada esconde uma dependência real: se este contrato cair, cai junto a maior parte da receita previsível. Tratar como risco de continuidade no plano do ano."
+          pctMaiorContrato > 40
+            ? "A carteira pulverizada esconde uma dependência real: se este contrato cair, cai junto a maior parte da receita previsível. Tratar como risco de continuidade no plano do ano, com cláusula de aviso prévio e um substituto em pipeline."
             : null,
         confiavel: pctSemContraparte < 15
       },
@@ -1055,9 +1064,12 @@ export async function getPainelExecutivo(): Promise<PainelExecutivo> {
     };
 
     const graficoNucleo: Grafico<LinhaNucleo> = {
-      titulo: motorDoCrescimento
-        ? `${motorDoCrescimento.nome} explica ${pct(Math.abs(motorDoCrescimento.pctDoCrescimento), 0)} do crescimento, mas ${maiorNucleo.nome} ainda é ${pct(maiorNucleo.pctDoTotal, 0)} da receita`
-        : "Receita por núcleo",
+      titulo:
+        motorDoCrescimento && maiorNucleo
+          ? motorDoCrescimento.slug === maiorNucleo.slug
+            ? `${maiorNucleo.nome} é ${pct(maiorNucleo.pctDoTotal, 0)} da receita e ainda respondeu por ${pct(Math.abs(maiorNucleo.pctDoCrescimento), 0)} do crescimento`
+            : `${motorDoCrescimento.nome} explica ${pct(Math.abs(motorDoCrescimento.pctDoCrescimento), 0)} do crescimento, mas ${maiorNucleo.nome} ainda é ${pct(maiorNucleo.pctDoTotal, 0)} da receita`
+          : "Receita por núcleo",
       subtitulo: `Últimos 12 meses contra os 12 anteriores. ${pct((janelaAtual.sem_nucleo / (receita12mCents || 1)) * 100, 0)} da receita ainda está sem núcleo atribuído.`,
       dados: porNucleo.filter((n) => n.receitaCents > 0),
       confiavel: janelaAtual.sem_nucleo / (receita12mCents || 1) < 0.1

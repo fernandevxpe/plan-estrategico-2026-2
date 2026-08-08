@@ -23,6 +23,7 @@ const TABS = [
   { href: "/financeiro/fluxo", label: "Fluxo de caixa" },
   { href: "/financeiro/planejamento", label: "Planejamento" },
   { href: "/financeiro/revisao", label: "Revisão" },
+  { href: "/financeiro/regras", label: "Regras" },
   { href: "/financeiro/importar", label: "Importar" }
 ];
 

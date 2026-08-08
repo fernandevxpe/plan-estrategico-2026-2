@@ -34,8 +34,12 @@ const ENTITY = "xpe";
  * A definição ÚNICA de "o que entra em cada linha da DRE".
  *
  * Fica numa constante e não copiada em cada consulta de propósito: a DRE do
- * período, a evolução mensal e o RBT12 têm de somar a MESMA coisa. Duas
- * definições que convergem hoje divergem em silêncio na primeira correção.
+ * período, a evolução mensal, o RBT12 e os indicadores de `indicadores.ts` têm
+ * de somar a MESMA coisa. Duas definições que convergem hoje divergem em
+ * silêncio na primeira correção. É exportada por isso — quem precisar de receita
+ * ou despesa por competência usa este CTE, não escreve o seu.
+ *
+ * Espera `$1` = slug da entidade. Quem usa acrescenta o recorte de data.
  *
  * Documento sem categoria vira `receita_bruta` quando é a receber: `direction`
  * já prova que é faturamento, e o que falta é só saber QUAL serviço. Jogar
@@ -47,7 +51,7 @@ const ENTITY = "xpe";
  * NÃO é uma linha da DRE: aparece no rodapé "fora da DRE". Chutar uma linha de
  * despesa para eles seria inventar resultado.
  */
-const FATOS_DRE = `
+export const FATOS_DRE = `
   SELECT COALESCE(c.dre_line,
                   CASE WHEN d.direction = 'receber' THEN 'receita_bruta' ELSE 'nao_classificado' END) AS dre_line,
          c.code AS code,

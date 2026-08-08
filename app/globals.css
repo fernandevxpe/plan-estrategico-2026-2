@@ -10857,3 +10857,111 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .fin-plano-equipe { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
 .fin-plano-equipe div { display: flex; flex-direction: column; }
 .fin-plano-equipe span:last-child { font-size: 12px; color: var(--muted); }
+
+/* ── Financeiro: contas e reembolsos ───────────────────────────────────────
+   Duas telas de ESCRITA, e é isso que muda o desenho em relação às de leitura:
+   o alvo de toque é maior, o formulário é inline (nunca modal — quem registra um
+   pagamento está olhando a lista para não duplicar o que já existe) e o estado
+   vazio de "a pagar" é uma chamada para a ação que falta, não uma frase cinza.
+   ------------------------------------------------------------------------- */
+
+/* Abas internas (a pagar / a receber). Não reusa .fin-tab porque aquelas são
+   navegação de rota e estas trocam conteúdo na mesma página — parecer igual
+   ensinaria que voltar com o botão do navegador funciona da mesma forma. */
+.fin-subtabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.fin-subtab {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  padding: 10px 18px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card); color: var(--muted); font-family: inherit;
+  font-size: 14px; font-weight: 600; cursor: pointer; text-align: left;
+}
+.fin-subtab:hover { border-color: var(--purple); color: var(--ink); }
+.fin-subtab.active { border-color: var(--purple); color: var(--purple); box-shadow: var(--shadow); }
+.fin-subtab em { font-style: normal; font-size: 12px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.fin-contas-acoes { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.fin-contas-acoes .fin-card-hint { margin: 0; }
+
+/* Estado vazio com chamada para ação. Zero pagáveis num banco com 3.350
+   recebíveis não é uma tabela vazia: é metade do fluxo de caixa faltando. */
+.fin-contas-vazio { border-left: 4px solid var(--purple); }
+.fin-contas-vazio .fin-btn-primary { margin-top: 12px; }
+
+/* Blocos por mês de vencimento: o subtotal do mês fica no cabeçalho porque a
+   pergunta real ("quanto sai em agosto?") não deve exigir somar com o olho. */
+.fin-mes-bloco { margin-bottom: 22px; }
+.fin-mes-titulo {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  margin: 0 0 6px; padding: 8px 10px; border-radius: 9px; background: var(--surface-2);
+  font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+}
+.fin-mes-titulo strong { font-size: 15px; color: var(--ink); text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.fin-mes-titulo em { font-style: normal; text-transform: none; letter-spacing: 0; }
+
+.fin-total-geral { margin-top: 4px; }
+.fin-total-geral tfoot th { border-top: 2px solid var(--line); font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+.fin-total-geral tfoot td { border-top: 2px solid var(--line); font-size: 15px; }
+
+/* --- Formulários inline --- */
+.fin-form-novo { border-left: 4px solid var(--purple); }
+.fin-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 14px 0; }
+.fin-field { display: flex; flex-direction: column; gap: 5px; }
+.fin-field > span { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.fin-field .fin-input, .fin-field .fin-select { width: 100%; flex: none; min-width: 0; }
+.fin-field-wide { grid-column: 1 / -1; }
+.fin-field-hint { font-style: normal; font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+.fin-form-acoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+.fin-parcelado { display: flex; gap: 10px; align-items: center; }
+.fin-input-parcelas { width: 80px; flex: none; min-width: 0; }
+.fin-input-valor { width: 110px; flex: none; min-width: 0; text-align: right; }
+
+/* --- Edição inline de uma linha --- */
+.fin-linha-edicao { background: #f7f4ff; }
+.fin-linha-edicao td { vertical-align: middle; }
+.fin-linha-edicao-acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+.fin-btn-mini { padding: 5px 10px; font-size: 12px; }
+.fin-btn-perigo { color: var(--fin-out); border-color: #e8c4bb; }
+.fin-btn-perigo:hover:not(:disabled) { background: #fdf1ee; }
+
+/* --- Reembolsos --- */
+.fin-matrix-reembolso { min-width: 1100px; }
+.fin-matrix-reembolso .fin-matrix-head { min-width: 200px; font-weight: 500; }
+.fin-linha-aberta { background: #f7f4ff; }
+.fin-linha-aberta .fin-matrix-head { background: #f7f4ff; }
+.fin-pessoa-toggle {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0; border: none; background: none;
+  font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink); cursor: pointer; text-align: left;
+}
+.fin-pessoa-toggle:hover { color: var(--purple); }
+/* Previsão em roxo suave: é a única coluna que não aconteceu ainda, e a cor
+   diz isso antes de o cabeçalho ser lido. */
+.fin-previsao { color: var(--fin-contratado); background: #faf8ff; }
+
+.fin-gaveta { border-left: 4px solid var(--purple); }
+.fin-gaveta-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.fin-gaveta-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.fin-sub-titulo { font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 20px 0 6px; font-weight: 600; }
+
+.fin-planos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.fin-plano { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 3px; }
+.fin-plano strong { font-size: 13.5px; color: var(--ink); }
+.fin-plano span { font-size: 13px; color: var(--fin-out); font-weight: 600; font-variant-numeric: tabular-nums; }
+.fin-plano em { font-style: normal; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.fin-previsao-detalhe { font-size: 13.5px; color: var(--ink); margin: 0; line-height: 1.6; font-variant-numeric: tabular-nums; }
+.fin-previsao-detalhe strong { font-size: 16px; color: var(--fin-contratado); }
+
+@media (max-width: 720px) {
+  .fin-form-grid { grid-template-columns: 1fr; }
+  .fin-subtab { flex: 1 1 140px; }
+  .fin-mes-titulo { flex-direction: column; gap: 2px; }
+}
+
+/* ── Financeiro: editor de regras ────────────────────────────────────────── */
+.fin-regra-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 13px; margin-bottom: 6px; }
+.fin-field-wide { grid-column: 1 / -1; }
+.fin-preview { margin-top: 16px; background: #f6f2ff; border: 1px solid #d7c9f5; border-radius: 12px; padding: 13px 15px; }
+.fin-preview.vazio { background: var(--surface-2); border-color: var(--line); }
+.fin-preview-titulo { margin: 0 0 3px; font-size: 15px; color: var(--ink); }
+.fin-preview-sub { margin: 0 0 10px; font-size: 12.5px; color: var(--muted); }

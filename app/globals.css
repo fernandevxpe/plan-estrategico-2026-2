@@ -10192,7 +10192,138 @@ button.linkish {
 }
 
 /* Impressão: relatórios de auditoria saem legíveis em PDF */
+/* ===========================================================================
+   Financeiro — caixa, extrato, conciliação e confiabilidade do dado
+   ===========================================================================
+   Tokens derivados da paleta existente, nunca uma paleta paralela. A distinção
+   semântica número um do módulo é direção do dinheiro (entrou/saiu), então ela
+   fica com verde e vermelho e nada mais pode usar essas duas cores.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --fin-in: var(--green);
+  --fin-out: #c8553d;                /* já existe em mixColors[5]; a paleta não tem vermelho próprio */
+  --fin-contratado: var(--purple);
+  --fin-previsto: #c4b5fd;           /* = chartTheme.purpleSoft */
+  --fin-alert: var(--amber);
+  --fin-neutral: var(--muted);
+}
+
+.fin-shell { display: flex; flex-direction: column; gap: 18px; }
+
+.fin-tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+.fin-tab {
+  padding: 9px 16px; border-radius: 10px 10px 0 0; font-size: 14px; font-weight: 600;
+  color: var(--muted); text-decoration: none; border: 1px solid transparent; border-bottom: none;
+}
+.fin-tab:hover { color: var(--ink); background: var(--surface-2); }
+.fin-tab.active { color: var(--purple); background: var(--card); border-color: var(--line); }
+
+/* --- Índice de Confiabilidade — o placar, sempre no topo --- */
+.fin-reliability { display: flex; flex-direction: column; gap: 16px; }
+.fin-reliability-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+.fin-reliability-hint { color: var(--muted); font-size: 13px; margin: 4px 0 0; max-width: 62ch; }
+.fin-reliability-score { text-align: right; line-height: 1.1; }
+.fin-reliability-score strong { display: block; font-size: 34px; font-weight: 700; color: var(--green); font-variant-numeric: tabular-nums; }
+.fin-reliability-score.baixo strong { color: var(--amber); }
+.fin-reliability-score span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+.fin-reliability-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+.fin-reliability-item { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }
+.fin-reliability-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.fin-reliability-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+.fin-reliability-value { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--amber); }
+.fin-reliability-item.ok .fin-reliability-value { color: var(--green); }
+.fin-reliability-bar { position: relative; height: 7px; border-radius: 99px; background: #dce5e8; margin: 9px 0 7px; overflow: visible; }
+.fin-reliability-bar span { display: block; height: 100%; border-radius: 99px; background: var(--amber); }
+.fin-reliability-item.ok .fin-reliability-bar span { background: var(--green); }
+/* A marca da meta: sem ela o número não tem contra o que ser lido. */
+.fin-reliability-bar em { position: absolute; top: -3px; width: 2px; height: 13px; background: var(--ink); opacity: .45; }
+.fin-reliability-help { font-size: 11.5px; color: var(--muted); margin: 0; line-height: 1.4; }
+.fin-reliability-foot { font-size: 13px; color: var(--ink); margin: 0; padding-top: 12px; border-top: 1px solid var(--line); }
+
+/* --- Alerta de cobertura --- */
+.fin-alert {
+  background: #fdf6e7; border: 1px solid #e8d4a0; border-left: 4px solid var(--amber);
+  border-radius: 12px; padding: 13px 16px; font-size: 13.5px; color: #6b4c12; line-height: 1.55;
+}
+
+/* --- KPIs --- */
+.fin-kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.fin-kpi-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow); }
+.fin-kpi-card.alerta { border-color: #e8d4a0; background: #fffdf7; }
+.fin-kpi-label { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+.fin-kpi-value { font-size: 26px; font-weight: 700; color: var(--ink); margin: 0; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.fin-kpi-hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; line-height: 1.45; }
+
+.fin-two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; }
+.fin-card-hint { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
+
+/* --- Tabelas ---
+   Números tabulares em toda coluna de dinheiro: sem isso as colunas dançam a
+   cada linha e comparar dois valores exige reler. */
+.fin-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.fin-table th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.fin-table th.num, .fin-table td.num { text-align: right; }
+.fin-table td { padding: 9px 10px; border-bottom: 1px solid #eef3f5; vertical-align: top; }
+.fin-table tbody tr:hover { background: var(--surface-2); }
+.fin-table-money { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fin-nowrap { white-space: nowrap; color: var(--muted); }
+.fin-in { color: var(--fin-in); }
+.fin-out { color: var(--fin-out); }
+.fin-empty-row { text-align: center; color: var(--muted); padding: 26px 10px; }
+.fin-row-transfer { opacity: .62; }
+
+.fin-desc { display: block; }
+.fin-desc-sub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.fin-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--purple); background: #f3efff; padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
+.fin-cat { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fin-tag { display: inline-block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--surface-2); border-radius: 5px; padding: 2px 6px; margin-left: 6px; }
+
+.fin-badge-ok { color: var(--green); font-size: 12.5px; }
+.fin-badge-atencao { color: var(--amber); font-size: 12.5px; font-weight: 600; }
+.fin-badge-pendente { font-size: 12px; color: var(--amber); background: #fdf6e7; border-radius: 5px; padding: 2px 7px; }
+
+/* Barra proporcional na coluna de concentração: o olho compara antes de ler. */
+.fin-share { position: relative; display: inline-block; padding: 2px 6px; font-variant-numeric: tabular-nums; }
+.fin-share::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--share, 0%); background: #f3efff; border-radius: 4px; z-index: 0; }
+.fin-share { z-index: 1; }
+
+/* --- "por quê?" — a explicação da classificação --- */
+.fin-why { background: none; border: none; color: var(--purple); font-size: 11.5px; cursor: pointer; text-decoration: underline; padding: 0; }
+.fin-why-popover { margin-top: 6px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.5; }
+.fin-why-popover p { margin: 0 0 4px; }
+.fin-why-popover mark { background: #fff3b0; padding: 0 3px; border-radius: 3px; }
+.fin-why-losers { color: var(--muted); font-size: 11.5px; }
+
+/* --- Filtros --- */
+.fin-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.fin-input, .fin-select { border: 1px solid var(--line); border-radius: 9px; padding: 8px 11px; font-size: 13.5px; background: var(--card); color: var(--ink); font-family: inherit; }
+.fin-input { flex: 1 1 260px; min-width: 200px; }
+.fin-input:focus, .fin-select:focus { outline: 2px solid var(--purple); outline-offset: 1px; }
+.fin-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.fin-filters-summary { font-size: 13px; color: var(--muted); margin: 0 0 10px; font-variant-numeric: tabular-nums; }
+
+/* --- Estado vazio --- */
+.fin-empty { text-align: left; }
+.fin-empty p { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 70ch; }
+.fin-empty code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+.fin-empty-hint { font-size: 13px; }
+
+@media (max-width: 720px) {
+  .fin-kpi-row { grid-template-columns: 1fr 1fr; }
+  .fin-reliability-score { text-align: left; }
+  .fin-filters { flex-direction: column; align-items: stretch; }
+}
+
 @media print {
+  /* DRE e extrato que imprimem mal são DRE e extrato em que ninguém confia. */
+  .fin-tabs, .fin-filters, .fin-why { display: none !important; }
+  .fin-table { font-size: 10.5px; }
+  .fin-table tbody tr { break-inside: avoid; }
+  .fin-reliability, .fin-kpi-card { break-inside: avoid; }
+  .fin-two-col { display: block; }
+
   .topbar, .skip-link, .audits-toc, .audits-timeline, .ci-periods, .ci-seg, .nav { display: none !important; }
   .audits-layout { grid-template-columns: 1fr; }
   .audits-body { border: 0; box-shadow: none; padding: 0; }

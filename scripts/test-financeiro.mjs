@@ -6,7 +6,7 @@
 // bate com o que o Asaas diz.
 //
 //   node scripts/test-financeiro.mjs
-import { artifactPool } from './lib/artifact-db.mjs';
+import { financePool } from './lib/artifact-db.mjs';
 import { loadEnv } from './lib/env.mjs';
 import { registerFinanceTypeParsers } from './lib/fin-types.mjs';
 
@@ -40,7 +40,7 @@ function checkNum(nome, atual, esperado) {
   }
 }
 
-const pool = artifactPool();
+const pool = financePool();
 const client = await pool.connect();
 const q = async (sql, params = []) => (await client.query(sql, params)).rows;
 

@@ -13,7 +13,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { artifactPool, databaseUrl } from './artifact-db.mjs';
+import { financeDatabaseUrl, financePool } from './artifact-db.mjs';
 
 const MIGRATIONS_DIR = path.resolve(fileURLToPath(new URL('../../db/migrations', import.meta.url)));
 
@@ -86,7 +86,7 @@ async function readMigrationFiles() {
  * Retorna { pending, applied, drifted } sem tocar em nada.
  */
 export async function migrationStatus() {
-  const pool = artifactPool();
+  const pool = financePool();
   try {
     const client = await pool.connect();
     try {
@@ -122,7 +122,7 @@ export async function migrationStatus() {
  * @param {{ dryRun?: boolean }} [options]
  */
 export async function runMigrations({ dryRun = false } = {}) {
-  const pool = artifactPool();
+  const pool = financePool();
   let client;
   let locked = false;
   try {
@@ -247,7 +247,7 @@ export async function runMigrations({ dryRun = false } = {}) {
  * @returns {Promise<{ ok: boolean, reason?: string }>}
  */
 export async function runMigrationsOrDegrade() {
-  if (!databaseUrl()) {
+  if (!financeDatabaseUrl()) {
     console.warn('[migrate] DATABASE_URL não configurada; o módulo financeiro ficará indisponível');
     return { ok: false, reason: 'sem-banco' };
   }

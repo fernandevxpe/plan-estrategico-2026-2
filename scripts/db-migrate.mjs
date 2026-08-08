@@ -4,7 +4,7 @@
 //   npm run db:migrate:status     mostra o estado sem tocar em nada
 //   node scripts/db-migrate.mjs --dry-run
 //   node scripts/db-migrate.mjs --if-configured   (usado pelo predev)
-import { databaseUrl } from './lib/artifact-db.mjs';
+import { financeDatabaseUrl } from './lib/artifact-db.mjs';
 import { loadEnv } from './lib/env.mjs';
 import { migrationStatus, runMigrations } from './lib/migrate.mjs';
 
@@ -15,7 +15,7 @@ const args = new Set(process.argv.slice(2));
 // `next dev` não passa por scripts/server.mjs, então o predev é o único lugar
 // que garante schema atualizado em desenvolvimento. Mas nem todo mundo que roda
 // o projeto tem banco — aí ele sai quieto em vez de travar o `npm run dev`.
-if (args.has('--if-configured') && !databaseUrl()) {
+if (args.has('--if-configured') && !financeDatabaseUrl()) {
   console.log('[migrate] sem DATABASE_URL; seguindo sem migrations');
   process.exit(0);
 }

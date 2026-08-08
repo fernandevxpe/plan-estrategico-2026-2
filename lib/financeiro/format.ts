@@ -47,10 +47,19 @@ export function brlCompact(cents: number | null | undefined) {
   return brlHeadline.format(value);
 }
 
-/** "2026-08-07" → "07/08/2026". Sem passar por Date: data pura não tem fuso. */
-export function dateLabel(iso: string | null | undefined) {
+/**
+ * "2026-08-07" → "07/08/2026". Sem passar por Date: data pura não tem fuso.
+ *
+ * Aceita `Date` porque colunas `timestamptz` voltam do driver como objeto, não
+ * como string — e um formatador de data que estoura quando recebe uma data é
+ * uma armadilha esperando por quem escrever a próxima consulta. Ainda assim,
+ * a consulta deve converter o fuso no SQL: aqui só resta o horário do servidor,
+ * que em produção é UTC.
+ */
+export function dateLabel(iso: string | Date | null | undefined) {
   if (!iso) return "—";
-  const [year, month, day] = iso.slice(0, 10).split("-");
+  const text = typeof iso === "string" ? iso : iso.toISOString();
+  const [year, month, day] = text.slice(0, 10).split("-");
   return `${day}/${month}/${year}`;
 }
 

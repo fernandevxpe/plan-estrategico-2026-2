@@ -28,17 +28,31 @@ const { Pool } = pg;
 registerFinanceTypeParsers();
 
 /**
- * Preferir a rede privada do Railway; a pública é fallback para rodar scripts da
- * máquina local.
+ * Onde o financeiro mora — declarado, não herdado.
  *
- * A ordem inversa (que `scripts/lib/artifact-db.mjs` usa) era inofensiva lá: um
- * job em lote por dia. Aqui seria TODA renderização de `/financeiro` passando
- * pelo proxy TCP público — cobrado por egresso, mais lento e, com
- * `rejectUnauthorized: false`, mandando folha de pagamento e reembolsos pela
- * internet aberta sem validar certificado.
+ * `FINANCE_DATABASE_URL` vem primeiro de propósito. `DATABASE_URL` tem valores
+ * DIFERENTES em cada ambiente: na máquina local o `.env.local` aponta para um
+ * Postgres, e no Railway a plataforma injeta o dela. Um módulo financeiro que
+ * herda essa variável grava o ledger num banco em desenvolvimento e lê de outro
+ * em produção — sem erro nenhum, só números que não existem.
+ *
+ * Com a variável própria, a casa do ledger é uma decisão escrita. Os scripts
+ * (scripts/lib/artifact-db.mjs) leem a mesma, então importação e tela nunca
+ * divergem.
+ *
+ * Entre as demais, a rede privada vem antes da pública: a ordem inversa era
+ * inofensiva num job em lote diário, mas aqui poria TODA renderização de
+ * `/financeiro` no proxy TCP público — cobrado por egresso e, com
+ * `rejectUnauthorized: false`, mandando folha de pagamento pela internet aberta
+ * sem validar certificado.
  */
 function connectionString(): string | null {
-  return process.env.DATABASE_URL?.trim() || process.env.DATABASE_PUBLIC_URL?.trim() || null;
+  return (
+    process.env.FINANCE_DATABASE_URL?.trim() ||
+    process.env.DATABASE_URL?.trim() ||
+    process.env.DATABASE_PUBLIC_URL?.trim() ||
+    null
+  );
 }
 
 /**

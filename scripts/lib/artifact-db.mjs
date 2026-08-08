@@ -6,6 +6,33 @@ export function databaseUrl() {
   return process.env.DATABASE_PUBLIC_URL?.trim() || process.env.DATABASE_URL?.trim() || null;
 }
 
+/**
+ * Banco do módulo financeiro — declarado, não herdado.
+ *
+ * `DATABASE_URL` tem valor DIFERENTE em cada ambiente: local vem do .env.local,
+ * no Railway a plataforma injeta o dela. Um ledger que herda essa variável grava
+ * em desenvolvimento num banco e lê em produção de outro, sem erro nenhum — só
+ * números que não existem.
+ *
+ * Precisa bater exatamente com lib/financeiro/db.ts, senão a importação e a tela
+ * olham para lugares distintos.
+ */
+export function financeDatabaseUrl() {
+  return process.env.FINANCE_DATABASE_URL?.trim() || databaseUrl();
+}
+
+export function financePool() {
+  const connectionString = financeDatabaseUrl();
+  if (!connectionString) throw new Error('FINANCE_DATABASE_URL/DATABASE_URL não configurada');
+  return new Pool({
+    connectionString,
+    max: 3,
+    connectionTimeoutMillis: 15_000,
+    idleTimeoutMillis: 10_000,
+    ssl: { rejectUnauthorized: false }
+  });
+}
+
 export function artifactPool() {
   const connectionString = databaseUrl();
   if (!connectionString) throw new Error('DATABASE_URL/DATABASE_PUBLIC_URL não configurada');

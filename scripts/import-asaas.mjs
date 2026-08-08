@@ -12,7 +12,7 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-import { artifactPool } from './lib/artifact-db.mjs';
+import { financePool } from './lib/artifact-db.mjs';
 import { loadEnv } from './lib/env.mjs';
 import { registerFinanceTypeParsers } from './lib/fin-types.mjs';
 import { classifiableText, dedupeHash, normalizeDescription, normalizeName } from './lib/fin-normalize.mjs';
@@ -105,7 +105,7 @@ function mapPaymentStatus(status, deleted) {
   }
 }
 
-const pool = artifactPool();
+const pool = financePool();
 const client = await pool.connect();
 const batchId = randomUUID();
 const startedAt = new Date();
@@ -470,7 +470,37 @@ try {
         AND id IN (SELECT transaction_id FROM fin_settlement)`,
     [accountId]
   );
+
+  // A entrada de caixa herda a categoria da cobrança que ela pagou.
+  //
+  // Sem isto, as 3.023 linhas de PAYMENT_RECEIVED ficavam sem categoria: as
+  // regras de texto rodam sobre a descrição comercial da COBRANÇA ("Laudo das
+  // Instalações Elétricas"), enquanto o extrato traz só "Cobrança recebida -
+  // fatura nr. 851190761". O índice de classificação marcava 1% e a tela dizia
+  // que R$ 3,8 milhões estavam sem categoria — quando na verdade estavam
+  // classificados, só que no documento.
+  //
+  // A regra é conceitualmente certa, não um remendo: o dinheiro que entrou
+  // pertence à categoria do serviço que o gerou.
+  const { rowCount: herdadas } = await client.query(
+    `UPDATE fin_transaction t
+        SET category_id = d.category_id,
+            nucleo = COALESCE(t.nucleo, d.nucleo),
+            counterparty_id = COALESCE(t.counterparty_id, d.counterparty_id),
+            classified_by = 'contrato',
+            classified_reason = jsonb_build_object('origem', 'herdado do documento liquidado', 'document_id', d.id),
+            review_status = CASE WHEN d.category_id IS NULL THEN 'pendente' ELSE 'ok' END,
+            updated_at = now()
+       FROM fin_settlement s
+       JOIN fin_document d ON d.id = s.document_id
+      WHERE s.transaction_id = t.id
+        AND t.account_id = $1
+        AND NOT ('category_id' = ANY (t.human_locked_fields))
+        AND d.category_id IS DISTINCT FROM t.category_id`,
+    [accountId]
+  );
   report.liquidacoes = settled;
+  report.categorias_herdadas_do_documento = herdadas;
 
   // -------------------------------------------------------------------------
   // 6. Saldo, cobertura e fila de revisão

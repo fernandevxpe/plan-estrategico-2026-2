@@ -85,6 +85,16 @@ const STEPS = [
   { name: 'inteligência comercial', script: 'scripts/analyze-commercial-intel.mjs', required: true },
   { name: 'snapshot do CRM', script: 'scripts/build-crm-snapshot.mjs', required: true },
   { name: 'índice de auditorias', script: 'scripts/build-audit-index.mjs', required: true },
+  // Financeiro. Todas `required: false` de propósito: uma falha aqui não pode
+  // derrubar o painel comercial que o time usa todo dia. Vira `true` quando o
+  // módulo estiver em uso diário — e essa mudança merece um commit próprio.
+  //
+  // O sync incremental cobre 45 dias; o histórico completo é uma execução
+  // avulsa (`node scripts/sync-asaas.mjs --full`), fora do agendador, porque
+  // leva ~4 min contra o watchdog de 20 por etapa.
+  { name: 'sync Asaas', script: 'scripts/sync-asaas.mjs', required: false },
+  { name: 'importação financeira', script: 'scripts/import-asaas.mjs', required: false },
+  { name: 'backup do financeiro', script: 'scripts/db-backup.mjs', required: false },
   { name: 'persistência PostgreSQL', script: 'scripts/storage-push.mjs', required: true }
 ];
 

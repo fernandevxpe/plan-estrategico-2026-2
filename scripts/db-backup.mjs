@@ -19,7 +19,7 @@
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 
-import { artifactPool, ensureArtifactSchema } from './lib/artifact-db.mjs';
+import { ensureArtifactSchema, financePool } from './lib/artifact-db.mjs';
 import { loadEnv } from './lib/env.mjs';
 
 loadEnv();
@@ -54,7 +54,7 @@ const KEEP_DAILY = 14; // backups mantidos antes de começar a podar
 const startedAt = new Date();
 const stamp = startedAt.toISOString().slice(0, 10);
 
-const pool = artifactPool();
+const pool = financePool();
 const client = await pool.connect();
 
 let totalRows = 0;

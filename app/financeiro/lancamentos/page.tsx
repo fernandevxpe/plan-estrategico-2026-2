@@ -9,12 +9,22 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function LancamentosPage() {
+type Props = { searchParams: Promise<{ semCategoria?: string; conta?: string; busca?: string }> };
+
+export default async function LancamentosPage({ searchParams }: Props) {
+  // O painel de qualificação linka para cá com ?semCategoria=1. Sem ler o
+  // parâmetro, o usuário clicava em "385 lançamentos sem categoria" e caía num
+  // extrato completo — um link que promete filtro e entrega tudo ensina a não
+  // clicar nos outros.
+  const filtros = await searchParams;
   // 500 linhas cobrem com folga os últimos meses e permitem filtrar no cliente
   // sem ida ao servidor a cada tecla. Paginação real entra quando as outras
   // quatro contas começarem a alimentar o ledger.
-  const [lancamentos, filtros] = await Promise.all([
-    getLancamentos({ limite: 500, incluirTransferencias: true }),
+  const [lancamentos, opcoes] = await Promise.all([
+    // Sem transferências na consulta: o LIMIT corria sobre o conjunto COM as
+    // 372 transferências e a tabela as escondia depois, truncando o extrato
+    // útil num ponto arbitrário. Quem quiser vê-las usa o filtro da tela.
+    getLancamentos({ limite: 500 }),
     getFiltrosDisponiveis()
   ]);
 
@@ -28,7 +38,13 @@ export default async function LancamentosPage() {
         </p>
       </div>
       <FinShell>
-        <FinLedgerTable lancamentos={lancamentos} contas={filtros.contas} nucleos={filtros.nucleos} />
+        <FinLedgerTable
+          inicialSemCategoria={filtros.semCategoria === "1"}
+          inicialBusca={filtros.busca ?? ""}
+          lancamentos={lancamentos}
+          contas={opcoes.contas}
+          nucleos={opcoes.nucleos}
+        />
       </FinShell>
     </AppShell>
   );

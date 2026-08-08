@@ -3,6 +3,24 @@ import { NextResponse } from "next/server";
 import { salvarOverride, salvarPremissa } from "@/lib/financeiro/planejamento";
 
 /**
+ * Linhas que a DRE projetada conhece. Sem esta lista, `linha` era texto livre e
+ * um erro de digitação gravava uma sobrescrita para uma linha inexistente com
+ * 200 OK — lixo silencioso que ninguém encontraria depois.
+ */
+const LINHAS_VALIDAS = new Set([
+  "receita",
+  "imposto",
+  "custo_operacional",
+  "custo_vendas",
+  "marketing",
+  "custo_fixo"
+]);
+
+/** Faixa de anos plausível: evita gravar plano para o ano 99999999. */
+const ANO_MIN = 2020;
+const ANO_MAX = 2035;
+
+/**
  * Edição do planejamento.
  *
  * Duas operações porque são duas naturezas diferentes: `premissa` muda a REGRA
@@ -37,6 +55,20 @@ export async function PATCH(request: Request) {
       if (!linha || !Number.isInteger(ano) || !Number.isInteger(mes) || mes < 1 || mes > 12) {
         return NextResponse.json({ error: "ano, mes e linha são obrigatórios" }, { status: 400 });
       }
+      if (ano < ANO_MIN || ano > ANO_MAX) {
+        return NextResponse.json({ error: `ano deve estar entre ${ANO_MIN} e ${ANO_MAX}` }, { status: 422 });
+      }
+      if (!LINHAS_VALIDAS.has(linha)) {
+        return NextResponse.json(
+          { error: `linha desconhecida: ${linha}. Válidas: ${[...LINHAS_VALIDAS].join(", ")}` },
+          { status: 422 }
+        );
+      }
+      // 2^53 centavos ≈ R$ 90 trilhões. Acima disso o número já perdeu precisão
+      // antes de chegar aqui, e gravá-lo é gravar mentira.
+      if (valorCents !== null && Math.abs(valorCents) > Number.MAX_SAFE_INTEGER) {
+        return NextResponse.json({ error: "valor fora da faixa representável" }, { status: 422 });
+      }
       if (valorCents !== null && !Number.isFinite(valorCents)) {
         return NextResponse.json({ error: "valorCents inválido" }, { status: 400 });
       }
@@ -48,7 +80,13 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ error: "tipo deve ser 'premissa' ou 'override'" }, { status: 400 });
   } catch (erro) {
+    const mensagem = (erro as Error).message;
     console.error("[financeiro] edição do planejamento falhou:", erro);
-    return NextResponse.json({ error: (erro as Error).message }, { status: 500 });
+    // "não encontrada" é erro do pedido, não do servidor — e a mensagem interna
+    // não deve vazar para o cliente nos demais casos.
+    if (/não encontrad/i.test(mensagem)) {
+      return NextResponse.json({ error: mensagem }, { status: 404 });
+    }
+    return NextResponse.json({ error: "não consegui salvar a alteração" }, { status: 500 });
   }
 }

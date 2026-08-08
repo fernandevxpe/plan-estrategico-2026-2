@@ -115,6 +115,13 @@ export type PainelContas = {
     vencidoCents: number;
     /** Só o que vence dentro dos próximos 30 dias — a pergunta real do dia 8. */
     proximos30Cents: number;
+    /**
+     * Recebido FORA das contas rastreadas (dinheiro, transferência direta) ou
+     * compensado mas não creditado. É dinheiro reconhecido que ainda não
+     * apareceu no extrato — nem "em aberto" nem "recebido".
+     */
+    confirmadoCents: number;
+    confirmadoN: number;
   };
   /** Quantos pagáveis existem no total, ignorando filtro. Decide o estado vazio. */
   totalPagaveisNoBanco: number;
@@ -126,7 +133,7 @@ function painelIndisponivel(direcao: Direcao): PainelContas {
     disponivel: false,
     direcao,
     grupos: [],
-    totais: { n: 0, totalCents: 0, abertoCents: 0, vencidoCents: 0, proximos30Cents: 0 },
+    totais: { n: 0, totalCents: 0, abertoCents: 0, vencidoCents: 0, proximos30Cents: 0, confirmadoCents: 0, confirmadoN: 0 },
     totalPagaveisNoBanco: 0,
     opcoes: { categorias: [], nucleos: [], contrapartes: [] }
   };
@@ -227,7 +234,19 @@ export async function getContas(filtros: FiltrosContas): Promise<PainelContas> {
   ]);
 
   const grupos = new Map<string, GrupoMes>();
-  const totais = { n: 0, totalCents: 0, abertoCents: 0, vencidoCents: 0, proximos30Cents: 0 };
+  // 'confirmado' é dinheiro RECONHECIDO que ainda não creditou (recebimento
+  // fora do Asaas, cartão D+30). Somá-lo a "em aberto" fazia esta tela mostrar
+  // R$ 631 mil enquanto /financeiro dizia R$ 414 mil e /indicadores R$ 506 mil
+  // — três números para a mesma frase. Aqui ele vira uma linha própria.
+  const totais = {
+    n: 0,
+    totalCents: 0,
+    abertoCents: 0,
+    vencidoCents: 0,
+    proximos30Cents: 0,
+    confirmadoCents: 0,
+    confirmadoN: 0
+  };
 
   const hoje = new Date();
   const limite30 = new Date(hoje.getTime() + 30 * 86_400_000).toISOString().slice(0, 10);
@@ -235,6 +254,10 @@ export async function getContas(filtros: FiltrosContas): Promise<PainelContas> {
 
   for (const linha of linhas) {
     const aberto = Math.max(0, linha.amount_cents - linha.settled_cents);
+    if (linha.status === "confirmado") {
+      totais.confirmadoCents += aberto;
+      totais.confirmadoN += 1;
+    }
     const item: ContaLinha = {
       id: linha.id,
       dueDate: linha.due_date,

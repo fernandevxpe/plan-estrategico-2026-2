@@ -1,7 +1,7 @@
 import type { VisaoGeral } from "@/lib/financeiro/queries";
 import type { Qualificacao } from "@/lib/financeiro/qualificacao";
 import { FinQualificationPanel } from "./FinQualificationPanel";
-import { brlCents, brlCompact, dateLabel, pct } from "@/lib/financeiro/format";
+import { brlCents, brlCompact, brlPrecise, dateLabel, pct } from "@/lib/financeiro/format";
 import { FinReliabilityPanel } from "./FinReliabilityPanel";
 import { FinRevenueChart } from "./FinRevenueChart";
 
@@ -133,7 +133,7 @@ export function FinOverview({ dados, qualificacao }: { dados: VisaoGeral; qualif
                       {conta.name}
                       {conta.kind === "emprestimo" ? <span className="fin-tag">fora do disponível</span> : null}
                     </td>
-                    <td className="num fin-table-money">{brlCents(conta.saldoCents)}</td>
+                    <td className="num fin-table-money">{brlPrecise(conta.saldoCents)}</td>
                     <td>
                       {conta.ultimoExtrato ? (
                         <span className={(conta.diasSemExtrato ?? 0) > 3 ? "fin-badge-atencao" : "fin-badge-ok"}>
@@ -169,7 +169,7 @@ export function FinOverview({ dados, qualificacao }: { dados: VisaoGeral; qualif
                   <tr key={faixa.faixa}>
                     <td>{faixa.faixa} dias</td>
                     <td className="num">{faixa.n}</td>
-                    <td className="num fin-table-money">{brlCents(faixa.totalCents)}</td>
+                    <td className="num fin-table-money">{brlPrecise(faixa.totalCents)}</td>
                   </tr>
                 ))}
                 {!dados.vencido.faixas.length ? (
@@ -206,7 +206,7 @@ export function FinOverview({ dados, qualificacao }: { dados: VisaoGeral; qualif
                       <span className="fin-code">{categoria.code}</span> {categoria.name}
                     </td>
                     <td className="num">{categoria.n.toLocaleString("pt-BR")}</td>
-                    <td className="num fin-table-money">{brlCents(categoria.totalCents)}</td>
+                    <td className="num fin-table-money">{brlPrecise(categoria.totalCents)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -229,7 +229,7 @@ export function FinOverview({ dados, qualificacao }: { dados: VisaoGeral; qualif
                 {dados.concentracao.map((cliente) => (
                   <tr key={cliente.nome}>
                     <td>{cliente.nome}</td>
-                    <td className="num fin-table-money">{brlCents(cliente.totalCents)}</td>
+                    <td className="num fin-table-money">{brlPrecise(cliente.totalCents)}</td>
                     <td className="num">
                       <span
                         className="fin-share"

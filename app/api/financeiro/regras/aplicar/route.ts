@@ -71,11 +71,16 @@ export async function POST(request: Request) {
       if (rowCount) aplicados += 1;
     }
 
-    // Item de fila cuja causa sumiu sai da fila — senão ela só cresce.
+    // Item de fila cuja causa sumiu sai da fila — mas SÓ os documentos que ESTA
+    // regra tocou. Sem amarrar aos ids, qualquer item pendente cujo documento
+    // já estivesse 'ok' por outro motivo sumia junto, e a fila encolhia por
+    // razão errada.
     await client.query(
       `UPDATE fin_review_item ri SET status = 'resolvido', resolved_at = now(), resolved_by = 'regra'
         WHERE ri.target_table = 'fin_document' AND ri.status = 'pendente'
-          AND EXISTS (SELECT 1 FROM fin_document d WHERE d.id = ri.target_id AND d.review_status = 'ok')`
+          AND ri.target_id = ANY($1)
+          AND EXISTS (SELECT 1 FROM fin_document d WHERE d.id = ri.target_id AND d.review_status = 'ok')`,
+      [alvos.map((alvo) => alvo.id)]
     );
 
     await client.query(

@@ -175,7 +175,13 @@ export function FinPayables({ pagar, receber, direcaoInicial }: Props) {
           onClick={() => trocarAba("receber")}
         >
           A receber
-          <em>{brlCents(receber.totais.abertoCents)}</em>
+          <em>{brlCents(receber.totais.abertoCents - receber.totais.confirmadoCents)}</em>
+          {receber.totais.confirmadoN ? (
+            <small className="fin-conta-nota">
+              + {brlCents(receber.totais.confirmadoCents)} em {receber.totais.confirmadoN} cobranças já recebidas fora
+              das contas rastreadas
+            </small>
+          ) : null}
         </button>
       </nav>
 
@@ -213,7 +219,8 @@ export function FinPayables({ pagar, receber, direcaoInicial }: Props) {
         <section className="card fin-empty fin-contas-vazio">
           <h2 className="card-title">Nenhuma conta a pagar registrada</h2>
           <p>
-            O banco tem {receber.totais.n.toLocaleString("pt-BR")} cobranças a receber em aberto e{" "}
+            O banco tem {(receber.totais.n - receber.totais.confirmadoN).toLocaleString("pt-BR")} cobranças a receber
+            em aberto e{" "}
             <strong>zero</strong> pagamentos a fazer. Isso não significa que a empresa não paga nada — significa que
             toda saída de caixa só aparece depois de acontecer, no extrato. Enquanto for assim, a previsão de fluxo é
             um teto, não uma previsão.

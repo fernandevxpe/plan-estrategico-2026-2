@@ -585,10 +585,16 @@ export async function reverterLote(batchId: number) {
       [batchId]
     );
 
-    // Saldo da conta volta a ser o que o ledger sustenta.
+    // Saldo E carimbo de extrato voltam ao que o ledger sustenta.
+    //
+    // Sem recalcular last_statement_at, uma conta com o único lote revertido
+    // continuava anunciando "extrato de 08/08" na tela — contradizendo a
+    // cobertura, que já tinha sido apagada. Reverter tem de apagar tudo que a
+    // importação afirmou, inclusive a afirmação de que existe extrato.
     await client.query(
       `UPDATE fin_account a
-          SET current_balance_cents = COALESCE((SELECT SUM(amount_cents) FROM fin_transaction t WHERE t.account_id = a.id), 0)
+          SET current_balance_cents = COALESCE((SELECT SUM(amount_cents) FROM fin_transaction t WHERE t.account_id = a.id), 0),
+              last_statement_at = (SELECT MAX(c.created_at) FROM fin_statement_coverage c WHERE c.account_id = a.id)
         WHERE a.id = $1`,
       [lote.account_id]
     );

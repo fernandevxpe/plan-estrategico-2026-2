@@ -104,10 +104,19 @@ export async function getVisaoGeral(): Promise<VisaoGeral> {
           // O fuso é convertido no SQL, não na tela: em produção o servidor roda
           // em UTC, e "último extrato" precisa dizer o dia que a pessoa viveu.
           `SELECT a.slug, a.name, a.institution, a.kind, a.current_balance_cents, a.import_adapter,
-                  to_char(a.last_statement_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') AS last_statement_at,
-                  CASE WHEN a.last_statement_at IS NULL THEN NULL
-                       ELSE EXTRACT(DAY FROM now() - a.last_statement_at)::int END AS dias
-             FROM fin_account a JOIN fin_entity e ON e.id = a.entity_id
+                  -- A data vem da COBERTURA DE EXTRATO, não de last_statement_at.
+                  -- São fontes diferentes e discordavam na mesma tela: o KPI
+                  -- dizia "1 de 5 contas" e a tabela mostrava o Nubank com data,
+                  -- porque um lote revertido não zerava last_statement_at.
+                  -- Cobertura é o que o ledger sustenta; o carimbo é intenção.
+                  to_char(sc.ate, 'YYYY-MM-DD') AS last_statement_at,
+                  CASE WHEN sc.ate IS NULL THEN NULL
+                       ELSE (CURRENT_DATE - sc.ate) END AS dias
+             FROM fin_account a
+             JOIN fin_entity e ON e.id = a.entity_id
+             LEFT JOIN LATERAL (
+               SELECT MAX(c.period_end) AS ate FROM fin_statement_coverage c WHERE c.account_id = a.id
+             ) sc ON true
             WHERE e.slug = $1 AND a.is_active ORDER BY a.sort_order`,
           [ENTITY]
         ),
@@ -174,6 +183,13 @@ export async function getVisaoGeral(): Promise<VisaoGeral> {
           [ENTITY]
         ),
 
+        // MESMA JANELA DE 12 MESES das demais telas.
+        //
+        // Sem o recorte, esta tabela somava o histórico inteiro (R$ 3,92 mi)
+        // logo abaixo de um KPI que fala em "média dos últimos 12 meses" — e o
+        // mesmo cliente aparecia valendo 19,9% aqui e 9,9% em /receitas.
+        // Número que discorda entre telas destrói a confiança mais rápido que
+        // número errado, porque não dá para saber qual acreditar.
         query<{ code: string; name: string; total: number; n: number }>(
           `SELECT c.code, c.name, COALESCE(SUM(d.amount_cents), 0) AS total, count(*)::int AS n
              FROM fin_document d
@@ -181,6 +197,7 @@ export async function getVisaoGeral(): Promise<VisaoGeral> {
              JOIN fin_category c ON c.id = d.category_id
             WHERE e.slug = $1 AND d.direction = 'receber' AND c.kind = 'receita'
               AND d.source_status IN ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH')
+              AND d.paid_on >= (date_trunc('month', CURRENT_DATE) - interval '11 months')::date
             GROUP BY 1, 2 ORDER BY 3 DESC`,
           [ENTITY]
         ),
@@ -192,6 +209,7 @@ export async function getVisaoGeral(): Promise<VisaoGeral> {
              JOIN fin_counterparty cp ON cp.id = d.counterparty_id
             WHERE e.slug = $1 AND d.direction = 'receber'
               AND d.source_status IN ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH')
+              AND d.paid_on >= (date_trunc('month', CURRENT_DATE) - interval '11 months')::date
             GROUP BY 1 ORDER BY 2 DESC`,
           [ENTITY]
         ),

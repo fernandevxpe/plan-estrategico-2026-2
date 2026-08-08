@@ -9,6 +9,9 @@ type Props = {
   lancamentos: Lancamento[];
   contas: { slug: string; name: string }[];
   nucleos: { slug: string; name: string }[];
+  /** Vem de ?semCategoria=1 — o link do painel de qualificação. */
+  inicialSemCategoria?: boolean;
+  inicialBusca?: string;
 };
 
 /**
@@ -29,11 +32,11 @@ type Props = {
  *    estava capturando transferências, porque a razão social da empresa contém
  *    "MEDICAO".
  */
-export function FinLedgerTable({ lancamentos, contas, nucleos }: Props) {
-  const [busca, setBusca] = useState("");
+export function FinLedgerTable({ lancamentos, contas, nucleos, inicialSemCategoria = false, inicialBusca = "" }: Props) {
+  const [busca, setBusca] = useState(inicialBusca);
   const [conta, setConta] = useState("");
   const [nucleo, setNucleo] = useState("");
-  const [somenteSemCategoria, setSomenteSemCategoria] = useState(false);
+  const [somenteSemCategoria, setSomenteSemCategoria] = useState(inicialSemCategoria);
   const [mostrarTransferencias, setMostrarTransferencias] = useState(false);
   const [porQueAberto, setPorQueAberto] = useState<number | null>(null);
 

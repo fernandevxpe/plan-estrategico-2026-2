@@ -21,7 +21,8 @@ const TABS = [
   { href: "/financeiro/lancamentos", label: "Lançamentos" },
   { href: "/financeiro/receitas", label: "Receitas" },
   { href: "/financeiro/fluxo", label: "Fluxo de caixa" },
-  { href: "/financeiro/revisao", label: "Revisão" }
+  { href: "/financeiro/revisao", label: "Revisão" },
+  { href: "/financeiro/importar", label: "Importar" }
 ];
 
 export function FinShell({ children }: { children: React.ReactNode }) {

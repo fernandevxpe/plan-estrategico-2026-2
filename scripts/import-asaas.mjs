@@ -105,6 +105,24 @@ function mapPaymentStatus(status, deleted) {
   }
 }
 
+/**
+ * Qual estágio da cadeia classificou, de verdade.
+ *
+ * Antes era literal — 'regra' nos documentos e 'fato_estrutural' nos
+ * lançamentos. O CHECK em 0002 enumera os oito estágios justamente para que
+ * `WHERE classified_by = 'fato_estrutural'` signifique "veio da fonte, confiável
+ * sem revisão". Carimbar isso num palpite de texto sobre o sobrenome de um
+ * cliente esvazia a distinção.
+ */
+const estagioDe = (hit) => {
+  if (!hit) return null;
+  return hit.rationale.campo === 'source_kind' ? 'fato_estrutural' : 'regra';
+};
+
+/** Regras que estouraram durante o lote — precisam aparecer, não sumir. */
+const regrasQuebradas = new Map();
+const registrarRegraQuebrada = ({ rule_id, name, erro }) => regrasQuebradas.set(rule_id, { name, erro });
+
 const pool = financePool();
 const client = await pool.connect();
 const batchId = randomUUID();
@@ -112,9 +130,23 @@ const startedAt = new Date();
 const report = {};
 
 try {
-  // O UPSERT do sync respeita human_locked_fields; o gatilho é a rede de
-  // segurança para a coluna que alguém esquecer de tratar no SQL.
-  await client.query("SELECT set_config('fin.sync_mode', 'on', false)");
+  // TUDO numa transação só.
+  //
+  // São seis fases dependentes. Sem transação, uma falha na quinta deixava
+  // contrapartes, 3.350 documentos, 3.483 notas e 12.181 lançamentos já
+  // gravados, sem snapshot de saldo, sem cobertura de extrato e sem registro em
+  // auditoria — um estado que ninguém projetou. Com 22 mil linhas em 65
+  // segundos, e sendo o único processo que escreve nestas tabelas, o custo de
+  // envolver é irrelevante perto disso.
+  await client.query('BEGIN');
+
+  // `true` = escopo de TRANSAÇÃO, não de sessão.
+  //
+  // Com escopo de sessão, um SIGTERM do watchdog devolveria ao pool uma conexão
+  // com fin.sync_mode ligado — e a próxima requisição da tela teria o gatilho
+  // fin_preserve_human_locks ativo, revertendo em silêncio a edição de um humano
+  // e reportando sucesso. É a pior falha possível desse gatilho.
+  await client.query("SELECT set_config('fin.sync_mode', 'on', true)");
 
   const { rows: ctx } = await client.query(
     `SELECT e.id AS entity_id, a.id AS account_id
@@ -210,7 +242,7 @@ try {
       direction: 'receber',
       day_of_month: payment.dueDate ? Number(payment.dueDate.slice(8, 10)) : null
     };
-    const hit = classify(rules, subject);
+    const hit = classify(rules, subject, { onRuleError: registrarRegraQuebrada });
     const actions = hit?.actions ?? {};
     const categoryId = actions.category_code ? categoryByCode.get(actions.category_code) ?? null : null;
 
@@ -243,7 +275,7 @@ try {
       null,
       payment.invoiceUrl ?? null,
       !categoryId || (hit && hit.confidence < 80) ? 'pendente' : 'ok',
-      hit ? 'regra' : null,
+      estagioDe(hit),
       hit?.rule.id ?? null,
       hit ? JSON.stringify(hit.rationale) : null,
       hit ? startedAt : null
@@ -259,7 +291,7 @@ try {
        installment_group_id, installment_number, installment_total, external_url,
        review_status, classified_by, classified_rule_id, classified_reason, classified_at
      ) VALUES`,
-    `ON CONFLICT (source, source_id) WHERE source_id IS NOT NULL
+    `ON CONFLICT (entity_id, source, source_id) WHERE source_id IS NOT NULL
      DO UPDATE SET
        -- Fatos da fonte: sempre sobrescrevem. Humano nenhum trava um fato.
        source_status = EXCLUDED.source_status,
@@ -270,9 +302,22 @@ try {
        status        = CASE WHEN fin_document.settled_cents <> 0 THEN fin_document.status ELSE EXCLUDED.status END,
        -- Decisões: só quando o humano não travou. O gatilho
        -- fin_preserve_human_locks é a rede para a coluna que alguém esquecer aqui.
-       category_id     = CASE WHEN 'category_id'     = ANY (fin_document.human_locked_fields) THEN fin_document.category_id     ELSE EXCLUDED.category_id END,
-       nucleo          = CASE WHEN 'nucleo'          = ANY (fin_document.human_locked_fields) THEN fin_document.nucleo          ELSE EXCLUDED.nucleo END,
-       counterparty_id = CASE WHEN 'counterparty_id' = ANY (fin_document.human_locked_fields) THEN fin_document.counterparty_id ELSE EXCLUDED.counterparty_id END,
+       -- COALESCE, não atribuição direta: EXCLUDED pode vir NULL legitimamente.
+       -- O cadastro de clientes é SUBSTITUÍDO a cada sync e GET /customers não
+       -- devolve excluídos — 28 cobranças já apontam para um cliente ausente do
+       -- arquivo. Sem o COALESCE, o dia em que a PIAU sumisse do cadastro
+       -- zeraria a contraparte de todas as cobranças históricas dela.
+       category_id     = CASE WHEN 'category_id'     = ANY (fin_document.human_locked_fields) THEN fin_document.category_id     ELSE COALESCE(EXCLUDED.category_id, fin_document.category_id) END,
+       nucleo          = CASE WHEN 'nucleo'          = ANY (fin_document.human_locked_fields) THEN fin_document.nucleo          ELSE COALESCE(EXCLUDED.nucleo, fin_document.nucleo) END,
+       counterparty_id = CASE WHEN 'counterparty_id' = ANY (fin_document.human_locked_fields) THEN fin_document.counterparty_id ELSE COALESCE(EXCLUDED.counterparty_id, fin_document.counterparty_id) END,
+       -- Sem estas quatro, acrescentar uma regra e reimportar dava categoria à
+       -- cobrança mas deixava review_status='pendente' e a regra vencedora
+       -- desatualizada — a fila de revisão nunca encolhia pelo lado do import.
+       review_status      = EXCLUDED.review_status,
+       classified_by      = COALESCE(EXCLUDED.classified_by, fin_document.classified_by),
+       classified_rule_id = EXCLUDED.classified_rule_id,
+       classified_reason  = EXCLUDED.classified_reason,
+       classified_at      = COALESCE(EXCLUDED.classified_at, fin_document.classified_at),
        updated_at = now()
      RETURNING id, source_id`,
     28,
@@ -356,7 +401,7 @@ try {
       direction: cents(tx.value) >= 0 ? 'receber' : 'pagar',
       day_of_month: tx.date ? Number(tx.date.slice(8, 10)) : null
     };
-    const hit = classify(rules, subject);
+    const hit = classify(rules, subject, { onRuleError: registrarRegraQuebrada });
     const actions = hit?.actions ?? {};
     const categoryId = actions.category_code ? categoryByCode.get(actions.category_code) ?? null : null;
 
@@ -391,7 +436,7 @@ try {
       tx.type,
       dedupeHash({ accountSlug: ACCOUNT_SLUG, sourceId: tx.id }),
       !categoryId ? 'pendente' : 'ok',
-      hit ? 'fato_estrutural' : null,
+      estagioDe(hit),
       hit?.rule.id ?? null,
       hit ? JSON.stringify(hit.rationale) : null,
       hit ? startedAt : null
@@ -422,9 +467,12 @@ try {
        classified_rule_id = EXCLUDED.classified_rule_id,
        classified_reason  = EXCLUDED.classified_reason,
        classified_at      = EXCLUDED.classified_at,
-       review_status = CASE WHEN fin_transaction.review_status = 'resolvido' THEN fin_transaction.review_status ELSE EXCLUDED.review_status END,
-       category_id = CASE WHEN 'category_id' = ANY (fin_transaction.human_locked_fields) THEN fin_transaction.category_id ELSE EXCLUDED.category_id END,
-       nucleo      = CASE WHEN 'nucleo'      = ANY (fin_transaction.human_locked_fields) THEN fin_transaction.nucleo      ELSE EXCLUDED.nucleo END,
+       -- 'resolvido' NÃO é valor válido aqui (pertence a fin_review_item.status),
+       -- então o ramo era morto e quem marcasse um lançamento como 'ignorado' ou
+       -- 'adiado' via a decisão ser desfeita todo sync, para sempre.
+       review_status = CASE WHEN fin_transaction.review_status IN ('adiado', 'ignorado') THEN fin_transaction.review_status ELSE EXCLUDED.review_status END,
+       category_id = CASE WHEN 'category_id' = ANY (fin_transaction.human_locked_fields) THEN fin_transaction.category_id ELSE COALESCE(EXCLUDED.category_id, fin_transaction.category_id) END,
+       nucleo      = CASE WHEN 'nucleo'      = ANY (fin_transaction.human_locked_fields) THEN fin_transaction.nucleo      ELSE COALESCE(EXCLUDED.nucleo, fin_transaction.nucleo) END,
        updated_at = now()
      RETURNING id, source_id`,
     20,
@@ -503,7 +551,71 @@ try {
   report.categorias_herdadas_do_documento = herdadas;
 
   // -------------------------------------------------------------------------
-  // 6. Saldo, cobertura e fila de revisão
+  // 6. Histórico da contraparte — o estágio que fecha a maior parte da lacuna
+  // -------------------------------------------------------------------------
+  // Das 850 cobranças sem categoria, 648 (R$ 357 mil) simplesmente NÃO TÊM
+  // descrição no Asaas. Nenhuma regra de texto jamais vai pegá-las — não há
+  // texto.
+  //
+  // Mas o cliente é conhecido. Se as 33 cobranças classificadas da PIAU são
+  // todas 3.06, as 9 sem descrição dela (R$ 85.450) também são. Esse é o sinal
+  // mais forte que existe depois do texto explícito, e é uma consulta, não um
+  // problema de aprendizado de máquina.
+  //
+  // Roda DEPOIS das regras, de propósito: palavra-chave explícita é evidência
+  // mais forte que hábito do cliente. Só entra onde a regra não chegou.
+  //
+  // Dois limiares: 80% de dominância e no mínimo 3 cobranças de base. Abaixo de
+  // 90% a linha vai para a fila mesmo classificada — é sugestão, não certeza.
+  const { rowCount: porHistorico } = await client.query(
+    `WITH hist AS (
+       SELECT d.counterparty_id, d.category_id, d.nucleo, count(*) AS n,
+              count(*)::numeric / SUM(count(*)) OVER (PARTITION BY d.counterparty_id) AS share
+         FROM fin_document d
+        WHERE d.entity_id = $1 AND d.direction = 'receber'
+          AND d.category_id IS NOT NULL AND d.status <> 'cancelado'
+        GROUP BY 1, 2, 3
+     ),
+     top AS (SELECT DISTINCT ON (counterparty_id) * FROM hist ORDER BY counterparty_id, n DESC)
+     UPDATE fin_document d
+        SET category_id = top.category_id,
+            nucleo = COALESCE(d.nucleo, top.nucleo),
+            classified_by = 'historico',
+            classified_at = now(),
+            classified_reason = jsonb_build_object(
+              'estagio', 'historico da contraparte',
+              'dominancia', round(top.share, 3),
+              'base', top.n),
+            review_status = CASE WHEN top.share >= 0.9 THEN 'ok' ELSE 'pendente' END,
+            updated_at = now()
+       FROM top
+      WHERE top.counterparty_id = d.counterparty_id
+        AND d.entity_id = $1 AND d.category_id IS NULL
+        AND top.share >= 0.8 AND top.n >= 3
+        AND NOT ('category_id' = ANY (d.human_locked_fields))`,
+    [entityId]
+  );
+  report.classificadas_por_historico = porHistorico;
+
+  // As entradas de caixa herdam de novo, agora que o histórico preencheu mais
+  // documentos.
+  await client.query(
+    `UPDATE fin_transaction t
+        SET category_id = d.category_id,
+            nucleo = COALESCE(t.nucleo, d.nucleo),
+            classified_by = 'contrato',
+            review_status = 'ok',
+            updated_at = now()
+       FROM fin_settlement s
+       JOIN fin_document d ON d.id = s.document_id
+      WHERE s.transaction_id = t.id AND t.account_id = $1
+        AND d.category_id IS NOT NULL AND t.category_id IS NULL
+        AND NOT ('category_id' = ANY (t.human_locked_fields))`,
+    [accountId]
+  );
+
+  // -------------------------------------------------------------------------
+  // 7. Saldo, cobertura e fila de revisão
   // -------------------------------------------------------------------------
   const account = await readRaw('asaas-account.json');
   const balanceCents = cents(account?.balance?.balance);
@@ -526,7 +638,9 @@ try {
   if (computed[0].first) {
     await client.query(
       `INSERT INTO fin_statement_coverage (account_id, period_start, period_end, source)
-       VALUES ($1, $2, $3, 'api')`,
+       VALUES ($1, $2, $3, 'api')
+       ON CONFLICT (account_id, source, period_start)
+       DO UPDATE SET period_end = GREATEST(fin_statement_coverage.period_end, EXCLUDED.period_end)`,
       [accountId, computed[0].first, computed[0].last]
     );
     await client.query('UPDATE fin_account SET last_statement_at = now(), current_balance_cents = $2 WHERE id = $1', [
@@ -540,7 +654,14 @@ try {
   await client.query(
     `INSERT INTO fin_review_item (entity_id, target_table, target_id, reason, amount_cents)
      SELECT $1, 'fin_document', d.id,
-            CASE WHEN d.category_id IS NULL AND d.description_norm LIKE 'cobranca gerada automaticamente%' THEN 'texto_generico'
+            -- 'texto_generico' precisa incluir a descrição VAZIA: são 648 das
+            -- 850 sem categoria, e é justamente esse grupo que depende do
+            -- histórico da contraparte em vez de regra de texto. Roteá-lo como
+            -- 'sem_categoria' mandava para a fila errada quem mais precisava da
+            -- estratégia certa.
+            CASE WHEN d.category_id IS NULL AND (
+                        d.description_norm IN ('', 'sem descricao')
+                     OR d.description_norm LIKE 'cobranca gerada automaticamente%') THEN 'texto_generico'
                  WHEN d.category_id IS NULL THEN 'sem_categoria'
                  ELSE 'baixa_confianca' END,
             d.amount_cents
@@ -558,6 +679,23 @@ try {
     [entityId]
   );
 
+  // Item cuja causa desapareceu sai da fila. Sem isto ela só crescia: uma regra
+  // nova classificava a cobrança e o item continuava lá, pendente para sempre.
+  await client.query(
+    `UPDATE fin_review_item ri
+        SET status = 'resolvido', resolved_at = now(), resolved_by = 'import'
+      WHERE ri.entity_id = $1 AND ri.status = 'pendente'
+        AND ((ri.target_table = 'fin_document'
+              AND EXISTS (SELECT 1 FROM fin_document d WHERE d.id = ri.target_id AND d.review_status = 'ok'))
+          OR (ri.target_table = 'fin_transaction'
+              AND EXISTS (SELECT 1 FROM fin_transaction t WHERE t.id = ri.target_id AND t.review_status = 'ok')))`,
+    [entityId]
+  );
+
+  if (regrasQuebradas.size) {
+    report.regras_quebradas = [...regrasQuebradas.values()];
+  }
+
   const { rows: fila } = await client.query(
     `SELECT count(*) n, COALESCE(SUM(abs(amount_cents)),0) v FROM fin_review_item WHERE entity_id = $1 AND status = 'pendente'`,
     [entityId]
@@ -573,9 +711,14 @@ try {
     [entityId, JSON.stringify(report), batchId]
   );
 
+  await client.query('COMMIT');
   console.log(JSON.stringify({ duracao_s: Math.round((Date.now() - startedAt) / 1000), ...report }, null, 2));
+} catch (error) {
+  await client.query('ROLLBACK').catch(() => {});
+  throw error;
 } finally {
-  await client.query("SELECT set_config('fin.sync_mode', 'off', false)").catch(() => {});
+  // sync_mode é transacional: some com o COMMIT ou o ROLLBACK, sem precisar de
+  // limpeza explícita.
   client.release();
   await pool.end();
 }

@@ -231,17 +231,31 @@ try {
   // A armadilha do "comissionamento": tem de cair em 3.06 e valer ~R$ 704 mil.
   const comissionamento = porCategoria.find((row) => row.code === '3.06');
   if (comissionamento) {
-    // R$ 678 mil, não os R$ 704 mil da varredura original: aquela usava /comiss/
-    // e engolia comissões de outros parceiros. A regra específica é mais
-    // estreita de propósito — o resto caiu na regra 95 e na fila.
-    check('3.06 Comissionamento de vendas (PIAU)', comissionamento.total, 67798016, 30000_00);
+    // R$ 771.688,83 — exatamente o total da PIAU conferido na API antes de
+    // existir schema. Chegou aqui em dois passos: a regra de prioridade 10 pegou
+    // as cobranças com texto, e o estágio de histórico da contraparte pegou as 9
+    // que não têm descrição nenhuma no Asaas. Nenhuma regra de texto jamais
+    // pegaria essas — não há texto.
+    check('3.06 Comissionamento de vendas (PIAU)', comissionamento.total, 77168883, 100);
   } else {
     falhas += 1;
     console.error('  ✗ categoria 3.06 não recebeu nenhuma cobrança — a regra de prioridade 10 não casou');
   }
 
   // -------------------------------------------------------------------------
-  console.log('\n=== 8. Idempotência ===');
+  console.log('\n=== 8. Cobertura de classificação ===');
+  // A meta do módulo é >98%. Este piso trava regressão: uma regra futura mal
+  // ordenada que derrube a cobertura falha o teste em vez de passar despercebida.
+  const cobertura = (classif.classificado / classif.total) * 100;
+  if (cobertura >= 90) {
+    passes += 1;
+    console.log(`  ✓ cobertura da receita acima de 90%: ${cobertura.toFixed(1)}%`);
+  } else {
+    falhas += 1;
+    console.error(`  ✗ cobertura caiu para ${cobertura.toFixed(1)}% (piso 90%)`);
+  }
+
+  console.log('\n=== 9. Idempotência ===');
   const [antes] = await q('SELECT count(*) AS n FROM fin_transaction');
   console.log(`  · lançamentos hoje: ${antes.n}. Rode o import de novo e confira que não muda.`);
 

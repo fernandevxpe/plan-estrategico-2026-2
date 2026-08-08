@@ -28,10 +28,31 @@ const FIELDS = new Set([
   'day_of_month'
 ]);
 
+/**
+ * Agulhas válidas: lista não vazia, sem string vazia.
+ *
+ * `''.indexOf('')` é 0, então uma agulha vazia casa com TUDO. Como as regras são
+ * editáveis pela tela — que é a condição para a planilha não voltar — uma
+ * vírgula sobrando numa lista (`["laudo", ""]`) salva na prioridade 1 capturaria
+ * as 3.350 cobranças e os 12.181 lançamentos de uma vez. E o dry-run
+ * concordaria, porque usa este mesmo avaliador.
+ *
+ * Falhar aqui é o que transforma isso num erro visível em vez de numa
+ * reclassificação silenciosa da empresa inteira.
+ */
+function needles(expected) {
+  const list = (Array.isArray(expected) ? expected : [expected]).map(String).filter((item) => item.length > 0);
+  if (!list.length) throw new Error('operador de texto exige ao menos uma agulha não vazia');
+  return list;
+}
+
+/** Campo ausente nunca casa comparação numérica: Number(null) é 0, e 0 <= 15. */
+const isNumeric = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+
 const OPS = {
   contains_any: (value, expected) => {
     const text = String(value ?? '');
-    for (const needle of expected) {
+    for (const needle of needles(expected)) {
       const offset = text.indexOf(needle);
       if (offset !== -1) return { ok: true, snippet: needle, offset };
     }
@@ -39,24 +60,27 @@ const OPS = {
   },
   contains_all: (value, expected) => {
     const text = String(value ?? '');
-    const missing = expected.find((needle) => !text.includes(needle));
-    if (missing) return { ok: false };
-    return { ok: true, snippet: expected.join(' + '), offset: text.indexOf(expected[0]) };
+    const list = needles(expected);
+    if (list.some((needle) => !text.includes(needle))) return { ok: false };
+    return { ok: true, snippet: list.join(' + '), offset: text.indexOf(list[0]) };
   },
   starts_with: (value, expected) => {
     const text = String(value ?? '');
-    const hit = (Array.isArray(expected) ? expected : [expected]).find((p) => text.startsWith(p));
+    const hit = needles(expected).find((needle) => text.startsWith(needle));
     return hit ? { ok: true, snippet: hit, offset: 0 } : { ok: false };
   },
   equals: (value, expected) => ({ ok: String(value ?? '') === String(expected), snippet: String(expected) }),
   in: (value, expected) => {
+    if (value === null || value === undefined) return { ok: false };
     const list = (Array.isArray(expected) ? expected : [expected]).map(String);
-    const hit = list.includes(String(value ?? ''));
+    const hit = list.includes(String(value));
     return hit ? { ok: true, snippet: String(value) } : { ok: false };
   },
-  gte: (value, expected) => ({ ok: Number(value) >= Number(expected) }),
-  lte: (value, expected) => ({ ok: Number(value) <= Number(expected) }),
-  between: (value, expected) => ({ ok: Number(value) >= Number(expected[0]) && Number(value) <= Number(expected[1]) }),
+  gte: (value, expected) => ({ ok: isNumeric(value) && Number(value) >= Number(expected) }),
+  lte: (value, expected) => ({ ok: isNumeric(value) && Number(value) <= Number(expected) }),
+  between: (value, expected) => ({
+    ok: isNumeric(value) && Number(value) >= Number(expected[0]) && Number(value) <= Number(expected[1])
+  }),
   // Regex é o escape hatch. Fica limitado a `i` para não permitir flags que
   // mudem a semântica, e o autor assume o risco de catastrophic backtracking.
   regex: (value, expected) => {
@@ -124,7 +148,7 @@ export function evaluateConditions(conditions, subject) {
  * @param {object} subject
  * @param {{ collectCompetitors?: boolean }} [options]
  */
-export function classify(rules, subject, { collectCompetitors = true } = {}) {
+export function classify(rules, subject, { collectCompetitors = true, onRuleError } = {}) {
   let winner = null;
   const competitors = [];
 
@@ -136,7 +160,10 @@ export function classify(rules, subject, { collectCompetitors = true } = {}) {
       result = evaluateConditions(rule.conditions, subject);
     } catch (error) {
       // Regra malformada não pode derrubar a classificação das outras 3 mil
-      // linhas. Ela some do lote e o erro aparece no relatório.
+      // linhas. Mas também não pode sumir: sem o callback, uma regra com campo
+      // digitado errado ficava quebrada e invisível para sempre, porque quando
+      // nada casa o `return null` descartava a lista de competidores junto.
+      if (onRuleError) onRuleError({ rule_id: rule.id, name: rule.name, erro: error.message });
       competitors.push({ rule_id: rule.id, priority: rule.priority, erro: error.message });
       continue;
     }

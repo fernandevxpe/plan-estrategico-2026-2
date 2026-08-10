@@ -86,19 +86,32 @@ function descricao(t) {
 
 const pool = financePool();
 const client = await pool.connect();
-const relatorio = { lidas: transacoes.length, contrapartes: 0, inseridas: 0, atualizadas: 0, semDocumento: 0, pf: 0, pj: 0 };
+const relatorio = { lidas: transacoes.length, contrapartes: 0, inseridas: 0, atualizadas: 0, semDocumento: 0, pf: 0, pj: 0, proprias: 0 };
 
 try {
   await client.query('BEGIN');
 
   const { rows: contaRows } = await client.query(
-    `SELECT a.id, a.entity_id FROM fin_account a
+    `SELECT a.id, a.entity_id, e.cnpj FROM fin_account a
       JOIN fin_entity e ON e.id = a.entity_id
      WHERE a.slug = $1 AND e.slug = 'xpe'`,
     [ACCOUNT_SLUG]
   );
   if (!contaRows.length) throw new Error(`conta '${ACCOUNT_SLUG}' não encontrada`);
   const { id: accountId, entity_id: entityId } = contaRows[0];
+
+  /**
+   * O CNPJ da própria empresa não é contraparte.
+   *
+   * Quando o dinheiro vai da Asaas para o Inter, o extrato traz
+   * `nomePagador = 'ASAAS IP S.A.'` mas `cpfCnpjPagador` é o CNPJ da XP Energy —
+   * porque quem transfere o próprio saldo é a empresa. Sem esta checagem o
+   * importador cria uma contraparte chamada "ASAAS IP S.A." carregando o CNPJ da
+   * própria empresa, e pendura nela toda transferência entre contas próprias
+   * como se fosse despesa com terceiro. Medido na primeira carga: 61
+   * lançamentos, R$ 151.977,33 de transferência contada como despesa.
+   */
+  const cnpjProprio = String(contaRows[0].cnpj ?? '').replace(/\D/g, '') || null;
 
   const datas = transacoes.map((t) => t.dataTransacao ?? t.dataEntrada).filter(Boolean).sort();
   const periodoInicio = datas[0];
@@ -120,6 +133,8 @@ try {
   for (const t of transacoes) {
     const c = extrairContraparte(t);
     if (!c.nome) continue;
+    // Movimento entre contas da própria empresa não gera contraparte.
+    if (cnpjProprio && c.documento === cnpjProprio) continue;
     const chave = c.documento || `nome:${normalizeName(c.nome)}`;
     if (!porDocumento.has(chave)) porDocumento.set(chave, c);
   }
@@ -184,7 +199,8 @@ try {
     if (!cents) continue;
 
     const c = extrairContraparte(t);
-    const chave = c.documento || (c.nome ? `nome:${normalizeName(c.nome)}` : null);
+    const proprio = Boolean(cnpjProprio && c.documento === cnpjProprio);
+    const chave = proprio ? null : c.documento || (c.nome ? `nome:${normalizeName(c.nome)}` : null);
     const desc = descricao(t);
     const hash = dedupeHash({ accountSlug: ACCOUNT_SLUG, sourceId: t.idTransacao });
 
@@ -192,8 +208,8 @@ try {
       `INSERT INTO fin_transaction (
          entity_id, account_id, posted_on, amount_cents, description_raw, description_norm,
          counterparty_raw, counterparty_id, source_kind, source, source_id, dedupe_hash,
-         review_status, import_batch_id
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pendente',$13)
+         review_status, import_batch_id, transfer_status
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pendente',$13,$14)
        ON CONFLICT (account_id, dedupe_version, dedupe_hash) DO UPDATE SET
          source_kind = EXCLUDED.source_kind,
          -- Mesma cláusula do import do Asaas, e pelo mesmo motivo: 'pareado' é
@@ -230,9 +246,14 @@ try {
         SOURCE,
         t.idTransacao ?? null,
         hash,
-        batchId
+        batchId,
+        // 'em_transito' e não 'nao': a perna existe, mas o par ainda não foi
+        // conciliado. Marcar como transferência tira o valor da despesa sem
+        // fingir que o pareamento já aconteceu.
+        proprio ? 'em_transito' : 'nao'
       ]
     );
+    if (proprio) relatorio.proprias += 1;
     if (gravado.rows[0]?.inserido) relatorio.inseridas += 1;
     else relatorio.atualizadas += 1;
   }
@@ -275,5 +296,5 @@ try {
 
 console.log(
   `[inter] ${relatorio.lidas} lidas · ${relatorio.inseridas} gravadas · ` +
-    `${relatorio.contrapartes} contrapartes (${relatorio.pf} PF, ${relatorio.pj} PJ, ${relatorio.semDocumento} sem documento)`
+    `${relatorio.contrapartes} contrapartes (${relatorio.pf} PF, ${relatorio.pj} PJ, ${relatorio.semDocumento} sem doc) · ${relatorio.proprias} entre contas próprias`
 );

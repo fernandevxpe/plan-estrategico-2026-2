@@ -25,6 +25,9 @@ const TABS = [
   { href: "/financeiro/fluxo", label: "Fluxo de caixa" },
   { href: "/financeiro/planejamento", label: "Planejamento" },
   { href: "/financeiro/contas", label: "Contas" },
+  // Ao lado de Reembolsos porque as duas respondem à mesma pergunta — quanto
+  // custa o time — e quem vai a uma costuma precisar da outra.
+  { href: "/financeiro/pessoas", label: "Pessoas" },
   { href: "/financeiro/reembolsos", label: "Reembolsos" },
   { href: "/financeiro/revisao", label: "Revisão" },
   { href: "/financeiro/indicadores", label: "Indicadores" },

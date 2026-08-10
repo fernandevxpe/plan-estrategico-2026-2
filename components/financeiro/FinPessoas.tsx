@@ -332,9 +332,26 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
   );
   const suspeitoCents = suspeitosNoPeriodo.reduce((s, x) => s + x.cents, 0);
 
-  // Cobertura = quanto do dinheiro que passou por esta tela ganhou dono.
-  const universoCents = totalCents + naoAtribuidoCents;
-  const pctAtribuido = universoCents ? (totalCents / universoCents) * 100 : 100;
+  /**
+   * Cobertura = quanto do dinheiro daquelas contas, naqueles meses, ganhou dono.
+   *
+   * O denominador ignora os filtros de PESSOA (time, vínculo, busca) de
+   * propósito, e o numerador também. A saída sem favorecido não pertence a
+   * ninguém — logo não encolhe quando se filtra por Hardware. Dividir um
+   * numerador filtrado por um denominador que não filtra produzia "cobertura de
+   * 59,3%" ao escolher um time, o que não é uma medida de nada: é o custo de um
+   * time dividido pelo buraco da empresa inteira.
+   */
+  const totalDoUniversoCents = useMemo(
+    () =>
+      dados.celulas
+        .filter((c) => c.mes >= mesDe && c.mes <= mesAte && (!conta || c.conta === conta))
+        .reduce((s, c) => s + c.cents, 0),
+    [dados.celulas, mesDe, mesAte, conta]
+  );
+  const universoCents = totalDoUniversoCents + naoAtribuidoCents;
+  const pctAtribuido = universoCents ? (totalDoUniversoCents / universoCents) * 100 : 100;
+  const filtroDePessoaAtivo = Boolean(time || vinculo || busca.trim() || natureza);
 
   // ── Mês recente e a comparação com o anterior ───────────────────────────
   const mesesComCusto = mesesNoPeriodo.filter((mes) =>
@@ -389,8 +406,11 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
           <p className="fin-kpi-label">Não atribuído a ninguém</p>
           <p className="fin-kpi-value">{brlCents(naoAtribuidoCents)}</p>
           <p className="fin-kpi-hint">
-            {naoAtribuidoN} saídas de conta corrente sem favorecido. Cobertura: {pct(pctAtribuido, 1)} do dinheiro
-            deste recorte tem dono.
+            {naoAtribuidoN} saídas de conta corrente sem favorecido. Cobertura: {pct(pctAtribuido, 1)} do dinheiro que
+            saiu {contaAtiva ? `do ${contaAtiva.nome}` : "das contas correntes"} no período tem dono.
+            {filtroDePessoaAtivo
+              ? " Este número não responde aos filtros de pessoa — saída sem favorecido não pertence a time nem a vínculo nenhum."
+              : ""}
           </p>
         </article>
 
@@ -898,7 +918,7 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
 
       <Cobertura
         dados={dados}
-        totalCents={totalCents}
+        totalCents={totalDoUniversoCents}
         naoAtribuidoCents={naoAtribuidoCents}
         naoAtribuidoN={naoAtribuidoN}
         pctAtribuido={pctAtribuido}

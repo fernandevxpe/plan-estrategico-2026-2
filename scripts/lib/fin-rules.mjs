@@ -109,7 +109,14 @@ export function evaluateConditions(conditions, subject) {
   for (const condition of conditions.all ?? []) {
     const result = evaluateCondition(condition, subject);
     if (!result.ok) return { ok: false };
-    if (!evidence && result.snippet) evidence = { field: condition.field, snippet: result.snippet, offset: result.offset };
+    // `direction` é guarda, não motivo. A tela mostra "Casou em <trecho>", e o
+    // trecho precisa ser o que explica a classificação — o texto do extrato ou
+    // o tipo do lançamento. Sem esta exceção, as regras cuja única condição
+    // `all` é a guarda de direção passariam a exibir "Casou em pagar", porque
+    // `equals` sempre devolve snippet e a evidência do `all` vence a do `any`.
+    if (!evidence && result.snippet && condition.field !== 'direction') {
+      evidence = { field: condition.field, snippet: result.snippet, offset: result.offset };
+    }
   }
 
   if (conditions.any?.length) {

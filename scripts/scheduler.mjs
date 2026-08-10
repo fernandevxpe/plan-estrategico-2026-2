@@ -94,6 +94,20 @@ const STEPS = [
   // leva ~4 min contra o watchdog de 20 por etapa.
   { name: 'sync Asaas', script: 'scripts/sync-asaas.mjs', required: false },
   { name: 'importação financeira', script: 'scripts/import-asaas.mjs', required: false },
+  // Inter: a conta por onde sai a folha. Vem depois do Asaas porque o dinheiro
+  // anda nessa ordem — entra no gateway, é transferido, e sai daqui.
+  //
+  // Sem estas duas etapas, a integração construída em 10/08/2026 só rodava se
+  // alguém digitasse o comando: a migration 0019 diz que a conta "se atualiza
+  // sozinha", e isso só passou a ser verdade aqui.
+  //
+  // O sync incremental cobre 45 dias e respeita o limite de 10 req/min do
+  // Inter; a carga histórica é avulsa (`--desde=2026-01-01`), fora do
+  // agendador, pelo mesmo motivo do Asaas: estoura o watchdog de 20 min.
+  { name: 'sync Inter', script: 'scripts/sync-inter.mjs', required: false },
+  { name: 'importação do Inter', script: 'scripts/import-inter.mjs', required: false },
+  // O backup vem DEPOIS das importações, para o artefato do dia já conter o que
+  // entrou hoje. Antes, ele salvaria o estado de ontem e chamaria de hoje.
   { name: 'backup do financeiro', script: 'scripts/db-backup.mjs', required: false },
   { name: 'persistência PostgreSQL', script: 'scripts/storage-push.mjs', required: true }
 ];

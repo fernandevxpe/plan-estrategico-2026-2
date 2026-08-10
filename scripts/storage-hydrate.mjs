@@ -12,9 +12,19 @@ let hydrated = 0;
 let bytes = 0;
 try {
   await ensureArtifactSchema(client);
+  // A tabela `xpe_artifacts` tem dois moradores: os artefatos processados, com
+  // chave plana ("analysis.json"), e o backup do financeiro, com chave
+  // prefixada ("fin/backup/<data>/<tabela>.ndjson.gz"). Este script é do
+  // primeiro.
+  //
+  // Sem este filtro, o backup — que passou a existir em 10/08/2026 — faz a
+  // hidratação inteira ABORTAR na guarda de path traversal logo abaixo, e o
+  // boot perde o cache do volume. A guarda continua no lugar: ela protege
+  // contra chave malformada que escape deste filtro, que é o papel dela.
   const result = await client.query(`
     SELECT artifact_key, content, content_encoding, checksum_sha256, byte_size
     FROM xpe_artifacts
+    WHERE artifact_key NOT LIKE '%/%'
     ORDER BY artifact_key
   `);
   if (!result.rows.length) throw new Error('Banco de artefatos vazio; execute storage:push antes do primeiro hydrate');

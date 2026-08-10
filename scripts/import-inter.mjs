@@ -52,20 +52,38 @@ function valorEmCentavos(t) {
 /**
  * Quem está do outro lado.
  *
- * O campo muda conforme o tipo: PIX enviado traz `nomeRecebedor` (ou
- * `nomeEmpresaRecebedor`), PIX recebido traz `nomePagador`, boleto traz
- * `empresaEmissora`, compra no débito traz `estabelecimento`. Sem esse mapa,
- * tudo cai em texto livre e a contraparte se fragmenta em dezenas de grafias.
+ * O campo muda conforme o tipo: PIX enviado traz `nomeRecebedor`, PIX recebido
+ * traz `nomePagador`, boleto traz `empresaEmissora`, compra no débito traz
+ * `estabelecimento`. Sem esse mapa, tudo cai em texto livre e a contraparte se
+ * fragmenta em dezenas de grafias.
+ *
+ * `nomeEmpresaRecebedor` e `nomeEmpresaPagador` ficam DE FORA de propósito, e
+ * essa é a correção mais cara deste arquivo. Apesar do nome, eles não trazem a
+ * empresa favorecida: trazem a INSTITUIÇÃO onde a pessoa tem conta — "NU
+ * PAGAMENTOS - IP", "ITAÚ UNIBANCO S.A.", "CAIXA ECONOMICA FEDERAL".
+ *
+ * Medido sobre o extrato real: em 521 de 521 saídas os dois campos diferem, e
+ * em nenhuma delas o campo "empresa" é a única fonte de nome. Usá-lo primeiro
+ * colapsava 57 favorecidos reais em 19 bancos — só "NU PAGAMENTOS - IP"
+ * escondia 27 pessoas distintas. Para uma plataforma cujo objetivo é saber
+ * quanto custa cada pessoa, era o erro mais destrutivo possível.
  */
 function extrairContraparte(t) {
   const d = t.detalhes ?? {};
   const saida = t.tipoOperacao === 'D';
 
   const nome = saida
-    ? d.nomeEmpresaRecebedor || d.nomeRecebedor || d.nomeDestinatario || d.empresaEmissora || d.estabelecimento
-    : d.nomeEmpresaPagador || d.nomePagador || d.nomeOrigem || d.empresaOrigem;
+    ? d.nomeRecebedor || d.nomeDestinatario || d.empresaEmissora || d.estabelecimento
+    : d.nomePagador || d.nomeOrigem || d.empresaOrigem;
 
-  const documento = saida ? d.cpfCnpjRecebedor || d.cpfCnpj : d.cpfCnpjPagador || d.cpfCnpj;
+  // Em boleto (`PAGAMENTO`), `cpfCnpj` é o do PAGADOR — nós — e não o do
+  // beneficiário. Usá-lo fazia a checagem de CNPJ próprio casar com o lado
+  // errado e marcar 31 boletos de COMPESA, EMBRASUL e STARTLAW (R$ 28.263,64)
+  // como transferência entre contas próprias. Boleto identifica o beneficiário
+  // por `empresaEmissora`, e documento nenhum: melhor sem documento do que com
+  // o documento errado.
+  const boleto = t.tipoTransacao === 'PAGAMENTO';
+  const documento = boleto ? null : saida ? d.cpfCnpjRecebedor : d.cpfCnpjPagador;
   const digitos = String(documento ?? '').replace(/\D/g, '');
 
   return {

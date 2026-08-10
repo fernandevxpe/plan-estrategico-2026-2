@@ -1,0 +1,1082 @@
+// Sistema imunológico da plataforma financeira.
+//
+// IRMÃO de scripts/test-financeiro.mjs, e a divisão de trabalho é deliberada:
+//
+//   · test-financeiro.mjs afirma VALORES ESPERADOS. "A receita de julho é
+//     R$ 240.906,00." Pega regressão de cálculo, e precisa ser reescrito toda vez
+//     que o mês vira ou que uma conta nova entra.
+//   · este arquivo afirma INVARIANTES. "Nenhuma contraparte carrega o CNPJ da
+//     própria empresa." Não tem número esperado para envelhecer: ou a frase é
+//     verdadeira ou o ledger está mentindo. Vale hoje, valia em 2021 e vai valer
+//     quando a sexta conta entrar.
+//
+// POR QUE ISTO EXISTE: todo erro caro dos últimos dias foi silencioso. Nenhum
+// deles derrubou uma tela, nenhum apareceu num log, nenhum teste ficou vermelho.
+// Todos foram achados por alguém olhando linha por linha:
+//
+//   · regra de despesa classificando receita — cliente "POSTO ..." virava combustível;
+//   · source_kind='TRANSFER' do Asaas tratado como prova de titularidade, e
+//     R$ 356.506,34 de pagamento a terceiro sumindo da despesa;
+//   · contraparte cadastrada com o CNPJ da própria empresa, R$ 151.977,33 de
+//     transferência contados como despesa;
+//   · lote declarando 150 inserções com zero linhas atrás dele, quebrando o desfazer;
+//   · transfer_group_id NULL em 100% da base — nenhuma transferência jamais pareada;
+//   · 24 de 55 categorias nunca usadas enquanto R$ 876 mil de entradas ficam sem categoria.
+//
+// Auditoria manual não escala e não roda às 3h da manhã. Cada invariante aqui é
+// um erro daqueles convertido em pergunta que a máquina refaz sozinha.
+//
+// DUAS SEÇÕES, e a diferença importa:
+//
+//   INVARIANTES — binários. Violação é defeito, não opinião. Falha derruba o
+//   processo (exit 1). São o que roda no boot e no CI.
+//
+//   MONITORES DE META — contínuos, com limiar. "91% dos lançamentos estão
+//   classificados" não é certo nem errado; é bom ou ruim comparado a uma meta que
+//   o DONO escolhe. O limiar é decisão de negócio: está no bloco LIMIARES, num
+//   lugar só, com justificativa escrita ao lado. Por padrão monitor estourado
+//   REPORTA mas não derruba — senão o CI nasce vermelho e vira ruído que se
+//   ignora. Com --strict ele também derruba, que é o modo da revisão semanal.
+//
+// SOBRE O "R$ EM JOGO": somar o valor de cada invariante quebrado conta o mesmo
+// dinheiro várias vezes — os mesmos 671 lançamentos aparecem em C3, H3 e H4. O
+// resumo final mostra os dois números: a soma por invariante e o DINHEIRO
+// DISTINTO, que é o único que pode ser dito em voz alta. Discordância entre telas
+// já custou caro nesta plataforma; não vamos reintroduzi-la no relatório.
+//
+//   node scripts/test-integridade.mjs
+//   node scripts/test-integridade.mjs --strict   # metas também derrubam
+//   node scripts/test-integridade.mjs --json     # saída para máquina
+import { financePool } from './lib/artifact-db.mjs';
+import { loadEnv } from './lib/env.mjs';
+import { registerFinanceTypeParsers } from './lib/fin-types.mjs';
+
+loadEnv();
+registerFinanceTypeParsers();
+
+const STRICT = process.argv.includes('--strict');
+const JSON_OUT = process.argv.includes('--json');
+
+// ---------------------------------------------------------------------------
+// LIMIARES — as únicas linhas deste arquivo que são escolha de negócio.
+//
+// Tudo abaixo desta caixa é verdade ou mentira sobre o banco. Aqui dentro é
+// "quão bom queremos ser", e a resposta certa depende de quanto tempo o dono
+// quer gastar por semana na fila de revisão. Estão num bloco só, com o porquê
+// escrito, para que mexer neles seja decisão consciente e não ajuste silencioso
+// para o teste ficar verde.
+// ---------------------------------------------------------------------------
+const LIMIARES = {
+  // Buraco entre duas janelas de extrato da mesma conta. 3 dias cobre um feriado
+  // colado num fim de semana; 4 dias já significa que alguém deixou de importar.
+  buracoExtratoDias: 3,
+
+  // Defasagem do último extrato. Além de 5 dias o saldo da tela é ficção e a
+  // previsão de caixa da semana está sendo feita sobre dado velho.
+  extratoDesatualizadoDias: 5,
+
+  // Cobertura por CONTAGEM de lançamentos. O módulo mira 98%; 95% é o piso onde
+  // a fila de revisão ainda cabe numa sessão semanal.
+  classificadoPorContagemPct: 95,
+
+  // Cobertura por VALOR. Mais honesta e quase sempre pior: 8.700 tarifas de
+  // centavos classificadas inflam a contagem e não movem um centavo do DRE.
+  // 90% porque abaixo disso o resultado do mês depende do que está na fila.
+  classificadoPorValorPct: 90,
+
+  // Fila de revisão. 300 itens é o que uma pessoa vence em ~2h. Acima disso a
+  // fila deixa de ser trabalho e vira paisagem — e ninguém abre mais.
+  filaMaxItens: 300,
+
+  // Idade do item mais antigo. 14 dias garante que nada atravesse o fechamento
+  // do mês ainda pendente.
+  filaMaxIdadeDias: 14,
+
+  // Transferências pareadas. Perna sem par é dinheiro que saiu e não foi visto
+  // chegar: ou falta importar a outra conta, ou não era transferência nenhuma.
+  transferenciasPareadasPct: 90,
+
+  // Idade de uma perna 'em_transito'. Transferência entre contas próprias
+  // liquida em minutos. Passou de 30 dias, o par não vem mais sozinho.
+  emTransitoMaxDias: 30,
+
+  // Contraparte sem CPF/CNPJ. Sem documento não há como detectar que ela é a
+  // própria empresa, nem cruzar com nota fiscal.
+  contrapartesSemDocumentoPct: 5,
+
+  // Pessoa do time sem contraparte ligada. Meta 0: sem esse elo, folha e
+  // reembolso não conseguem apontar para quem recebeu.
+  pessoasSemContrapartePct: 0,
+
+  // Divergência entre o saldo da coluna e o saldo reconstruído. Zero. Um ledger
+  // que não fecha com ele mesmo não fecha com nada.
+  divergenciaSaldoCents: 0,
+
+  // Categorias nunca usadas. Plano de contas com metade das linhas mortas faz o
+  // classificador escolher entre opções que ninguém mantém.
+  categoriasOciosasPct: 30
+};
+
+// ---------------------------------------------------------------------------
+const brl = (c) => (Number(c || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const pct = (n) => `${Number(n || 0).toFixed(1).replace('.', ',')}%`;
+const num = (n) => Number(n || 0).toLocaleString('pt-BR');
+
+const pool = financePool();
+const q = async (sql, params = []) => (await pool.query(sql, params)).rows;
+const um = async (sql, params = []) => (await q(sql, params))[0] ?? {};
+
+/**
+ * Executa com concorrência limitada.
+ *
+ * Cada consulta custa ~170 ms de ida e volta até o banco — o trabalho no
+ * servidor é irrelevante perto da latência. Em série, 60 verificações levam 10
+ * segundos, e 10 segundos no boot é tempo que alguém vai querer economizar
+ * desligando o verificador. Em três frentes (o teto do financePool) cai para
+ * ~3 s, que ninguém tem vontade de pular.
+ */
+async function comLimite(itens, limite, fn) {
+  const fila = [...itens.entries()];
+  const trabalhadores = Array.from({ length: Math.min(limite, fila.length) }, async () => {
+    for (;;) {
+      const proximo = fila.shift();
+      if (!proximo) return;
+      await fn(proximo[1], proximo[0]);
+    }
+  });
+  await Promise.all(trabalhadores);
+}
+
+/**
+ * Lê uma consulta de violação. Ela devolve `n` (linhas), `rs` (centavos em jogo)
+ * e `ids` (as chaves atingidas — é o que permite somar dinheiro distinto no fim
+ * em vez de contar a mesma linha em três invariantes diferentes).
+ */
+const alvo = async (sql, params = [], tipo = 'tx') => {
+  const r = await um(sql, params);
+  return { n: Number(r.n || 0), rs: Number(r.rs || 0), [tipo]: (r.ids || []).map(Number) };
+};
+
+// ---------------------------------------------------------------------------
+// Declaração das verificações. Nada roda aqui: `check()` só registra. A execução
+// concorrente vem depois, e a impressão vem depois dela, na ordem de declaração
+// — para que a saída seja estável e diffável entre execuções.
+// ---------------------------------------------------------------------------
+const CHECKS = [];
+const check = (secao, id, nome, { afirma, porque }, executor) =>
+  CHECKS.push({ secao, id, nome, afirma, porque, executor });
+
+const SECOES = {
+  A: 'A. CONTABILIDADE: a empresa não negocia consigo mesma',
+  B: 'B. TRANSFERÊNCIAS: dinheiro que sai de um bolso entra no outro',
+  C: 'C. LOTES DE IMPORTAÇÃO: o desfazer precisa funcionar',
+  D: 'D. CLASSIFICAÇÃO: a categoria tem de fazer sentido com o sinal',
+  E: 'E. DECISÃO HUMANA: o que uma pessoa travou fica travado',
+  F: 'F. COBERTURA DE EXTRATO: um mês sem extrato é um mês inventado',
+  G: 'G. SALDO: o ledger tem de fechar com ele mesmo',
+  H: 'H. FILA DE REVISÃO: o que está na fila precisa precisar de revisão',
+  I: 'I. DUPLICATAS E CHAVES',
+  J: 'J. DATAS'
+};
+
+const entidade = await um(`SELECT id, slug, legal_name, cnpj FROM fin_entity WHERE slug = 'xpe'`);
+const entityId = entidade.id;
+
+// =========================================================================
+// A. CONTABILIDADE
+//
+// A contraparte com o CNPJ da própria empresa é o erro mais caro que já
+// aconteceu aqui: R$ 151.977,33 de transferência interna viraram despesa de
+// fornecedor porque alguém criou "XP ENERGY" como contraparte. Nenhuma tela
+// acusa — a linha fica perfeita, com nome, documento e categoria.
+// =========================================================================
+check('A', 'A1', 'nenhuma contraparte carrega o CNPJ da própria empresa', {
+  afirma: 'fin_counterparty.document_number ≠ fin_entity.cnpj, comparando só os dígitos',
+  porque: 'foi exatamente assim que R$ 151.977,33 de transferência própria entraram como despesa'
+}, async () => {
+  const linhas = await q(
+    `SELECT cp.id, cp.name, cp.document_number
+       FROM fin_counterparty cp
+       JOIN fin_entity e ON e.id = cp.entity_id
+      WHERE coalesce(e.cnpj, '') <> ''
+        AND regexp_replace(coalesce(cp.document_number, ''), '[^0-9]', '', 'g')
+          = regexp_replace(e.cnpj, '[^0-9]', '', 'g')`
+  );
+  return { n: linhas.length, rs: 0, detalhes: linhas.map((l) => `contraparte ${l.id} "${l.name}" com o CNPJ da casa`) };
+});
+
+check('A', 'A2', 'nenhum lançamento aponta para contraparte que é a própria empresa', {
+  afirma: 'fin_transaction.counterparty_id nunca resolve para uma contraparte com o CNPJ da entidade',
+  porque: 'lançamento contra si mesmo infla despesa e receita ao mesmo tempo, e o DRE fecha errado dos dois lados'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(t.amount_cents)), 0) rs, array_agg(t.id) ids
+     FROM fin_transaction t
+     JOIN fin_counterparty cp ON cp.id = t.counterparty_id
+     JOIN fin_entity e ON e.id = t.entity_id
+    WHERE coalesce(e.cnpj, '') <> ''
+      AND regexp_replace(coalesce(cp.document_number, ''), '[^0-9]', '', 'g')
+        = regexp_replace(e.cnpj, '[^0-9]', '', 'g')`
+));
+
+check('A', 'A3', 'nenhum documento aponta para contraparte que é a própria empresa', {
+  afirma: 'o mesmo de A2, do lado de fin_document',
+  porque: 'cobrança contra si mesma vira receita fantasma na carteira a receber'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(d.amount_cents)), 0) rs, array_agg(d.id) ids
+     FROM fin_document d
+     JOIN fin_counterparty cp ON cp.id = d.counterparty_id
+     JOIN fin_entity e ON e.id = d.entity_id
+    WHERE coalesce(e.cnpj, '') <> ''
+      AND regexp_replace(coalesce(cp.document_number, ''), '[^0-9]', '', 'g')
+        = regexp_replace(e.cnpj, '[^0-9]', '', 'g')`,
+  [], 'doc'
+));
+
+check('A', 'A4', 'nenhum CNPJ/CPF aparece em duas contrapartes diferentes', {
+  afirma: 'fin_counterparty.document_number é único quando preenchido',
+  porque: 'contraparte partida em duas divide o histórico, e o classificador por histórico passa a errar nas duas metades'
+}, async () => {
+  const linhas = await q(
+    `SELECT document_number, count(*) n, string_agg(name, ' | ') nomes
+       FROM fin_counterparty WHERE coalesce(document_number, '') <> ''
+      GROUP BY 1 HAVING count(*) > 1`
+  );
+  return { n: linhas.length, rs: 0, detalhes: linhas.map((l) => `${l.document_number}: ${l.nomes}`) };
+});
+
+// =========================================================================
+// B. TRANSFERÊNCIAS
+//
+// Transferência é a única movimentação que pode ser neutralizada. Por isso é a
+// mais perigosa: marcar errado faz R$ 356 mil de pagamento a terceiro sumir da
+// despesa sem deixar rastro. As regras aqui tornam a neutralização auditável em
+// vez de confiável.
+// =========================================================================
+check('B', 'B1', "toda linha 'pareado' tem transfer_group_id", {
+  afirma: "transfer_status = 'pareado' ⇒ transfer_group_id IS NOT NULL",
+  porque: 'sem o grupo, a neutralização não tem como ser conferida nem desfeita'
+}, async () => {
+  const r = await alvo(
+    `SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs, array_agg(id) ids
+       FROM fin_transaction WHERE transfer_status = 'pareado' AND transfer_group_id IS NULL`
+  );
+  const { pareadas } = await um(`SELECT count(*) pareadas FROM fin_transaction WHERE transfer_status = 'pareado'`);
+  return { ...r, vacuo: Number(pareadas) === 0 ? 'nenhuma linha pareada existe na base' : null };
+});
+
+check('B', 'B2', 'todo grupo de transferência tem exatamente 2 pernas', {
+  afirma: 'count(*) = 2 por transfer_group_id',
+  porque: 'grupo com 1 perna neutraliza metade do movimento; com 3, neutraliza demais'
+}, async () => {
+  const linhas = await q(
+    `SELECT transfer_group_id g, count(*) n, coalesce(sum(abs(amount_cents)), 0) rs
+       FROM fin_transaction WHERE transfer_group_id IS NOT NULL
+      GROUP BY 1 HAVING count(*) <> 2`
+  );
+  const { grupos } = await um(`SELECT count(DISTINCT transfer_group_id) grupos FROM fin_transaction WHERE transfer_group_id IS NOT NULL`);
+  return {
+    n: linhas.length,
+    rs: linhas.reduce((s, l) => s + Number(l.rs), 0),
+    detalhes: linhas.map((l) => `grupo ${l.g}: ${l.n} perna(s), ${brl(l.rs)}`),
+    vacuo: Number(grupos) === 0 ? 'nenhum grupo de transferência existe na base' : null
+  };
+});
+
+check('B', 'B3', 'as duas pernas de um grupo somam zero', {
+  afirma: 'SUM(amount_cents) = 0 por transfer_group_id',
+  porque: 'se não somam zero, a neutralização cria ou destrói dinheiro no consolidado'
+}, async () => {
+  const linhas = await q(
+    `SELECT transfer_group_id g, sum(amount_cents) delta FROM fin_transaction
+      WHERE transfer_group_id IS NOT NULL GROUP BY 1 HAVING sum(amount_cents) <> 0`
+  );
+  return {
+    n: linhas.length,
+    rs: linhas.reduce((s, l) => s + Math.abs(Number(l.delta)), 0),
+    detalhes: linhas.map((l) => `grupo ${l.g} sobra ${brl(l.delta)}`)
+  };
+});
+
+check('B', 'B4', 'as duas pernas estão em contas diferentes', {
+  afirma: 'count(DISTINCT account_id) = 2 por transfer_group_id',
+  porque: 'transferência de uma conta para ela mesma não existe — é par montado errado, e some do extrato dos dois lados'
+}, async () => {
+  const linhas = await q(
+    `SELECT transfer_group_id g, coalesce(sum(abs(amount_cents)), 0) rs FROM fin_transaction
+      WHERE transfer_group_id IS NOT NULL GROUP BY 1 HAVING count(DISTINCT account_id) < 2`
+  );
+  return {
+    n: linhas.length,
+    rs: linhas.reduce((s, l) => s + Number(l.rs), 0),
+    detalhes: linhas.map((l) => `grupo ${l.g} inteiro numa conta só`)
+  };
+});
+
+// Este é o invariante do R$ 356.506,34.
+//
+// source_kind='TRANSFER' no Asaas quer dizer "saiu para uma conta bancária",
+// NÃO "saiu para uma conta nossa". A migração 0023 estreitou a regra 18 para
+// exigir o nome da empresa no texto; sem este teste, a próxima regra larga
+// reabre o buraco e ninguém percebe até a auditoria seguinte.
+check('B', 'B5', 'transferência própria não pode ter só o source_kind como prova de titularidade', {
+  afirma: 'perna marcada como transferência entre contas próprias precisa de par, de contraparte própria OU do nome da empresa no texto',
+  porque: 'tratar TRANSFER como prova de titularidade escondeu R$ 356.506,34 de pagamento a terceiro dentro da despesa'
+}, async () => {
+  const linhas = await q(
+    `WITH marca AS (
+       SELECT lower(split_part(legal_name, ' ', 1) || ' ' || split_part(legal_name, ' ', 2)) nome
+         FROM fin_entity WHERE id = $1
+     )
+     SELECT t.id, t.posted_on, t.amount_cents, left(t.description_raw, 58) d
+       FROM fin_transaction t, marca m
+      WHERE t.transfer_status <> 'nao'
+        AND t.transfer_group_id IS NULL
+        AND t.counterparty_id IS NULL
+        AND t.source_kind IN ('TRANSFER', 'PIX', 'TED')
+        AND position(m.nome IN lower(t.description_norm)) = 0
+      ORDER BY abs(t.amount_cents) DESC`,
+    [entityId]
+  );
+  return {
+    n: linhas.length,
+    rs: linhas.reduce((s, l) => s + Math.abs(Number(l.amount_cents)), 0),
+    tx: linhas.map((l) => Number(l.id)),
+    detalhes: linhas.map((l) => `tx ${l.id} ${l.posted_on} ${brl(l.amount_cents)} — "${l.d}"`)
+  };
+});
+
+// =========================================================================
+// C. LOTES
+//
+// Um lote é uma promessa: "isto eu sei desfazer". Lote que declara 150 inserções
+// sem linha nenhuma atrás quebra a promessa em silêncio — e só descobre quem
+// tenta desfazer, no pior momento possível.
+// =========================================================================
+check('C', 'C1', 'lote confirmado tem inserted_count igual à contagem real de lançamentos', {
+  afirma: 'fin_import_batch.inserted_count = count(fin_transaction WHERE import_batch_id = lote)',
+  porque: 'o número que a tela mostra e o que o desfazer vai remover têm de ser o mesmo'
+}, async () => {
+  const linhas = await q(
+    `SELECT b.id, b.inserted_count declarado,
+            (SELECT count(*) FROM fin_transaction t WHERE t.import_batch_id = b.id) real
+       FROM fin_import_batch b
+      WHERE b.status = 'confirmado'
+        AND b.inserted_count <> (SELECT count(*) FROM fin_transaction t WHERE t.import_batch_id = b.id)`
+  );
+  return { n: linhas.length, rs: 0, detalhes: linhas.map((l) => `lote ${l.id}: declara ${l.declarado}, existem ${l.real}`) };
+});
+
+check('C', 'C2', 'nenhum lote confirmado com zero lançamentos', {
+  afirma: 'lote confirmado sempre tem pelo menos 1 fin_transaction',
+  porque: 'lote confirmado vazio é importação que não importou nada e mesmo assim marcou o período como coberto'
+}, async () => {
+  const linhas = await q(
+    `SELECT b.id, b.file_name FROM fin_import_batch b
+      WHERE b.status = 'confirmado' AND NOT EXISTS (SELECT 1 FROM fin_transaction t WHERE t.import_batch_id = b.id)`
+  );
+  return { n: linhas.length, rs: 0, detalhes: linhas.map((l) => `lote ${l.id} (${l.file_name})`) };
+});
+
+check('C', 'C3', 'lote confirmado tem trilha em fin_import_row', {
+  afirma: 'lote confirmado sempre tem linhas em fin_import_row',
+  porque: 'sem a trilha da linha crua não há preview, não há dedupe auditável e o desfazer não sabe o que reverter'
+}, async () => {
+  const linhas = await q(
+    `SELECT b.id, b.adapter,
+            (SELECT count(*) FROM fin_transaction t WHERE t.import_batch_id = b.id) tx,
+            (SELECT coalesce(sum(abs(t.amount_cents)), 0) FROM fin_transaction t WHERE t.import_batch_id = b.id) rs,
+            (SELECT coalesce(array_agg(t.id), '{}') FROM fin_transaction t WHERE t.import_batch_id = b.id) ids
+       FROM fin_import_batch b
+      WHERE b.status = 'confirmado' AND NOT EXISTS (SELECT 1 FROM fin_import_row r WHERE r.batch_id = b.id)
+      ORDER BY 4 DESC`
+  );
+  return {
+    n: linhas.length,
+    rs: linhas.reduce((s, l) => s + Number(l.rs), 0),
+    tx: linhas.flatMap((l) => (l.ids || []).map(Number)),
+    detalhes: linhas.map((l) => `lote ${l.id} (${l.adapter}) — ${num(l.tx)} lançamentos, ${brl(l.rs)}, zero linhas cruas`)
+  };
+});
+
+check('C', 'C4', 'lote revertido ou descartado não deixou lançamento vivo', {
+  afirma: "status IN ('revertido','descartado') ⇒ nenhuma fin_transaction aponta para ele",
+  porque: 'lançamento órfão de lote desfeito é dinheiro contado duas vezes na próxima importação do mesmo arquivo'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(t.amount_cents)), 0) rs, array_agg(t.id) ids
+     FROM fin_transaction t JOIN fin_import_batch b ON b.id = t.import_batch_id
+    WHERE b.status IN ('revertido', 'descartado')`
+));
+
+check('C', 'C5', 'nenhum lote insere mais linhas do que leu', {
+  afirma: 'inserted_count ≤ row_count',
+  porque: 'inserir mais do que o arquivo tinha só é possível duplicando, e duplicata em extrato é saldo errado'
+}, async () => {
+  const linhas = await q(`SELECT id, row_count, inserted_count FROM fin_import_batch WHERE inserted_count > row_count`);
+  return { n: linhas.length, rs: 0, detalhes: linhas.map((l) => `lote ${l.id}: leu ${l.row_count}, inseriu ${l.inserted_count}`) };
+});
+
+// =========================================================================
+// D. CLASSIFICAÇÃO
+// =========================================================================
+check('D', 'D1', 'nenhuma classificação aponta para regra inexistente ou inativa', {
+  afirma: "classified_rule_id sempre resolve para uma fin_rule com status = 'ativa'",
+  porque: 'classificação órfã não tem como ser explicada no "por quê?" nem reprocessada quando a regra muda'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(t.amount_cents)), 0) rs, array_agg(t.id) ids
+     FROM fin_transaction t LEFT JOIN fin_rule r ON r.id = t.classified_rule_id
+    WHERE t.classified_rule_id IS NOT NULL AND (r.id IS NULL OR r.status <> 'ativa')`
+));
+
+// O invariante do "POSTO".
+//
+// Um cliente chamado "POSTO IPIRANGA" pagando uma fatura casou com a regra de
+// combustível: receita virou despesa. A assinatura do erro é estrutural e não
+// depende de texto nenhum — categoria de despesa carimbada numa ENTRADA.
+//
+// Estorno e reembolso recebidos são a exceção legítima: são dinheiro voltando
+// que abate a despesa original. Ficam de fora deste invariante e viram o monitor
+// M11, porque decidir se abatem a despesa ou viram receita é convenção contábil
+// — escolha do dono, não defeito do sistema.
+check('D', 'D2', 'nenhuma categoria de despesa em lançamento de ENTRADA', {
+  afirma: 'categoria de custo/despesa/pessoal/imposto/investimento ⇒ amount_cents < 0 (fora estorno e reembolso)',
+  porque: 'é a assinatura exata do bug do "POSTO": cliente com nome de fornecedor vira despesa e some da receita'
+}, async () => {
+  const linhas = await q(
+    `SELECT t.id, t.posted_on, t.amount_cents, c.code, c.name, left(t.description_raw, 46) d, t.classified_by
+       FROM fin_transaction t JOIN fin_category c ON c.id = t.category_id
+      WHERE NOT t.is_split_parent AND t.amount_cents > 0
+        AND c.kind IN ('custo_variavel_direto', 'despesa_operacional', 'pessoal', 'imposto', 'investimento')
+        AND lower(t.description_norm) !~ '(estorno|reembolso|devolu|refund|cancelamento)'
+      ORDER BY t.amount_cents DESC`
+  );
+  return {
+    n: linhas.length,
+    rs: linhas.reduce((s, l) => s + Number(l.amount_cents), 0),
+    tx: linhas.map((l) => Number(l.id)),
+    detalhes: linhas.map((l) => `tx ${l.id} ${l.posted_on} +${brl(l.amount_cents)} → ${l.code} ${l.name} (${l.classified_by}) "${l.d}"`)
+  };
+});
+
+check('D', 'D3', 'nenhuma categoria de receita em lançamento de SAÍDA', {
+  afirma: "categoria kind = 'receita' ⇒ amount_cents > 0",
+  porque: 'o espelho do D2: despesa carimbada como receita infla o faturamento e o imposto calculado sobre ele'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(t.amount_cents)), 0) rs, array_agg(t.id) ids
+     FROM fin_transaction t JOIN fin_category c ON c.id = t.category_id
+    WHERE NOT t.is_split_parent AND t.amount_cents < 0 AND c.kind = 'receita'`
+));
+
+check('D', 'D4', 'documento a receber não carrega categoria de despesa, nem o contrário', {
+  afirma: "direction = 'receber' ⇒ categoria de receita/movimentação; 'pagar' ⇒ nunca receita",
+  porque: 'mesma classe do D2, do lado da carteira: contamina DRE e previsão de caixa de uma vez'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(d.amount_cents)), 0) rs, array_agg(d.id) ids
+     FROM fin_document d JOIN fin_category c ON c.id = d.category_id
+    WHERE (d.direction = 'receber' AND c.kind IN ('custo_variavel_direto', 'despesa_operacional', 'pessoal', 'imposto', 'investimento'))
+       OR (d.direction = 'pagar' AND c.kind = 'receita')`,
+  [], 'doc'
+));
+
+// 'fato_estrutural' é o único carimbo que dispensa revisão humana: significa
+// "veio da fonte". Se um LIKE sobre texto livre puder carimbá-lo, a distinção
+// some e a fila de revisão para de enxergar o que precisa de olho.
+check('D', 'D5', "'fato_estrutural' só quando a evidência vem da fonte", {
+  afirma: "classified_by = 'fato_estrutural' ⇒ classified_reason->>'campo' = 'source_kind'",
+  porque: 'palpite sobre texto livre carimbado como fato dispensa a revisão exatamente onde ela mais faz falta'
+}, async () => {
+  const linhas = await q(
+    `SELECT coalesce(t.classified_reason->>'campo', '(sem evidência)') campo,
+            count(*) n, coalesce(sum(abs(t.amount_cents)), 0) rs, array_agg(t.id) ids
+       FROM fin_transaction t
+      WHERE t.classified_by = 'fato_estrutural' AND coalesce(t.classified_reason->>'campo', '') <> 'source_kind'
+      GROUP BY 1 ORDER BY 3 DESC`
+  );
+  return {
+    n: linhas.reduce((s, l) => s + Number(l.n), 0),
+    rs: linhas.reduce((s, l) => s + Number(l.rs), 0),
+    tx: linhas.flatMap((l) => (l.ids || []).map(Number)),
+    detalhes: linhas.map((l) => `evidência "${l.campo}": ${num(l.n)} lançamentos, ${brl(l.rs)}`)
+  };
+});
+
+check('D', 'D6', 'proveniência coerente: regra tem id, id tem regra', {
+  afirma: "classified_by = 'regra' ⇒ classified_rule_id IS NOT NULL, e vice-versa",
+  porque: 'sem o par completo o badge "por quê?" mente sobre quem decidiu'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs, array_agg(id) ids FROM fin_transaction
+    WHERE (classified_by = 'regra' AND classified_rule_id IS NULL)
+       OR (classified_rule_id IS NOT NULL AND classified_by NOT IN ('regra', 'fato_estrutural'))`
+));
+
+// Sem `rs`: nenhum centavo está errado por causa de um contador zerado. O que
+// quebra é o instrumento — a tela de regras não consegue mais mostrar qual
+// regra está larga demais. Dar R$ a isto jogaria D7 para o topo do ranking e
+// empurraria para baixo defeitos que de fato mexem em dinheiro.
+check('D', 'D7', 'regra que classificou tem hits_count contando', {
+  afirma: 'fin_rule.hits_count > 0 sempre que existe lançamento com aquele classified_rule_id',
+  porque: 'hits_count é o que ordena a tela de regras e revela regra larga demais; zerado, as 48 regras parecem igualmente inúteis. Nenhum valor está errado por isso — o que se perde é o instrumento de achar o próximo erro'
+}, async () => {
+  const linhas = await q(
+    `SELECT r.id, r.slug, count(t.id) reais, coalesce(sum(abs(t.amount_cents)), 0) rs
+       FROM fin_rule r JOIN fin_transaction t ON t.classified_rule_id = r.id
+      GROUP BY 1, 2, r.hits_count HAVING r.hits_count = 0 ORDER BY 3 DESC`
+  );
+  return {
+    n: linhas.length,
+    rs: 0,
+    detalhes: linhas.map((l) => `regra ${l.id} "${l.slug}": hits_count=0 mas classificou ${num(l.reais)} lançamentos (${brl(l.rs)})`)
+  };
+});
+
+// =========================================================================
+// E. DECISÃO HUMANA
+//
+// A sincronização noturna sobrescreve tudo que não está travado. Se a trava
+// vazar, o trabalho de classificação da véspera é apagado toda madrugada e a
+// fila de revisão vira trabalho de Sísifo.
+// =========================================================================
+check('E', 'E1', 'linha travada foi classificada por gente', {
+  afirma: "human_locked_fields <> '{}' ⇒ classified_by IN ('humano','trava')",
+  porque: 'trava com carimbo de máquina é trava que a próxima sincronização vai ignorar'
+}, async () => {
+  const linhas = await q(
+    `SELECT id, human_locked_fields, classified_by, abs(amount_cents) rs FROM fin_transaction
+      WHERE human_locked_fields <> '{}' AND coalesce(classified_by, '') NOT IN ('humano', 'trava')`
+  );
+  const { travadas } = await um(`SELECT count(*) travadas FROM fin_transaction WHERE human_locked_fields <> '{}'`);
+  return {
+    n: linhas.length,
+    rs: linhas.reduce((s, l) => s + Number(l.rs), 0),
+    tx: linhas.map((l) => Number(l.id)),
+    detalhes: linhas.map((l) => `tx ${l.id}: travou ${l.human_locked_fields} mas classified_by=${l.classified_by}`),
+    vacuo: Number(travadas) === 0 ? 'nenhuma linha travada na base' : null
+  };
+});
+
+check('E', 'E2', 'campo travado não está vazio', {
+  afirma: "'category_id' em human_locked_fields ⇒ category_id IS NOT NULL",
+  porque: 'travar um campo e deixá-lo nulo congela o vazio: a linha nunca mais é classificada por ninguém'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs, array_agg(id) ids FROM fin_transaction
+    WHERE ('category_id' = ANY(human_locked_fields) AND category_id IS NULL)
+       OR ('nucleo' = ANY(human_locked_fields) AND nucleo IS NULL)`
+));
+
+check('E', 'E3', "'adiado' e 'ignorado' não voltam para a fila", {
+  afirma: "nenhum fin_review_item 'pendente' aponta para linha com review_status IN ('adiado','ignorado')",
+  porque: 'reabrir o que a pessoa já decidiu adiar é a forma mais rápida de fazer alguém abandonar a fila'
+}, async () => {
+  const r = await alvo(
+    `SELECT count(*) n, coalesce(sum(abs(ri.amount_cents)), 0) rs, array_agg(t.id) ids
+       FROM fin_review_item ri JOIN fin_transaction t ON t.id = ri.target_id AND ri.target_table = 'fin_transaction'
+      WHERE ri.status = 'pendente' AND t.review_status IN ('adiado', 'ignorado')`
+  );
+  const { decididos } = await um(`SELECT count(*) decididos FROM fin_transaction WHERE review_status IN ('adiado', 'ignorado')`);
+  return { ...r, vacuo: Number(decididos) === 0 ? "ninguém usou 'adiado'/'ignorado' ainda" : null };
+});
+
+// =========================================================================
+// F. COBERTURA DE EXTRATO
+// =========================================================================
+check('F', 'F1', 'toda conta ativa tem cobertura de extrato declarada', {
+  afirma: 'existe pelo menos uma fin_statement_coverage por fin_account com is_active',
+  porque: 'conta ativa sem extrato nenhum entra no saldo consolidado como zero — e zero parece um número legítimo'
+}, async () => {
+  const linhas = await q(
+    `SELECT a.id, a.slug, a.current_balance_cents saldo FROM fin_account a
+      WHERE a.is_active AND NOT EXISTS (SELECT 1 FROM fin_statement_coverage sc WHERE sc.account_id = a.id)
+      ORDER BY a.id`
+  );
+  return {
+    n: linhas.length,
+    rs: linhas.reduce((s, l) => s + Math.abs(Number(l.saldo)), 0),
+    detalhes: linhas.map((l) => `conta ${l.id} "${l.slug}" ativa, zero janela de extrato (saldo declarado ${brl(l.saldo)})`)
+  };
+});
+
+check('F', 'F2', `sem buraco maior que ${LIMIARES.buracoExtratoDias} dias dentro da cobertura de cada conta`, {
+  afirma: 'janelas consecutivas de fin_statement_coverage não deixam intervalo descoberto',
+  porque: 'buraco no meio do extrato é despesa que existiu e não está no ledger — o saldo fecha e o DRE não'
+}, async () => {
+  const linhas = await q(
+    `WITH janelas AS (
+       SELECT account_id, period_start, period_end,
+              max(period_end) OVER (PARTITION BY account_id ORDER BY period_start
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) fim_anterior
+         FROM fin_statement_coverage
+     )
+     SELECT a.slug, j.fim_anterior, j.period_start, (j.period_start - j.fim_anterior - 1) dias
+       FROM janelas j JOIN fin_account a ON a.id = j.account_id
+      WHERE j.fim_anterior IS NOT NULL AND (j.period_start - j.fim_anterior - 1) > $1
+      ORDER BY 4 DESC`,
+    [LIMIARES.buracoExtratoDias]
+  );
+  return {
+    n: linhas.length,
+    rs: 0,
+    detalhes: linhas.map((l) => `conta "${l.slug}": ${l.dias} dias sem extrato entre ${l.fim_anterior} e ${l.period_start}`)
+  };
+});
+
+check('F', 'F3', 'todo lançamento cai dentro de alguma janela de cobertura', {
+  afirma: 'existe fin_statement_coverage cobrindo o posted_on de cada fin_transaction',
+  porque: 'lançamento fora da cobertura declarada entrou por caminho não registrado — o oposto do F2 e igualmente cego'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(t.amount_cents)), 0) rs, array_agg(t.id) ids FROM fin_transaction t
+    WHERE NOT EXISTS (SELECT 1 FROM fin_statement_coverage sc
+                       WHERE sc.account_id = t.account_id AND t.posted_on BETWEEN sc.period_start AND sc.period_end)`
+));
+
+// =========================================================================
+// G. SALDO
+// =========================================================================
+const saldos = await q(
+  `SELECT a.id, a.slug, a.opening_balance_cents abertura, a.current_balance_cents coluna,
+          coalesce(sum(t.amount_cents) FILTER (WHERE NOT t.is_split_parent), 0) soma,
+          a.opening_balance_cents + coalesce(sum(t.amount_cents) FILTER (WHERE NOT t.is_split_parent), 0)
+            - a.current_balance_cents delta
+     FROM fin_account a LEFT JOIN fin_transaction t ON t.account_id = a.id
+    GROUP BY a.id ORDER BY a.id`
+);
+
+check('G', 'G1', 'current_balance_cents = abertura + soma dos lançamentos, conta a conta', {
+  afirma: 'fin_account.current_balance_cents é reconstruível a partir do ledger',
+  porque: 'a coluna é o que a tela mostra; a soma é o que existe. Divergentes, a plataforma exibe um número que nada sustenta'
+}, async () => {
+  const ruins = saldos.filter((s) => Math.abs(Number(s.delta)) > LIMIARES.divergenciaSaldoCents);
+  return {
+    n: ruins.length,
+    rs: ruins.reduce((s, l) => s + Math.abs(Number(l.delta)), 0),
+    conta: true,
+    detalhes: ruins.map((l) => `conta "${l.slug}": coluna ${brl(l.coluna)}, reconstruído ${brl(Number(l.abertura) + Number(l.soma))}, delta ${brl(l.delta)}`)
+  };
+});
+
+check('G', 'G2', 'nenhum snapshot de saldo com variância', {
+  afirma: 'fin_balance_snapshot.variance_cents = 0',
+  porque: 'variância registrada é a própria fonte dizendo que o ledger não bate com o banco naquele dia'
+}, async () => {
+  const linhas = await q(`SELECT account_id, date, variance_cents FROM fin_balance_snapshot WHERE coalesce(variance_cents, 0) <> 0`);
+  return {
+    n: linhas.length,
+    rs: linhas.reduce((s, l) => s + Math.abs(Number(l.variance_cents)), 0),
+    conta: true,
+    detalhes: linhas.map((l) => `conta ${l.account_id} em ${l.date}: ${brl(l.variance_cents)}`)
+  };
+});
+
+// =========================================================================
+// H. FILA DE REVISÃO
+//
+// A fila é o único lugar onde trabalho humano é alocado. Ruído nela é caro de um
+// jeito específico: não faz nada errado aparecer, faz o certo desaparecer no
+// meio. 503 itens apontando para linhas JÁ classificadas foi o que a auditoria
+// achou — R$ 368 mil de fila que não era fila.
+// =========================================================================
+check('H', 'H1', 'nenhum item pendente aponta para lançamento que já tem categoria', {
+  afirma: "fin_review_item 'pendente' ⇒ a fin_transaction alvo tem category_id IS NULL",
+  porque: 'a auditoria achou 503 destes, R$ 368 mil de ruído que empurra o trabalho real para fora da tela'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(ri.amount_cents)), 0) rs, array_agg(t.id) ids
+     FROM fin_review_item ri JOIN fin_transaction t ON t.id = ri.target_id AND ri.target_table = 'fin_transaction'
+    WHERE ri.status = 'pendente' AND t.category_id IS NOT NULL`
+));
+
+check('H', 'H2', 'nenhum item pendente aponta para documento que já tem categoria', {
+  afirma: "fin_review_item 'pendente' ⇒ o fin_document alvo tem category_id IS NULL",
+  porque: 'mesmo ruído do H1 do lado da carteira'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(ri.amount_cents)), 0) rs, array_agg(d.id) ids
+     FROM fin_review_item ri JOIN fin_document d ON d.id = ri.target_id AND ri.target_table = 'fin_document'
+    WHERE ri.status = 'pendente' AND d.category_id IS NOT NULL`,
+  [], 'doc'
+));
+
+check('H', 'H3', 'nenhum lançamento sem categoria fica fora da fila', {
+  afirma: 'category_id IS NULL ⇒ existe fin_review_item pendente para ele',
+  porque: 'o simétrico do H1 e o mais caro: dinheiro sem categoria e sem fila não aparece em lugar nenhum — nem no DRE, nem na lista de pendências'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(t.amount_cents)), 0) rs, array_agg(t.id) ids FROM fin_transaction t
+    WHERE NOT t.is_split_parent AND t.category_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM fin_review_item ri
+                       WHERE ri.target_table = 'fin_transaction' AND ri.target_id = t.id AND ri.status = 'pendente')`
+));
+
+check('H', 'H4', "lançamento marcado 'pendente' tem item de fila", {
+  afirma: "review_status = 'pendente' ⇒ existe fin_review_item pendente correspondente",
+  porque: 'a coluna diz "precisa de revisão" e a fila não mostra: a pendência existe e é invisível'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(t.amount_cents)), 0) rs, array_agg(t.id) ids FROM fin_transaction t
+    WHERE t.review_status = 'pendente'
+      AND NOT EXISTS (SELECT 1 FROM fin_review_item ri
+                       WHERE ri.target_table = 'fin_transaction' AND ri.target_id = t.id AND ri.status = 'pendente')`
+));
+
+check('H', 'H5', 'nenhum item de fila aponta para alvo inexistente', {
+  afirma: 'fin_review_item.target_id sempre resolve na tabela que target_table indica',
+  porque: 'item órfão quebra a tela de revisão ao abrir e não tem como ser resolvido nem descartado'
+}, async () => {
+  const r = await um(
+    `SELECT count(*) n, coalesce(sum(abs(ri.amount_cents)), 0) rs FROM fin_review_item ri
+      WHERE (ri.target_table = 'fin_transaction' AND NOT EXISTS (SELECT 1 FROM fin_transaction t WHERE t.id = ri.target_id))
+         OR (ri.target_table = 'fin_document' AND NOT EXISTS (SELECT 1 FROM fin_document d WHERE d.id = ri.target_id))`
+  );
+  return { n: Number(r.n), rs: Number(r.rs), conta: true };
+});
+
+// =========================================================================
+// I. DUPLICATAS E CHAVES
+// =========================================================================
+check('I', 'I1', 'todo lançamento tem dedupe_hash', {
+  afirma: "dedupe_hash IS NOT NULL AND <> ''",
+  porque: 'sem hash o índice único não protege, e a próxima importação do mesmo arquivo entra inteira de novo'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs, array_agg(id) ids
+     FROM fin_transaction WHERE coalesce(dedupe_hash, '') = ''`
+));
+
+check('I', 'I2', 'nenhum (source, source_id) repetido', {
+  afirma: 'a chave natural da fonte é única',
+  porque: 'mesma cobrança do Asaas em duas linhas conta o recebimento duas vezes'
+}, async () => {
+  const linhas = await q(
+    `SELECT source, source_id, count(*) n FROM fin_transaction
+      WHERE source_id IS NOT NULL GROUP BY 1, 2 HAVING count(*) > 1`
+  );
+  return { n: linhas.length, rs: 0, detalhes: linhas.map((l) => `${l.source}/${l.source_id} aparece ${l.n}x`) };
+});
+
+check('I', 'I3', 'nenhuma referência órfã em fin_transaction', {
+  afirma: 'category_id, counterparty_id, nucleo e import_batch_id sempre resolvem',
+  porque: 'referência quebrada some do JOIN em silêncio: a linha existe na soma total e não em nenhum agrupamento'
+}, async () => {
+  const r = await um(
+    `SELECT
+       (SELECT count(*) FROM fin_transaction t WHERE t.category_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM fin_category c WHERE c.id = t.category_id)) a,
+       (SELECT count(*) FROM fin_transaction t WHERE t.counterparty_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM fin_counterparty c WHERE c.id = t.counterparty_id)) b,
+       (SELECT count(*) FROM fin_transaction t WHERE t.nucleo IS NOT NULL AND NOT EXISTS (SELECT 1 FROM fin_nucleo n WHERE n.slug = t.nucleo)) c,
+       (SELECT count(*) FROM fin_transaction t WHERE t.import_batch_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM fin_import_batch b WHERE b.id = t.import_batch_id)) d`
+  );
+  const total = Number(r.a) + Number(r.b) + Number(r.c) + Number(r.d);
+  return { n: total, rs: 0, conta: true, detalhes: [`categoria ${r.a}, contraparte ${r.b}, núcleo ${r.c}, lote ${r.d}`] };
+});
+
+// =========================================================================
+// J. DATAS
+// =========================================================================
+check('J', 'J1', 'nenhum lançamento no futuro', {
+  afirma: 'posted_on ≤ hoje',
+  porque: 'extrato é passado. Data futura é erro de leitura de formato (dd/mm lido como mm/dd) e joga dinheiro para fora do mês'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs, array_agg(id) ids
+     FROM fin_transaction WHERE posted_on > CURRENT_DATE`
+));
+
+check('J', 'J2', 'nenhum lançamento antes da abertura da conta', {
+  afirma: 'posted_on ≥ fin_account.opening_balance_date',
+  porque: 'movimento anterior à abertura não é reconciliável contra o saldo inicial: o ledger nunca vai fechar'
+}, async () => {
+  const r = await alvo(
+    `SELECT count(*) n, coalesce(sum(abs(t.amount_cents)), 0) rs, array_agg(t.id) ids
+       FROM fin_transaction t JOIN fin_account a ON a.id = t.account_id
+      WHERE a.opening_balance_date IS NOT NULL AND t.posted_on < a.opening_balance_date`
+  );
+  const { sem, total } = await um(
+    `SELECT count(*) FILTER (WHERE opening_balance_date IS NULL) sem, count(*) total FROM fin_account`
+  );
+  return { ...r, vacuo: Number(sem) === Number(total) ? `nenhuma das ${total} contas tem opening_balance_date preenchida` : null };
+});
+
+check('J', 'J3', 'competence_date coerente com posted_on', {
+  afirma: 'quando preenchida, |competence_date − posted_on| ≤ 90 dias',
+  porque: 'competência longe do caixa sem contrato que explique é digitação errada, e move resultado inteiro de mês'
+}, async () => {
+  const r = await alvo(
+    `SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs, array_agg(id) ids FROM fin_transaction
+      WHERE competence_date IS NOT NULL AND abs(competence_date - posted_on) > 90`
+  );
+  const { nulos, total } = await um(
+    `SELECT count(*) FILTER (WHERE competence_date IS NULL) nulos, count(*) total FROM fin_transaction`
+  );
+  return {
+    ...r,
+    vacuo: Number(nulos) === Number(total)
+      ? `competence_date nula em 100% das ${num(total)} linhas — o DRE cai no COALESCE com posted_on, então o regime de competência do ledger hoje é o de caixa`
+      : null
+  };
+});
+
+check('J', 'J4', 'documento: competência, emissão e vencimento coerentes', {
+  afirma: 'competence_date ≤ due_date + 90 dias e paid_on ≤ hoje',
+  porque: 'cobrança paga no futuro ou com competência solta desloca receita entre exercícios'
+}, () => alvo(
+  `SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs, array_agg(id) ids FROM fin_document
+    WHERE competence_date > due_date + 90 OR paid_on > CURRENT_DATE`,
+  [], 'doc'
+));
+
+// ---------------------------------------------------------------------------
+// EXECUÇÃO
+// ---------------------------------------------------------------------------
+let codigoSaida = 0;
+
+try {
+  const t0 = Date.now();
+
+  await comLimite(CHECKS, 3, async (c) => {
+    try {
+      const r = await c.executor();
+      c.n = Number(r.n || 0);
+      c.rs = Math.abs(Number(r.rs || 0));
+      c.detalhes = r.detalhes ?? [];
+      c.tx = r.tx ?? [];
+      c.doc = r.doc ?? [];
+      c.vacuo = r.vacuo ?? null;
+    } catch (erro) {
+      c.n = 1; c.rs = 0; c.tx = []; c.doc = []; c.vacuo = null;
+      c.detalhes = [`a própria verificação estourou: ${erro.message}`];
+    }
+    c.ok = c.n === 0;
+  });
+
+  // -------------------------------------------------------------------------
+  // Métricas dos monitores. Uma leva só, em paralelo.
+  const [ct, cd, fila, transf, contas, cps, pessoas, estornos, dups, cats, regras, velhas] = await Promise.all([
+    um(`SELECT count(*) total, count(category_id) com_cat,
+               coalesce(sum(abs(amount_cents)), 0) rs_total,
+               coalesce(sum(abs(amount_cents)) FILTER (WHERE category_id IS NOT NULL), 0) rs_class
+          FROM fin_transaction WHERE NOT is_split_parent`),
+    um(`SELECT count(*) total, count(category_id) com_cat,
+               coalesce(sum(abs(amount_cents)), 0) rs_total,
+               coalesce(sum(abs(amount_cents)) FILTER (WHERE category_id IS NOT NULL), 0) rs_class
+          FROM fin_document WHERE status <> 'cancelado'`),
+    um(`SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs,
+               coalesce(max(CURRENT_DATE - created_at::date), 0) idade
+          FROM fin_review_item WHERE status = 'pendente'`),
+    um(`SELECT count(*) FILTER (WHERE transfer_status = 'pareado') pareadas,
+               count(*) FILTER (WHERE transfer_status <> 'nao') total,
+               coalesce(sum(amount_cents) FILTER (WHERE transfer_status = 'em_transito'), 0) liquido
+          FROM fin_transaction`),
+    q(`SELECT a.slug, max(sc.period_end) fim, CURRENT_DATE - max(sc.period_end) atraso
+         FROM fin_account a LEFT JOIN fin_statement_coverage sc ON sc.account_id = a.id
+        WHERE a.is_active GROUP BY 1 ORDER BY 3 DESC NULLS FIRST`),
+    um(`SELECT count(*) FILTER (WHERE coalesce(document_number, '') = '') sem, count(*) total FROM fin_counterparty`),
+    um(`SELECT count(*) FILTER (WHERE counterparty_id IS NULL) sem, count(*) total FROM fin_person`),
+    um(`SELECT count(*) n, coalesce(sum(t.amount_cents), 0) rs
+          FROM fin_transaction t JOIN fin_category c ON c.id = t.category_id
+         WHERE NOT t.is_split_parent AND t.amount_cents > 0
+           AND c.kind IN ('custo_variavel_direto', 'despesa_operacional', 'pessoal', 'imposto', 'investimento')
+           AND lower(t.description_norm) ~ '(estorno|reembolso|devolu|refund|cancelamento)'`),
+    um(`SELECT count(*) grupos, coalesce(sum(n - 1), 0) excedentes, coalesce(sum(abs(amount_cents) * (n - 1)), 0) rs
+          FROM (SELECT account_id, posted_on, amount_cents, description_norm, count(*) n
+                  FROM fin_transaction WHERE NOT is_split_parent
+                 GROUP BY 1, 2, 3, 4 HAVING count(*) > 1) x`),
+    um(`SELECT count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM fin_transaction t WHERE t.category_id = c.id)
+                                 AND NOT EXISTS (SELECT 1 FROM fin_document d WHERE d.category_id = c.id)) ociosas,
+               count(*) total FROM fin_category c`),
+    um(`SELECT count(*) FILTER (WHERE hits_count = 0) sem_hit, count(*) total FROM fin_rule WHERE status = 'ativa'`),
+    um(`SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs FROM fin_transaction
+         WHERE transfer_status = 'em_transito' AND CURRENT_DATE - posted_on > $1`, [LIMIARES.emTransitoMaxDias])
+  ]);
+
+  const monitores = [];
+  const monitor = (id, nome, m) => {
+    monitores.push({ id, nome, ...m, rs: Math.abs(m.rs || 0), ok: m.comparador === '>=' ? m.valor >= m.limiar : m.valor <= m.limiar });
+  };
+
+  const pctContagem = (ct.com_cat / ct.total) * 100;
+  const pctValor = (ct.rs_class / ct.rs_total) * 100;
+  const semCategoria = ct.rs_total - ct.rs_class;
+
+  monitor('M1', 'lançamentos classificados (contagem)', {
+    valor: pctContagem, texto: pct(pctContagem), limiar: LIMIARES.classificadoPorContagemPct, comparador: '>=', unidade: '%',
+    justificativa: `${num(ct.total - ct.com_cat)} linhas sem categoria. 95% é o piso em que a fila ainda cabe numa sessão semanal.`
+  });
+  monitor('M2', 'R$ classificado (o número honesto)', {
+    valor: pctValor, texto: pct(pctValor), limiar: LIMIARES.classificadoPorValorPct, comparador: '>=', unidade: '%',
+    justificativa: `${brl(semCategoria)} sem categoria. Difere do M1 porque 8.700 tarifas de centavos enchem a contagem e não movem o DRE — é este que diz se o resultado do mês é confiável.`,
+    rs: semCategoria
+  });
+  const pctDocValor = (cd.rs_class / cd.rs_total) * 100;
+  monitor('M3', 'R$ da carteira classificado', {
+    valor: pctDocValor, texto: pct(pctDocValor), limiar: LIMIARES.classificadoPorValorPct, comparador: '>=', unidade: '%',
+    justificativa: `${num(cd.total - cd.com_cat)} documentos e ${brl(cd.rs_total - cd.rs_class)} sem categoria na carteira.`,
+    rs: cd.rs_total - cd.rs_class
+  });
+  monitor('M4', 'itens pendentes na fila de revisão', {
+    valor: Number(fila.n), texto: num(fila.n), limiar: LIMIARES.filaMaxItens, comparador: '<=', unidade: ' itens',
+    justificativa: '300 é o que uma pessoa vence em ~2h. Acima disso a fila deixa de ser trabalho e vira paisagem.',
+    rs: fila.rs
+  });
+  monitor('M5', 'idade do item mais antigo da fila', {
+    valor: Number(fila.idade), texto: `${num(fila.idade)} d`, limiar: LIMIARES.filaMaxIdadeDias, comparador: '<=', unidade: ' dias',
+    justificativa: '14 dias garante que nada atravesse o fechamento do mês ainda pendente.'
+  });
+  const pctPareadas = transf.total ? (transf.pareadas / transf.total) * 100 : 100;
+  monitor('M6', 'transferências pareadas', {
+    valor: pctPareadas, texto: pct(pctPareadas), limiar: LIMIARES.transferenciasPareadasPct, comparador: '>=', unidade: '%',
+    justificativa: `${num(transf.pareadas)} de ${num(transf.total)} pernas pareadas. O que não parou de pé é ${brl(transf.liquido)} líquido que saiu de uma conta e não foi visto chegar em nenhuma.`,
+    rs: Math.abs(transf.liquido)
+  });
+  monitor('M7', `pernas em trânsito há mais de ${LIMIARES.emTransitoMaxDias} dias`, {
+    valor: Number(velhas.n), texto: num(velhas.n), limiar: 0, comparador: '<=', unidade: '',
+    justificativa: `transferência entre contas próprias liquida em minutos. ${brl(velhas.rs)} parados: ou falta importar a conta de destino, ou não era transferência.`,
+    rs: velhas.rs
+  });
+  for (const c of contas) {
+    const atraso = c.fim === null ? 9999 : Number(c.atraso);
+    monitor(`M8·${c.slug}`, `extrato de "${c.slug}"`, {
+      valor: atraso, texto: c.fim === null ? 'nunca' : `${num(atraso)} d`,
+      limiar: LIMIARES.extratoDesatualizadoDias, comparador: '<=', unidade: ' dias',
+      justificativa: c.fim === null
+        ? 'conta ativa sem nenhum extrato: entra no consolidado como zero.'
+        : `último extrato em ${c.fim}. Além de 5 dias o saldo da tela é ficção.`
+    });
+  }
+  const pctSemDoc = (cps.sem / cps.total) * 100;
+  monitor('M9', 'contrapartes sem CPF/CNPJ', {
+    valor: pctSemDoc, texto: `${num(cps.sem)}/${num(cps.total)}`, limiar: LIMIARES.contrapartesSemDocumentoPct, comparador: '<=', unidade: '%',
+    justificativa: 'sem documento não dá para detectar que a contraparte é a própria empresa (o bug de R$ 151.977,33) nem cruzar com nota fiscal.'
+  });
+  const pctSemCp = pessoas.total ? (pessoas.sem / pessoas.total) * 100 : 0;
+  monitor('M10', 'pessoas do time sem contraparte ligada', {
+    valor: pctSemCp, texto: `${num(pessoas.sem)}/${num(pessoas.total)}`, limiar: LIMIARES.pessoasSemContrapartePct, comparador: '<=', unidade: '%',
+    justificativa: 'sem o elo, folha e reembolso não conseguem apontar para quem recebeu, e nenhum pagamento a pessoa física é reconciliável.'
+  });
+  monitor('M11', 'entradas em categoria de despesa (estorno)', {
+    valor: Number(estornos.n), texto: num(estornos.n), limiar: 0, comparador: '<=', unidade: '',
+    justificativa: `${brl(estornos.rs)} de dinheiro voltando carimbado com categoria de despesa. Abater a despesa ou virar receita é convenção contábil — precisa de decisão, não de conserto.`,
+    rs: estornos.rs
+  });
+  monitor('M12', 'linhas repetidas (conta+data+valor+texto)', {
+    valor: Number(dups.excedentes), texto: num(dups.excedentes), limiar: 0, comparador: '<=', unidade: '',
+    justificativa: `${num(dups.grupos)} grupos, ${brl(dups.rs)} de excedente. Todas passaram pelo índice único porque têm dedupe_hash distinto — pagamento legítimo repetido no mesmo dia tem exatamente esta cara, então isto é conferência humana, não conserto automático.`,
+    rs: dups.rs
+  });
+  const pctOciosas = (cats.ociosas / cats.total) * 100;
+  monitor('M13', 'categorias nunca usadas', {
+    valor: pctOciosas, texto: `${num(cats.ociosas)}/${num(cats.total)}`, limiar: LIMIARES.categoriasOciosasPct, comparador: '<=', unidade: '%',
+    justificativa: `plano de contas com ${pct(pctOciosas)} de linhas mortas enquanto ${brl(semCategoria)} ficam sem categoria: o problema não é falta de opção, é falta de regra.`
+  });
+  monitor('M14', 'regras ativas SEM hit registrado', {
+    valor: Number(regras.sem_hit), texto: `${num(regras.sem_hit)}/${num(regras.total)}`, limiar: 0, comparador: '<=', unidade: '',
+    justificativa: 'hits_count é o que revela regra larga demais e regra morta. Zerado em todas, a tela de regras não informa nada.'
+  });
+  const divergencia = saldos.reduce((s, l) => s + Math.abs(Number(l.delta)), 0);
+  monitor('M15', 'divergência total de saldo', {
+    valor: divergencia, texto: brl(divergencia), limiar: LIMIARES.divergenciaSaldoCents, comparador: '<=', unidade: ' centavos',
+    justificativa: 'zero, sem tolerância: um ledger que não fecha com ele mesmo não fecha com o banco.',
+    rs: divergencia
+  });
+
+  // -------------------------------------------------------------------------
+  // DINHEIRO DISTINTO. Os mesmos 671 lançamentos aparecem em C3, H3 e H4; somar
+  // os invariantes conta esse dinheiro três vezes. A união das chaves atingidas
+  // é o número que pode ser dito em voz alta.
+  const quebrados = CHECKS.filter((c) => !c.ok).sort((a, b) => b.rs - a.rs);
+  const txIds = [...new Set(quebrados.flatMap((c) => c.tx))];
+  const docIds = [...new Set(quebrados.flatMap((c) => c.doc))];
+  const [dinTx, dinDoc] = await Promise.all([
+    txIds.length
+      ? um(`SELECT coalesce(sum(abs(amount_cents)), 0) rs FROM fin_transaction WHERE id = ANY($1::bigint[])`, [txIds])
+      : { rs: 0 },
+    docIds.length
+      ? um(`SELECT coalesce(sum(abs(amount_cents)), 0) rs FROM fin_document WHERE id = ANY($1::bigint[])`, [docIds])
+      : { rs: 0 }
+  ]);
+  const somaPorInvariante = quebrados.reduce((s, c) => s + c.rs, 0);
+  const dinheiroDistinto = Number(dinTx.rs) + Number(dinDoc.rs);
+  const ms = Date.now() - t0;
+
+  const metasRuins = monitores.filter((m) => !m.ok);
+
+  // -------------------------------------------------------------------------
+  // SAÍDA
+  if (JSON_OUT) {
+    console.log(JSON.stringify({
+      gerado_em: new Date().toISOString(),
+      duracao_ms: ms,
+      invariantes: {
+        total: CHECKS.length, ok: CHECKS.length - quebrados.length, quebrados: quebrados.length,
+        soma_por_invariante_cents: somaPorInvariante, dinheiro_distinto_cents: dinheiroDistinto,
+        lista: CHECKS.map(({ executor, tx, doc, ...resto }) => ({ ...resto, tx_atingidos: tx.length, doc_atingidos: doc.length }))
+      },
+      monitores: { total: monitores.length, fora_da_meta: metasRuins.length, lista: monitores }
+    }, null, 2));
+  } else {
+    const L = 76;
+    const caixa = (t) => `│ ${t.slice(0, L - 2).padEnd(L - 2)} │`;
+    console.log(`\n┌${'─'.repeat(L)}┐`);
+    console.log(caixa(`VERIFICADOR DE INTEGRIDADE — ${entidade.legal_name}`));
+    console.log(caixa(`CNPJ ${entidade.cnpj} · ${new Date().toLocaleString('pt-BR')}`));
+    console.log(`└${'─'.repeat(L)}┘`);
+
+    let secaoAtual = null;
+    for (const c of CHECKS) {
+      if (c.secao !== secaoAtual) {
+        secaoAtual = c.secao;
+        console.log(`\n=== ${SECOES[c.secao]} ===`);
+      }
+      if (c.ok) {
+        console.log(`  ✓ [${c.id}] ${c.nome}${c.vacuo ? `\n        ⚠ vácuo: ${c.vacuo}` : ''}`);
+      } else {
+        console.error(`  ✗ [${c.id}] ${c.nome}`);
+        console.error(`        afirma:  ${c.afirma}`);
+        console.error(`        importa: ${c.porque}`);
+        console.error(`        agora:   ${num(c.n)} violação(ões)${c.rs ? ` · ${brl(c.rs)} em jogo` : ''}`);
+        c.detalhes.slice(0, 6).forEach((d) => console.error(`        · ${d}`));
+        if (c.detalhes.length > 6) console.error(`        · ... +${c.detalhes.length - 6}`);
+      }
+    }
+
+    console.log('\n' + '═'.repeat(78));
+    console.log('MONITORES DE META — valor de hoje contra o limiar que alguém escolheu');
+    console.log('═'.repeat(78));
+    for (const m of monitores) {
+      const alvoTxt = `${m.comparador === '>=' ? '≥' : '≤'} ${m.limiar}${m.unidade}`;
+      console.log(`  ${m.ok ? '✓' : '△'} ${`[${m.id}]`.padEnd(24)} ${m.nome.padEnd(44)} ${String(m.texto).padStart(14)}   (meta ${alvoTxt})`);
+      if (!m.ok) {
+        console.log(`        limiar: ${m.justificativa}`);
+        if (m.rs) console.log(`        em jogo: ${brl(m.rs)}`);
+      }
+    }
+
+    console.log('\n' + '═'.repeat(78));
+    console.log('FALHAS ORDENADAS POR R$ EM JOGO');
+    console.log('═'.repeat(78));
+    if (!quebrados.length) console.log('  nenhuma. todos os invariantes passam.');
+    quebrados.forEach((c, i) => {
+      console.log(`  ${String(i + 1).padStart(2)}. ${brl(c.rs).padStart(18)}  [${c.id}] ${c.nome}`);
+      console.log(`      ${''.padStart(18)}  ${num(c.n)} violação(ões)`);
+    });
+
+    console.log('\n' + '═'.repeat(78));
+    console.log('ESTADO ATUAL DA PLATAFORMA');
+    console.log('═'.repeat(78));
+    console.log(`  invariantes:  ${CHECKS.length - quebrados.length} passam · ${quebrados.length} falham   (de ${CHECKS.length})`);
+    console.log(`  monitores:    ${monitores.length - metasRuins.length} na meta · ${metasRuins.length} fora     (de ${monitores.length})`);
+    console.log(`  R$ em jogo:   ${brl(dinheiroDistinto)} de dinheiro DISTINTO tocado por invariante quebrado`);
+    console.log(`                (${brl(somaPorInvariante)} somando invariante a invariante — a diferença é sobreposição:`);
+    console.log(`                 os mesmos lançamentos aparecem em mais de uma falha, e contar duas vezes é o erro`);
+    console.log(`                 que esta plataforma já cometeu entre telas)`);
+    console.log(`                + ${brl(divergencia)} de divergência de saldo, que é delta e não linha`);
+    console.log(`  verificado em ${(ms / 1000).toFixed(1)} s sobre ${num(ct.total)} lançamentos e ${num(cd.total)} documentos`);
+
+    const vacuos = CHECKS.filter((c) => c.ok && c.vacuo);
+    if (vacuos.length) {
+      console.log(`\n  ⚠ ${vacuos.length} invariante(s) passam por VÁCUO — não há dado que os exercite:`);
+      vacuos.forEach((c) => console.log(`      [${c.id}] ${c.vacuo}`));
+      console.log('      Passar por vácuo não é estar certo. Quando o dado chegar, estes são os primeiros a olhar.');
+    }
+    if (!STRICT && metasRuins.length) {
+      console.log(`\n  ${metasRuins.length} monitor(es) fora da meta NÃO derrubaram esta execução.`);
+      console.log('  Rode com --strict para que derrubem (é o modo da revisão semanal).');
+    }
+  }
+
+  codigoSaida = quebrados.length > 0 || (STRICT && metasRuins.length > 0) ? 1 : 0;
+} finally {
+  await pool.end();
+}
+
+process.exit(codigoSaida);

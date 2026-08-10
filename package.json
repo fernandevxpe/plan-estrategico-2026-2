@@ -29,6 +29,7 @@
     "test:revenue-funnel": "node scripts/test-revenue-funnel.mjs",
     "export:context": "node scripts/export-chat-context.mjs",
     "check:inter": "node scripts/check-inter.mjs",
+    "sync:inter": "node scripts/sync-inter.mjs",
     "build": "npm run sync && npm run analyze && npm run analyze:commercial-intel && npm run build:crm-snapshot && npm run build:audits && npm run export:context",
     "start:next": "next start",
     "sync:all": "node scripts/scheduler.mjs --once",

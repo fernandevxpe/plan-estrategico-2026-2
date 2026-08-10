@@ -1540,6 +1540,9 @@ async function fluxoReclassificar(client) {
       console.log(titulo('APLICADO'));
       console.log(`  lote ............ ${lote}`);
       console.log(`  desfazer com .... node scripts/reclassificar.mjs --reverter=${lote}`);
+      console.log('  Confira o resultado na tela ANTES de aplicar a próxima fatia. O desfazer');
+      console.log('  recusa linha que alguém alterar depois deste lote — quanto mais tempo passa,');
+      console.log('  menos completo ele fica.');
     } else {
       await client.query('ROLLBACK');
       console.log(titulo('DRY-RUN — NADA FOI GRAVADO'));

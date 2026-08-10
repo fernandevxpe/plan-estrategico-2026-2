@@ -357,7 +357,12 @@ function lerAbaHardware() {
 function favorecido(conta, descricao) {
   const d = descricao ?? '';
   if (conta === 'inter') {
-    let m = d.includes(' — ') ? d.split(' — ').slice(1).join(' — ') : d;
+    // Só o PRIMEIRO pedaço depois do travessão. O importador concatena
+    // `titulo — favorecido — mensagem do PIX`, e a mensagem é digitada por
+    // gente: sem cortar aqui, "Kevin Souza Firmino De Oliveira" e "Kevin Souza
+    // Firmino De Oliveira — 50% cobertura foto e filmagem evento" viram duas
+    // pessoas diferentes com metade do dinheiro cada.
+    let m = d.includes(' — ') ? d.split(' — ')[1] : d;
     m = m.replace(/^Pix (enviado|recebido):\s*"?/i, '').replace(/^Pagamento efetuado:\s*"?/i, '').replace(/"$/, '');
     return limpaDocumentoNoNome(m.replace(/^Cp\s*:?\s*\d+\s*-\s*/i, '').trim());
   }
@@ -516,7 +521,13 @@ function scoreNome(apelido, nomeLedger) {
 
   const idx = tokens.indexOf(a);
   if (idx === 0) return { score: 1, motivo: 'primeiro nome idêntico' };
-  if (idx > 0) return { score: 0.5, motivo: `token ${idx + 1} idêntico (não é o primeiro nome)` };
+  // Apelido que é o último sobrenome ("Belo" → Mateus Rocha de Paiva Belo) vale
+  // mais que apelido no meio do nome ("Leon" → Cesar LEON Castelo Branco). O
+  // meio é exatamente a forma do erro que já aconteceu nesta base — "Gabriel"
+  // casando com "Paulo GABRIEL Chaves de Araujo" — e por isso fica abaixo do
+  // limiar de propósito: quem decide é o humano.
+  if (idx === tokens.length - 1) return { score: 0.6, motivo: 'último sobrenome idêntico' };
+  if (idx > 0) return { score: 0.5, motivo: `token ${idx + 1} idêntico (nome do meio — a forma do falso positivo conhecido)` };
   // Apelido encurtado: "Evera" → "everaldo", "Dec" → "decezaris".
   if (a.length >= 3 && tokens[0].startsWith(a)) return { score: 0.75, motivo: `primeiro nome começa com "${a}"` };
   // A planilha escreve à mão: "Tawany" para Tawanny, "Dantre" para Dante,
@@ -775,8 +786,10 @@ try {
     const cpf = linkBom && linkBom.tipoDocumento === 'cpf' ? linkBom.documento : null;
     const cnpj = linkBom && linkBom.tipoDocumento === 'cnpj' ? linkBom.documento : null;
 
+    // O dry-run EXECUTA as escritas e desfaz no fim. Um dry-run que não roda o
+    // SQL não prova que o SQL funciona — prova só que o relatório compila.
     let personId = existente?.id ?? null;
-    if (APLICAR) {
+    {
       if (personId) {
         await client.query(
           `UPDATE fin_person
@@ -801,7 +814,7 @@ try {
     }
 
     for (const l of r.links) {
-      if (APLICAR && personId) {
+      if (personId) {
         await client.query(
           `INSERT INTO fin_person_counterparty (entity_id, person_id, counterparty_id, is_primary, confidence, method, status, evidence, confirmed_by, confirmed_at)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
@@ -833,7 +846,7 @@ try {
     if (p.apuradoCents && !Object.keys(p.componentes).length) linhas.push(['fixo', 'apurado', p.apuradoCents, nucleo]);
 
     for (const [slug, kind, valor, nuc] of linhas) {
-      if (APLICAR && personId) {
+      if (personId) {
         await client.query(
           `INSERT INTO fin_person_compensation (entity_id, person_id, reference_month, component, kind, amount_cents, nucleo, source)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
@@ -893,14 +906,30 @@ try {
       `aponta para ele | "${e.name}" é quem? É a mesma pessoa que algum nome do roster (o único sobrenome Alves do ` +
       `time é o Igor Alves Cordeiro), ou é alguém que saiu? |`);
   }
-  // Favorecidos recorrentes que a planilha não conhece.
+  // Favorecidos recorrentes com cara de pessoa física que a planilha não conhece.
+  //
+  // O filtro de empresa é grosseiro de propósito: errar para o lado de listar um
+  // fornecedor a mais custa uma linha na tabela; errar para o lado de esconder
+  // uma pessoa custa a resposta inteira da reconciliação. Todo mundo que sobra
+  // aqui é dinheiro saindo todo mês para um nome de gente que nenhuma aba
+  // menciona.
   const conhecidos = new Set(resultados.filter((r) => r.melhor && r.melhor.score >= 0.45).map((r) => r.melhor.favorecido.chave));
+  const marcaEmpresa = /\b(ltda|s\.? ?a\.?|eireli|epp|me|mei|comercio|com\b|industria|ind\b|servicos|assessoria|tecnologia|pagamentos|banco|bco|posto|supermercado|conselho|receita|prefeitura|energia|telecom|distribuidora|solucoes|engenharia|aluguel|equipamentos|marketing|apoio|gestao|atacado|loja|condominio|federal|nacional|tabeli)\b/i;
+  const ruidoDeExtrato = /^(pagamento|transferencia|aplicacao|fatura|pix|cp:|taxa|dl \*|simples|debito)/i;
+  const pareceGente = (nome) => {
+    const limpo = nome.replace(/\s+\d[\d.\-/]*$/, '').trim();
+    if (ruidoDeExtrato.test(limpo) || marcaEmpresa.test(limpo)) return false;
+    return limpo.split(/\s+/).length >= 3 && !/\d/.test(limpo);
+  };
   for (const f of [...ledger.porFavorecido.values()].sort((a, b) => b.total - a.total)) {
     if (conhecidos.has(f.chave)) continue;
     const nMeses = meses2026.filter((m) => (f.meses[m] ?? 0) > 0).length;
     if (nMeses < 3 || f.total < 100000) continue; // ruído: avulso ou de valor irrelevante
-    log(`| (fora da planilha) | "${f.nome}" recebeu ${brl(f.total)} em ${nMeses} meses e não existe em nenhuma aba | ` +
-      `Quem é ${f.nome}? É do time (e qual vínculo), é fornecedor, ou é repasse? |`);
+    if (!pareceGente(f.nome)) continue;
+    const cp = [...f.contrapartes.keys()].map((id) => ledger.contrapartes.get(id)).find(Boolean);
+    log(`| (fora da planilha) | "${f.nome}"${cp?.document_number ? ` (${cp.document_type} ${cp.document_number})` : ''} ` +
+      `recebeu ${brl(f.total)} em ${nMeses} de 8 meses e não existe em nenhuma aba | ` +
+      `${f.nome} é do time? Se for, qual vínculo e qual via de pagamento? Se for fornecedor, por que entra no custo de gente? |`);
   }
   log('');
 

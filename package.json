@@ -33,6 +33,7 @@
     "import:inter": "node scripts/import-inter.mjs",
     "test:integridade": "node scripts/test-integridade.mjs",
     "parear": "node scripts/parear-transferencias.mjs",
+    "reclassificar": "node scripts/reclassificar.mjs",
     "semear:categoria": "node scripts/semear-categoria-padrao.mjs",
     "build": "npm run sync && npm run analyze && npm run analyze:commercial-intel && npm run build:crm-snapshot && npm run build:audits && npm run export:context",
     "start:next": "next start",

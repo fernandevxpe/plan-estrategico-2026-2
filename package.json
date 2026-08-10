@@ -36,6 +36,7 @@
     "reclassificar": "node scripts/reclassificar.mjs",
     "semear:categoria": "node scripts/semear-categoria-padrao.mjs",
     "favorecidos:nubank": "node scripts/extrair-favorecidos-nubank.mjs",
+    "classificar:pessoas": "node scripts/classificar-custo-pessoas.mjs",
     "build": "npm run sync && npm run analyze && npm run analyze:commercial-intel && npm run build:crm-snapshot && npm run build:audits && npm run export:context",
     "start:next": "next start",
     "sync:all": "node scripts/scheduler.mjs --once",

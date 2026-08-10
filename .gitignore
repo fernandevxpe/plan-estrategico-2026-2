@@ -1,4 +1,10 @@
 .env.local
+secrets/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
 data/raw/
 data/processed/
 node_modules/

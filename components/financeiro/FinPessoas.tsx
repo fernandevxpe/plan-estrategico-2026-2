@@ -5,6 +5,7 @@ import { Fragment, useMemo, useState } from "react";
 import type { CustoPessoas, Pactuado, Pessoa } from "@/lib/financeiro/pessoas";
 import { brlCents, brlPrecise, monthKeyLabel, pct } from "@/lib/financeiro/format";
 
+import { FinLigacaoPropostaAcoes, FinPessoaCadastro, FinPessoaEditor } from "./FinPessoaEditor";
 import { FinPessoasMatriz } from "./FinPessoasMatriz";
 
 /**
@@ -926,6 +927,11 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
         suspeitoCents={suspeitoCents}
       />
 
+      {/* O cadastro vem DEPOIS da cobertura de propósito: é a seção que responde
+          às pendências que a cobertura acabou de nomear — a pessoa sem área, o
+          vínculo indefinido, a ligação que ninguém confirmou. */}
+      <FinPessoaCadastro dados={dados} />
+
       <section className="card fin-painel-lacunas" aria-label="Limites desta tela">
         <h2 className="card-title">O que esta tela ainda não sabe</h2>
         <p className="fin-painel-lacunas-abre">
@@ -969,7 +975,13 @@ function Detalhe({
 
   return (
     <div className="fin-why-popover" role="note">
-      <p>
+      {/* O mesmo editor da seção de cadastro, aqui. Quem abriu a gaveta para
+          entender um número já está com a pergunta na cabeça ("por que o Diogo
+          conta como Hardware?"); mandá-lo procurar a pessoa noutra tabela para
+          corrigir é onde o trabalho se perde. */}
+      <FinPessoaEditor pessoa={pessoa} dados={dados} />
+
+      <p style={{ marginTop: 16 }}>
         <strong>Contrapartes ligadas a {pessoa.nome}</strong>
       </p>
       <table className="fin-table">
@@ -1256,11 +1268,15 @@ function Cobertura({
                 <th className="num">Confiança</th>
                 <th className="num">Lanç.</th>
                 <th className="num">Saída na contraparte</th>
+                {/* A decisão fica na MESMA linha do valor. Uma fila ordenada por
+                    dinheiro em jogo que obrigasse a procurar a pessoa noutra
+                    seção para decidir seria uma fila que ninguém esvazia. */}
+                <th>Decidir</th>
               </tr>
             </thead>
             <tbody>
               {linksPropostos.map((linha) => (
-                <tr key={`${linha.pessoa}-${linha.contraparte}`}>
+                <tr key={linha.linkId}>
                   <td>{linha.pessoa}</td>
                   <td>
                     {linha.contraparte}
@@ -1277,6 +1293,9 @@ function Cobertura({
                   <td className="num">{linha.confianca.toFixed(2)}</td>
                   <td className="num">{linha.n}</td>
                   <td className="num fin-table-money">{brlPrecise(linha.saidaCents)}</td>
+                  <td>
+                    <FinLigacaoPropostaAcoes link={linha} />
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -86,6 +86,101 @@ const ROTULO_VINCULO: Record<string, string> = {
  */
 const ORDEM_VINCULO = ["socio_adm", "socio", "mei", "estagiario", "irregular", "pj", "clt", "indefinido"];
 
+/**
+ * O domínio INTEIRO de `employment_type`, para o editor — não só o que já tem
+ * linha.
+ *
+ * `vinculos` (mais abaixo) devolve apenas os vínculos PRESENTES, porque um
+ * filtro que oferece opção sem linha ensina a não usar o filtro. Num combo de
+ * edição a regra se inverte: oferecer só o que já existe torna impossível
+ * registrar a primeira contratação CLT — que é exatamente a mudança que precisa
+ * ser possível sem deploy.
+ */
+export const VINCULOS_DOMINIO: Opcao[] = ORDEM_VINCULO.map((slug) => ({
+  slug,
+  nome: ROTULO_VINCULO[slug]
+}));
+
+/** `fin_person.status`, tal como o CHECK de 0012 o define. */
+export const STATUS_DOMINIO: Opcao[] = [
+  { slug: "ativo", nome: "Ativo" },
+  { slug: "inativo", nome: "Inativo" }
+];
+
+/**
+ * Espelho do CHECK `fin_person_employment_type_check` (0026). O endpoint valida
+ * também contra o `pg_get_constraintdef` real: esta lista dá a mensagem boa, o
+ * banco dá a verdade. Duas listas que podem divergir seriam pior que uma — por
+ * isso a daqui nunca é a última palavra.
+ */
+export function vinculoValido(valor: string): boolean {
+  return Object.hasOwn(ROTULO_VINCULO, valor);
+}
+
+/**
+ * Área é TEXTO LIVRE, e continua sendo — mas normalizada.
+ *
+ * O dono precisa poder criar "Pré-vendas" numa quinta-feira sem migration, o
+ * que descarta enum. O que não pode acontecer é "Obras", "obras" e "obras "
+ * virarem três times na mesma tabela: `TIME_SQL` compara `p.area IN
+ * ('hardware','software')` literalmente, e um "Hardware" com maiúscula sairia
+ * de Hardware e cairia em "Sem time" sem erro nenhum. A normalização é o preço
+ * de manter o campo aberto — mesma receita de slug da migração 0009, com `_` no
+ * lugar de `-` para casar com os valores que já existem no banco.
+ */
+export function slugArea(valor: string): string {
+  return valor
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+/** "pre_vendas" → "Pre vendas". Só para o rótulo; o dado guardado é o slug. */
+function rotuloArea(slug: string): string {
+  const texto = slug.replace(/_/g, " ");
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+/**
+ * Categoria de custo sugerida pelo VÍNCULO — e o silêncio deliberado onde o
+ * vínculo não decide.
+ *
+ * Sócio não recebe salário, recebe pró-labore; bolsa de estágio é linha própria;
+ * CLT é salário. Nesses três a lei já respondeu, e sugerir é seguro.
+ *
+ * MEI, PJ, irregular e indefinido ficam FORA do mapa de propósito. Um MEI que
+ * desenvolve software o ano inteiro é custo fixo de pessoal; um MEI que executa
+ * uma obra é custo variável direto daquela obra — e a diferença muda a margem
+ * bruta, não só a linha. O vínculo não distingue os dois, e 12 das 33 pessoas
+ * são MEI: chutar aqui seria mover a maior fatia da folha de linha na DRE com
+ * base num campo que não carrega essa informação. É precisamente por isso que a
+ * classificação precisa ser POR PESSOA, e não por vínculo.
+ */
+export const CATEGORIA_SUGERIDA_POR_VINCULO: Record<string, string> = {
+  socio_adm: "6.02",
+  socio: "6.02",
+  estagiario: "6.06",
+  clt: "6.01"
+};
+
+/**
+ * A contraparte é uma instituição financeira, não uma pessoa?
+ *
+ * O importador do Inter preferia `nomeEmpresaRecebedor` — que num PIX é o BANCO
+ * de destino — ao nome do favorecido, e colapsou 57 pessoas em 19 bancos
+ * (migração 0027). Confirmar uma ligação dessas pendura o custo de meio time
+ * numa pessoa só. A regra vive aqui, exportada, porque a tela precisa AVISAR e o
+ * endpoint precisa RECUSAR — e duas cópias divergiriam no dia em que um banco
+ * novo aparecesse.
+ */
+export function pareceInstituicaoFinanceira(nome: string): boolean {
+  return /(banco|bco |nu pagamentos|nu financeira|santander|digio|itau|ita[uú]|caixa econ|bradesco|inter s\.a|cora scfi|picpay|stone|mercado pago|pagseguro|sicoob|sicredi|safra|c6)/i.test(
+    nome
+  );
+}
+
 const ROTULO_TIME: Record<string, string> = {
   consultoria: "Consultoria",
   obras: "Obras",
@@ -122,7 +217,7 @@ const ORDEM_NATUREZA = ["folha", "variavel", "reembolso", "beneficio", "nao_disc
  * de dinheiro deste arquivo interpolam esta constante — e ela nunca recebe valor
  * de usuário, então não abre caminho para injeção.
  */
-const GUARDAS_SAIDA = `
+export const GUARDAS_SAIDA = `
       t.amount_cents < 0
   AND t.transfer_status = 'nao'
   AND NOT t.is_split_parent
@@ -156,6 +251,8 @@ export type Natureza = "folha" | "variavel" | "reembolso" | "beneficio" | "nao_d
 export type Opcao = { slug: string; nome: string };
 
 export type Contraparte = {
+  /** Id da LIGAÇÃO (fin_person_counterparty), não da contraparte: é o que o PATCH confirma. */
+  linkId: number;
   id: number;
   nome: string;
   documento: string | null;
@@ -166,6 +263,10 @@ export type Contraparte = {
   /** Quanto saiu por ESTA contraparte. É o que mostra que somar uma só perde metade. */
   realizadoCents: number;
   n: number;
+  /** Instituição financeira no lugar do favorecido (0027): confirmar seria erro. */
+  ehBanco: boolean;
+  decididoPor: string | null;
+  decididoEm: string | null;
 };
 
 export type Pessoa = {
@@ -178,6 +279,28 @@ export type Pessoa = {
   timeRotulo: string;
   status: string;
   contrapartes: Contraparte[];
+  // ── O que o editor precisa para EDITAR, não só para mostrar ──────────────
+  /** Texto livre normalizado. `null` é pendência de cadastro, não "sem área". */
+  area: string | null;
+  areaRotulo: string | null;
+  papel: string | null;
+  defaultNucleo: string | null;
+  inicio: string | null;
+  fim: string | null;
+  /**
+   * Categoria de custo padrão desta pessoa. `null` enquanto a coluna
+   * `fin_person.default_category_id` não existir (ver `categoriaPadraoDisponivel`).
+   */
+  categoriaPadrao: string | null;
+  categoriaPadraoNome: string | null;
+  /** O que o VÍNCULO sugere, quando ele decide sozinho. Nunca gravado por código. */
+  categoriaSugerida: string | null;
+  /**
+   * Ligações ainda em 'proposto'. Separadas de `contrapartes` de propósito: só
+   * link confirmado soma, e misturar as duas listas faria a contagem de
+   * contrapartes da tabela principal incluir dinheiro que ninguém confirmou.
+   */
+  contrapartesPropostas: Contraparte[];
 };
 
 /**
@@ -255,6 +378,9 @@ export type Suspeito = {
 };
 
 export type LinkProposto = {
+  /** Id da linha de fin_person_counterparty — o alvo do confirmar/rejeitar. */
+  linkId: number;
+  personId: number;
   pessoa: string;
   contraparte: string;
   confianca: number;
@@ -274,6 +400,25 @@ export type Cobertura = {
   faturaCartaoN: number;
 };
 
+/** Uma categoria de custo oferecível como padrão de pessoa. */
+export type CategoriaOpcao = { code: string; nome: string; grupo: string; usos: number };
+
+/**
+ * Como os lançamentos JÁ confirmados de cada pessoa estão classificados hoje.
+ *
+ * É a prova do problema que o dono descreveu: 281 lançamentos em 6.01 Salários e
+ * zero em 6.02 Pró-labore, numa empresa sem um único CLT. Sem esta lista ao lado
+ * do combo, escolher a categoria padrão é escolher no escuro — o editor não teria
+ * como mostrar o que a escolha contradiz.
+ */
+export type UsoCategoria = {
+  personId: number;
+  code: string | null;
+  nome: string | null;
+  n: number;
+  cents: number;
+};
+
 export type CustoPessoas = {
   disponivel: boolean;
   hoje: string;
@@ -291,6 +436,24 @@ export type CustoPessoas = {
   componentes: Componente[];
   cobertura: Cobertura;
   lacunas: { titulo: string; detalhe: string }[];
+  // ── Domínios do editor ───────────────────────────────────────────────────
+  /** As áreas EM USO, para sugerir no combo. O campo aceita uma nova a qualquer hora. */
+  areas: Opcao[];
+  /** O CHECK inteiro de employment_type, não só o que já tem linha. */
+  vinculosDominio: Opcao[];
+  statusDominio: Opcao[];
+  nucleos: Opcao[];
+  categorias: CategoriaOpcao[];
+  usoCategoria: UsoCategoria[];
+  /**
+   * `fin_person.default_category_id` existe neste banco?
+   *
+   * A coluna vem por migration, e migration não é aplicada por este módulo. Em
+   * vez de a tela quebrar contra uma coluna que não existe — ou pior, de o campo
+   * sumir sem explicação —, o editor mostra o combo desabilitado dizendo o que
+   * falta. No dia em que a migration entrar, o campo liga sozinho.
+   */
+  categoriaPadraoDisponivel: boolean;
 };
 
 function indisponivel(): CustoPessoas {
@@ -316,7 +479,14 @@ function indisponivel(): CustoPessoas {
       faturaCartaoCents: 0,
       faturaCartaoN: 0
     },
-    lacunas: []
+    lacunas: [],
+    areas: [],
+    vinculosDominio: VINCULOS_DOMINIO,
+    statusDominio: STATUS_DOMINIO,
+    nucleos: [],
+    categorias: [],
+    usoCategoria: [],
+    categoriaPadraoDisponivel: false
   };
 }
 
@@ -332,13 +502,43 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
     // "Hoje" vem do SQL já no fuso da empresa: em produção o servidor roda em
     // UTC e, entre 21h e meia-noite, o mês corrente de lá não é o daqui — e o
     // filtro "mês recente" apontaria para o mês errado a noite inteira.
-    const [{ hoje, mes_atual: mesAtual }] = await query<{ hoje: string; mes_atual: string }>(
+    const [{ hoje, mes_atual: mesAtual, tem_categoria_padrao: temCategoriaPadrao }] = await query<{
+      hoje: string;
+      mes_atual: string;
+      tem_categoria_padrao: boolean;
+    }>(
       `SELECT (now() AT TIME ZONE 'America/Sao_Paulo')::date::text AS hoje,
-              to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo'), 'YYYY-MM-01') AS mes_atual`
+              to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo'), 'YYYY-MM-01') AS mes_atual,
+              EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name = 'fin_person' AND column_name = 'default_category_id')
+                AS tem_categoria_padrao`
     );
 
-    const [pessoasRows, linksRows, celulasRows, pactuadoRows, componentesRows, buracoRows, suspeitoRows, faturaRows, contasRows] =
-      await Promise.all([
+    // Interpolação de CONSTANTE, nunca de valor de usuário — mesma prática de
+    // GUARDAS_SAIDA. Sem isto, a consulta referenciaria uma coluna inexistente e
+    // a tela inteira cairia no catch, virando "banco indisponível" por causa de
+    // uma migration pendente.
+    const SQL_CATEGORIA_PADRAO = temCategoriaPadrao
+      ? "cp.code AS categoria_padrao, cp.name AS categoria_padrao_nome"
+      : "NULL::text AS categoria_padrao, NULL::text AS categoria_padrao_nome";
+    const JOIN_CATEGORIA_PADRAO = temCategoriaPadrao
+      ? "LEFT JOIN fin_category cp ON cp.id = p.default_category_id"
+      : "";
+
+    const [
+      pessoasRows,
+      linksRows,
+      celulasRows,
+      pactuadoRows,
+      componentesRows,
+      buracoRows,
+      suspeitoRows,
+      faturaRows,
+      contasRows,
+      categoriasRows,
+      nucleosRows,
+      usoCategoriaRows
+    ] = await Promise.all([
         query<{
           id: number;
           nome: string;
@@ -346,10 +546,23 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
           vinculo: string;
           time: string;
           status: string;
+          area: string | null;
+          papel: string | null;
+          default_nucleo: string | null;
+          inicio: string | null;
+          fim: string | null;
+          categoria_padrao: string | null;
+          categoria_padrao_nome: string | null;
         }>(
           `SELECT p.id, p.name AS nome, p.legal_name AS nome_legal, p.employment_type AS vinculo,
-                  ${TIME_SQL} AS time, p.status
-             FROM fin_person p JOIN fin_entity e ON e.id = p.entity_id
+                  ${TIME_SQL} AS time, p.status,
+                  p.area, p.role AS papel, p.default_nucleo,
+                  to_char(p.start_date, 'YYYY-MM-DD') AS inicio,
+                  to_char(p.end_date, 'YYYY-MM-DD') AS fim,
+                  ${SQL_CATEGORIA_PADRAO}
+             FROM fin_person p
+             JOIN fin_entity e ON e.id = p.entity_id
+             ${JOIN_CATEGORIA_PADRAO}
             WHERE e.slug = $1
             ORDER BY p.name`,
           [ENTITY]
@@ -359,6 +572,7 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
         // que torna visível o motivo da tabela existir: para o Igor ela mostra
         // duas linhas, CNPJ e CPF, e a soma de uma só é metade do custo dele.
         query<{
+          link_id: number;
           person_id: number;
           id: number;
           nome: string;
@@ -369,9 +583,13 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
           status: string;
           realizado: number;
           n: number;
+          decidido_por: string | null;
+          decidido_em: string | null;
         }>(
-          `SELECT l.person_id, c.id, c.name AS nome, c.document_number AS documento,
+          `SELECT l.id AS link_id, l.person_id, c.id, c.name AS nome, c.document_number AS documento,
                   l.is_primary AS primaria, l.confidence::text AS confianca, l.method AS metodo, l.status,
+                  l.confirmed_by AS decidido_por,
+                  to_char(l.confirmed_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI') AS decidido_em,
                   COALESCE(SUM(-t.amount_cents), 0) AS realizado,
                   count(t.id)::int AS n
              FROM fin_person_counterparty l
@@ -379,8 +597,9 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
              JOIN fin_entity e ON e.id = l.entity_id
              LEFT JOIN fin_transaction t ON t.counterparty_id = c.id AND ${GUARDAS_SAIDA}
             WHERE e.slug = $1
-            GROUP BY l.person_id, c.id, c.name, c.document_number, l.is_primary, l.confidence, l.method, l.status
-            ORDER BY l.is_primary DESC, 9 DESC`,
+            GROUP BY l.id, l.person_id, c.id, c.name, c.document_number, l.is_primary, l.confidence,
+                     l.method, l.status, l.confirmed_by, l.confirmed_at
+            ORDER BY l.is_primary DESC, realizado DESC`,
           [ENTITY]
         ),
 
@@ -519,26 +738,84 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
             WHERE e.slug = $1 AND a.is_active AND a.kind IN ('conta_corrente', 'gateway')
             ORDER BY a.sort_order`,
           [ENTITY]
+        ),
+
+        // As categorias oferecíveis como padrão de uma PESSOA.
+        //
+        // O filtro por `kind` não é cosmético: `fin_counterparty.default_category_id`
+        // não tem dimensão de direção, e herdar uma categoria 3.xx num pagamento
+        // lança despesa como receita (é a guarda `recusaPorDirecao` de
+        // scripts/semear-categoria-padrao.mjs). Aqui a direção é conhecida — todo
+        // pagamento a pessoa é saída —, então a lista já nasce sem receita,
+        // dedução, imposto e movimentação financeira.
+        //
+        // 5.99 "Despesa a classificar" fica de fora pelo mesmo motivo do script:
+        // cadastrar o balde como padrão é registrar a dívida de classificação em
+        // vez de pagá-la, e faz o lançamento sair da fila parecendo resolvido.
+        query<{ code: string; nome: string; grupo: string; usos: number }>(
+          `SELECT c.code, c.name AS nome, c.kind AS grupo,
+                  (SELECT count(*)::int FROM fin_transaction t WHERE t.category_id = c.id) AS usos
+             FROM fin_category c JOIN fin_entity e ON e.id = c.entity_id
+            WHERE e.slug = $1 AND c.is_active
+              AND c.kind IN ('pessoal', 'custo_variavel_direto', 'despesa_operacional')
+              AND c.code <> '5.99'
+            ORDER BY c.code`,
+          [ENTITY]
+        ),
+
+        query<{ slug: string; nome: string }>(
+          `SELECT slug, name AS nome FROM fin_nucleo WHERE is_active ORDER BY slug`
+        ),
+
+        // Como o dinheiro JÁ confirmado de cada pessoa está classificado hoje.
+        // Mesmas guardas e mesma junção das células: o editor precisa comparar a
+        // escolha nova com o que está lá, e comparar contra outro recorte seria
+        // comparar com outro número.
+        query<{ person_id: number; code: string | null; nome: string | null; n: number; cents: number }>(
+          `SELECT l.person_id, cat.code, cat.name AS nome, count(*)::int AS n, SUM(-t.amount_cents) AS cents
+             FROM fin_transaction t
+             JOIN fin_entity e ON e.id = t.entity_id
+             JOIN fin_person_counterparty l ON l.counterparty_id = t.counterparty_id AND l.status = 'confirmado'
+             LEFT JOIN fin_category cat ON cat.id = t.category_id
+            WHERE e.slug = $1 AND ${GUARDAS_SAIDA}
+            GROUP BY 1, 2, 3
+            ORDER BY 5 DESC`,
+          [ENTITY]
         )
       ]);
 
     // ── Roster com as contrapartes penduradas ──────────────────────────────
+    const paraContraparte = (linha: (typeof linksRows)[number]): Contraparte => ({
+      linkId: linha.link_id,
+      id: linha.id,
+      nome: linha.nome,
+      documento: linha.documento,
+      primaria: linha.primaria,
+      confianca: Number(linha.confianca),
+      metodo: linha.metodo,
+      status: linha.status,
+      realizadoCents: linha.realizado,
+      n: linha.n,
+      ehBanco: pareceInstituicaoFinanceira(linha.nome),
+      decididoPor: linha.decidido_por,
+      decididoEm: linha.decidido_em
+    });
+
     const linksPorPessoa = new Map<number, Contraparte[]>();
+    const propostosPorPessoa = new Map<number, Contraparte[]>();
     for (const linha of linksRows) {
-      if (linha.status !== "confirmado") continue;
-      const lista = linksPorPessoa.get(linha.person_id) ?? [];
-      lista.push({
-        id: linha.id,
-        nome: linha.nome,
-        documento: linha.documento,
-        primaria: linha.primaria,
-        confianca: Number(linha.confianca),
-        metodo: linha.metodo,
-        status: linha.status,
-        realizadoCents: linha.realizado,
-        n: linha.n
-      });
-      linksPorPessoa.set(linha.person_id, lista);
+      // 'rejeitado' não entra em nenhuma das duas: é memória para o importador
+      // não propor de novo o que um humano já recusou, não pendência aberta.
+      const destino =
+        linha.status === "confirmado"
+          ? linksPorPessoa
+          : linha.status === "proposto"
+            ? propostosPorPessoa
+            : null;
+      if (!destino) continue;
+      const lista = destino.get(linha.person_id) ?? [];
+      lista.push(paraContraparte(linha));
+      destino.set(linha.person_id, lista);
     }
 
     const pessoas: Pessoa[] = pessoasRows.map((linha) => ({
@@ -550,7 +827,17 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       time: linha.time,
       timeRotulo: ROTULO_TIME[linha.time] ?? linha.time,
       status: linha.status,
-      contrapartes: linksPorPessoa.get(linha.id) ?? []
+      contrapartes: linksPorPessoa.get(linha.id) ?? [],
+      area: linha.area,
+      areaRotulo: linha.area ? (ROTULO_TIME[linha.area] ?? rotuloArea(linha.area)) : null,
+      papel: linha.papel,
+      defaultNucleo: linha.default_nucleo,
+      inicio: linha.inicio,
+      fim: linha.fim,
+      categoriaPadrao: linha.categoria_padrao,
+      categoriaPadraoNome: linha.categoria_padrao_nome,
+      categoriaSugerida: CATEGORIA_SUGERIDA_POR_VINCULO[linha.vinculo] ?? null,
+      contrapartesPropostas: propostosPorPessoa.get(linha.id) ?? []
     }));
 
     const celulas: Celula[] = celulasRows.map((linha) => ({
@@ -617,21 +904,22 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
     // Contraparte de banco: o nome é a INSTITUIÇÃO de destino do PIX, guardada
     // no lugar do favorecido pelo importador do Inter. Confirmar um link desses
     // penduraria os lançamentos de várias pessoas em uma só — por isso a
-    // pendência vem marcada, e não só listada.
-    const ehBanco = (nome: string) =>
-      /(banco|bco |nu pagamentos|santander|digio|itau|ita[uú]|caixa econ|bradesco|inter s\.a)/i.test(nome);
-
+    // pendência vem marcada, e não só listada. A regra vive em
+    // `pareceInstituicaoFinanceira` porque o endpoint de confirmação usa a MESMA:
+    // avisar na tela e recusar no servidor não podem discordar.
     const nomePorPessoa = new Map(pessoasRows.map((p) => [p.id, p.nome]));
     const linksPropostos: LinkProposto[] = linksRows
       .filter((linha) => linha.status === "proposto")
       .map((linha) => ({
+        linkId: linha.link_id,
+        personId: linha.person_id,
         pessoa: nomePorPessoa.get(linha.person_id) ?? "—",
         contraparte: linha.nome,
         confianca: Number(linha.confianca),
         metodo: linha.metodo,
         saidaCents: linha.realizado,
         n: linha.n,
-        ehBanco: ehBanco(linha.nome)
+        ehBanco: pareceInstituicaoFinanceira(linha.nome)
       }))
       .sort((a, b) => b.saidaCents - a.saidaCents);
 
@@ -727,6 +1015,32 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       }
     ];
 
+    // As áreas EM USO, para o combo sugerir antes de deixar digitar. Sai do dado
+    // e não de uma lista fixa: no dia em que o dono criar "Pré-vendas" pela tela,
+    // ela aparece aqui para a próxima pessoa sem ninguém tocar em código.
+    const areasEmUso = [...new Set(pessoas.map((p) => p.area).filter((a): a is string => Boolean(a)))].sort();
+    const areas: Opcao[] = areasEmUso.map((slug) => ({
+      slug,
+      nome: ROTULO_TIME[slug] ?? rotuloArea(slug)
+    }));
+
+    const nucleos: Opcao[] = nucleosRows.map((n) => ({ slug: n.slug, nome: n.nome }));
+
+    const categorias: CategoriaOpcao[] = categoriasRows.map((c) => ({
+      code: c.code,
+      nome: c.nome,
+      grupo: c.grupo,
+      usos: c.usos
+    }));
+
+    const usoCategoria: UsoCategoria[] = usoCategoriaRows.map((linha) => ({
+      personId: linha.person_id,
+      code: linha.code,
+      nome: linha.nome,
+      n: linha.n,
+      cents: linha.cents
+    }));
+
     return {
       disponivel: true,
       hoje,
@@ -742,7 +1056,14 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       pactuado,
       componentes,
       cobertura,
-      lacunas
+      lacunas,
+      areas,
+      vinculosDominio: VINCULOS_DOMINIO,
+      statusDominio: STATUS_DOMINIO,
+      nucleos,
+      categorias,
+      usoCategoria,
+      categoriaPadraoDisponivel: temCategoriaPadrao
     };
   } catch (error) {
     console.error("[financeiro] custo com pessoas indisponível:", error);

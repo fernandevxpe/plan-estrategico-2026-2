@@ -28,7 +28,19 @@ ALTER TABLE fin_account ADD CONSTRAINT fin_account_import_adapter_check
     'manual'
   ));
 
--- 2. A conta do Inter passa a ser alimentada pela API.
+-- 2. A procedência do lançamento também precisa poder dizer "veio da API".
+--
+-- Não é detalhe burocrático: 'import_ofx' significa que alguém baixou um
+-- arquivo e pode tê-lo baixado incompleto ou duas vezes; 'inter_api' significa
+-- que a linha veio com `idTransacao` do banco, e por isso a deduplicação é
+-- exata. Quem for auditar uma divergência precisa saber de qual dos dois mundos
+-- a linha veio.
+ALTER TABLE fin_transaction DROP CONSTRAINT IF EXISTS fin_transaction_source_check;
+
+ALTER TABLE fin_transaction ADD CONSTRAINT fin_transaction_source_check
+  CHECK (source IN ('asaas', 'import_csv', 'import_ofx', 'inter_api', 'manual'));
+
+-- 3. A conta do Inter passa a ser alimentada pela API.
 --
 -- Restrito ao slug 'inter' da XPE: se um dia existir outra entidade com conta no
 -- Inter, ela decide sozinha se entra por API ou por arquivo.

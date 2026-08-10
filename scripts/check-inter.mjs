@@ -8,7 +8,7 @@
 // Uso:
 //   node scripts/check-inter.mjs          só confere arquivos e variáveis
 //   node scripts/check-inter.mjs --live   também bate na API (token + extrato)
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { X509Certificate } from 'node:crypto';
 import { request as httpsRequest } from 'node:https';
 import { resolve } from 'node:path';
@@ -18,8 +18,34 @@ import { loadEnv } from './lib/env.mjs';
 loadEnv();
 
 const HOST = 'cdpj.partners.bancointer.com.br';
-const CERT_PATH = resolve(process.env.INTER_CERT_PATH || 'secrets/inter.crt');
-const KEY_PATH = resolve(process.env.INTER_KEY_PATH || 'secrets/inter.key');
+/**
+ * Acha o certificado sem exigir nome exato.
+ *
+ * O Inter entrega os arquivos como "Inter API_Certificado.crt" — com espaço no
+ * meio. Obrigar a renomear é convite a erro, e caminho com espaço em variável de
+ * ambiente quebra em shell na primeira distração. Então: se `INTER_CERT_PATH`
+ * estiver definida ela manda; senão procura a única extensão correspondente
+ * dentro de `secrets/`. Duas candidatas viram erro, e não escolha silenciosa.
+ */
+function acharCredencial(envVar, extensao, rotulo) {
+  const explicito = process.env[envVar];
+  if (explicito) return { caminho: resolve(explicito), erro: null };
+
+  const dir = resolve('secrets');
+  if (!existsSync(dir)) return { caminho: resolve('secrets', `inter${extensao}`), erro: null };
+
+  const achados = readdirSync(dir).filter((f) => f.toLowerCase().endsWith(extensao));
+  if (achados.length === 1) return { caminho: resolve(dir, achados[0]), erro: null };
+  if (achados.length > 1) {
+    return { caminho: null, erro: `mais de um ${rotulo} em secrets/ (${achados.join(', ')}) — defina ${envVar}` };
+  }
+  return { caminho: resolve(dir, `inter${extensao}`), erro: null };
+}
+
+const alvoCert = acharCredencial('INTER_CERT_PATH', '.crt', 'certificado');
+const alvoKey = acharCredencial('INTER_KEY_PATH', '.key', 'chave');
+const CERT_PATH = alvoCert.caminho;
+const KEY_PATH = alvoKey.caminho;
 const LIVE = process.argv.includes('--live');
 
 let problemas = 0;
@@ -54,8 +80,11 @@ function conferirArquivo(rotulo, caminho, exigirPermissao) {
   return conteudo;
 }
 
-const cert = conferirArquivo('Certificado', CERT_PATH, false);
-const key = conferirArquivo('Chave privada', KEY_PATH, true);
+if (alvoCert.erro) erro(`Certificado: ${alvoCert.erro}`);
+if (alvoKey.erro) erro(`Chave privada: ${alvoKey.erro}`);
+
+const cert = alvoCert.erro ? null : conferirArquivo('Certificado', CERT_PATH, false);
+const key = alvoKey.erro ? null : conferirArquivo('Chave privada', KEY_PATH, true);
 
 if (cert) {
   try {

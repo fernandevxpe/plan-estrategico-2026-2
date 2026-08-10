@@ -700,20 +700,33 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
                JOIN fin_person_counterparty l ON l.person_id = p.id AND l.status = 'confirmado'
                JOIN fin_counterparty c ON c.id = l.counterparty_id
                JOIN fin_entity e ON e.id = p.entity_id
-              WHERE e.slug = $1 AND length(c.normalized_name) >= 12)
-           SELECT k.person_id, k.pessoa,
-                  to_char(date_trunc('month', t.posted_on), 'YYYY-MM-01') AS mes,
-                  a.slug AS conta,
-                  SUM(-t.amount_cents) AS cents,
+              WHERE e.slug = $1 AND length(c.normalized_name) >= 12),
+           -- DISTINCT por (pessoa, transação) antes de somar.
+           --
+           -- O CTE "chave" produz uma linha por CONTRAPARTE, e seis pessoas do time
+           -- têm duas (recebem no CPF e no CNPJ). Sem este passo, o LIKE casa a
+           -- mesma transação com os dois prefixos da MESMA pessoa e o GROUP BY
+           -- soma as duas cópias — o painel chegou a imprimir um subconjunto
+           -- maior que o conjunto ("38 saídas, R$ 47.763,62; destas,
+           -- R$ 51.849,07 são do roster"), com R$ 15.985,00 contados em dobro
+           -- em 4 transações.
+           casado AS (
+             SELECT DISTINCT k.person_id, k.pessoa, t.id AS tx_id,
+                    t.posted_on, t.amount_cents, a.slug AS conta, t.description_raw
+               FROM fin_transaction t
+               JOIN fin_entity e ON e.id = t.entity_id
+               JOIN fin_account a ON a.id = t.account_id
+               JOIN chave k ON t.description_norm LIKE '%' || k.prefixo || '%'
+              WHERE e.slug = $1 AND ${GUARDAS_SAIDA}
+                AND t.counterparty_id IS NULL
+                AND a.kind = 'conta_corrente')
+           SELECT person_id, pessoa,
+                  to_char(date_trunc('month', posted_on), 'YYYY-MM-01') AS mes,
+                  conta,
+                  SUM(-amount_cents) AS cents,
                   count(*)::int AS n,
-                  (array_agg(t.description_raw ORDER BY t.amount_cents))[1] AS amostra
-             FROM fin_transaction t
-             JOIN fin_entity e ON e.id = t.entity_id
-             JOIN fin_account a ON a.id = t.account_id
-             JOIN chave k ON t.description_norm LIKE '%' || k.prefixo || '%'
-            WHERE e.slug = $1 AND ${GUARDAS_SAIDA}
-              AND t.counterparty_id IS NULL
-              AND a.kind = 'conta_corrente'
+                  (array_agg(description_raw ORDER BY amount_cents))[1] AS amostra
+             FROM casado
             GROUP BY 1, 2, 3, 4
             ORDER BY 5 DESC`,
           [ENTITY]

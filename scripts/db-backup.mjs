@@ -49,6 +49,27 @@ const TABLES = [
   'fin_transaction',
   'fin_settlement',
   'fin_balance_snapshot',
+  // A linha crua de cada importação: é o que permite reprocessar um lote sem
+  // bater na API de novo, e o que se compara quando um número na tela não bate.
+  'fin_import_row',
+  // Planejamento: o parâmetro e o override que o humano digitou. Nenhum dos
+  // dois se reconstrói a partir de fonte externa.
+  'fin_planning_param',
+  'fin_planning_override',
+  // Reembolso e parcelamento — hoje vazios, e é exatamente por isso que
+  // precisam entrar agora: a tabela que entra no backup só quando tem dado é a
+  // tabela que fica de fora no dia em que ganha o primeiro registro.
+  'fin_reimbursement_type',
+  'fin_reimbursement',
+  'fin_reimbursement_item',
+  'fin_installment_plan',
+  // O time: cadastro, ligação com contraparte e remuneração por mês. Veio da
+  // planilha e de decisão humana sobre identidade — não há fonte externa que
+  // devolva isso.
+  'fin_person',
+  'fin_person_counterparty',
+  'fin_compensation_component',
+  'fin_person_compensation',
   // Decisões humanas e trilha de auditoria: é o que NÃO se reconstrói
   // reimportando o Asaas, e portanto o que mais justifica este backup existir.
   'fin_classification_event',

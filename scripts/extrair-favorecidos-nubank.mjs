@@ -98,17 +98,41 @@ export function favorecidoDoTexto(descricao) {
 
 const pool = financePool();
 const client = await pool.connect();
-const relatorio = { lidas: 0, comNome: 0, semNome: 0, criadas: 0, reutilizadas: 0, ligadas: 0, truncadas: 0 };
+const relatorio = { lidas: 0, comNome: 0, semNome: 0, criadas: 0, reutilizadas: 0, ligadas: 0, truncadas: 0, proprias: 0 };
 
 try {
   await client.query('BEGIN');
 
   const { rows: contaRows } = await client.query(
-    `SELECT a.id, a.entity_id FROM fin_account a JOIN fin_entity e ON e.id = a.entity_id
+    `SELECT a.id, a.entity_id, e.cnpj FROM fin_account a JOIN fin_entity e ON e.id = a.entity_id
       WHERE a.slug = 'nubank' AND e.slug = 'xpe'`
   );
   if (!contaRows.length) throw new Error("conta 'nubank' não encontrada");
   const { id: accountId, entity_id: entityId } = contaRows[0];
+
+  /**
+   * O CNPJ e o nome da própria empresa não são contraparte.
+   *
+   * A migration 0022 existe para impedir exatamente isto, e este script a
+   * furou: criou "XPE TECNOLOGIA" com o CNPJ da casa 1h23 depois dela rodar,
+   * porque a checagem morava só no importador do Inter. Regra que vale para
+   * qualquer importador daqui para frente — a defesa precisa estar em todo
+   * caminho de escrita, não no que se lembrou dela.
+   */
+  const cnpjProprio = String(contaRows[0].cnpj ?? '').replace(/\D/g, '') || null;
+
+  // Razão social e nome fantasia vêm da entidade, não de lista fixa: no dia em
+  // que a empresa mudar de nome, a lista fixa passa a deixar o próprio nome
+  // entrar como fornecedor de novo.
+  const { rows: [ent] } = await client.query(
+    `SELECT legal_name, trade_name FROM fin_entity WHERE id = $1`,
+    [entityId]
+  );
+  const nomesProprios = new Set(
+    [ent?.legal_name, ent?.trade_name, 'xp energy', 'xpe tecnologia', 'xpe consultoria']
+      .filter(Boolean)
+      .map((n) => normalizeName(n))
+  );
 
   const { rows: lancamentos } = await client.query(
     `SELECT id, description_raw, amount_cents FROM fin_transaction
@@ -130,6 +154,18 @@ try {
     if (achado.truncado) relatorio.truncadas += 1;
 
     const norm = normalizeName(achado.nome);
+
+    // Movimento entre contas da própria empresa: nem contraparte, nem despesa.
+    if ((cnpjProprio && achado.documento === cnpjProprio) || nomesProprios.has(norm)) {
+      relatorio.proprias += 1;
+      await client.query(
+        `UPDATE fin_transaction SET transfer_status='em_transito', updated_at=now()
+          WHERE id=$1 AND transfer_status='nao' AND human_locked_fields='{}'`,
+        [l.id]
+      );
+      continue;
+    }
+
     let id = idPorNome.get(norm);
 
     if (id === undefined) {
@@ -201,7 +237,8 @@ try {
   console.log(`  contrapartes criadas ....... ${relatorio.criadas}`);
   console.log(`  contrapartes reaproveitadas  ${relatorio.reutilizadas}`);
   console.log(`  nomes truncados pelo extrato ${relatorio.truncadas}`);
-  console.log(`  lançamentos ligados ........ ${relatorio.ligadas}\n`);
+  console.log(`  lançamentos ligados ........ ${relatorio.ligadas}`);
+  console.log(`  entre contas próprias ...... ${relatorio.proprias}\n`);
 
   console.log('  Maiores favorecidos:');
   [...porFavorecido.values()]

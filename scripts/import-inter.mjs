@@ -297,6 +297,31 @@ try {
 
   await client.query(`UPDATE fin_account SET last_statement_at = $2 WHERE id = $1`, [accountId, periodoFim]);
 
+  // O saldo vem da API, não da soma dos lançamentos.
+  //
+  // O sync já buscava `/banking/v2/saldo` e gravava no arquivo bruto, e o
+  // importador ignorava — a tela ficou mostrando R$ 93,16, que era o
+  // fechamento de 24/03 de um lote CSV depois revertido, enquanto o banco dizia
+  // R$ 31,28. Saldo derivado de lançamento herda todo buraco de cobertura;
+  // saldo do banco é o único que fecha com a realidade.
+  const disponivel = arquivo?.saldo?.disponivel;
+  if (typeof disponivel === 'number') {
+    const cents = Math.round(disponivel * 100);
+    await client.query(
+      `UPDATE fin_account SET current_balance_cents = $2 WHERE id = $1`,
+      [accountId, cents]
+    );
+    await client.query(
+      `INSERT INTO fin_balance_snapshot (account_id, date, balance_cents, source, computed_cents, variance_cents)
+       SELECT $1, $2::date, $3::bigint, 'api',
+              COALESCE((SELECT sum(amount_cents) FROM fin_transaction WHERE account_id = $1), 0),
+              $3::bigint - COALESCE((SELECT sum(amount_cents) FROM fin_transaction WHERE account_id = $1), 0)
+       ON CONFLICT DO NOTHING`,
+      [accountId, periodoFim, cents]
+    );
+    relatorio.saldo = cents;
+  }
+
   if (DRY) {
     await client.query('ROLLBACK');
     console.log('[inter] DRY-RUN — nada foi gravado');

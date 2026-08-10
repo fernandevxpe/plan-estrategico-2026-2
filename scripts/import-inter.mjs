@@ -86,7 +86,7 @@ function descricao(t) {
 
 const pool = financePool();
 const client = await pool.connect();
-const relatorio = { lidas: transacoes.length, contrapartes: 0, inseridas: 0, semDocumento: 0, pf: 0, pj: 0 };
+const relatorio = { lidas: transacoes.length, contrapartes: 0, inseridas: 0, atualizadas: 0, semDocumento: 0, pf: 0, pj: 0 };
 
 try {
   await client.query('BEGIN');
@@ -188,7 +188,7 @@ try {
     const desc = descricao(t);
     const hash = dedupeHash({ accountSlug: ACCOUNT_SLUG, sourceId: t.idTransacao });
 
-    await client.query(
+    const gravado = await client.query(
       `INSERT INTO fin_transaction (
          entity_id, account_id, posted_on, amount_cents, description_raw, description_norm,
          counterparty_raw, counterparty_id, source_kind, source, source_id, dedupe_hash,
@@ -210,7 +210,13 @@ try {
            WHEN fin_transaction.review_status IN ('adiado', 'ignorado') THEN fin_transaction.review_status
            WHEN fin_transaction.category_id IS NULL THEN 'pendente'
            ELSE 'ok' END,
-         updated_at = now()`,
+         updated_at = now()
+       -- xmax = 0 distingue INSERT de UPDATE. Sem isto o lote declarava como
+       -- inseridas as linhas que só foram atualizadas: a segunda execução criou
+       -- um lote dizendo 150 inserções com zero linhas atrás dele, e o desfazer
+       -- passou a mentir — reverter esse lote não apagaria nada, e reverter o
+       -- anterior apagaria linhas que a tela atribui a ele.
+       RETURNING (xmax = 0) AS inserido`,
       [
         entityId,
         accountId,
@@ -227,7 +233,8 @@ try {
         batchId
       ]
     );
-    relatorio.inseridas += 1;
+    if (gravado.rows[0]?.inserido) relatorio.inseridas += 1;
+    else relatorio.atualizadas += 1;
   }
 
   // --------------------------------------------------------- cobertura
@@ -239,9 +246,14 @@ try {
     [accountId, periodoInicio, periodoFim]
   );
 
+  // Um lote que não inseriu nada é 'descartado', não 'confirmado'. Um lote
+  // confirmado sem linhas atrás dele faz o desfazer mentir para quem o usa.
   await client.query(
-    `UPDATE fin_import_batch SET status='confirmado', inserted_count=$2, committed_at=now() WHERE id=$1`,
-    [batchId, relatorio.inseridas]
+    `UPDATE fin_import_batch
+        SET status = CASE WHEN $2::int > 0 THEN 'confirmado' ELSE 'descartado' END,
+            inserted_count = $2, duplicate_count = $3, committed_at = now()
+      WHERE id = $1`,
+    [batchId, relatorio.inseridas, relatorio.atualizadas]
   );
 
   await client.query(`UPDATE fin_account SET last_statement_at = $2 WHERE id = $1`, [accountId, periodoFim]);

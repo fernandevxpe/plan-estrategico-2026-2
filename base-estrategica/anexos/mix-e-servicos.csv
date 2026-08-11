@@ -43,5 +43,10 @@ tipo_comercial_mes;2026-07;LDC - Laudo de disponibilidade de carga;6;52400.00;87
 tipo_comercial_mes;2026-07;PROJETOS;5;28386.00;5677.20;;;
 tipo_comercial_mes;2026-07;LCC - Laudo Carregador Coletivo;2;12500.00;6250.00;;;
 tipo_comercial_mes;2026-07;ICV - Inspeção de carregador veicular;1;2500.00;2500.00;;;
-servico_total;;;194;1635361.00;8429.70;Laudos e consultoria condominial;2025-01;2026-07
-servico_total;;;38;788094.97;20739.34;Obras eletricas;2025-04;2026-07
+tipo_comercial_mes;2026-08;PIE - Projeto infra.  Eletrocalha e Emergência;2;12500.00;6250.00;;;
+tipo_comercial_mes;2026-08;OBRA;1;7900.00;7900.00;;;
+tipo_comercial_mes;2026-08;Instalação de Carregador Eletrico;1;1500.00;1500.00;;;
+tipo_comercial_mes;2026-08;LIE - Laudo de Instalações Elétricas;2;0.00;0.00;;;
+tipo_comercial_mes;2026-08;LDC - Laudo de Disponibilidade de Carga;1;0.00;0.00;;;
+servico_total;;;198;1664361.00;8405.86;Laudos e consultoria condominial;2025-01;2026-08
+servico_total;;;40;797494.97;19937.37;Obras eletricas;2025-04;2026-08

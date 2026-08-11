@@ -23,6 +23,7 @@ const TABS = [
   { href: "/financeiro/lancamentos", label: "Lançamentos" },
   { href: "/financeiro/receitas", label: "Receitas" },
   { href: "/financeiro/fluxo", label: "Fluxo de caixa" },
+  { href: "/financeiro/modelo", label: "Modelo de gestão" },
   { href: "/financeiro/planejamento", label: "Planejamento" },
   { href: "/financeiro/contas", label: "Contas" },
   // Ao lado de Reembolsos porque as duas respondem à mesma pergunta — quanto

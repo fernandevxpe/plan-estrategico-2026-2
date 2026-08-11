@@ -11181,3 +11181,59 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
    creditado" do que está de fato em aberto — três telas mostravam três totais
    para a mesma frase antes disso. */
 .fin-conta-nota { display: block; font-size: 11.5px; color: var(--muted); font-weight: 400; margin-top: 3px; line-height: 1.4; }
+
+/* ---------------------------------------------------------------- modelo de gestão
+   A tela reproduz uma planilha de 91 linhas e 12 colunas. O que ela precisa
+   comunicar visualmente, e por quê:
+
+   - hierarquia: subtotal precisa pesar mais que item, senão a árvore some
+   - procedência: célula digitada pelo dono não pode parecer célula do extrato
+   - divergência: no modo comparar, o olho tem de achar o problema sem procurar
+   - ausência: mês sem cobertura dos dois lados fica apagado, não zerado         */
+.fin-modelo-barra {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  justify-content: space-between; margin-bottom: 14px;
+}
+.fin-modelo-modos { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.fin-modelo-tabela { min-width: 1180px; font-variant-numeric: tabular-nums; }
+.fin-modelo-tabela td { text-align: right; white-space: nowrap; }
+.fin-modelo-tabela .fin-matrix-head { font-weight: 400; }
+
+.fin-modelo-grupo .fin-matrix-head,
+.fin-modelo-grupo td { font-weight: 600; background: var(--surface-2); }
+
+.fin-modelo-fontes {
+  display: block; font-size: 11px; color: var(--muted);
+  font-variant-numeric: normal; letter-spacing: .02em;
+}
+.fin-modelo-marca { font-size: 11px; font-style: normal; color: var(--muted); }
+
+/* Digitado pelo dono: o traço à esquerda distingue sem gritar. */
+.fin-modelo-manual { box-shadow: inset 3px 0 0 var(--accent, #2f6feb); }
+.fin-modelo-editavel { cursor: cell; }
+.fin-modelo-editavel:hover { background: var(--surface-2); }
+.fin-modelo-celula-edit { padding: 2px; }
+.fin-modelo-celula-edit .fin-input { width: 100%; min-width: 90px; text-align: right; }
+
+.fin-modelo-divergente { background: rgba(220, 150, 30, .12); }
+.fin-modelo-ref { display: block; font-size: 11px; color: var(--muted); }
+.fin-modelo-ref-col { color: var(--muted); }
+
+.fin-modelo-ebitda th, .fin-modelo-ebitda td {
+  border-top: 2px solid var(--line); font-weight: 700;
+}
+
+.fin-modelo-resumo { margin-bottom: 20px; }
+.fin-kpi-destaque { outline: 2px solid var(--accent, #2f6feb); outline-offset: -2px; }
+.fin-kpi-value[data-negativo="sim"] { color: #b3261e; }
+
+.fin-modelo-linhas-resumo { margin-top: 16px; }
+.fin-tabela-simples { width: 100%; border-collapse: collapse; }
+.fin-tabela-simples th { text-align: left; font-weight: 400; padding: 6px 0; }
+.fin-tabela-simples td { text-align: right; padding: 6px 0; font-variant-numeric: tabular-nums; }
+.fin-tabela-simples tr + tr th, .fin-tabela-simples tr + tr td { border-top: 1px solid var(--line); }
+
+@media (max-width: 720px) {
+  .fin-modelo-barra { flex-direction: column; align-items: stretch; }
+}

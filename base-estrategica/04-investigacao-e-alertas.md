@@ -1,6 +1,6 @@
 # Investigação e alertas
 
-Gerado em: 03/08/2026, 01:55:38
+Gerado em: 10/08/2026, 23:43:19
 
 ## Alertas de performance
 
@@ -17,6 +17,7 @@ Gerado em: 03/08/2026, 01:55:38
 - **[high] Abr/26**: 4 indicadores caíram vs 2026-03. Revisar follow-up, propostas e conversão.
 - **[high] Mai/26**: 3 indicadores caíram vs 2026-04. Revisar follow-up, propostas e conversão.
 - **[high] Jul/26**: 3 indicadores caíram vs 2026-06. Revisar follow-up, propostas e conversão.
+- **[high] Ago/26**: 5 indicadores caíram vs 2026-07. Revisar follow-up, propostas e conversão.
 
 ## Recomendações de indicadores
 
@@ -43,6 +44,7 @@ Gerado em: 03/08/2026, 01:55:38
 | 2026-05 | 14 | 84 | 40 | R$ 130.800 |
 | 2026-06 | 23 | 49 | 29 | R$ 319.290 |
 | 2026-07 | 27 | 52 | 44 | R$ 301.300 |
+| 2026-08 | 6 | 26 | 14 | R$ 38.400 |
 
 ## Padrões de mix em picos
 
@@ -52,7 +54,7 @@ Gerado em: 03/08/2026, 01:55:38
 
 ## Alertas de qualidade de dados
 
-- **Cobertura de CNPJ parcial** (high): 259/1655 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
-- **Negócios ganhos sem etiqueta comercial explícita** (medium): 3/232 ganhos usam fallback de serviço/funil como tipo principal.
-- **Negócios com múltiplas etiquetas** (medium): 44 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
-- **Base aberta contém negócios antigos** (high): 174 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.
+- **Cobertura de CNPJ parcial** (high): 270/1677 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
+- **Negócios ganhos sem etiqueta comercial explícita** (medium): 3/238 ganhos usam fallback de serviço/funil como tipo principal.
+- **Negócios com múltiplas etiquetas** (medium): 45 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
+- **Base aberta contém negócios antigos** (high): 175 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.

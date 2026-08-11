@@ -1,30 +1,30 @@
 # Analise comercial e projetos - XPE Consultoria
 
-Gerado em: 03/08/2026, 01:55:38
+Gerado em: 10/08/2026, 23:43:19
 
 ## Resumo executivo
 
-- Negocios analisados no Pipedrive: 1080 em 2025-2026.
-- Negocios ganhos no periodo: 232, somando R$ 2.423.456.
-- Ticket medio geral dos negocios ganhos: R$ 10.446.
-- Tarefas/projetos encontrados no ClickUp: 0; candidatos de producao ligados a projetos/operacao: 0.
-- 2026-08 deve ser lido como parcial, pois a base foi extraida em 03/08/2026.
+- Negocios analisados no Pipedrive: 1108 em 2025-2026.
+- Negocios ganhos no periodo: 238, somando R$ 2.461.856.
+- Ticket medio geral dos negocios ganhos: R$ 10.344.
+- Tarefas/projetos encontrados no ClickUp: 1694; candidatos de producao ligados a projetos/operacao: 1331.
+- 2026-08 deve ser lido como parcial, pois a base foi extraida em 10/08/2026.
 - O Pipedrive nao trouxe produtos por negocio; a classificacao inicial de servico usa principalmente funil/etapa e, quando necessario, termos explicitos no titulo.
 - Para tipos de negocio, a fonte principal agora e a etiqueta comercial do Pipedrive: LIE, LDC, LCC, PIE, OBRA, PROJETOS, LSPDA, CDM, ICV e instalacao de carregador.
-- Cobertura de CNPJ nas organizacoes: 259/1655; nos ganhos analisados: 130/232.
+- Cobertura de CNPJ nas organizacoes: 270/1677; nos ganhos analisados: 132/238.
 - Arquivos tabulares gerados em `data/processed/*.csv` para revisao e uso em planilhas.
 
 ## Funil comercial mensal
 
 | Mes | Novos negocios | Valor criado | Ganhos no mes | Receita ganha | Perdidos no mes | Conversao novos neg. | Base aberta fim do mes | Valor em aberto |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2026-01 | 59 | R$ 807.038 | 14 | R$ 180.132 | 20 | +28,8% | 519 | R$ 2.374.794 |
-| 2026-02 | 59 | R$ 478.290 | 15 | R$ 198.165 | 17 | +32,2% | 546 | R$ 2.517.189 |
-| 2026-03 | 83 | R$ 438.000 | 19 | R$ 222.450 | 29 | +13,3% | 581 | R$ 2.514.439 |
-| 2026-04 | 74 | R$ 841.250 | 15 | R$ 155.600 | 25 | +20,3% | 615 | R$ 3.025.789 |
-| 2026-05 | 91 | R$ 1.017.405 | 14 | R$ 130.800 | 22 | +20,9% | 670 | R$ 3.713.194 |
-| 2026-06 | 93 | R$ 1.153.560 | 25 | R$ 333.210 | 37 | +16,1% | 702 | R$ 4.112.964 |
-| 2026-07 | 67 | R$ 485.992 | 29 | R$ 312.686 | 72 | +17,9% | 667 | R$ 3.334.245 |
+| 2026-01 | 59 | R$ 823.738 | 14 | R$ 180.132 | 20 | +28,8% | 520 | R$ 2.413.994 |
+| 2026-02 | 59 | R$ 478.290 | 15 | R$ 198.165 | 17 | +32,2% | 547 | R$ 2.556.389 |
+| 2026-03 | 83 | R$ 438.000 | 19 | R$ 222.450 | 29 | +13,3% | 582 | R$ 2.553.639 |
+| 2026-04 | 74 | R$ 841.250 | 15 | R$ 155.600 | 25 | +20,3% | 616 | R$ 3.064.989 |
+| 2026-05 | 91 | R$ 1.006.005 | 14 | R$ 130.800 | 22 | +22% | 671 | R$ 3.740.994 |
+| 2026-06 | 92 | R$ 1.146.260 | 25 | R$ 333.210 | 37 | +16,3% | 702 | R$ 4.133.464 |
+| 2026-07 | 67 | R$ 594.192 | 29 | R$ 312.686 | 72 | +20,9% | 667 | R$ 3.462.945 |
 
 ## 2026 mes a mes
 
@@ -35,12 +35,13 @@ Gerado em: 03/08/2026, 01:55:38
 | 2026-03 | 83 | 19 | R$ 222.450 | R$ 11.708 | +12,3% |
 | 2026-04 | 74 | 15 | R$ 155.600 | R$ 10.373 | -30,1% |
 | 2026-05 | 91 | 14 | R$ 130.800 | R$ 9.343 | -15,9% |
-| 2026-06 | 93 | 25 | R$ 333.210 | R$ 13.328 | +154,7% |
+| 2026-06 | 92 | 25 | R$ 333.210 | R$ 13.328 | +154,7% |
 | 2026-07 | 67 | 29 | R$ 312.686 | R$ 10.782 | -6,2% |
+| 2026-08 | 29 | 6 | R$ 38.400 | R$ 6.400 | -87,7% |
 
 ## Leitura de crescimento em 2026
 
-- De janeiro a maio, foram criados 526 novos negocios, media de 75,1 por mes.
+- De janeiro a maio, foram criados 525 novos negocios, media de 75 por mes.
 - No mesmo periodo, foram fechados 131 negocios, media de 18,7 por mes.
 - Receita ganha de janeiro a maio: R$ 1.533.043, media mensal de R$ 219.006.
 - No mesmo recorte de janeiro a maio, 2025 somou R$ 353.000; 2026 esta +334,3% acima.
@@ -56,7 +57,7 @@ Gerado em: 03/08/2026, 01:55:38
 | Mar | R$ 10.500 | R$ 222.450 | +2.018,6% | 13 | 83 | 1 | 19 | +12,3% |
 | Abr | R$ 75.800 | R$ 155.600 | +105,3% | 28 | 74 | 6 | 15 | -30,1% |
 | Mai | R$ 64.160 | R$ 130.800 | +103,9% | 28 | 91 | 7 | 14 | -15,9% |
-| Jun | R$ 77.000 | R$ 333.210 | +332,7% | 22 | 93 | 12 | 25 | +154,7% |
+| Jun | R$ 77.000 | R$ 333.210 | +332,7% | 22 | 92 | 12 | 25 | +154,7% |
 
 ## Projecao 2026.2 com base historica
 
@@ -130,8 +131,8 @@ Gerado em: 03/08/2026, 01:55:38
 ## Pos-venda e recorrencia
 
 - Contas com mais de um fechamento no mesmo CNPJ: 32.
-- Contas com mais de um fechamento por organizacao normalizada: 50.
-- Receita de repeticao por organizacao no periodo: R$ 1.050.657.
+- Contas com mais de um fechamento por organizacao normalizada: 51.
+- Receita de repeticao por organizacao no periodo: R$ 1.066.057.
 
 | Conta/CNPJ | Cliente | Fechamentos | Receita total | Receita repetida | Primeiro ganho | Ultimo ganho | Tipos |
 | --- | --- | ---: | ---: | ---: | --- | --- | --- |
@@ -160,8 +161,8 @@ Gerado em: 03/08/2026, 01:55:38
 
 | Servico | Projetos ganhos | Receita | Ticket medio | Primeiro fechamento | Ultimo fechamento |
 | --- | ---: | ---: | ---: | --- | --- |
-| Laudos e consultoria condominial | 194 | R$ 1.635.361 | R$ 8.430 | 2025-01 | 2026-07 |
-| Obras eletricas | 38 | R$ 788.095 | R$ 20.739 | 2025-04 | 2026-07 |
+| Laudos e consultoria condominial | 198 | R$ 1.664.361 | R$ 8.406 | 2025-01 | 2026-08 |
+| Obras eletricas | 40 | R$ 797.495 | R$ 19.937 | 2025-04 | 2026-08 |
 
 ## Servicos que apareceram em 2026
 
@@ -306,9 +307,15 @@ Gerado em: 03/08/2026, 01:55:38
 | 2026-07 | Edifício Fernando Perez | Edifício Fernando Perez | Laudos e consultoria condominial | R$ 5.386 |
 | 2026-07 | Empresarial Praia de Guarapari | Empresarial Praia de Guarapari | Obras eletricas | R$ 3.750 |
 | 2026-07 | Edf Lajedo | Edf Lajedo | Laudos e consultoria condominial | R$ 6.000 |
+| 2026-08 | Ed. Ana Paula | Ed. Ana Paula | Laudos e consultoria condominial | R$ 5.000 |
+| 2026-08 | Maria Tereza Coelho | Maria Tereza Coelho | Laudos e consultoria condominial | R$ 6.500 |
+| 2026-08 | Edf Vasco da Gama | Edf Vasco da Gama | Laudos e consultoria condominial | R$ 11.500 |
+| 2026-08 | EMPRESARIAL. CASA FORTE | EMPRESARIAL. CASA FORTE | Obras eletricas | R$ 7.900 |
+| 2026-08 | EMPRESARIAL. CASA FORTE | EMPRESARIAL. CASA FORTE | Obras eletricas | R$ 1.500 |
+| 2026-08 | Condomínio Carmen Costa | Condomínio Carmen Costa | Laudos e consultoria condominial | R$ 6.000 |
 
 ## Pontos de atencao para cruzamento Pipedrive x ClickUp
 
-- Ha 232 negocio(s) ganhos sem correspondencia simples por nome em tarefas candidatas de producao do ClickUp.
+- Ha 121 negocio(s) ganhos sem correspondencia simples por nome em tarefas candidatas de producao do ClickUp.
 - Listas de teste/dev/copia foram excluidas da contagem de projetos candidatos do ClickUp.
 - Para granularidade fina de servicos, o ideal e padronizar um campo obrigatorio no Pipedrive ou preencher produtos por negocio; hoje o CRM separa com confianca principalmente "Laudos e consultoria condominial" vs "Obras eletricas".

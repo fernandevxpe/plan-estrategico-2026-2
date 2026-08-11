@@ -1,14 +1,14 @@
 # Clientes e recorrência
 
-Gerado em: 03/08/2026, 01:55:38
+Gerado em: 10/08/2026, 23:43:19
 
 ## Recorrência
 
 - Contas com mais de um fechamento (CNPJ): **32**
-- Contas repetidas (organização): **50**
-- Receita de repetição: **R$ 1.050.657**
+- Contas repetidas (organização): **51**
+- Receita de repetição: **R$ 1.066.057**
 - Confiança CNPJ: **32** contas · R$ 569.946 (high)
-- Por nome de organização: **18** contas · R$ 480.711 (medium)
+- Por nome de organização: **19** contas · R$ 496.111 (medium)
 
 ## Origem da receita (novo vs repetido)
 
@@ -21,6 +21,7 @@ Gerado em: 03/08/2026, 01:55:38
 | 2026-05 | R$ 130.800 | R$ 119.800 | R$ 11.000 | 91,6% | 8,4% |
 | 2026-06 | R$ 333.210 | R$ 92.450 | R$ 240.760 | 27,7% | 72,3% |
 | 2026-07 | R$ 312.686 | R$ 135.200 | R$ 177.486 | 43,2% | 56,8% |
+| 2026-08 | R$ 38.400 | R$ 23.000 | R$ 15.400 | 59,9% | 40,1% |
 
 ## Top 30 clientes por receita (organizações com fechamento)
 
@@ -52,17 +53,17 @@ Gerado em: 03/08/2026, 01:55:38
 | Edf Quinta Tereza Beltrão | 15066354000106 | 2 | R$ 25.360 | R$ 17.800 | 2025-11 | 2026-03 | LDC - Laudo de disponibilidade de carga, OBRA |
 | Edf Morada Rosarinho | 11236467000151 | 3 | R$ 22.750 | R$ 17.750 | 2025-05 | 2026-02 | LDC - Laudo de disponibilidade de carga, LIE - Laudo de Instalações Elétricas, PROJETOS, OBRA |
 | Edf Quinta do Algarve | 10528059000100 | 2 | R$ 21.800 | R$ 17.000 | 2025-09 | 2026-01 | LDC - Laudo de disponibilidade de carga, OBRA |
+| Condomínio Carmen Costa | - | 3 | R$ 22.200 | R$ 15.200 | 2026-04 | 2026-08 | LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular, PIE - Projeto infra.  Eletrocalha e Emergência |
 | Edf Praia de Japaratinga | - | 2 | R$ 16.040 | R$ 10.540 | 2025-06 | 2025-07 | LIE - Laudo de Instalações Elétricas, OBRA |
 | Condominio do Edificio Maria Ines | 08374012000198 | 3 | R$ 16.850 | R$ 9.850 | 2026-04 | 2026-07 | LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, OBRA |
-| Condomínio Carmen Costa | - | 2 | R$ 16.200 | R$ 9.200 | 2026-04 | 2026-06 | LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular |
-| Edf Ilha do Retiro | 03786545000163 | 2 | R$ 12.000 | R$ 8.000 | 2025-06 | 2026-07 | LDC - Laudo de disponibilidade de carga, LIE - Laudo de Instalações Elétricas |
+| EMPRESARIAL. CASA FORTE | - | 3 | R$ 18.400 | R$ 9.400 | 2026-05 | 2026-08 | LDC - Laudo de disponibilidade de carga, OBRA, Instalação de Carregador Eletrico |
 
 ## Organizações no CRM
 
-- Total cadastradas: **1655**
-- Com pelo menos 1 fechamento: **165**
-- Com repetição (2+ fechamentos): **49**
-- Com negócios abertos agora: **634**
+- Total cadastradas: **1677**
+- Com pelo menos 1 fechamento: **169**
+- Com repetição (2+ fechamentos): **50**
+- Com negócios abertos agora: **644**
 
 ### Top 20 organizações com pipeline aberto
 
@@ -71,18 +72,18 @@ Gerado em: 03/08/2026, 01:55:38
 | Edf Maria Leopoldina | 6 | 1 | 0 |
 | Cond Casa da Montanha | 3 | 1 | 0 |
 | Edf Terra Brasilis | 3 | 4 | 0 |
-| Maria Tereza Coelho | 3 | 0 | 1 |
 | ERS | 2 | 0 | 0 |
+| Edf Vila Verde | 2 | 0 | 0 |
 | Edf Quebra Mar | 2 | 1 | 0 |
 | Verano ADM | 2 | 2 | 0 |
 | Edf Isaac Salazar | 2 | 0 | 0 |
 | Edf Boa Viagem | 2 | 1 | 0 |
 | Edf Morada dos Agapanthus | 2 | 1 | 0 |
-| Edf Maria Clarice | 2 | 1 | 0 |
 | Edf Maria Regina | 2 | 1 | 1 |
 | Edf Reserva do Poço | 2 | 3 | 0 |
 | Edf Porto dos Corais | 2 | 2 | 0 |
 | Edf.Maria Nice | 2 | 1 | 0 |
+| Maria Tereza Coelho | 2 | 1 | 1 |
 | Edificio Belize | 2 | 1 | 0 |
 | Condominio do Edificio Lucilo Maranhao | 2 | 2 | 0 |
 | Edf Nazaré | 2 | 1 | 0 |

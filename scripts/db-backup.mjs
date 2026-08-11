@@ -70,6 +70,16 @@ const TABLES = [
   'fin_person_counterparty',
   'fin_compensation_component',
   'fin_person_compensation',
+  // O modelo de gestão: a estrutura da planilha do dono, o mapeamento para o
+  // plano de contas e os valores que ele digitou na tela. Reimportar extrato
+  // não devolve nada disto — o mapeamento é julgamento e o valor manual é
+  // conhecimento que só existe na cabeça de quem digitou.
+  'fin_model_line',
+  'fin_model_map',
+  'fin_model_value',
+  // Apontamento de obra: horas e custo que vêm do ClickUp, mas com correção
+  // humana por cima.
+  'fin_obra_apontamento',
   // Decisões humanas e trilha de auditoria: é o que NÃO se reconstrói
   // reimportando o Asaas, e portanto o que mais justifica este backup existir.
   'fin_classification_event',

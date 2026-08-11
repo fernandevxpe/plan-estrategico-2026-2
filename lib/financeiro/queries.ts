@@ -17,6 +17,41 @@ import { isFinanceConfigured, query } from "./db";
 
 const ENTITY = "xpe";
 
+/**
+ * O filtro de transferência, num lugar só.
+ *
+ * Este arquivo usava as DUAS convenções ao mesmo tempo — `<> 'pareado'` em
+ * quatro consultas e `= 'nao'` em outras quatro. Enquanto nada estava pareado,
+ * as duas davam o mesmo resultado e a divergência ficou invisível por meses.
+ *
+ * Quando o pareamento rodou (93 pares, 10/08/2026), elas passaram a discordar
+ * em R$ 463.494,34 sobre o mesmo período — e o pior sintoma não é uma tela
+ * errada, é duas telas certas segundo convenções diferentes, com o dono no meio
+ * tentando descobrir em qual acreditar.
+ *
+ * NÃO são a mesma pergunta, e por isso as duas ficam — nomeadas, em vez de
+ * repetidas como literal que ninguém sabe se é intencional:
+ *
+ *   SEM_DUPLA_CONTAGEM  (`<> 'pareado'`)
+ *     Para RESULTADO e DRE. Tira só o par que já se anula. Mantém a perna
+ *     `em_transito`, porque ela é saída de caixa que de fato aconteceu e cujo
+ *     par ainda não foi achado — escondê-la faria o resultado parecer melhor
+ *     do que é.
+ *
+ *   SEM_TRANSFERENCIA  (`= 'nao'`)
+ *     Para índice de classificação e listagem do extrato. Tira TODA
+ *     transferência, pareada ou não, porque ali a pergunta é "quanto do que é
+ *     receita ou despesa de verdade está classificado" — e transferência não é
+ *     nem uma coisa nem outra.
+ *
+ * A diferença entre as duas é hoje R$ 463.494,34 em 2026, e ela existe porque
+ * há 322 pernas `em_transito` sem par. Enquanto houver perna órfã, o número
+ * absoluto carrega essa incerteza nos dois lados: a saída definitiva é parear
+ * todas, não escolher o filtro que dá o número mais bonito.
+ */
+export const SEM_DUPLA_CONTAGEM = "t.transfer_status <> 'pareado'";
+export const SEM_TRANSFERENCIA = "t.transfer_status = 'nao'";
+
 export type Conta = {
   slug: string;
   name: string;

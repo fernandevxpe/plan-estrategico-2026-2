@@ -11237,3 +11237,50 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 @media (max-width: 720px) {
   .fin-modelo-barra { flex-direction: column; align-items: stretch; }
 }
+
+/* ------------------------------------------------------------ qualificação
+   Decidir em grupo exige ver três coisas ao mesmo tempo: o que é, quanto vale
+   e por que o motor acha o que acha. A evidência tem faixa colorida por fonte
+   porque a diferença entre "casou com cobrança" e "mesmo valor" decide se o
+   usuário confirma no automático ou abre para conferir.                     */
+.fin-qual-filtros { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin: 14px 0 18px; }
+.fin-qual-filtros .fin-input { min-width: 260px; flex: 1; }
+.fin-qual-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.fin-qual-item { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: var(--card); }
+.fin-qual-item[data-transferencia="sim"] { border-color: #7a3ea3; }
+.fin-qual-cabeca { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
+.fin-qual-toggle { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+.fin-qual-toggle strong { display: block; }
+.fin-qual-toggle small { color: var(--muted); font-size: 12px; }
+.fin-qual-valor { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.fin-qual-evidencia { margin: 10px 0; padding: 8px 10px; font-size: 13px; line-height: 1.45; border-left: 3px solid var(--line); background: var(--surface-2); border-radius: 0 6px 6px 0; }
+.fin-qual-sem { color: var(--muted); font-style: italic; }
+.fin-qual-fonte { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 999px; color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.fin-qual-aviso { margin: 8px 0; font-size: 13px; }
+.fin-qual-acoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.fin-qual-acoes .fin-select { min-width: 260px; }
+.fin-qual-detalhe { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 12.5px; }
+.fin-qual-detalhe td { padding: 4px 8px 4px 0; border-top: 1px solid var(--line); }
+.fin-qual-detalhe td:nth-child(2) { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 720px) {
+  .fin-qual-cabeca { flex-direction: column; gap: 4px; }
+  .fin-qual-acoes .fin-select { min-width: 100%; }
+}
+
+/* Direção e conta na qualificação. O sinal vem antes do nome porque a
+   categoria certa depende dele: receita numa saída é o bug que o invariante
+   D2 mede, e ler o valor sem o sinal já custou erro nesta base.            */
+.fin-qual-dir {
+  display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 4px;
+  font-size: 11px; font-weight: 700; letter-spacing: .02em; vertical-align: middle;
+}
+.fin-qual-dir[data-dir="entrada"] { background: #dff3e8; color: #0f7b4f; }
+.fin-qual-dir[data-dir="saida"]   { background: #fdeceb; color: #b3261e; }
+.fin-qual-valor[data-dir="entrada"] { color: #0f7b4f; }
+.fin-qual-valor[data-dir="saida"]   { color: #b3261e; }
+.fin-qual-detalhe td[data-dir="entrada"] { color: #0f7b4f; }
+.fin-qual-detalhe td[data-dir="saida"]   { color: #b3261e; }
+.fin-qual-conta {
+  display: inline-block; padding: 0 6px; margin-right: 4px; border-radius: 3px;
+  background: var(--surface-2); border: 1px solid var(--line); font-size: 11px;
+}

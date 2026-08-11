@@ -30,6 +30,7 @@ const TABS = [
   // custa o time — e quem vai a uma costuma precisar da outra.
   { href: "/financeiro/pessoas", label: "Pessoas" },
   { href: "/financeiro/reembolsos", label: "Reembolsos" },
+  { href: "/financeiro/qualificar", label: "Qualificar" },
   { href: "/financeiro/revisao", label: "Revisão" },
   { href: "/financeiro/indicadores", label: "Indicadores" },
   { href: "/financeiro/regras", label: "Regras" },

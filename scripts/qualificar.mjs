@@ -40,6 +40,10 @@ const ANO = Number(val('ano', new Date().getFullYear()));
 const MIN = Number(val('min', 0)) * 100;
 const CONFIANCA = Number(val('confianca', 0));
 const GRUPO = val('grupo') === null ? null : Number(val('grupo'));
+// Selecionar por FONTE em vez de por posição. O índice do grupo muda a cada
+// mudança de filtro, e foi assim que uma aplicação foi parar no grupo errado:
+// a lista tinha sido feita com --min e o comando rodou sem ele.
+const FONTE = val('fonte');
 const CODE = val('code');
 const APLICAR = flag('aplicar');
 const CRIAR_REGRA = flag('regra');
@@ -63,6 +67,42 @@ try {
   const totalPend = rows.reduce((s, r) => s + Math.abs(Number(r.amount_cents)), 0);
   console.log(`\n${ANO} — ${rows.length} lançamentos sem categoria, ${brl(totalPend)}`);
   console.log(`${todos.length} grupos · ${grupos.length} atendem ao filtro\n`);
+
+  // --fonte aplica a TODOS os grupos cuja melhor evidência é aquela, de uma vez.
+  // Imune ao deslocamento de índice, porque não usa índice.
+  if (FONTE && APLICAR) {
+    const alvo = grupos.filter((g) => g.sugestao?.fonte === FONTE && g.sugestao.code);
+    if (!alvo.length) { console.log(`nenhum grupo com fonte "${FONTE}" no filtro atual.`); process.exit(0); }
+    await client.query('BEGIN');
+    let n = 0, valor = 0;
+    for (const g of alvo) {
+      const { rows: [cat] } = await client.query(
+        `SELECT c.id, c.code FROM fin_category c JOIN fin_entity e ON e.id=c.entity_id AND e.slug=$1 WHERE c.code=$2`,
+        [ENTIDADE, g.sugestao.code]);
+      if (!cat) continue;
+      const ids = g.itens.map((i) => i.id);
+      for (const it of g.itens) {
+        await client.query(
+          `INSERT INTO fin_classification_event (target_table,target_id,stage,category_id,accepted,rationale,actor)
+           VALUES ('fin_transaction',$1,'humano',$2,true,$3::jsonb,'qualificar-cli')`,
+          [it.id, cat.id, JSON.stringify({ fonte: FONTE, evidencia: it.sugestao?.evidencia, confianca: it.sugestao?.confianca })]);
+      }
+      const { rowCount } = await client.query(
+        `UPDATE fin_transaction SET category_id=$2, classified_by='humano', classified_at=now(),
+           review_status='ok', updated_at=now(),
+           classified_reason=jsonb_build_object('motivo','qualificação por evidência','fonte',$3::text)
+         WHERE id = ANY($1::bigint[])`, [ids, cat.id, FONTE]);
+      await client.query(`UPDATE fin_review_item SET status='resolvido', resolved_at=now()
+         WHERE target_table='fin_transaction' AND target_id = ANY($1::bigint[]) AND status='pendente'`, [ids]);
+      n += rowCount; valor += g.valorCents;
+    }
+    const { rows: [tot] } = await client.query(`SELECT sum(amount_cents) v FROM fin_transaction`);
+    console.log(`\n  ${alvo.length} grupos · ${n} lançamentos · ${brl(valor)} por evidência de "${FONTE}"`);
+    console.log(`  âncora — soma do ledger: ${brl(tot.v)} (não pode mudar)`);
+    await client.query('COMMIT');
+    console.log('\n  COMMIT — gravado.\n');
+    process.exit(0);
+  }
 
   if (GRUPO === null) {
     console.log('  #  qdo          n   valor            confiança  sugestão / evidência');

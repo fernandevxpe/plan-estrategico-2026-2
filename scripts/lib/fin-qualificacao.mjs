@@ -80,6 +80,43 @@ WITH pend AS (
      AND NOT ('category_id' = ANY (t.human_locked_fields))
 ),
 
+-- 0. TRANSFERÊNCIA INTERNA. Vence todas as outras, e por um motivo caro.
+--
+--    O dono explicou o desenho: o capital entra pelo Asaas e é distribuído —
+--    Inter para pagamentos de consultoria, Nubank para obras. O extrato do
+--    Nubank registra essa remessa como "Transferência recebida pelo Pix", sem
+--    nome, exatamente igual ao PIX de um cliente.
+--
+--    Como o valor remetido costuma ser o valor que o cliente pagou, essas
+--    remessas TAMBÉM casam com a cobrança dele. Sem esta verificação, a
+--    evidência de liquidação classificaria a remessa como receita e a empresa
+--    contaria o mesmo dinheiro duas vezes: uma no Asaas, quando o cliente
+--    pagou, outra no Nubank, quando o dinheiro só mudou de bolso.
+--
+--    Medido no acervo: 60 das 131 entradas órfãs de 2026 têm saída de valor
+--    idêntico em outra conta, quase sempre no MESMO dia. Até R$ 210 mil de
+--    faturamento fantasma.
+transf AS (
+  SELECT p.id,
+         (array_agg(a2.slug ORDER BY abs(o.posted_on - p.posted_on)))[1] AS conta_par,
+         (array_agg(o.posted_on ORDER BY abs(o.posted_on - p.posted_on)))[1] AS data_par,
+         min(abs(o.posted_on - p.posted_on)) AS dias,
+         count(*) AS pares
+    FROM pend p
+    JOIN fin_transaction o ON o.amount_cents = -p.amount_cents
+                          AND o.account_id <> p.account_id
+                          AND abs(o.posted_on - p.posted_on) <= 3
+    JOIN fin_account a2 ON a2.id = o.account_id
+   -- 'Cobrança recebida' é o Asaas dizendo que um CLIENTE pagou uma fatura.
+   -- Isso é receita por definição, e nenhuma coincidência de valor em outra
+   -- conta a transforma em remessa interna. Sem esta guarda, uma mensalidade
+   -- de valor redondo (R$ 5.000) encontra espelho por acaso e some do
+   -- faturamento — o erro inverso, e igualmente caro.
+     AND p.description_norm NOT LIKE 'cobranca recebida%'
+     AND p.description_norm NOT LIKE 'cobranca%recebida%fatura%'
+   GROUP BY p.id
+),
+
 -- 1. LIQUIDAÇÃO. Cobrança em aberto, mesmo valor, data próxima.
 --    'NOT EXISTS' contra fin_settlement é o que impede sugerir uma cobrança que
 --    já foi paga por outro lançamento — sem isso, uma mensalidade de valor fixo
@@ -88,6 +125,9 @@ liq AS (
   SELECT p.id,
          d.id AS document_id,
          cp.name AS quem,
+         d.description AS doc_descricao,
+         d.installment_number AS doc_parcela, d.installment_total AS doc_parcelas,
+         d.billing_type AS doc_forma, d.nucleo AS doc_nucleo,
          c.code, c.name AS categoria,
          abs(d.competence_date - p.posted_on) AS dias,
          count(*) OVER (PARTITION BY p.id) AS candidatos,
@@ -149,7 +189,11 @@ SELECT p.id, p.posted_on, p.amount_cents, p.padrao,
        a.slug AS conta,
        COALESCE(cp.name, p.description_norm) AS rotulo,
        cp.name AS contraparte,
-       l.quem AS liq_quem, l.code AS liq_code, l.categoria AS liq_categoria,
+       tr.conta_par AS tr_conta, tr.data_par AS tr_data, tr.dias AS tr_dias, tr.pares AS tr_pares,
+       l.quem AS liq_quem, l.doc_descricao AS liq_descricao,
+       l.doc_parcela AS liq_parcela, l.doc_parcelas AS liq_parcelas,
+       l.doc_forma AS liq_forma, l.doc_nucleo AS liq_nucleo,
+       l.code AS liq_code, l.categoria AS liq_categoria,
        l.dias AS liq_dias, l.candidatos AS liq_candidatos, l.document_id AS liq_documento,
        hc.code AS cp_code, hc.categoria AS cp_categoria, hc.n AS cp_n, hc.share AS cp_share,
        ht.code AS tx_code, ht.categoria AS tx_categoria, ht.n AS tx_n, ht.share AS tx_share,
@@ -157,6 +201,7 @@ SELECT p.id, p.posted_on, p.amount_cents, p.padrao,
   FROM pend p
   JOIN fin_account a ON a.id = p.account_id
   LEFT JOIN fin_counterparty cp ON cp.id = p.counterparty_id
+  LEFT JOIN transf tr ON tr.id = p.id
   LEFT JOIN liq l ON l.id = p.id AND l.ordem = 1
   LEFT JOIN hist_cp hc ON hc.id = p.id AND hc.ordem = 1
   LEFT JOIN hist_txt ht ON ht.id = p.id AND ht.ordem = 1
@@ -184,6 +229,22 @@ const NAO_SUGERIR = new Set(['5.99', '3.99']);
 export function melhorSugestao(linha) {
   const opcoes = [];
 
+  // Espelho em outra conta vence tudo. Não é frequência histórica: é o mesmo
+  // dinheiro visto dos dois lados, e tratá-lo como receita conta duas vezes.
+  if (linha.tr_conta) {
+    const dias = Number(linha.tr_dias ?? 0);
+    return {
+      fonte: 'transferencia',
+      code: '9.01',
+      categoria: 'Transferência entre contas próprias',
+      confianca: dias === 0 ? 0.95 : 0.8,
+      evidencia: `espelho exato em ${linha.tr_conta} ${dias === 0 ? 'no mesmo dia' : `com ${dias} dia(s) de diferença`}${Number(linha.tr_pares) > 1 ? ` (${linha.tr_pares} candidatos)` : ''} — é o dinheiro mudando de conta, não receita`,
+      documentoId: null,
+      transferencia: true,
+      alternativas: []
+    };
+  }
+
   if (linha.liq_code && !NAO_SUGERIR.has(linha.liq_code)) {
     const dias = Number(linha.liq_dias ?? 99);
     const candidatos = Number(linha.liq_candidatos ?? 1);
@@ -197,7 +258,16 @@ export function melhorSugestao(linha) {
       code: linha.liq_code,
       categoria: linha.liq_categoria,
       confianca: Math.max(0.3, conf),
-      evidencia: `cobrança de ${linha.liq_quem ?? 'cliente não identificado'}, mesma quantia, ${dias} dia(s) de diferença${candidatos > 1 ? ` — atenção: ${candidatos} cobranças do mesmo valor` : ''}`,
+      evidencia: [
+        `cobrança de ${linha.liq_quem ?? 'cliente não identificado'}, mesma quantia, ${dias} dia(s) de diferença`,
+        // O detalhamento da cobrança é o que diz QUE serviço foi vendido. Sem
+        // ele a evidência prova o cliente e não o tipo, e o tipo é justamente o
+        // que a categoria precisa.
+        linha.liq_descricao ? `“${String(linha.liq_descricao).slice(0, 70)}”` : null,
+        linha.liq_parcelas ? `parcela ${linha.liq_parcela}/${linha.liq_parcelas}` : null,
+        linha.liq_forma ? String(linha.liq_forma).toLowerCase() : null,
+        candidatos > 1 ? `atenção: ${candidatos} cobranças do mesmo valor` : null
+      ].filter(Boolean).join(' · '),
       documentoId: linha.liq_documento ?? null
     });
   }
@@ -261,9 +331,11 @@ export function agrupar(linhas) {
     // primeira versão fez com R$ 162 mil de entradas. Quando a prova é por
     // item, a decisão é por item.
     const provaPorItem = s?.fonte === 'liquidacao';
+    const direcao = Number(linha.amount_cents) > 0 ? 'entrada' : 'saida';
     const chave = provaPorItem
       ? `item:${linha.id}`
-      : [linha.contraparte ? `cp:${linha.contraparte}` : `tx:${linha.padrao}`,
+      : [direcao,
+         linha.contraparte ? `cp:${linha.contraparte}` : `tx:${linha.padrao}`,
          s?.code ?? 'sem-sugestao'].join('|');
 
     let g = grupos.get(chave);
@@ -282,6 +354,10 @@ export function agrupar(linhas) {
         maisRecente: linha.posted_on,
         maisAntigo: linha.posted_on,
         contas: new Set(),
+        // Entrada e saída nunca se misturam num grupo: são perguntas
+        // diferentes ("de onde veio" × "para onde foi") e uma categoria de
+        // receita aplicada a uma saída é o bug que o invariante D2 mede.
+        direcao: Number(linha.amount_cents) > 0 ? 'entrada' : 'saida',
         valoresDistintos: new Set()
       };
       grupos.set(chave, g);

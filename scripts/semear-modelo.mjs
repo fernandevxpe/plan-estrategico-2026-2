@@ -121,7 +121,10 @@ const LINHAS = [
   { slug: 'componentes-gerais', nome: 'Componentes em geral', pai: 'cac', secao: 'custo_operacao', l: 82, confianca: 'sem_fonte' },
   { slug: 'impostos-importacao', nome: 'Impostos sobre Compra de Medidores e Importações', pai: 'cac', secao: 'custo_operacao', l: 83, confianca: 'sem_fonte' },
   { slug: 'materiais-obras', nome: 'Materiais de Obras', pai: 'cac', secao: 'custo_operacao', l: 84, mapa: ['4.02'], confianca: 'alta' },
-  { slug: 'ferramentas', nome: 'Custo de Aquisição de Ferramentas', pai: 'cac', secao: 'custo_operacao', l: 85, confianca: 'sem_fonte' },
+  // 8.01 são os analisadores de qualidade de energia da Embrasul: equipamento
+  // que a consultoria usa para prestar o serviço. A planilha já tinha a linha e
+  // ela estava sem fonte; sem este mapeamento os R$ 21.419,20 sairiam do modelo.
+  { slug: 'ferramentas', nome: 'Custo de Aquisição de Ferramentas', pai: 'cac', secao: 'custo_operacao', l: 85, mapa: ['8.01'], confianca: 'alta' },
   { slug: 'material-projetos', nome: 'Custo de Material para Projetos/Execução', pai: 'cac', secao: 'custo_operacao', l: 86, mapa: ['4.03'], confianca: 'media' },
   { slug: 'arts', nome: 'Custo ARTs', pai: 'cac', secao: 'custo_operacao', l: 87, mapa: ['5.10'], confianca: 'media' },
   { slug: 'deslocamento-obra', nome: 'Deslocamento atribuível a serviço', pai: 'cac', secao: 'custo_operacao', l: 88, mapa: ['4.04'], confianca: 'alta' },
@@ -233,7 +236,13 @@ try {
        FROM fin_category c
        JOIN fin_transaction t ON t.category_id = c.id
         AND t.posted_on >= date_trunc('year', now()) AND t.transfer_status = 'nao'
-      WHERE NOT EXISTS (SELECT 1 FROM fin_model_map m WHERE m.entity_id = c.entity_id AND m.category_code = c.code)
+      -- 9.01 e 9.03 são movimento entre contas da própria empresa: dinheiro
+      -- mudando de bolso, não ganho nem gasto. Não pertencem a um modelo de
+      -- resultado, e cobrá-los aqui faria o alarme tocar para sempre por um
+      -- acerto. As demais 9.xx (recuperação, empréstimo, aporte) TÊM efeito no
+      -- caixa e continuam sendo cobradas.
+      WHERE c.code NOT IN ('9.01', '9.03')
+        AND NOT EXISTS (SELECT 1 FROM fin_model_map m WHERE m.entity_id = c.entity_id AND m.category_code = c.code)
       GROUP BY 1,2 ORDER BY abs(sum(t.amount_cents)) DESC`,
     []
   );

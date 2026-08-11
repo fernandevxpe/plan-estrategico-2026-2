@@ -331,11 +331,20 @@ try {
       `UPDATE fin_account SET current_balance_cents = $2 WHERE id = $1`,
       [accountId, cents]
     );
+    // O reconstruído inclui a ABERTURA, não só os lançamentos.
+    //
+    // O ledger do Inter começa em 01/01/2026 e a conta já tinha R$ 79.728,83
+    // naquele dia (0036). Somar só os lançamentos dá -R$ 79.697,55 e faz a
+    // variância nascer valendo exatamente a abertura — um alarme que dispara
+    // todo sync, sempre pelo mesmo motivo, e que por isso ninguém olha.
+    // Variância só vale como sinal se zero for o normal.
     await client.query(
       `INSERT INTO fin_balance_snapshot (account_id, date, balance_cents, source, computed_cents, variance_cents)
-       SELECT $1, $2::date, $3::bigint, 'api',
-              COALESCE((SELECT sum(amount_cents) FROM fin_transaction WHERE account_id = $1), 0),
-              $3::bigint - COALESCE((SELECT sum(amount_cents) FROM fin_transaction WHERE account_id = $1), 0)
+       SELECT $1, $2::date, $3::bigint, 'api', r.reconstruido, $3::bigint - r.reconstruido
+         FROM (SELECT COALESCE(a.opening_balance_cents, 0)
+                      + COALESCE((SELECT sum(t.amount_cents) FROM fin_transaction t WHERE t.account_id = a.id), 0)
+                        AS reconstruido
+                 FROM fin_account a WHERE a.id = $1) r
        ON CONFLICT DO NOTHING`,
       [accountId, periodoFim, cents]
     );

@@ -670,8 +670,17 @@ try {
   // -------------------------------------------------------------------------
   const account = await readRaw('asaas-account.json');
   const balanceCents = cents(account?.balance?.balance);
+  // `total` reconstrói o saldo, e reconstruir exige a abertura: a variância
+  // existe para acusar buraco de cobertura, e nasceria valendo o saldo inicial
+  // se ele ficasse de fora. No Asaas a abertura é zero (o ledger carrega desde
+  // 2021), mas ler a coluna em vez de assumir zero é o que impede que a conta
+  // quebre no dia em que ela deixar de ser.
   const { rows: computed } = await client.query(
-    'SELECT COALESCE(SUM(amount_cents),0) AS total, MIN(posted_on) AS first, MAX(posted_on) AS last FROM fin_transaction WHERE account_id = $1',
+    `SELECT COALESCE(a.opening_balance_cents, 0)
+            + COALESCE((SELECT SUM(t.amount_cents) FROM fin_transaction t WHERE t.account_id = a.id), 0) AS total,
+            (SELECT MIN(t.posted_on) FROM fin_transaction t WHERE t.account_id = a.id) AS first,
+            (SELECT MAX(t.posted_on) FROM fin_transaction t WHERE t.account_id = a.id) AS last
+       FROM fin_account a WHERE a.id = $1`,
     [accountId]
   );
 

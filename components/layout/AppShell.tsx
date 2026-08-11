@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+
 import { AppNav } from "@/components/layout/AppNav";
+import { CABECALHO_PERFIL, type Perfil } from "@/lib/auth/perfis";
 import { DataFreshness, type SyncState } from "@/components/layout/DataFreshness";
 import { readProcessed } from "@/lib/data/processed-store";
 import { readFile } from "node:fs/promises";
@@ -10,6 +13,10 @@ type Props = {
 };
 
 export async function AppShell({ children }: Props) {
+  // O perfil vem do cabeçalho que o middleware carimba, nunca do cliente.
+  // Qualquer valor inesperado cai em "comum": errar para o lado de mostrar
+  // menos é o único erro barato aqui.
+  const perfil: Perfil = (await headers()).get(CABECALHO_PERFIL) === "admin" ? "admin" : "comum";
   const snapshot = await readProcessed<{ syncedAt: string | null }>("crm-snapshot.json", {
     syncedAt: null
   });
@@ -33,7 +40,7 @@ export async function AppShell({ children }: Props) {
           </Link>
           <div className="topbar-right">
             <DataFreshness syncedAt={snapshot.syncedAt} syncState={syncState} />
-            <AppNav />
+            <AppNav perfil={perfil} />
           </div>
         </div>
       </header>

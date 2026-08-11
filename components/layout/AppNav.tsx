@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { exigeAdmin, type Perfil } from "@/lib/auth/perfis";
+
 /**
  * Agrupado por pergunta que o gestor está fazendo, não por módulo técnico.
  */
@@ -34,8 +36,16 @@ const GROUPS = [
   }
 ];
 
-export function AppNav() {
+export function AppNav({ perfil = "admin" }: { perfil?: Perfil }) {
   const pathname = usePathname();
+
+  // Esconder o link é conveniência, não proteção: quem digitar a URL na mão
+  // leva 404 do middleware. Sem isto, o time de vendas veria "Financeiro" no
+  // menu e clicaria em algo que não abre — atrito diário por nada.
+  const grupos = GROUPS.map((g) => ({
+    ...g,
+    links: g.links.filter((l) => perfil === "admin" || !exigeAdmin(l.href))
+  })).filter((g) => g.links.length > 0);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -45,7 +55,7 @@ export function AppNav() {
 
   return (
     <nav className="nav" aria-label="Navegação principal">
-      {GROUPS.map((group) => (
+      {grupos.map((group) => (
         <div className="nav-group" key={group.label}>
           <span className="nav-group-label">{group.label}</span>
           <div className="nav-group-links">

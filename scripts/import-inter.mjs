@@ -72,9 +72,29 @@ function extrairContraparte(t) {
   const d = t.detalhes ?? {};
   const saida = t.tipoOperacao === 'D';
 
-  const nome = saida
+  let nome = saida
     ? d.nomeRecebedor || d.nomeDestinatario || d.empresaEmissora || d.estabelecimento
     : d.nomePagador || d.nomeOrigem || d.empresaOrigem;
+
+  // `tipoTransacao='OUTROS'` vem SEM `detalhes` — a API não devolve o objeto
+  // estruturado para esse tipo. O favorecido fica cravado na descrição, no
+  // formato "Cp: <ISPB>-<nome>" ou "Cp: <ISPB>-<documento> <nome>":
+  //
+  //   "Cp: 18236120-igor Dalton Guilherme Da Silva"
+  //   "Cp: 18236120-64677654 Flavio Manoel Candido"
+  //
+  // Sem este ramo, 30 lançamentos ficam sem favorecido — 40 só em abril,
+  // R$ 69.632,63, o que fez o mês parecer barato (R$ 18 mil de custo de gente
+  // contra R$ 50 mil dos vizinhos) e contaminou a conciliação com a planilha.
+  if (!nome) {
+    const m = String(t.descricao ?? '').match(/^Cp:\s*(\d{6,8})-(.+)$/i);
+    if (m) {
+      const resto = m[2].trim();
+      // O documento, quando vem, antecede o nome e é só dígitos.
+      const comDoc = resto.match(/^(\d{6,14})\s+(.+)$/);
+      nome = (comDoc ? comDoc[2] : resto).trim();
+    }
+  }
 
   // Em boleto (`PAGAMENTO`), `cpfCnpj` é o do PAGADOR — nós — e não o do
   // beneficiário. Usá-lo fazia a checagem de CNPJ próprio casar com o lado

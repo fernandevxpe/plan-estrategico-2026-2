@@ -100,3 +100,40 @@ export {
   type RegistroDePagamento,
   type StatusPagamento
 } from "./pagamentos";
+export {
+  getFolhaPrevisao,
+  getComissao,
+  getRecorrentes,
+  getContratosEParcelas,
+  getDrePorDimensao,
+  getFluxoPorConta,
+  getReceitaPorGrupo,
+  type ComponenteFolha,
+  type PessoaNaFolha,
+  type FolhaPrevista,
+  type ComissaoMedida,
+  type ComissaoIndeterminada,
+  type Comissao,
+  type Recorrente,
+  type PainelRecorrentes,
+  type ContratoEspelhado,
+  type ParcelaEspelhada,
+  type CoberturaContratos,
+  type IndeterminadoContrato,
+  type PainelContratos,
+  type Dimensao,
+  type LinhaDimensao,
+  type DrePorDimensao,
+  type MesFluxoConta,
+  type ReceitaGrupo
+} from "./gerencial";
+export {
+  getBalanco,
+  getApuracaoTributaria,
+  type LacunaBalanco,
+  type LinhaBalanco,
+  type MesBalanco,
+  type Balanco,
+  type MesApuracao,
+  type Apuracao
+} from "./balanco";

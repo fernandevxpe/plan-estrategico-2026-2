@@ -125,11 +125,18 @@
 --       que o ledger já faz com combustível pela regra `combustivel`.
 --
 --   identidade_do_produto — a descrição não é o nome de um lojista, é o nome de
---       um PRODUTO de software, e o MCC não contradiz. Doze nomes:
+--       um PRODUTO de software, e o MCC não contradiz. Doze produtos (16
+--       assinaturas normalizadas, porque OpenAI, Microsoft e GoDaddy aparecem
+--       com variantes/prefixos de processador):
 --       anthropic, openai, cursor, clickup, microsoft, google one, supabase,
 --       railway, openrouter, trae, godaddy, polp tecnologia → 5.03.
 --       É mais fraco que MCC e por isso vem depois: MCC é atribuição de
 --       terceiro, nome de produto é reconhecimento. Confiança 90 contra 100.
+--
+--   estorno_da_compra — o próprio texto do estorno nomeia a compra entre
+--       aspas, e TODAS as compras com aquele nome têm uma única categoria já
+--       decidida. Propaga a categoria para reduzir a mesma despesa; não usa
+--       3.90, que é dedução de receita. Hoje alcança 1 estorno de Cursor.
 --
 -- NÃO DECIDE (só aparece como candidato na fila) — e cada um tem um motivo:
 --
@@ -175,14 +182,16 @@
 --     é uma categoria nova, e criar linha de plano de contas é decisão do dono.
 --     Vai para a fila e para docs/DUVIDAS_FINANCEIRO.md.
 --
--- (b) Estornos — 7 itens, R$ 1.574,43.
+-- (b) Estornos sem compra identificável — 7 itens, R$ 1.574,43 no baseline.
 --     Estorno de compra é despesa negativa, e pertence à categoria da compra
 --     que ele desfaz. Para 3 dá para saber qual ("Estorno de CURSOR, AI POWERED
 --     IDE", 2× "Estorno de IOF"). Para 4 a descrição é só "Estorno de compra".
 --     Carimbar 3.90 "Estornos e devoluções" seria o erro tentador: 3.90 é
 --     `deducao_receita` e entra na linha `deducoes` da DRE — um estorno de
 --     COMPRA classificado ali reduziria a receita bruta em vez de reduzir a
---     despesa. Fila.
+--     despesa. A 0083 só resolve o Cursor, depois que as compras de Cursor
+--     convergem em 5.03; os 2 estornos de IOF aguardam categoria própria e os
+--     4 genéricos continuam na fila.
 --
 -- (c) Centro de custo — 0 dos 795, e é deliberado.
 --     Não há projeto em lado nenhum: o Polp não entrega, os 12 plásticos não
@@ -249,6 +258,9 @@ INSERT INTO fin_card_evidencia (slug, nome, forca, decide, descricao) VALUES
   ('identidade_do_produto', 'Nome do produto', 90, true,
    'A descrição do adquirente é o nome de um produto de software, não de um lojista, e o MCC não contradiz. '
    'Mais fraco que MCC porque depende de reconhecer o nome.'),
+  ('estorno_da_compra', 'Estorno ligado à compra', 100, true,
+   'O texto do estorno nomeia a compra entre aspas e todas as compras daquele nome convergem em uma única categoria. '
+   'O estorno herda essa categoria para reduzir a despesa original; nunca vira dedução de receita.'),
   ('plano_uniforme', 'Uniformidade do plano', 100, true,
    'Todas as parcelas de um plano são A MESMA compra (0047 §2). A categoria do plano vale para todas, '
    'inclusive as que atravessam reemissão de cartão. Nunca decide sozinha: propaga o que outro degrau decidiu.'),
@@ -269,6 +281,8 @@ CREATE TABLE fin_card_classificacao_regra (
   id          bigserial PRIMARY KEY,
   escopo      text   NOT NULL CHECK (escopo IN ('mcc', 'produto')),
   chave       text   NOT NULL,
+  modo_match  text   NOT NULL DEFAULT 'exato'
+                     CHECK (modo_match IN ('exato', 'prefixo', 'contem')),
   category_id bigint NOT NULL REFERENCES fin_category(id),
   evidencia   text   NOT NULL REFERENCES fin_card_evidencia(slug),
   porque      text   NOT NULL,
@@ -282,8 +296,47 @@ CREATE INDEX fin_card_classificacao_regra_chave_idx
 
 COMMENT ON TABLE fin_card_classificacao_regra IS
   'Mapa de classificação do cartão. NÃO é fin_rule: não roda o motor, não tem prioridade e não olha '
-  'texto livre. `escopo` = mcc (código ISO 18245 exato) ou produto (nome do produto contido na descrição). '
+  'texto livre. `escopo` = mcc (código ISO 18245 exato) ou produto (identidade reconhecida na descrição). '
+  '`modo_match` impede uma chave curta como "trae" de casar dentro de outra palavra por substring. '
   'A força de escrever ou só sugerir vem de fin_card_evidencia.decide.';
+
+-- Uma única definição de casamento, consumida tanto pela aplicação quanto pela
+-- fila. Duplicar esta lógica foi o que fez o comentário da primeira versão
+-- prometer um conflito que o UPDATE, de fato, não enxergava.
+CREATE FUNCTION fin_card_regra_casa(
+  p_escopo text,
+  p_chave text,
+  p_modo text,
+  p_mcc text,
+  p_descricao text
+) RETURNS boolean
+LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
+  SELECT COALESCE(CASE
+    WHEN p_escopo = 'mcc'     THEN p_mcc = p_chave
+    WHEN p_modo = 'exato'     THEN p_descricao = p_chave
+    WHEN p_modo = 'prefixo'   THEN strpos(p_descricao, p_chave) = 1
+    WHEN p_modo = 'contem'    THEN strpos(p_descricao, p_chave) > 0
+    ELSE false
+  END, false)
+$$;
+
+COMMENT ON FUNCTION fin_card_regra_casa(text, text, text, text, text) IS
+  'Casamento único do mapa 0083. Produto curto usa exato/prefixo de modo declarado; MCC é sempre igualdade.';
+
+-- Exceção é veto, não uma categoria alternativa. Ela existe para o caso em que
+-- a fonte traz um MCC decisor, mas outra evidência factual do próprio item o
+-- contradiz. O item continua nulo e vai para a fila.
+CREATE TABLE fin_card_classificacao_excecao (
+  id               bigserial PRIMARY KEY,
+  mcc              text NOT NULL,
+  description_norm text NOT NULL,
+  motivo           text NOT NULL,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (mcc, description_norm)
+);
+
+COMMENT ON TABLE fin_card_classificacao_excecao IS
+  'Veto exato a classificação automática quando MCC e identidade observada se contradizem. Não escolhe destino.';
 
 -- (a) MCC que decide -------------------------------------------------------
 INSERT INTO fin_card_classificacao_regra (escopo, chave, category_id, evidencia, porque)
@@ -297,18 +350,24 @@ SELECT 'mcc', v.mcc, c.id, 'mcc_iso', v.porque
     ('7523', '5.06', 'ISO 18245 7523 = Parking Lots and Garages. Estacionamento acompanha o deslocamento.'),
     ('4215', '5.11', 'ISO 18245 4215 = Courier Services. Transporte de carga é frete, e a categoria existe para isso.')
   ) AS v(mcc, code, porque)
-  JOIN fin_category c ON c.code = v.code AND c.entity_id = 1;
+  JOIN fin_entity ent ON ent.slug = 'xpe'
+  JOIN fin_category c ON c.code = v.code AND c.entity_id = ent.id;
 
 -- (b) nome de produto que decide -------------------------------------------
-INSERT INTO fin_card_classificacao_regra (escopo, chave, category_id, evidencia, porque)
-SELECT 'produto', v.nome, c.id, 'identidade_do_produto',
+INSERT INTO fin_card_classificacao_regra (escopo, chave, modo_match, category_id, evidencia, porque)
+SELECT 'produto', v.nome, v.modo, c.id, 'identidade_do_produto',
        'A descrição do adquirente é o nome do produto, não de um lojista, e o MCC do item não é de família física.'
   FROM (VALUES
-    ('anthropic'), ('openai'), ('cursor, ai powered ide'), ('clickup'),
-    ('microsoft'), ('google one'), ('supabase'), ('railway'),
-    ('openrouter'), ('trae'), ('godaddycom'), ('polp tecnologia')
-  ) AS v(nome)
-  CROSS JOIN LATERAL (SELECT id FROM fin_category WHERE code = '5.03' AND entity_id = 1) c;
+    ('anthropic', 'exato'), ('openai', 'exato'), ('openai *chatgpt subscr', 'exato'),
+    ('cursor, ai powered ide', 'exato'), ('clickup', 'exato'),
+    ('microsoft*store', 'exato'), ('microsoft*microsoft', 'exato'), ('ppro *microsoft', 'exato'),
+    ('google one', 'exato'),
+    ('supabase', 'exato'), ('railway', 'exato'), ('openrouter, inc', 'exato'),
+    ('trae', 'exato'), ('dm *godaddycoml', 'exato'), ('dm*godaddycoml', 'exato'),
+    ('polp tecnologia', 'exato')
+  ) AS v(nome, modo)
+  JOIN fin_entity ent ON ent.slug = 'xpe'
+  JOIN fin_category c ON c.code = '5.03' AND c.entity_id = ent.id;
 
 -- (c) MCC que só sugere ----------------------------------------------------
 -- Mais de uma linha por MCC de propósito: a fila mostra TODOS os destinos
@@ -359,7 +418,16 @@ SELECT 'mcc', v.mcc, c.id, 'mcc_indicio', v.porque
     ('2842', '5.07', 'Produtos de limpeza: pode ser material de copa e escritório.'),
     ('2842', '5.08', 'Produtos de limpeza: pode ser manutenção predial.')
   ) AS v(mcc, code, porque)
-  JOIN fin_category c ON c.code = v.code AND c.entity_id = 1;
+  JOIN fin_entity ent ON ent.slug = 'xpe'
+  JOIN fin_category c ON c.code = v.code AND c.entity_id = ent.id;
+
+-- O MCC e a categoria crua dizem "posto"; a razão social observada diz
+-- "incorporadora". Sem CNPJ/nota/projeto não há evidência para escolher qual
+-- dos dois é o dado errado. A primeira versão descrevia este conflito, mas não
+-- o implementava: classificava os 3 itens em 5.06. Agora o veto é dado e fila.
+INSERT INTO fin_card_classificacao_excecao (mcc, description_norm, motivo) VALUES
+  ('5541', 'iguep incorporadora g',
+   'MCC 5541 e categoria da fonte apontam posto; a identidade observada aponta incorporadora. Sem documento do gasto, nenhuma das duas vence.');
 
 -- ---------------------------------------------------------------------------
 -- 9. A COLUNA DE PROVENIÊNCIA
@@ -381,7 +449,25 @@ ALTER TABLE fin_card_installment_plan
 -- onde tirou, mas não tirou nada.
 ALTER TABLE fin_card_transaction
   ADD CONSTRAINT fin_card_transaction_evidencia_tem_categoria
+  CHECK (classified_evidence IS NULL OR
+         (category_id IS NOT NULL AND classified_by IS NOT NULL AND classified_at IS NOT NULL));
+
+ALTER TABLE fin_card_installment_plan
+  ADD CONSTRAINT fin_card_plan_evidencia_tem_categoria
   CHECK (classified_evidence IS NULL OR category_id IS NOT NULL);
+
+-- Estado anterior das linhas realmente tocadas. É temporário porque só serve à
+-- atomicidade desta migration; o estado durável vai para superseded_value no
+-- evento. Sem isto, uma linha que já tivesse núcleo antes da 0083 apareceria na
+-- trilha como se o núcleo anterior fosse nulo.
+CREATE TEMP TABLE fin_card_0083_alteracao (
+  transaction_id      bigint PRIMARY KEY,
+  category_id         bigint,
+  nucleo              text,
+  classified_by       text,
+  classified_at       timestamptz,
+  classified_evidence text
+) ON COMMIT DROP;
 
 -- ---------------------------------------------------------------------------
 -- 10. A APLICAÇÃO — IDEMPOTENTE, E SÓ ONDE ESTÁ VAZIO
@@ -394,24 +480,34 @@ ALTER TABLE fin_card_transaction
 --                               mesmo fora do sync_mode, onde o gatilho da 0047
 --                               não age.
 --   kind = 'compra' ........... IOF, estorno, encargo, ajuste e pagamento de
---                               fatura ficam de fora por decisão declarada na
---                               seção 4. Sem isto, `software-assinaturas`
---                               carimbaria o IOF (defeito (b) da seção 2).
+--                               fatura ficam fora dos degraus MCC/produto.
+--                               Sem isto, `software-assinaturas` carimbaria o
+--                               IOF (defeito (b) da seção 2). O único estorno
+--                               seguro entra depois, por elo com a compra (§10c).
 
 -- (a) MCC decide -----------------------------------------------------------
--- O `NOT EXISTS` é a trava do conflito medido na seção 2 (c): se qualquer
--- outra chave desta mesma tabela aponta o item para categoria diferente, ele
--- NÃO é classificado. Hoje isso protege os 3 itens da "iguep incorporadora g",
--- que tem MCC 5541 (posto) e nome de incorporadora.
+-- O `NOT EXISTS` trava conflito entre dois DECISORES: se MCC e produto
+-- apontarem categorias diferentes, nenhum vence. O caso medido da "iguep
+-- incorporadora g" é ainda mais fraco — o nome contradiz o MCC, mas não aponta
+-- uma categoria alternativa segura — e por isso usa o veto explícito da tabela
+-- de exceções, sem fabricar um segundo destino só para fazer o conflito caber.
 WITH alvo AS (
-  SELECT t.id, r.category_id, r.evidencia
+  SELECT t.id, r.category_id, r.evidencia,
+         t.nucleo AS nucleo_anterior, t.classified_by AS classified_by_anterior,
+         t.classified_at AS classified_at_anterior
     FROM fin_card_transaction t
     JOIN fin_card_classificacao_regra r
-      ON r.escopo = 'mcc' AND r.chave = t.mcc AND r.is_active
+      ON r.is_active
+     AND fin_card_regra_casa(r.escopo, r.chave, r.modo_match, t.mcc, t.description_norm)
     JOIN fin_card_evidencia e ON e.slug = r.evidencia AND e.decide
    WHERE t.category_id IS NULL
      AND t.kind = 'compra'
+     AND r.escopo = 'mcc'
      AND NOT ('category_id' = ANY (t.human_locked_fields))
+     AND NOT EXISTS (
+       SELECT 1 FROM fin_card_classificacao_excecao x
+        WHERE x.mcc = t.mcc AND x.description_norm = t.description_norm
+     )
      -- nenhum outro decisor discorda deste
      AND NOT EXISTS (
        SELECT 1
@@ -419,9 +515,15 @@ WITH alvo AS (
          JOIN fin_card_evidencia e2 ON e2.slug = r2.evidencia AND e2.decide
         WHERE r2.is_active
           AND r2.category_id <> r.category_id
-          AND (   (r2.escopo = 'mcc'     AND r2.chave = t.mcc)
-               OR (r2.escopo = 'produto' AND t.description_norm LIKE '%' || r2.chave || '%'))
+          AND fin_card_regra_casa(r2.escopo, r2.chave, r2.modo_match, t.mcc, t.description_norm)
      )
+), guardado AS (
+  INSERT INTO fin_card_0083_alteracao
+    (transaction_id, category_id, nucleo, classified_by, classified_at, classified_evidence)
+  SELECT id, NULL, nucleo_anterior, classified_by_anterior, classified_at_anterior, NULL
+    FROM alvo
+  ON CONFLICT (transaction_id) DO NOTHING
+  RETURNING transaction_id
 )
 UPDATE fin_card_transaction t
    SET category_id         = a.category_id,
@@ -430,6 +532,7 @@ UPDATE fin_card_transaction t
        classified_at       = now(),
        nucleo              = COALESCE(t.nucleo, c.default_nucleo)
   FROM alvo a
+  JOIN guardado g ON g.transaction_id = a.id
   JOIN fin_category c ON c.id = a.category_id
  WHERE t.id = a.id;
 
@@ -445,22 +548,34 @@ WITH alvo AS (
   SELECT DISTINCT ON (t.id) t.id, r.category_id, r.evidencia
     FROM fin_card_transaction t
     JOIN fin_card_classificacao_regra r
-      ON r.escopo = 'produto' AND t.description_norm LIKE '%' || r.chave || '%' AND r.is_active
+      ON r.escopo = 'produto' AND r.is_active
+     AND fin_card_regra_casa(r.escopo, r.chave, r.modo_match, t.mcc, t.description_norm)
     JOIN fin_card_evidencia e ON e.slug = r.evidencia AND e.decide
    WHERE t.category_id IS NULL
      AND t.kind = 'compra'
      AND NOT ('category_id' = ANY (t.human_locked_fields))
      AND COALESCE(t.mcc, '') NOT IN ('5732', '5735', '5815', '5311', '5300', '5411')
      AND NOT EXISTS (
+       SELECT 1 FROM fin_card_classificacao_excecao x
+        WHERE x.mcc = t.mcc AND x.description_norm = t.description_norm
+     )
+     AND NOT EXISTS (
        SELECT 1
          FROM fin_card_classificacao_regra r2
          JOIN fin_card_evidencia e2 ON e2.slug = r2.evidencia AND e2.decide
         WHERE r2.is_active
           AND r2.category_id <> r.category_id
-          AND (   (r2.escopo = 'mcc'     AND r2.chave = t.mcc)
-               OR (r2.escopo = 'produto' AND t.description_norm LIKE '%' || r2.chave || '%'))
+          AND fin_card_regra_casa(r2.escopo, r2.chave, r2.modo_match, t.mcc, t.description_norm)
      )
    ORDER BY t.id, r.id
+), guardado AS (
+  INSERT INTO fin_card_0083_alteracao
+    (transaction_id, category_id, nucleo, classified_by, classified_at, classified_evidence)
+  SELECT t.id, t.category_id, t.nucleo, t.classified_by, t.classified_at, t.classified_evidence
+    FROM alvo a
+    JOIN fin_card_transaction t ON t.id = a.id
+  ON CONFLICT (transaction_id) DO NOTHING
+  RETURNING transaction_id
 )
 UPDATE fin_card_transaction t
    SET category_id         = a.category_id,
@@ -469,10 +584,52 @@ UPDATE fin_card_transaction t
        classified_at       = now(),
        nucleo              = COALESCE(t.nucleo, c.default_nucleo)
   FROM alvo a
+  JOIN guardado g ON g.transaction_id = a.id
   JOIN fin_category c ON c.id = a.category_id
  WHERE t.id = a.id;
 
--- (c) o plano herda das parcelas, e as parcelas do plano ---------------------
+-- (c) estorno nomeado herda da compra --------------------------------------
+-- Só há decisão quando TODAS as compras do mesmo nome, na mesma linha de
+-- crédito, convergem em uma categoria. `min` não escolhe: o HAVING prova que
+-- existe exatamente uma. Estorno genérico e IOF continuam fora.
+WITH alvo AS (
+  SELECT t.id, min(o.category_id) AS category_id,
+         t.category_id AS category_id_anterior, t.nucleo AS nucleo_anterior,
+         t.classified_by AS classified_by_anterior, t.classified_at AS classified_at_anterior,
+         t.classified_evidence AS evidencia_anterior
+    FROM fin_card_transaction t
+    JOIN fin_card_transaction o
+      ON o.card_account_id = t.card_account_id
+     AND o.kind = 'compra'
+     AND o.category_id IS NOT NULL
+     AND o.description_norm = substring(t.description_norm FROM '^estorno de "(.+)"$')
+   WHERE t.category_id IS NULL
+     AND t.kind = 'estorno'
+     AND t.amount_cents < 0
+     AND NOT ('category_id' = ANY (t.human_locked_fields))
+   GROUP BY t.id
+  HAVING count(DISTINCT o.category_id) = 1
+), guardado AS (
+  INSERT INTO fin_card_0083_alteracao
+    (transaction_id, category_id, nucleo, classified_by, classified_at, classified_evidence)
+  SELECT id, category_id_anterior, nucleo_anterior, classified_by_anterior,
+         classified_at_anterior, evidencia_anterior
+    FROM alvo
+  ON CONFLICT (transaction_id) DO NOTHING
+  RETURNING transaction_id
+)
+UPDATE fin_card_transaction t
+   SET category_id         = a.category_id,
+       classified_evidence = 'estorno_da_compra',
+       classified_by       = 'fato_estrutural',
+       classified_at       = now(),
+       nucleo              = COALESCE(t.nucleo, c.default_nucleo)
+  FROM alvo a
+  JOIN guardado g ON g.transaction_id = a.id
+  JOIN fin_category c ON c.id = a.category_id
+ WHERE t.id = a.id;
+
+-- (d) o plano herda das parcelas, e as parcelas do plano ---------------------
 -- Medição de hoje: NENHUM dos 25 planos é alcançado pelos degraus que decidem —
 -- os parcelamentos são AliExpress (MCC 7372 queimado), eletrônicos e cursos,
 -- todos na fila. Os dois passos abaixo aplicam a zero linhas AGORA, e existem
@@ -495,18 +652,36 @@ UPDATE fin_card_installment_plan p
   ) u
  WHERE p.id = u.plan_id AND p.category_id IS NULL;
 
+WITH alvo AS (
+  SELECT t.id, p.id AS plan_id, p.category_id, c.default_nucleo,
+         t.category_id AS category_id_anterior, t.nucleo AS nucleo_anterior,
+         t.classified_by AS classified_by_anterior, t.classified_at AS classified_at_anterior,
+         t.classified_evidence AS evidencia_anterior
+    FROM fin_card_transaction t
+    JOIN fin_card_installment_plan p ON p.id = t.installment_plan_id
+    JOIN fin_category c ON c.id = p.category_id
+   WHERE p.category_id IS NOT NULL
+     AND t.category_id IS NULL
+     AND t.kind = 'compra'
+     AND NOT ('category_id' = ANY (t.human_locked_fields))
+), guardado AS (
+  INSERT INTO fin_card_0083_alteracao
+    (transaction_id, category_id, nucleo, classified_by, classified_at, classified_evidence)
+  SELECT id, category_id_anterior, nucleo_anterior, classified_by_anterior,
+         classified_at_anterior, evidencia_anterior
+    FROM alvo
+  ON CONFLICT (transaction_id) DO NOTHING
+  RETURNING transaction_id
+)
 UPDATE fin_card_transaction t
-   SET category_id         = p.category_id,
+   SET category_id         = a.category_id,
        classified_evidence = 'plano_uniforme',
-       classified_by       = 'regra',
+       classified_by       = 'fato_estrutural',
        classified_at       = now(),
-       nucleo              = COALESCE(t.nucleo, c.default_nucleo)
-  FROM fin_card_installment_plan p
-  JOIN fin_category c ON c.id = p.category_id
- WHERE t.installment_plan_id = p.id
-   AND p.category_id IS NOT NULL
-   AND t.category_id IS NULL
-   AND NOT ('category_id' = ANY (t.human_locked_fields));
+       nucleo              = COALESCE(t.nucleo, a.default_nucleo)
+  FROM alvo a
+  JOIN guardado g ON g.transaction_id = a.id
+ WHERE t.id = a.id;
 
 -- ---------------------------------------------------------------------------
 -- 11. A TRILHA — UM EVENTO POR ITEM CARIMBADO
@@ -516,28 +691,40 @@ UPDATE fin_card_transaction t
 -- categoria que esta migration apagou.
 INSERT INTO fin_classification_event
   (target_table, target_id, stage, rule_id, category_id, nucleo, confidence, rationale, accepted, superseded_value, actor)
-SELECT 'fin_card_transaction', t.id, 'regra', NULL, t.category_id, t.nucleo, e.forca,
+SELECT 'fin_card_transaction', t.id, t.classified_by, NULL, t.category_id, t.nucleo, e.forca,
        jsonb_build_object(
          'migration',   '0083_fin_cartao_classificacao',
          'evidencia',   t.classified_evidence,
          'degrau',      e.nome,
+         'plano_id',    t.installment_plan_id,
          'mcc',         t.mcc,
          'descricao',   t.description_norm,
          'fonte_polp',  t.source_category,
-         'porque',      (SELECT string_agg(r.porque, ' | ')
-                           FROM fin_card_classificacao_regra r
-                          WHERE r.category_id = t.category_id
-                            AND r.evidencia = t.classified_evidence
-                            AND (   (r.escopo = 'mcc'     AND r.chave = t.mcc)
-                                 OR (r.escopo = 'produto' AND t.description_norm LIKE '%' || r.chave || '%')))
+         'porque',      CASE WHEN t.classified_evidence = 'plano_uniforme'
+                             THEN 'Categoria propagada do plano: todas as parcelas representam a mesma compra.'
+                             WHEN t.classified_evidence = 'estorno_da_compra'
+                             THEN 'Estorno nomeia a compra entre aspas; todas as compras desse nome convergem na categoria propagada.'
+                             ELSE (SELECT string_agg(r.porque, ' | ' ORDER BY r.id)
+                                     FROM fin_card_classificacao_regra r
+                                    WHERE r.category_id = t.category_id
+                                      AND r.evidencia = t.classified_evidence
+                                      AND fin_card_regra_casa(r.escopo, r.chave, r.modo_match,
+                                                              t.mcc, t.description_norm))
+                        END
        ),
        true,
-       jsonb_build_object('category_id', NULL, 'nucleo', NULL, 'cost_center_id', NULL),
+       jsonb_build_object(
+         'category_id',         a.category_id,
+         'nucleo',              a.nucleo,
+         'classified_by',       a.classified_by,
+         'classified_at',       a.classified_at,
+         'classified_evidence', a.classified_evidence
+       ),
        'migration:0083'
   FROM fin_card_transaction t
+  JOIN fin_card_0083_alteracao a ON a.transaction_id = t.id
   JOIN fin_card_evidencia e ON e.slug = t.classified_evidence
- WHERE t.classified_evidence IS NOT NULL
-   AND NOT EXISTS (
+ WHERE NOT EXISTS (
      SELECT 1 FROM fin_classification_event ev
       WHERE ev.target_table = 'fin_card_transaction'
         AND ev.target_id = t.id
@@ -558,8 +745,18 @@ CREATE OR REPLACE FUNCTION fin_card_plano_categoria_uniforme() RETURNS trigger
 LANGUAGE plpgsql AS $$
 DECLARE
   distintas integer;
+  categoria_plano bigint;
 BEGIN
   IF NEW.installment_plan_id IS NULL OR NEW.category_id IS NULL THEN RETURN NEW; END IF;
+
+  SELECT category_id INTO categoria_plano
+    FROM fin_card_installment_plan WHERE id = NEW.installment_plan_id;
+
+  IF categoria_plano IS NOT NULL AND categoria_plano IS DISTINCT FROM NEW.category_id THEN
+    RAISE EXCEPTION
+      'plano % tem categoria %, mas o item % receberia % (0047 §2 · 0083 §12)',
+      NEW.installment_plan_id, categoria_plano, NEW.id, NEW.category_id;
+  END IF;
 
   SELECT count(DISTINCT category_id) INTO distintas
     FROM (
@@ -585,8 +782,230 @@ COMMENT ON FUNCTION fin_card_plano_categoria_uniforme() IS
   'plano — e não pode partir a categoria. Ver 0047 §2.';
 
 CREATE TRIGGER fin_card_transaction_plano_uniforme
-  AFTER INSERT OR UPDATE OF category_id, installment_plan_id ON fin_card_transaction
+  BEFORE INSERT OR UPDATE OF category_id, installment_plan_id ON fin_card_transaction
   FOR EACH ROW EXECUTE FUNCTION fin_card_plano_categoria_uniforme();
+
+-- A outra direção da mesma invariável: não basta impedir duas parcelas
+-- diferentes se a linha do plano puder declarar uma terceira categoria.
+CREATE OR REPLACE FUNCTION fin_card_plano_linha_uniforme() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+  divergentes integer;
+BEGIN
+  SELECT count(*) INTO divergentes
+    FROM fin_card_transaction t
+   WHERE t.installment_plan_id = NEW.id
+     AND t.category_id IS NOT NULL
+     AND (NEW.category_id IS NULL OR t.category_id IS DISTINCT FROM NEW.category_id);
+
+  IF divergentes > 0 THEN
+    RAISE EXCEPTION
+      'plano % receberia categoria %, divergindo de % parcela(s) já categorizada(s) (0047 §2 · 0083 §12)',
+      NEW.id, NEW.category_id, divergentes;
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER fin_card_plan_categoria_uniforme
+  BEFORE UPDATE OF category_id ON fin_card_installment_plan
+  FOR EACH ROW EXECUTE FUNCTION fin_card_plano_linha_uniforme();
+
+-- ---------------------------------------------------------------------------
+-- 12.1 O PRÓXIMO SYNC NÃO VOLTA A ABRIR O BURACO
+-- ---------------------------------------------------------------------------
+-- Migration classifica o estoque; estes gatilhos classificam somente a linha
+-- nova/vinda do sync. Sem eles, o 796º item voltaria a nascer sem categoria
+-- mesmo casando exatamente no mapa, e a cobertura começaria a cair no dia
+-- seguinte. A decisão usa as mesmas tabelas e a mesma função da aplicação
+-- inicial; não existe uma segunda cópia do mapa.
+CREATE OR REPLACE FUNCTION fin_card_classificacao_futura() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+  v_category_id bigint;
+  v_evidencia   text;
+  v_nucleo      text;
+BEGIN
+  IF NEW.category_id IS NOT NULL
+     OR 'category_id' = ANY (NEW.human_locked_fields) THEN
+    RETURN NEW;
+  END IF;
+
+  -- Plano já decidido: a parcela herda antes de qualquer heurística. Fatura e
+  -- final de cartão mudam; a compra que o plano representa não muda.
+  IF NEW.kind = 'compra' AND NEW.installment_plan_id IS NOT NULL THEN
+    SELECT p.category_id, COALESCE(p.nucleo, c.default_nucleo)
+      INTO v_category_id, v_nucleo
+      FROM fin_card_installment_plan p
+      LEFT JOIN fin_category c ON c.id = p.category_id
+     WHERE p.id = NEW.installment_plan_id;
+    IF v_category_id IS NOT NULL THEN
+      NEW.category_id := v_category_id;
+      NEW.nucleo := COALESCE(NEW.nucleo, v_nucleo);
+      NEW.classified_evidence := 'plano_uniforme';
+      NEW.classified_by := 'fato_estrutural';
+      NEW.classified_at := now();
+      RETURN NEW;
+    END IF;
+  END IF;
+
+  -- Estorno só herda quando o nome entre aspas alcança compras já decididas e
+  -- todas convergem em UMA categoria.
+  IF NEW.kind = 'estorno' AND NEW.amount_cents < 0 THEN
+    SELECT min(o.category_id), min(c.default_nucleo)
+      INTO v_category_id, v_nucleo
+      FROM fin_card_transaction o
+      JOIN fin_category c ON c.id = o.category_id
+     WHERE o.card_account_id = NEW.card_account_id
+       AND o.kind = 'compra' AND o.category_id IS NOT NULL
+       AND o.description_norm = substring(NEW.description_norm FROM '^estorno de "(.+)"$')
+    HAVING count(DISTINCT o.category_id) = 1;
+    IF v_category_id IS NOT NULL THEN
+      NEW.category_id := v_category_id;
+      NEW.nucleo := COALESCE(NEW.nucleo, v_nucleo);
+      NEW.classified_evidence := 'estorno_da_compra';
+      NEW.classified_by := 'fato_estrutural';
+      NEW.classified_at := now();
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.kind <> 'compra' OR EXISTS (
+    SELECT 1 FROM fin_card_classificacao_excecao x
+     WHERE x.mcc = NEW.mcc AND x.description_norm = NEW.description_norm
+  ) THEN
+    RETURN NEW;
+  END IF;
+
+  -- Uma categoria distinta entre todos os decisores. MCC vence apenas como
+  -- evidência registrada (força 100); ele não vence conflito de categoria.
+  WITH matches AS (
+    SELECT r.id, r.category_id, r.evidencia, e.forca, c.default_nucleo
+      FROM fin_card_classificacao_regra r
+      JOIN fin_card_evidencia e ON e.slug = r.evidencia AND e.decide
+      JOIN fin_category c ON c.id = r.category_id
+     WHERE r.is_active
+       AND fin_card_regra_casa(r.escopo, r.chave, r.modo_match, NEW.mcc, NEW.description_norm)
+       AND (r.escopo = 'mcc' OR COALESCE(NEW.mcc, '') NOT IN
+             ('5732', '5735', '5815', '5311', '5300', '5411'))
+  ), unica AS (
+    SELECT min(category_id) AS category_id
+      FROM matches HAVING count(DISTINCT category_id) = 1
+  )
+  SELECT m.category_id, m.evidencia, m.default_nucleo
+    INTO v_category_id, v_evidencia, v_nucleo
+    FROM matches m JOIN unica u ON u.category_id = m.category_id
+   ORDER BY m.forca DESC, m.id LIMIT 1;
+
+  IF v_category_id IS NOT NULL THEN
+    NEW.category_id := v_category_id;
+    NEW.nucleo := COALESCE(NEW.nucleo, v_nucleo);
+    NEW.classified_evidence := v_evidencia;
+    NEW.classified_by := 'regra';
+    NEW.classified_at := now();
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER fin_card_transaction_classificacao_futura
+  BEFORE INSERT OR UPDATE OF mcc, description_norm, kind, installment_plan_id
+  ON fin_card_transaction
+  FOR EACH ROW EXECUTE FUNCTION fin_card_classificacao_futura();
+
+-- Evento e unidade do plano são pós-escrita: no INSERT o id já existe, e a
+-- trilha nunca aponta para uma linha que acabou falhando.
+CREATE OR REPLACE FUNCTION fin_card_classificacao_pos_escrita() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+  v_categoria_anterior bigint;
+  v_nucleo_anterior text;
+  v_by_anterior text;
+  v_at_anterior timestamptz;
+  v_evidencia_anterior text;
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    v_categoria_anterior := OLD.category_id;
+    v_nucleo_anterior := OLD.nucleo;
+    v_by_anterior := OLD.classified_by;
+    v_at_anterior := OLD.classified_at;
+    v_evidencia_anterior := OLD.classified_evidence;
+  END IF;
+
+  IF NEW.category_id IS NOT NULL
+     AND (TG_OP = 'INSERT'
+          OR NEW.category_id IS DISTINCT FROM OLD.category_id
+          OR NEW.classified_evidence IS DISTINCT FROM OLD.classified_evidence) THEN
+    INSERT INTO fin_classification_event
+      (target_table, target_id, stage, category_id, nucleo, confidence,
+       rationale, accepted, superseded_value, actor)
+    VALUES ('fin_card_transaction', NEW.id, NEW.classified_by, NEW.category_id,
+           NEW.nucleo,
+           (SELECT e.forca FROM fin_card_evidencia e WHERE e.slug = NEW.classified_evidence),
+           jsonb_strip_nulls(jsonb_build_object(
+             'algoritmo', '0083_fin_cartao_classificacao',
+             'evidencia', NEW.classified_evidence,
+             'plano_id', NEW.installment_plan_id,
+             'mcc', NEW.mcc,
+             'descricao', NEW.description_norm
+           )), true,
+           jsonb_build_object(
+             'category_id', v_categoria_anterior,
+             'nucleo', v_nucleo_anterior,
+             'classified_by', v_by_anterior,
+             'classified_at', v_at_anterior,
+             'classified_evidence', v_evidencia_anterior
+           ),
+           'trigger:0083');
+  END IF;
+
+  IF NEW.installment_plan_id IS NOT NULL AND NEW.category_id IS NOT NULL THEN
+    UPDATE fin_card_installment_plan p
+       SET category_id = NEW.category_id,
+           nucleo = COALESCE(p.nucleo, NEW.nucleo),
+           classified_evidence = COALESCE(p.classified_evidence, NEW.classified_evidence)
+     WHERE p.id = NEW.installment_plan_id AND p.category_id IS NULL;
+
+    UPDATE fin_card_transaction t
+       SET category_id = NEW.category_id,
+           nucleo = COALESCE(t.nucleo, NEW.nucleo),
+           classified_evidence = 'plano_uniforme',
+           classified_by = 'fato_estrutural',
+           classified_at = now()
+     WHERE t.installment_plan_id = NEW.installment_plan_id
+       AND t.id <> NEW.id AND t.category_id IS NULL AND t.kind = 'compra'
+       AND NOT ('category_id' = ANY (t.human_locked_fields));
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER fin_card_transaction_classificacao_pos_escrita
+  AFTER INSERT OR UPDATE OF mcc, description_norm, kind, installment_plan_id,
+                            category_id, classified_evidence
+  ON fin_card_transaction
+  FOR EACH ROW EXECUTE FUNCTION fin_card_classificacao_pos_escrita();
+
+-- Decisão feita diretamente no plano (caminho correto da futura tela) propaga
+-- para parcelas nulas e respeita trava humana explícita.
+CREATE OR REPLACE FUNCTION fin_card_plano_propaga_categoria() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.category_id IS NOT NULL AND NEW.category_id IS DISTINCT FROM OLD.category_id THEN
+    UPDATE fin_card_transaction t
+       SET category_id = NEW.category_id,
+           nucleo = COALESCE(t.nucleo, NEW.nucleo, c.default_nucleo),
+           classified_evidence = 'plano_uniforme',
+           classified_by = 'fato_estrutural',
+           classified_at = now()
+      FROM fin_category c
+     WHERE c.id = NEW.category_id
+       AND t.installment_plan_id = NEW.id AND t.category_id IS NULL
+       AND NOT ('category_id' = ANY (t.human_locked_fields));
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER fin_card_plan_propaga_categoria
+  AFTER UPDATE OF category_id ON fin_card_installment_plan
+  FOR EACH ROW EXECUTE FUNCTION fin_card_plano_propaga_categoria();
 
 -- ---------------------------------------------------------------------------
 -- 13. A FILA DE DECISÃO HUMANA
@@ -598,6 +1017,29 @@ CREATE TRIGGER fin_card_transaction_plano_uniforme
 -- A fila não é relatório. Cada linha é uma decisão que só o dono toma, com o
 -- dinheiro que está pendurado nela à vista.
 CREATE VIEW fin_card_a_classificar_v AS
+WITH matches AS MATERIALIZED (
+  -- Calculado uma vez por consulta (795 itens × mapa), não uma vez para cada
+  -- linha da fila. Sem MATERIALIZED, o plano com 12 parcelas repetiria a mesma
+  -- varredura 12 vezes e a consulta degradaria quadraticamente.
+  SELECT CASE WHEN tx.installment_plan_id IS NOT NULL
+              THEN 'p:' || tx.installment_plan_id::text
+              ELSE 't:' || tx.id::text END AS chave_decisao,
+         r.id AS regra_id, r.category_id, e.decide,
+         c.code || ' ' || c.name AS categoria
+    FROM fin_card_transaction tx
+    JOIN fin_card_classificacao_regra r ON r.is_active
+     AND fin_card_regra_casa(r.escopo, r.chave, r.modo_match, tx.mcc, tx.description_norm)
+    JOIN fin_card_evidencia e ON e.slug = r.evidencia
+    JOIN fin_category c ON c.id = r.category_id
+), candidatos_por_decisao AS (
+  SELECT chave_decisao,
+         string_agg(DISTINCT categoria, ' · ' ORDER BY categoria) AS candidatos,
+         count(DISTINCT category_id)                              AS n_candidatos,
+         count(DISTINCT regra_id) FILTER (WHERE decide)           AS n_decisores,
+         count(DISTINCT category_id) FILTER (WHERE decide)        AS n_categorias_decisoras
+    FROM matches
+   GROUP BY chave_decisao
+)
 SELECT
   t.id,
   ca.slug                          AS linha_credito,
@@ -612,14 +1054,12 @@ SELECT
   t.installment_plan_id,
   pl.merchant_label                AS plano,
   pl.installments_total            AS plano_parcelas,
-  -- candidatos: o que cada fonte SUGERE, sem escolher
-  (SELECT string_agg(DISTINCT c.code || ' ' || c.name, ' · ' ORDER BY c.code || ' ' || c.name)
-     FROM fin_card_classificacao_regra r
-     JOIN fin_category c ON c.id = r.category_id
-    WHERE r.is_active AND r.escopo = 'mcc' AND r.chave = t.mcc)   AS candidatos,
-  (SELECT count(*)
-     FROM fin_card_classificacao_regra r
-    WHERE r.is_active AND r.escopo = 'mcc' AND r.chave = t.mcc)   AS n_candidatos,
+  -- candidatos: MCC E produto, considerando todas as parcelas do mesmo plano.
+  -- Uma compra parcelada é uma decisão, ainda que algumas parcelas tenham MCC
+  -- e outras não; mostrar candidatos diferentes por parcela recriaria a quebra
+  -- que a 0047 evitou.
+  cand.candidatos,
+  COALESCE(cand.n_candidatos, 0) AS n_candidatos,
   CASE
     WHEN t.kind = 'iof' THEN
       'IOF: o QUE é veio da fonte e está certo; ONDE vai não existe no plano de contas. '
@@ -631,23 +1071,35 @@ SELECT
       'Estorno com a compra nomeada na descrição: herda a categoria dela assim que a compra tiver uma. Ver dúvida 21.'
     WHEN t.kind IN ('encargo', 'ajuste') THEN
       'Encargo/ajuste do cartão sem destino declarado no plano de contas.'
-    WHEN t.mcc IS NULL THEN
-      'A fonte não devolveu MCC para este item, e o nome sozinho não separa os destinos possíveis.'
-    WHEN EXISTS (SELECT 1 FROM fin_card_classificacao_regra r
-                  JOIN fin_card_evidencia e ON e.slug = r.evidencia AND e.decide
-                 WHERE r.is_active AND r.escopo = 'mcc' AND r.chave = t.mcc) THEN
-      'Duas evidências apontam para categorias diferentes neste item — o MCC diz uma coisa e o nome do '
-      || 'estabelecimento diz outra. A saída não é escolher.'
+    WHEN exc.id IS NOT NULL THEN
+      'Conflito factual vetado: ' || exc.motivo
     WHEN t.installment_plan_id IS NOT NULL THEN
       'Parcela de um plano ainda sem categoria. Decidir UMA vez no plano resolve todas as parcelas — '
       || 'inclusive as que atravessam reemissão de cartão.'
-    ELSE
+    WHEN 'category_id' = ANY (t.human_locked_fields) THEN
+      'Categoria foi travada como nula por decisão humana. A automação respeitou a trava; revisar exige ato humano explícito.'
+    WHEN COALESCE(cand.n_categorias_decisoras, 0) > 1 THEN
+      'Duas evidências apontam para categorias diferentes neste item — o MCC diz uma coisa e o nome do '
+      || 'estabelecimento diz outra. A saída não é escolher.'
+    WHEN COALESCE(cand.n_decisores, 0) > 0 THEN
+      'Nome de produto reconhecido, mas o MCC pertence a família física/lojista e contradiz classificar como assinatura. Fila, sem escolher.'
+    WHEN t.mcc IS NULL THEN
+      'A fonte não devolveu MCC para este item, e o nome sozinho não separa os destinos possíveis.'
+    WHEN COALESCE(cand.n_candidatos, 0) > 0 THEN
       'MCC conhecido mas ambíguo: ele diz o que a loja VENDE, não o que foi comprado, e os destinos '
       || 'possíveis caem em linhas diferentes da DRE.'
+    ELSE
+      'Nenhuma evidência cadastrada alcança este item. Nome e categoria pessoal da fonte ficam como indícios, sem carimbo automático.'
   END AS motivo
 FROM fin_card_transaction t
 JOIN fin_card_account ca ON ca.id = t.card_account_id
 LEFT JOIN fin_card_installment_plan pl ON pl.id = t.installment_plan_id
+LEFT JOIN fin_card_classificacao_excecao exc
+       ON exc.mcc = t.mcc AND exc.description_norm = t.description_norm
+LEFT JOIN candidatos_por_decisao cand
+       ON cand.chave_decisao = CASE WHEN t.installment_plan_id IS NOT NULL
+                                    THEN 'p:' || t.installment_plan_id::text
+                                    ELSE 't:' || t.id::text END
 WHERE t.category_id IS NULL
   AND t.kind <> 'pagamento_fatura';
 
@@ -720,16 +1172,24 @@ COMMENT ON VIEW fin_card_classificacao_evidencia_v IS
 --
 --   BEGIN;
 --   -- 15.1 devolve os itens ao estado anterior, um a um, pela trilha
+--   WITH primeiro_evento AS (
+--     SELECT DISTINCT ON (target_id) target_id, superseded_value
+--       FROM fin_classification_event
+--      WHERE target_table = 'fin_card_transaction'
+--        AND (rationale ->> 'migration' = '0083_fin_cartao_classificacao'
+--             OR rationale ->> 'algoritmo' = '0083_fin_cartao_classificacao')
+--      ORDER BY target_id, created_at, id
+--   )
 --   UPDATE fin_card_transaction t
 --      SET category_id         = (ev.superseded_value ->> 'category_id')::bigint,
 --          nucleo              = ev.superseded_value ->> 'nucleo',
---          classified_evidence = NULL,
---          classified_by       = NULL,
---          classified_at       = NULL
---     FROM fin_classification_event ev
---    WHERE ev.target_table = 'fin_card_transaction'
---      AND ev.target_id = t.id
---      AND ev.rationale ->> 'migration' = '0083_fin_cartao_classificacao';
+--          classified_evidence = ev.superseded_value ->> 'classified_evidence',
+--          classified_by       = ev.superseded_value ->> 'classified_by',
+--          classified_at       = (ev.superseded_value ->> 'classified_at')::timestamptz
+--     FROM primeiro_evento ev
+--    WHERE ev.target_id = t.id
+--      -- decisão humana posterior vence a reversão da automação
+--      AND t.classified_by IS DISTINCT FROM 'humano';
 --
 --   UPDATE fin_card_installment_plan
 --      SET category_id = NULL, nucleo = NULL, classified_evidence = NULL
@@ -737,19 +1197,31 @@ COMMENT ON VIEW fin_card_classificacao_evidencia_v IS
 --
 --   DELETE FROM fin_classification_event
 --    WHERE target_table = 'fin_card_transaction'
---      AND rationale ->> 'migration' = '0083_fin_cartao_classificacao';
+--      AND (rationale ->> 'migration' = '0083_fin_cartao_classificacao'
+--           OR rationale ->> 'algoritmo' = '0083_fin_cartao_classificacao');
 --
 --   -- 15.2 remove o que a migration criou
+--   DROP TRIGGER fin_card_plan_propaga_categoria ON fin_card_installment_plan;
+--   DROP FUNCTION fin_card_plano_propaga_categoria();
+--   DROP TRIGGER fin_card_transaction_classificacao_pos_escrita ON fin_card_transaction;
+--   DROP FUNCTION fin_card_classificacao_pos_escrita();
+--   DROP TRIGGER fin_card_transaction_classificacao_futura ON fin_card_transaction;
+--   DROP FUNCTION fin_card_classificacao_futura();
 --   DROP TRIGGER fin_card_transaction_plano_uniforme ON fin_card_transaction;
+--   DROP TRIGGER fin_card_plan_categoria_uniforme ON fin_card_installment_plan;
 --   DROP FUNCTION fin_card_plano_categoria_uniforme();
+--   DROP FUNCTION fin_card_plano_linha_uniforme();
 --   DROP VIEW fin_card_classificacao_evidencia_v;
 --   DROP VIEW fin_card_classificacao_cobertura_v;
 --   DROP VIEW fin_card_a_classificar_resumo_v;
 --   DROP VIEW fin_card_a_classificar_v;
 --   ALTER TABLE fin_card_transaction DROP CONSTRAINT fin_card_transaction_evidencia_tem_categoria;
+--   ALTER TABLE fin_card_installment_plan DROP CONSTRAINT fin_card_plan_evidencia_tem_categoria;
 --   ALTER TABLE fin_card_transaction DROP COLUMN classified_evidence;
 --   ALTER TABLE fin_card_installment_plan DROP COLUMN classified_evidence;
+--   DROP TABLE fin_card_classificacao_excecao;
 --   DROP TABLE fin_card_classificacao_regra;
+--   DROP FUNCTION fin_card_regra_casa(text, text, text, text, text);
 --   DROP TABLE fin_card_evidencia;
 --   ALTER TABLE fin_classification_event DROP CONSTRAINT fin_classification_event_target_table_check;
 --   ALTER TABLE fin_classification_event ADD CONSTRAINT fin_classification_event_target_table_check
@@ -773,20 +1245,30 @@ DECLARE
   n_sinal              integer;
   n_conta_cartao       integer;
   n_sem_evento         integer;
+  n_evento_divergente  integer;
+  n_evento_duplicado   integer;
+  n_plano_linha        integer;
+  n_reaplicavel        integer;
+  n_plano_reaplicavel  integer;
+  n_estorno_reaplicavel integer;
+  n_excecao_carimbada  integer;
 BEGIN
-  -- (1) as três recusas da seção 4 continuam recusas
+  -- (1) as recusas da seção 4 continuam recusas; o único estorno permitido é
+  --     o que nomeia compra com categoria única (§10c)
   SELECT count(*) INTO n_pagamento_com_cat
     FROM fin_card_transaction WHERE kind = 'pagamento_fatura' AND category_id IS NOT NULL;
   SELECT count(*) INTO n_iof_com_cat
     FROM fin_card_transaction WHERE kind = 'iof' AND classified_evidence IS NOT NULL;
   SELECT count(*) INTO n_estorno_com_cat
-    FROM fin_card_transaction WHERE kind = 'estorno' AND classified_evidence IS NOT NULL;
+    FROM fin_card_transaction
+   WHERE kind = 'estorno' AND classified_evidence IS NOT NULL
+     AND classified_evidence <> 'estorno_da_compra';
   SELECT count(*) INTO n_cc
     FROM fin_card_transaction WHERE cost_center_id IS NOT NULL;
 
   IF n_pagamento_com_cat > 0 THEN RAISE EXCEPTION '0083: % pagamento(s) de fatura ganharam categoria', n_pagamento_com_cat; END IF;
   IF n_iof_com_cat     > 0 THEN RAISE EXCEPTION '0083: % IOF classificado(s) por evidência — ver §4(a)', n_iof_com_cat; END IF;
-  IF n_estorno_com_cat > 0 THEN RAISE EXCEPTION '0083: % estorno(s) classificado(s) por evidência — ver §4(b)', n_estorno_com_cat; END IF;
+  IF n_estorno_com_cat > 0 THEN RAISE EXCEPTION '0083: % estorno(s) classificados sem elo único com a compra — ver §4(b)', n_estorno_com_cat; END IF;
   IF n_cc              > 0 THEN RAISE EXCEPTION '0083: % item(ns) com centro de custo — não há evidência de projeto, ver §4(c)', n_cc; END IF;
 
   -- (2) evidência sem categoria é contradição
@@ -802,6 +1284,15 @@ BEGIN
   ) x;
   IF n_plano_misto > 0 THEN RAISE EXCEPTION '0083: % plano(s) com parcelas em categorias diferentes', n_plano_misto; END IF;
 
+  SELECT count(*) INTO n_plano_linha
+    FROM fin_card_installment_plan p
+   WHERE EXISTS (
+     SELECT 1 FROM fin_card_transaction t
+      WHERE t.installment_plan_id = p.id AND t.category_id IS NOT NULL
+        AND p.category_id IS DISTINCT FROM t.category_id
+   );
+  IF n_plano_linha > 0 THEN RAISE EXCEPTION '0083: % plano(s) divergem da categoria de suas parcelas', n_plano_linha; END IF;
+
   -- (4) o espelho de D2/D3 do lado do cartão. O sinal aqui é INVERTIDO
   --     (compra positiva é dívida, 0072), então categoria de RECEITA numa
   --     compra positiva é o mesmo erro que o D2 pega no ledger.
@@ -812,7 +1303,7 @@ BEGIN
 
   -- (5) a trava da 0047 §1 e §12 continua de pé
   SELECT count(*) INTO n_conta_cartao FROM fin_account WHERE kind = 'cartao';
-  IF n_conta_cartao > 0 THEN RAISE EXCEPTION '0083: apareceu fin_account com kind=cartao', n_conta_cartao; END IF;
+  IF n_conta_cartao > 0 THEN RAISE EXCEPTION '0083: apareceu % fin_account com kind=cartao', n_conta_cartao; END IF;
 
   -- (6) todo item carimbado tem evento na trilha
   SELECT count(*) INTO n_sem_evento
@@ -823,5 +1314,78 @@ BEGIN
                         AND ev.rationale ->> 'migration' = '0083_fin_cartao_classificacao');
   IF n_sem_evento > 0 THEN RAISE EXCEPTION '0083: % item(ns) carimbado(s) sem trilha', n_sem_evento; END IF;
 
-  RAISE NOTICE '0083: prova passou — recusas mantidas, planos uniformes, sinal coerente, trilha completa.';
+  SELECT count(*) INTO n_evento_divergente
+    FROM fin_card_transaction t
+    JOIN fin_classification_event ev
+      ON ev.target_table = 'fin_card_transaction' AND ev.target_id = t.id
+     AND ev.rationale ->> 'migration' = '0083_fin_cartao_classificacao'
+   WHERE ev.category_id IS DISTINCT FROM t.category_id
+      OR ev.nucleo IS DISTINCT FROM t.nucleo
+      OR ev.stage IS DISTINCT FROM t.classified_by
+      OR ev.superseded_value IS NULL;
+  IF n_evento_divergente > 0 THEN RAISE EXCEPTION '0083: % evento(s) não reproduzem o estado carimbado/anterior', n_evento_divergente; END IF;
+
+  SELECT count(*) INTO n_evento_duplicado FROM (
+    SELECT target_id
+      FROM fin_classification_event
+     WHERE target_table = 'fin_card_transaction'
+       AND rationale ->> 'migration' = '0083_fin_cartao_classificacao'
+     GROUP BY target_id HAVING count(*) > 1
+  ) d;
+  IF n_evento_duplicado > 0 THEN RAISE EXCEPTION '0083: % item(ns) com evento duplicado', n_evento_duplicado; END IF;
+
+  -- (7) ponto fixo: repetir os UPDATEs de classificação e propagação agora
+  --     tocaria zero linhas. Esta é a prova de idempotência do dado, separada
+  --     da idempotência do migrador (que nunca executa a mesma migration duas vezes).
+  SELECT count(DISTINCT t.id) INTO n_reaplicavel
+    FROM fin_card_transaction t
+    JOIN fin_card_classificacao_regra r ON r.is_active
+     AND fin_card_regra_casa(r.escopo, r.chave, r.modo_match, t.mcc, t.description_norm)
+    JOIN fin_card_evidencia e ON e.slug = r.evidencia AND e.decide
+   WHERE t.category_id IS NULL
+     AND t.kind = 'compra'
+     AND NOT ('category_id' = ANY (t.human_locked_fields))
+     AND NOT EXISTS (SELECT 1 FROM fin_card_classificacao_excecao x
+                      WHERE x.mcc = t.mcc AND x.description_norm = t.description_norm)
+     AND (r.escopo = 'mcc' OR
+          (r.escopo = 'produto' AND COALESCE(t.mcc, '') NOT IN
+            ('5732', '5735', '5815', '5311', '5300', '5411')))
+     AND NOT EXISTS (
+       SELECT 1
+         FROM fin_card_classificacao_regra r2
+         JOIN fin_card_evidencia e2 ON e2.slug = r2.evidencia AND e2.decide
+        WHERE r2.is_active AND r2.category_id <> r.category_id
+          AND fin_card_regra_casa(r2.escopo, r2.chave, r2.modo_match, t.mcc, t.description_norm)
+     );
+  IF n_reaplicavel > 0 THEN RAISE EXCEPTION '0083: % item(ns) ainda seriam tocados ao reaplicar classificação', n_reaplicavel; END IF;
+
+  SELECT count(*) INTO n_plano_reaplicavel
+    FROM fin_card_transaction t
+    JOIN fin_card_installment_plan p ON p.id = t.installment_plan_id
+   WHERE p.category_id IS NOT NULL AND t.category_id IS NULL AND t.kind = 'compra'
+     AND NOT ('category_id' = ANY (t.human_locked_fields));
+  IF n_plano_reaplicavel > 0 THEN RAISE EXCEPTION '0083: % parcela(s) ainda seriam tocadas ao reaplicar propagação', n_plano_reaplicavel; END IF;
+
+  SELECT count(*) INTO n_estorno_reaplicavel FROM (
+    SELECT t.id
+      FROM fin_card_transaction t
+      JOIN fin_card_transaction o
+        ON o.card_account_id = t.card_account_id
+       AND o.kind = 'compra' AND o.category_id IS NOT NULL
+       AND o.description_norm = substring(t.description_norm FROM '^estorno de "(.+)"$')
+     WHERE t.category_id IS NULL AND t.kind = 'estorno' AND t.amount_cents < 0
+       AND NOT ('category_id' = ANY (t.human_locked_fields))
+     GROUP BY t.id HAVING count(DISTINCT o.category_id) = 1
+  ) e;
+  IF n_estorno_reaplicavel > 0 THEN RAISE EXCEPTION '0083: % estorno(s) ainda seriam tocados ao reaplicar herança', n_estorno_reaplicavel; END IF;
+
+  -- (8) o veto é verificável: exceção não pode aparecer como decisão da 0083.
+  SELECT count(*) INTO n_excecao_carimbada
+    FROM fin_card_transaction t
+    JOIN fin_card_classificacao_excecao x
+      ON x.mcc = t.mcc AND x.description_norm = t.description_norm
+   WHERE t.classified_evidence IS NOT NULL;
+  IF n_excecao_carimbada > 0 THEN RAISE EXCEPTION '0083: % exceção(ões) receberam carimbo automático', n_excecao_carimbada; END IF;
+
+  RAISE NOTICE '0083: prova passou — recusas mantidas, ponto fixo idempotente, planos uniformes, sinal coerente, trilha completa.';
 END $$;

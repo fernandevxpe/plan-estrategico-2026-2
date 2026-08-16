@@ -14,10 +14,11 @@
 --      mudá-lo alteraria base de encargo e IR. Ele entra na folha só no eixo
 --      gerencial, que é o que a 0050 já entrega.
 --
---   b) A CONTA CONTÁBIL DOS MEIs NÃO É DECIDIDA AQUI. Hoje R$ 227.936,66 de
---      pagamento a MEI está em 6.01 Salários — não porque alguém decidiu, mas
---      porque é o que a regra de importação deixou. `fin_folha_mei_v` expõe o
---      fato e lista o que falta para decidir. Nenhum UPDATE de categoria.
+--   b) A CONTA CONTÁBIL DOS MEIs NÃO É DECIDIDA AQUI. Dos R$ 264.206,66 pagos
+--      a MEI em 2026, R$ 255.936,66 estão em 6.01 Salários — não porque alguém
+--      decidiu, mas porque é o que a regra de importação deixou. A view
+--      `fin_folha_mei_v` expõe o fato e lista o que falta para decidir.
+--      Nenhum UPDATE de categoria.
 --
 --   c) O REEMBOLSO NÃO É RECLASSIFICADO. A conta 6.05 "Reembolsos a
 --      colaboradores" existe e tem ZERO lançamento, enquanto os reembolsos
@@ -264,8 +265,8 @@ ON CONFLICT (person_id, reference_month, component, kind) DO NOTHING;
 --   1. O PAGO VEM DE TODAS AS CONTRAPARTES CONFIRMADAS, não do ponteiro
 --      `fin_person.counterparty_id`. O ponteiro guarda uma contraparte só, e
 --      nos seis MEI com CPF+CNPJ ele está no CPF — que é justamente onde o
---      dinheiro NÃO cai. Pelo ponteiro, R$ 163.537,48 dos R$ 227.936,66 pagos
---      a MEI ficariam fora da conta (71%).
+--      dinheiro NÃO cai. Pelo ponteiro, R$ 163.537,48 dos R$ 264.206,66 pagos
+--      a MEI ficariam fora da conta — 61,9% do custo, sumindo sem erro nenhum.
 --
 --   2. TRANSFERÊNCIA PAREADA E LINHA-PAI DE RATEIO NÃO CONTAM. São dinheiro
 --      andando entre contas próprias e cabeçalho de split — contá-los dobraria.
@@ -425,14 +426,16 @@ COMMENT ON VIEW fin_folha_divergencia_v IS
 -- de M a M+3 e nas contrapartes confirmadas da pessoa, um pagamento com o valor
 -- EXATO do total, ou com o valor exato de cada item.
 --
--- Medido em 16/08/2026: 46 dos 81 reembolsos (R$ 14.211,02) casam pelo total;
--- por item o casamento cobre R$ 19.624,67 dos R$ 42.320,34. O resto não casa
--- porque foi pago junto com o fixo num PIX só — o valor somado não existe
--- isolado em lugar nenhum.
+-- Medido em 16/08/2026, sobre os 81 reembolsos e R$ 42.320,34:
 --
--- Por isso `casamento = 'sem_par'` NÃO significa "não foi pago". Significa
--- "não dá para provar por valor", e é exatamente a razão de a reclassificação
--- 6.01 → 6.05 não ser feita nesta migration.
+--   casado_total ... 46 pedidos   R$ 14.211,02   o total saiu num PIX próprio
+--   casado_itens ... 28 pedidos   R$ 24.652,99   os itens saíram avulsos
+--   sem_par ........  7 pedidos   R$  3.456,33   nenhum valor bate isolado
+--
+-- Os 7 sem par foram pagos junto com o fixo num PIX só — o valor somado não
+-- existe isolado em lugar nenhum, e por isso `casamento = 'sem_par'` NÃO
+-- significa "não foi pago". Significa "não dá para provar por valor", e é
+-- exatamente a razão de a reclassificação 6.01 → 6.05 não ser feita aqui.
 CREATE OR REPLACE VIEW fin_folha_reembolso_ledger_v AS
 WITH link AS (
   SELECT person_id, counterparty_id FROM fin_person_counterparty WHERE status = 'confirmado'
@@ -536,7 +539,7 @@ COMMENT ON VIEW fin_folha_reembolso_mes_v IS
 -- Isto não é neutro. Enquanto ficar em 6.01:
 --   · `fin_custo_pessoas_v.folha_sem_mei_cents` inclui MEI, ao contrário do nome;
 --   · `mei_cents` mostra só o Kevin (o único fora de 6.xx), R$ 8.270,00 de
---     R$ 227.936,66 — 3,6% do que deveria mostrar;
+--     R$ 264.206,66 — 3,1% do que deveria mostrar;
 --   · o eixo fiscal afirma vínculo empregatício onde há contrato de serviço.
 --
 -- A view não corrige. Ela expõe cada MEI com o que a base sabe e nomeia o que

@@ -3,6 +3,101 @@
 Este documento existe para quem chega depois. Ele é auto-suficiente: se você só
 puder ler um arquivo antes de tocar em qualquer coisa, leia este.
 
+## Checkpoint Codex — 16/08/2026 04:10 BRT
+
+Este é o checkpoint mais recente. As seções históricas abaixo explicam as
+decisões, mas seus números retratam o instante em que a sessão do Claude foi
+interrompida. Para retomar sem repetir trabalho, comece por aqui.
+
+### De onde esta continuação partiu
+
+- Branch recebida: `financeiro-2026`, HEAD `992d6c5`, 34 commits à frente de
+  `main`, sem branch remota publicada.
+- Havia 12 arquivos não commitados da sessão interrompida (migrations 0081,
+  0083 e 0085; contratos gerenciais; trilha/idempotência; documentos). Eles
+  foram preservados integralmente em `157ce40`, antes de qualquer correção.
+- Branch independente desta continuação:
+  `codex/financeiro-conclusao-2026-08-16`.
+- Nenhum deploy foi feito e nenhuma branch desta frente foi enviada ao remoto
+  até este checkpoint.
+
+### Commits concluídos nesta continuação
+
+| commit | entrega | validação |
+|---|---|---|
+| `157ce40` | checkpoint integral do WIP deixado pelo Claude | 12 caminhos preservados antes das correções |
+| `234aa5b` | backup dinâmico de todas as tabelas `fin_*`, manifesto e ordem de restauração por FK | dry-run e backup real: 72 tabelas, 42.152 linhas, 73 migrations registradas |
+| `8eca05b` | migration 0084 torna obrigatória a trilha crua de lote confirmado | teste transacional prova rejeição sem linha, aceitação com linha e `ROLLBACK` |
+| `ef876de` | J3 valida a fonte declarada da competência, não uma janela arbitrária de 90 dias | integridade estrita: J3 passou e o único invariante restante é F1 |
+| `dbb8d25` | matriz de cobertura 0085 distingue ausência de zero e expõe a 7ª conta Caixa | arquivo integral executado em transação e desfeito; 15 linhas, zero chaves duplicadas, totais reconciliados com ledger/M12 |
+
+### Escritas efetivamente realizadas no banco
+
+Antes de qualquer escrita foi produzido backup completo e restaurável. Depois:
+
+1. `sync-inter.mjs --desde=2026-06-30` fez somente GET e atualizou o acervo bruto
+   local de 671 para 685 transações, chegando a 16/08/2026.
+2. `backfill-inter-import-rows.mjs --aplicar` gravou 13 linhas cruas ausentes do
+   lote 30; todas casaram exatamente por `idTransacao`. Não criou lançamento.
+
+As migrations 0081, 0083, 0084 e 0085 **não estavam aplicadas** neste checkpoint.
+O banco tinha 73 migrations aplicadas. Não confundir isso com a contagem maior
+de objetos/migrations mencionada nas seções históricas abaixo.
+
+### Estado provado neste checkpoint
+
+```text
+integridade estrita ........ 40/41 invariantes
+falha real restante ........ F1: caixa-aplicacao e caixa-emprestimo sem extrato
+idempotência Inter ......... duas execuções reais; 2ª sem novos lançamentos; ROLLBACK
+migrations aplicadas ....... 73
+migrations pendentes ....... 0081, 0083, 0084, 0085
+deploy/push ................ nenhum
+```
+
+F1 não deve ser “corrigido” inventando saldo zero, janela de cobertura ou
+desativando conta. A 0085 transforma a ausência em dado explícito; o fechamento
+depende dos extratos/contratos que só o Fernando pode fornecer.
+
+### Trabalho em curso quando este checkpoint foi escrito
+
+- 0081: correção conservadora do comparador tributário; não pode concluir que
+  Simples, Presumido ou Real “vence” sem as entradas contábeis e decisões
+  listadas nas pendências.
+- 0083: classificação e hierarquia de cartões/subcartões; dry-run retomado após
+  o teste de idempotência liberar o lock.
+- APIs: exportação dos contratos e rotas GET-only para folha, comissão,
+  recorrentes, contratos, DRE dimensional, fluxo por conta, receita por grupo,
+  balanço e apuração.
+
+Essas frentes podem deixar diffs não commitados enquanto os agentes estiverem
+rodando. Nunca use `git add -A`: revise e versione cada caminho nominalmente.
+
+### Sequência segura para retomar
+
+```bash
+git status --short --branch
+git log --oneline --decorate -12
+npm run db:migrate:status
+
+# Só depois de 0081 e 0083 terem relatório de rollback e commit próprio:
+npm run db:backup
+npm run db:migrate
+npm run db:migrate:status
+
+npm run test:import-guard
+npm run test:integridade -- --strict
+node scripts/test-financeiro.mjs
+npm run test:contabil
+node scripts/validar-cartoes.mjs
+npm run build:app
+```
+
+O critério continua sendo o mesmo: migração validada não é migração aplicada;
+contrato TypeScript não é endpoint; número estimado não é obrigação; ausência
+de dado não é zero. Atualize este checkpoint e faça um commit claro antes de
+encerrar qualquer nova sessão.
+
 Estado em **16/08/2026**, branch `financeiro-2026`, 34+ commits à frente de
 `main`. Leia também, nesta ordem:
 

@@ -11,18 +11,19 @@ import "server-only";
  *   bancos             fin_account, fin_statement_cov.    pronto — 6/6 fecham
  *   conciliacao        fin_settlement, erp_extrato_*      pronto
  *   lancamentos        fin_transaction (13.880)           pronto
- *   cartao             fin_card_* (795 compras, 12 fat.)  pronto, sem titular
+ *   cartao             fin_card_hierarquia_v (0074)       pronto, com lacunas declaradas
  *   receber            fin_receber_aging_v (596 abertas)  pronto
  *   pagar              —                                  SEM DADO: 0 documentos
  *   tesouraria         fin_reserve (4), fin_investment    pronto
  *   pessoas            fin_person (28), fin_custo_*       pronto
  *   reembolsos         fin_reimbursement (81)             pronto
- *   resultado (DRE)    fin_projetado_realizado_v          pronto (regime caixa)
+ *   resultado (DRE)    fin_dre_v / fin_dre_mensal_v       pronto, DUAS visões (0072)
+ *   fluxo de caixa     fin_fluxo_caixa_v                  pronto (0073)
  *   orcamento          fin_budget_target (114)            PARCIAL: 100% escopo obras
  *   previsao           fin_previsao_evento_v (593)        pronto
  *   decisoes           filas de indeterminado             pronto
- *   auditoria          fin_audit_log (4.524)              pronto
- *   pagamentos         migration 0075                     schema pronto, SEM DADO
+ *   auditoria          fin_audit_log                      pronto
+ *   pagamentos         0075 aplicada                      schema pronto, SEM DADO
  *
  * Todo contrato devolve `Contrato<T>` com `disponivel`, `cobertura`,
  * `frescorPior`, `pendencias` e `ressalvas`. A tela nunca deve renderizar o
@@ -58,9 +59,16 @@ export { getTesouraria, type Tesouraria, type Reserva, type Aplicacao } from "./
 export { getPessoas, getReembolsos, type PainelPessoas, type Pessoa, type PainelReembolsos } from "./pessoas";
 export {
   getResultado,
+  getFluxoDeCaixa,
   getOrcadoRealizado,
   getMargemPorProjeto,
   type Resultado,
+  type Visao,
+  type MesDre,
+  type LinhaDre,
+  type CoberturaDre,
+  type RegraCompetencia,
+  type MesFluxo,
   type LinhaOrcamento,
   type MargemProjeto
 } from "./resultado";

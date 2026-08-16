@@ -71,9 +71,10 @@ export async function getVisaoExecutiva(): Promise<Contrato<VisaoExecutiva>> {
     const janela = janela12Meses();
 
     const [serie, aberto, vencido, concentracao] = await Promise.all([
-      // Regime de CAIXA, declarado. `competence_date` está nulo em 100% dos
-      // lançamentos, então competência aqui seria invenção — e o contrato diz
-      // isso em `ressalvas` em vez de deixar o leitor supor.
+      // Regime de CAIXA, declarado. A 0071 passou a oferecer competência
+      // também, e a visão executiva escolhe caixa de propósito: é a única que
+      // bate com o extrato, e esta é a tela onde "quanto tenho" tem de ser
+      // literal. Quem quiser competência abre a DRE e escolhe a visão.
       query<{ mes: string; entrada: string; saida: string; n: string }>(
         `SELECT to_char(date_trunc('month', t.posted_on), 'YYYY-MM-DD') AS mes,
                 COALESCE(SUM(t.amount_cents) FILTER (WHERE t.amount_cents > 0), 0)::text AS entrada,
@@ -222,7 +223,7 @@ export async function getVisaoExecutiva(): Promise<Contrato<VisaoExecutiva>> {
       },
       cobertura: cobertura.fontes,
       ressalvas: [
-        "Todos os números desta tela são REGIME DE CAIXA. competence_date está nulo em 100% dos lançamentos; competência aqui seria invenção.",
+        "Todos os números desta tela são REGIME DE CAIXA, por escolha: é o regime que bate com o extrato. A visão de competência existe e mora em /dre.",
         "Transferência entre contas próprias sai do cálculo (transfer_status <> 'pareado'), senão R$ 3,82 mi contariam em dobro."
       ]
     });

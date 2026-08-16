@@ -198,6 +198,12 @@ export async function getPendencias(): Promise<Contrato<PainelPendencias>> {
          (SELECT count(*) FROM fin_contraparte_documento_conflito_v)::text AS documento_conflito,
          (SELECT count(*) FROM fin_transaction t JOIN fin_entity e ON e.id = t.entity_id
            WHERE e.slug = $1 AND t.competence_date IS NULL)::text AS sem_competencia,
+         -- Competência preenchida não é competência confiável. A 0071 declara a
+         -- precedência das regras; o que sai como 'presumida' é convenção, não
+         -- documento, e a checagem mede isso e não a mera ausência de NULL.
+         (SELECT COALESCE(SUM(linhas), 0) FROM fin_competencia_cobertura_v
+           WHERE confianca = 'presumida')::text AS competencia_presumida,
+         (SELECT COALESCE(SUM(linhas), 0) FROM fin_competencia_cobertura_v)::text AS competencia_total,
          (SELECT count(*) FROM fin_document d JOIN fin_entity e ON e.id = d.entity_id
            WHERE e.slug = $1 AND d.direction = 'pagar')::text AS documentos_a_pagar,
          (SELECT count(*) FROM fin_transaction t JOIN fin_entity e ON e.id = t.entity_id
@@ -299,16 +305,27 @@ export async function getPendencias(): Promise<Contrato<PainelPendencias>> {
       },
       {
         chave: "competencia",
-        titulo: "Competência declarada",
-        invariante: "competence_date preenchido, ou o regime declarado como caixa",
-        // Passa com ressalva: o regime de caixa está DECLARADO nos contratos,
-        // então a ausência é conhecida e assumida, não um buraco silencioso.
-        passou: false,
+        titulo: "Competência preenchida",
+        invariante: "competence_date não nulo em todo lançamento",
+        passou: n("sem_competencia") === 0,
         observado: n("sem_competencia"),
         esperado: 0,
         valorCents: null,
-        severidade: "alerta",
+        severidade: "bloqueante",
         rota: null
+      },
+      {
+        chave: "competencia_documental",
+        titulo: "Competência sustentada por documento",
+        invariante: "a data de competência vem de nota, cobrança ou evento — não de presunção",
+        // Preenchido ≠ confiável. Esta linha existe para que ninguém leia o
+        // DRE de competência como se cada data tivesse um documento por trás.
+        passou: n("competencia_presumida") === 0,
+        observado: n("competencia_presumida"),
+        esperado: 0,
+        valorCents: null,
+        severidade: "alerta",
+        rota: "/financeiro/dre?visao=competencia"
       },
       {
         chave: "centro_custo_2026",
@@ -356,7 +373,7 @@ export async function getPendencias(): Promise<Contrato<PainelPendencias>> {
         })),
       ressalvas: [
         "Estas são invariantes verificadas AGORA sobre o dado, não testes de CI. Um schema perfeito e um ledger mentindo passam no CI e reprovam aqui.",
-        "'competencia' aparece como não-passou de propósito: o regime de caixa está declarado nos contratos, mas a lacuna continua sendo lacuna."
+        "'competencia' e 'competencia_documental' são checagens distintas: a primeira só verifica que o campo existe, a segunda que ele tem lastro."
       ]
     });
   } catch (error) {

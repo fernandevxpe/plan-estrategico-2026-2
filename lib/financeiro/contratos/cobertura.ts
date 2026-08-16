@@ -32,7 +32,10 @@ const TOLERANCIA = {
   contratos: 7,
   filaPagamento: 7,
   reembolsos: 35,
-  folha: 35
+  folha: 35,
+  // A DRE de competência é derivada: ela é tão fresca quanto o lançamento mais
+  // recente que carrega competência apurada.
+  competencia: 2
 } as const;
 
 export type FonteCobertura = keyof typeof TOLERANCIA | "contasBancarias";
@@ -193,7 +196,10 @@ async function marcosDasFontes(): Promise<Frescor[]> {
        (SELECT to_char(MAX(b.updated_at), 'YYYY-MM-DD') FROM fin_budget_target b) AS orcamento,
        (SELECT to_char(MAX(c.synced_at), 'YYYY-MM-DD') FROM erp_contrato c)       AS contrato,
        (SELECT to_char(MAX(rb.updated_at), 'YYYY-MM-DD') FROM fin_reimbursement rb) AS reembolso,
-       (SELECT to_char(MAX(pc.reference_month), 'YYYY-MM-DD') FROM fin_person_compensation pc) AS folha`,
+       (SELECT to_char(MAX(pc.reference_month), 'YYYY-MM-DD') FROM fin_person_compensation pc) AS folha,
+       (SELECT to_char(MAX(t.competence_date), 'YYYY-MM-DD') FROM fin_transaction t
+          JOIN fin_entity e2 ON e2.id = t.entity_id
+         WHERE e2.slug = $1 AND t.competence_date <= CURRENT_DATE)                AS competencia`,
     [ENTIDADE]
   );
 
@@ -215,7 +221,14 @@ async function marcosDasFontes(): Promise<Frescor[]> {
     def("orçamento", "fin_budget_target", marco?.orcamento, TOLERANCIA.orcamento, "nenhuma meta declarada"),
     def("contratos do ERP", "erp_contrato", marco?.contrato, TOLERANCIA.contratos, "nenhum contrato espelhado"),
     def("reembolsos", "fin_reimbursement", marco?.reembolso, TOLERANCIA.reembolsos, "nenhum reembolso lançado"),
-    def("folha", "fin_person_compensation", marco?.folha, TOLERANCIA.folha, "nenhuma remuneração declarada")
+    def("folha", "fin_person_compensation", marco?.folha, TOLERANCIA.folha, "nenhuma remuneração declarada"),
+    def(
+      "competência apurada",
+      "fin_transaction.competence_date",
+      marco?.competencia,
+      TOLERANCIA.competencia,
+      "nenhum lançamento com competência apurada — a DRE de competência não tem base"
+    )
   ];
 }
 

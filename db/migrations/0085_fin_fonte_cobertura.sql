@@ -77,23 +77,27 @@
 -- e some também.
 --
 -- ===========================================================================
--- 4. AS QUATRO PERNAS DA UNIÃO
+-- 4. AS CINCO PERNAS DA UNIÃO
 -- ===========================================================================
 --
 --   (a) ACERVO — uma linha por (source, conta, ano) observado em
 --       fin_transaction. É a perna que tem número.
 --
---   (b) PERÍODO DECLARADO E VAZIO — (conta, ano) que tem janela em
+--   (b) LOTE SEM ACERVO — houve tentativa desta fonte, mas nenhuma linha viva
+--       chegou ao ledger. Sem esta perna, um lote descartado/revertido de CSV
+--       desaparece quando uma API já alimenta a mesma conta e o mesmo ano.
+--
+--   (c) PERÍODO DECLARADO E VAZIO — (conta, ano) que tem janela em
 --       fin_statement_coverage e nenhum lançamento. É o modo de falha
 --       "declarei cobertura e não trouxe nada": hoje não ocorre, e a linha
 --       existe para que o dia em que ocorrer não passe em silêncio.
 --
---   (c) FONTE DECLARADA E NUNCA EXECUTADA — conta ativa sem janela E sem
+--   (d) FONTE DECLARADA E NUNCA EXECUTADA — conta sem janela, lote E
 --       lançamento. `caixa-aplicacao` e `caixa-emprestimo` moram aqui. A fonte
 --       reportada é o `import_adapter` que a conta declara — o caminho que
 --       existe no cadastro e nunca rodou.
 --
---   (d) DESTINO FORA DO LEDGER — não é conta deste banco, e é justamente por
+--   (e) DESTINO FORA DO LEDGER — não é conta deste banco, e é justamente por
 --       isso que precisa aparecer. Quando o motor de transferências não acha a
 --       contraperna e o extrato diz para onde o dinheiro foi, ele grava o
 --       destino em `fin_transaction.transfer_unresolved_reason` no formato
@@ -163,7 +167,9 @@
 -- DUPLICATAS (`dup_grupos`, `dup_excedentes`, `dup_excedente_cents`)
 --   Mesma definição do monitor M12 — (conta, data, valor, texto) repetidos — e
 --   deliberadamente a mesma, para que a matriz e o teste nunca discordem sobre
---   quantas são. Todas passaram pelo índice único porque têm `dedupe_hash`
+--   quantas são. `source` não faz parte da assinatura; quando um grupo cruza
+--   fontes, ele é atribuído à fonte da linha de menor id para os totais não
+--   duplicarem. Todas passaram pelo índice único porque têm `dedupe_hash`
 --   distinto. **Isto NÃO é uma acusação de erro:** pagamento legítimo repetido no
 --   mesmo dia para o mesmo fornecedor tem exatamente esta cara. A coluna diz onde
 --   olhar; quem decide é humano.
@@ -208,18 +214,103 @@
 -- para tornar isso impossível de esconder. As janelas que faltam continuam
 -- faltando, e a view as exibe faltando.
 
-BEGIN;
-
 CREATE OR REPLACE VIEW fin_fonte_cobertura_v AS
 WITH
+-- Um lote pode atravessar anos e, embora hoje não ocorra, pode produzir mais
+-- de uma `source`. Não escolher `LIMIT 1`: isso atribuiria o lote a uma fonte
+-- arbitrária e faria a matriz perder as demais.
+lote_fonte_observada AS (
+  SELECT b.id AS batch_id,
+         b.account_id,
+         b.adapter,
+         b.status,
+         b.period_start,
+         b.period_end,
+         b.created_at,
+         t.source,
+         min(t.posted_on) AS transacao_de,
+         max(t.posted_on) AS transacao_ate
+    FROM fin_import_batch b
+    JOIN fin_transaction t ON t.import_batch_id = b.id
+   WHERE b.account_id IS NOT NULL
+   GROUP BY b.id, t.source
+),
+
+-- Onde há lançamento, a fonte é observada. Só o lote que não produziu nenhum
+-- lançamento cai no mapa adaptador -> fonte. `periodo_de/ate` privilegiam a
+-- declaração do lote e usam as linhas (ou created_at) apenas como fallback.
+lote_base AS (
+  SELECT o.batch_id,
+         o.account_id,
+         o.source,
+         o.status,
+         COALESCE(o.period_start, o.transacao_de, o.created_at::date) AS periodo_de,
+         COALESCE(o.period_end, o.transacao_ate, o.period_start,
+                  o.transacao_de, o.created_at::date)                AS periodo_ate
+    FROM lote_fonte_observada o
+
+  UNION ALL
+
+  SELECT b.id,
+         b.account_id,
+         CASE
+           WHEN b.adapter = 'asaas_api' THEN 'asaas'
+           WHEN b.adapter = 'inter_api' THEN 'inter_api'
+           WHEN b.adapter = 'polp_api'  THEN 'polp'
+           WHEN b.adapter LIKE '%\_ofx' THEN 'import_ofx'
+           WHEN b.adapter = 'manual'    THEN 'manual'
+           WHEN b.adapter LIKE '%\_csv'
+             OR b.adapter LIKE '%\_pdf' THEN 'import_csv'
+           -- Adaptador futuro/desconhecido continua explícito; chamá-lo de CSV
+           -- por conveniência fabricaria uma proveniência que não observamos.
+           ELSE 'adapter:' || b.adapter
+         END,
+         b.status,
+         COALESCE(b.period_start, b.created_at::date),
+         COALESCE(b.period_end, b.period_start, b.created_at::date)
+    FROM fin_import_batch b
+   WHERE b.account_id IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM lote_fonte_observada o WHERE o.batch_id = b.id
+     )
+),
+
+lote_periodo AS (
+  SELECT lb.*,
+         g::int AS ano
+    FROM lote_base lb
+    CROSS JOIN LATERAL generate_series(
+      EXTRACT(YEAR FROM LEAST(lb.periodo_de, lb.periodo_ate))::int,
+      EXTRACT(YEAR FROM GREATEST(lb.periodo_de, lb.periodo_ate))::int
+    ) g
+),
+
+lotes AS (
+  SELECT lp.account_id,
+         lp.source,
+         lp.ano,
+         count(*)::int AS lotes,
+         count(*) FILTER (
+           WHERE NOT EXISTS (
+             SELECT 1 FROM fin_import_row r WHERE r.batch_id = lp.batch_id
+           )
+         )::int AS lotes_sem_trilha,
+         count(*) FILTER (WHERE lp.status = 'confirmado')::int AS lotes_confirmados
+    FROM lote_periodo lp
+   GROUP BY 1, 2, 3
+),
+
 -- ---------------------------------------------------------------------------
--- (conta, ano) que existem: por lançamento observado OU por janela declarada.
+-- (conta, ano) que existem: por lançamento, janela OU lote observado. Incluir
+-- lote é indispensável para que uma tentativa sem acervo não suma quando outra
+-- fonte já alimentou a mesma conta no mesmo ano (Inter CSV versus Inter API).
 -- ---------------------------------------------------------------------------
 periodos AS (
   SELECT account_id, ano
     FROM (
       SELECT t.account_id, EXTRACT(YEAR FROM t.posted_on)::int AS ano
         FROM fin_transaction t
+       WHERE NOT t.is_split_parent
       UNION
       SELECT sc.account_id, g::int
         FROM fin_statement_coverage sc
@@ -227,6 +318,9 @@ periodos AS (
           EXTRACT(YEAR FROM sc.period_start)::int,
           EXTRACT(YEAR FROM sc.period_end)::int
         ) g
+      UNION
+      SELECT l.account_id, l.ano
+        FROM lotes l
     ) x
    GROUP BY 1, 2
 ),
@@ -315,8 +409,10 @@ janelas AS (
   SELECT sc.account_id,
          l.ano,
          count(*)::int          AS janelas,
-         min(sc.period_start)   AS janela_de,
-         max(sc.period_end)     AS janela_ate,
+         -- A janela publicada pertence à linha anual. Sem a interseção, todas
+         -- as seis linhas do Asaas repetiriam 2021-05-12 -> 2026-08-15.
+         min(GREATEST(sc.period_start, l.ini)) AS janela_de,
+         max(LEAST(sc.period_end, l.fim))      AS janela_ate,
          max(sc.created_at)     AS ultima_janela_em,
          string_agg(DISTINCT sc.source, '+' ORDER BY sc.source) AS janela_origem
     FROM fin_statement_coverage sc
@@ -326,46 +422,32 @@ janelas AS (
    GROUP BY 1, 2
 ),
 
--- Duplicatas: exatamente a definição do monitor M12.
-dups AS (
+-- Duplicatas: exatamente a definição do monitor M12 — source NÃO faz parte da
+-- assinatura. Um grupo que atravessa fontes é atribuído deterministicamente à
+-- fonte da linha de menor id, para preservar os totais globais sem contá-lo
+-- mais de uma vez na soma da matriz.
+dup_grupo AS (
   SELECT account_id,
-         source,
-         EXTRACT(YEAR FROM posted_on)::int              AS ano,
-         count(*)::int                                  AS dup_grupos,
-         sum(n - 1)::bigint                             AS dup_excedentes,
-         sum(abs(amount_cents) * (n - 1))::bigint       AS dup_excedente_cents
-    FROM (
-      SELECT account_id, source, posted_on, amount_cents, description_norm, count(*) AS n
-        FROM fin_transaction
-       WHERE NOT is_split_parent
-       GROUP BY 1, 2, 3, 4, 5
-      HAVING count(*) > 1
-    ) g
-   GROUP BY 1, 2, 3
+         posted_on,
+         amount_cents,
+         description_norm,
+         min(id) AS atribuida_a_id,
+         count(*) AS n
+    FROM fin_transaction
+   WHERE NOT is_split_parent
+   GROUP BY 1, 2, 3, 4
+  HAVING count(*) > 1
 ),
 
--- Fonte de um lote: LIDA do lançamento que ele produziu; o CASE só cobre lote
--- que não produziu nada.
-lotes AS (
-  SELECT b.account_id,
-         COALESCE(
-           (SELECT t.source FROM fin_transaction t WHERE t.import_batch_id = b.id LIMIT 1),
-           CASE
-             WHEN b.adapter = 'asaas_api'    THEN 'asaas'
-             WHEN b.adapter = 'inter_api'    THEN 'inter_api'
-             WHEN b.adapter = 'polp_api'     THEN 'polp'
-             WHEN b.adapter LIKE '%\_ofx'    THEN 'import_ofx'
-             WHEN b.adapter = 'manual'       THEN 'manual'
-             ELSE 'import_csv'
-           END
-         ) AS source,
-         EXTRACT(YEAR FROM COALESCE(b.period_start, b.created_at::date))::int AS ano,
-         count(*)::int AS lotes,
-         count(*) FILTER (
-           WHERE NOT EXISTS (SELECT 1 FROM fin_import_row r WHERE r.batch_id = b.id)
-         )::int AS lotes_sem_trilha,
-         count(*) FILTER (WHERE b.status = 'confirmado')::int AS lotes_confirmados
-    FROM fin_import_batch b
+dups AS (
+  SELECT g.account_id,
+         t.source,
+         EXTRACT(YEAR FROM g.posted_on)::int            AS ano,
+         count(*)::int                                  AS dup_grupos,
+         sum(g.n - 1)::bigint                           AS dup_excedentes,
+         sum(abs(g.amount_cents) * (g.n - 1))::bigint   AS dup_excedente_cents
+    FROM dup_grupo g
+    JOIN fin_transaction t ON t.id = g.atribuida_a_id
    GROUP BY 1, 2, 3
 ),
 
@@ -396,6 +478,7 @@ acervo AS (
            )
          ) AS lancamentos_fora_de_janela
     FROM fin_transaction t
+   WHERE NOT t.is_split_parent
    GROUP BY 1, 2, 3
 ),
 
@@ -406,11 +489,22 @@ fora_do_ledger AS (
          EXTRACT(YEAR FROM t.posted_on)::int                                     AS ano,
          count(*)                                                                AS lancamentos,
          sum(t.amount_cents)                                                     AS valor_cents,
+         COALESCE(sum(t.amount_cents) FILTER (WHERE t.amount_cents > 0), 0)       AS entradas_cents,
+         COALESCE(sum(t.amount_cents) FILTER (WHERE t.amount_cents < 0), 0)       AS saidas_cents,
          min(t.posted_on)                                                        AS acervo_de,
          max(t.posted_on)                                                        AS acervo_ate,
-         max(t.created_at)                                                       AS ultima_sync
+         max(t.created_at)                                                       AS ultima_sync,
+         count(*) FILTER (WHERE t.reconciled_status IN ('auto', 'manual'))       AS conciliados,
+         count(*) FILTER (WHERE t.reconciled_status = 'nao_conciliado')          AS nao_conciliados,
+         count(*) FILTER (WHERE t.reconciled_status = 'ignorado')                AS conciliacao_ignorada,
+         count(*) FILTER (WHERE t.transfer_status = 'em_transito')               AS em_transito,
+         COALESCE(sum(abs(t.amount_cents)) FILTER (
+           WHERE t.transfer_status = 'em_transito'
+         ), 0)                                                                   AS em_transito_cents
     FROM fin_transaction t
    WHERE t.transfer_unresolved_reason LIKE 'destino_fora_do_ledger:%'
+     AND t.transfer_status = 'em_transito'
+     AND NOT t.is_split_parent
    GROUP BY 1, 2
 )
 
@@ -492,7 +586,46 @@ SELECT ac.source                                          AS fonte,
 UNION ALL
 
 -- ---------------------------------------------------------------------------
--- (b) PERÍODO DECLARADO E VAZIO — janela sem um único lançamento.
+-- (b) LOTE SEM ACERVO — houve tentativa rastreável desta fonte neste período,
+--     mas nenhuma linha viva chegou ao ledger. Sem esta perna, os três lotes
+--     Inter CSV desapareceriam porque a API Inter já tem acervo no mesmo ano.
+-- ---------------------------------------------------------------------------
+SELECT lo.source,
+       'lote_sem_acervo'::text,
+       a.institution, a.slug, a.id, a.is_active,
+       lo.ano,
+       j.janela_de, j.janela_ate, COALESCE(j.janelas, 0), j.janela_origem,
+       NULL::date, NULL::date,
+       NULL::timestamptz, j.ultima_janela_em, a.last_statement_at,
+       NULL::bigint, NULL::bigint, NULL::bigint, NULL::bigint,
+       c.dias_no_periodo, c.dias_cobertos, c.dias_sem_janela,
+       COALESCE(la.lacuna_antes_dias, 0),
+       COALESCE(bi.lacuna_interna_maior_dias, 0),
+       COALESCE(la.lacuna_depois_dias, 0),
+       COALESCE(la.dias_sem_janela_antes_da_abertura, 0),
+       NULL::bigint,
+       NULL::int, NULL::bigint, NULL::bigint,
+       lo.lotes, lo.lotes_sem_trilha, NULL::bigint,
+       NULL::bigint, NULL::bigint, NULL::bigint, NULL::bigint, NULL::bigint,
+       'sem_acervo'::text,
+       'lote_sem_acervo'::text
+  FROM lotes lo
+  JOIN fin_account a       ON a.id = lo.account_id
+  LEFT JOIN cobertura c    ON c.account_id = lo.account_id AND c.ano = lo.ano
+  LEFT JOIN lacunas la     ON la.account_id = lo.account_id AND la.ano = lo.ano
+  LEFT JOIN buraco_interno bi ON bi.account_id = lo.account_id AND bi.ano = lo.ano
+  LEFT JOIN janelas j      ON j.account_id = lo.account_id AND j.ano = lo.ano
+ WHERE NOT EXISTS (
+   SELECT 1 FROM acervo ac
+    WHERE ac.account_id = lo.account_id
+      AND ac.source = lo.source
+      AND ac.ano = lo.ano
+ )
+
+UNION ALL
+
+-- ---------------------------------------------------------------------------
+-- (c) PERÍODO DECLARADO E VAZIO — janela sem lançamento nem lote.
 -- ---------------------------------------------------------------------------
 SELECT a.import_adapter,
        'janela_sem_acervo'::text,
@@ -508,7 +641,7 @@ SELECT a.import_adapter,
        COALESCE(la.lacuna_depois_dias, 0),
        COALESCE(la.dias_sem_janela_antes_da_abertura, 0),
        NULL::bigint,
-       0, 0, 0,
+       NULL::int, NULL::bigint, NULL::bigint,
        COALESCE(lo.lotes, 0), COALESCE(lo.lotes_sem_trilha, 0), NULL::bigint,
        NULL::bigint, NULL::bigint, NULL::bigint, NULL::bigint, NULL::bigint,
        'sem_acervo'::text,
@@ -523,11 +656,12 @@ SELECT a.import_adapter,
       FROM lotes l2 WHERE l2.account_id = c.account_id AND l2.ano = c.ano
   ) lo ON TRUE
  WHERE NOT EXISTS (SELECT 1 FROM acervo ac WHERE ac.account_id = c.account_id AND ac.ano = c.ano)
+   AND NOT EXISTS (SELECT 1 FROM lotes l2 WHERE l2.account_id = c.account_id AND l2.ano = c.ano)
 
 UNION ALL
 
 -- ---------------------------------------------------------------------------
--- (c) FONTE DECLARADA E NUNCA EXECUTADA — a conta existe, o caminho de
+-- (d) FONTE DECLARADA E NUNCA EXECUTADA — a conta existe, o caminho de
 --     importação está no cadastro, e nunca entrou nada. Quantidade e valor
 --     saem NULL: não sabemos que é zero, sabemos que não sabemos.
 -- ---------------------------------------------------------------------------
@@ -542,19 +676,20 @@ SELECT a.import_adapter,
        NULL::int, NULL::int, NULL::int,
        NULL::int, NULL::int, NULL::int, NULL::int,
        NULL::bigint,
-       0, 0, 0,
+       NULL::int, NULL::bigint, NULL::bigint,
        0, 0, NULL::bigint,
        NULL::bigint, NULL::bigint, NULL::bigint, NULL::bigint, NULL::bigint,
        'sem_acervo'::text,
        'sem_cobertura'::text
-  FROM fin_account a
+ FROM fin_account a
  WHERE NOT EXISTS (SELECT 1 FROM fin_transaction t        WHERE t.account_id = a.id)
    AND NOT EXISTS (SELECT 1 FROM fin_statement_coverage s WHERE s.account_id = a.id)
+   AND NOT EXISTS (SELECT 1 FROM lotes l                   WHERE l.account_id = a.id)
 
 UNION ALL
 
 -- ---------------------------------------------------------------------------
--- (d) DESTINO FORA DO LEDGER — a sétima conta.
+-- (e) DESTINO FORA DO LEDGER — a sétima conta.
 --     `lancamentos` aqui conta as PERNAS QUE APONTAM para o destino, não o
 --     extrato dele. `conta_id` é NULL porque não existe conta: é isso que a
 --     linha denuncia.
@@ -569,18 +704,23 @@ SELECT '(sem fonte)'::text,
        f.acervo_de, f.acervo_ate,
        f.ultima_sync, NULL::timestamptz, NULL::timestamptz,
        f.lancamentos, f.valor_cents,
-       0::bigint,      -- entradas: nenhuma perna de ENTRADA aponta para lá; só saiu
-       f.valor_cents,  -- saídas: o total é a própria soma, toda ela negativa
+       f.entradas_cents,
+       f.saidas_cents,
        -- dias_cobertos = 0 é fato: destas datas o ledger cobre exatamente nenhuma.
        -- dias_no_periodo e dias_sem_janela ficam NULL porque a vida da conta é
        -- desconhecida — não há extrato dela para delimitar período.
        NULL::int, 0, NULL::int,
        NULL::int, NULL::int, NULL::int, NULL::int,
        NULL::bigint,
-       0, 0, 0,
+       NULL::int, NULL::bigint, NULL::bigint,
        0, 0, NULL::bigint,
-       0::bigint, f.lancamentos, f.lancamentos, abs(f.valor_cents), f.lancamentos,
-       'nao_conciliado'::text,
+       f.conciliados, f.nao_conciliados, f.em_transito,
+       f.em_transito_cents, f.em_transito,
+       CASE
+         WHEN f.conciliados = f.lancamentos THEN 'conciliado'
+         WHEN f.conciliados > 0              THEN 'parcial'
+         ELSE                                     'nao_conciliado'
+       END,
        'conta_fora_do_ledger'::text
   FROM fora_do_ledger f;
 
@@ -597,5 +737,3 @@ COMMENT ON VIEW fin_fonte_cobertura_v IS
   'A linha destino_fora_do_ledger não é conta deste banco: é a sétima conta da empresa '
   '(Caixa 12920000005783083433) medida pelas pernas que apontam para ela, e é o que '
   'desmente o "6/6 contas fecham".';
-
-COMMIT;

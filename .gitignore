@@ -15,3 +15,6 @@ node_modules/
 tsconfig.tsbuildinfo
 *.tsbuildinfo
 next-env.d.ts
+
+# Arquivo de segredos: nunca versionar, nunca abrir.
+secrets.zip

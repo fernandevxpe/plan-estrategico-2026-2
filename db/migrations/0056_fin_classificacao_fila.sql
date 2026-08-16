@@ -175,7 +175,12 @@ SELECT e.id,
          || 'fin_document(direction=receber, status=liquidado) em 65 de 65. Vai para 3.99 e NÃO '
          || 'para uma receita específica: o código de serviço municipal 17.01.01.501 cobre 387 '
          || 'linhas já decididas espalhadas por 11 categorias de receita — prova que houve '
-         || 'serviço, não qual. review=true mantém a linha na fila.',
+         || 'serviço, não qual. review=true mantém a linha na fila. ALCANCE FORA DE 2026: a '
+         || 'regra não tem data porque o fato não tem — na próxima passada do reclassificador '
+         || 'ela alcança 287 cobranças de 2021–2025 (R$ 151.976,71) que também estão sem '
+         || 'categoria. Elas vão para 3.99, ou seja, continuam na fila; nenhuma receita já '
+         || 'decidida é trocada — as 2.696 classificadas têm liquidação e classified_rule_id '
+         || 'nulo, e caem na proteção heranca_de_documento do reclassificar.mjs.',
        'migration-0056'
   FROM fin_entity e WHERE e.slug = 'xpe'
 ON CONFLICT (entity_id, slug) DO NOTHING;

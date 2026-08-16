@@ -232,6 +232,13 @@ try {
   // DRE de lado nenhum. Em 3.99 entram como receita_bruta, que é o que são. O
   // que continua desconhecido é a linha da DRE, não o sinal — e a 0056 pôs 3.99
   // dentro da fila justamente para que isso continue visível.
+  //
+  // 54 das 65 estão com `classified_by='contrato'` e categoria NULA — estado
+  // impossível de resolver sozinho: o motor de regras protege 'contrato' e
+  // nunca volta nelas, então a marca de proveniência as congelou sem decisão
+  // nenhuma. Este passo as destrava. O carimbo anterior vai para
+  // `classified_reason.classified_by_anterior` e para o evento de
+  // classificação: a proveniência não se perde, muda de lugar.
   await aplicar({
     nome: 'asaas: cobrança recebida é receita (serviço a determinar)',
     evidencia: 'source_kind=PAYMENT_RECEIVED com fin_settlement -> fin_document(direction=receber, status=liquidado)',
@@ -257,7 +264,8 @@ try {
              classified_reason = jsonb_build_object(
                'origem', 'tipo_declarado_pela_fonte',
                'motivo', 'Asaas declara PAYMENT_RECEIVED e ha documento a receber liquidado: e receita',
-               'nao_determinado', 'qual servico — o codigo municipal da NFe cobre 11 categorias de receita'),
+               'nao_determinado', 'qual servico — o codigo municipal da NFe cobre 11 categorias de receita',
+               'classified_by_anterior', t.classified_by),
              classified_at = now(), updated_at = now()
         FROM alvo WHERE t.id = alvo.id
       RETURNING t.id, t.amount_cents, t.category_id, NULL::text AS code_anterior`
@@ -448,6 +456,11 @@ try {
                  THEN 'indeterminado:fatura-sem-itemizacao'
                WHEN f.code_atual = '3.99'
                  THEN 'indeterminado:servico-nao-declarado'
+               -- Contraparte COM decisões anteriores que este script não pôde
+               -- usar (não unânimes, ou de direção oposta) é caso de leitura,
+               -- não de falta de dado: o histórico existe e discorda de si.
+               WHEN h.counterparty_id IS NOT NULL
+                 THEN 'indeterminado:duas-leituras-possiveis'
                WHEN f.description_norm ~ '(uber|ifood|amazon|americanas|marketplace|mercado pago|99app|supermercado|restaurante)'
                  OR f.source_kind IN ('CONVENIO_ARRECADACAO', 'COMPRA_DEBITO')
                  THEN 'indeterminado:duas-leituras-possiveis'
@@ -459,13 +472,10 @@ try {
         LEFT JOIN historico h ON h.counterparty_id = f.counterparty_id
     )
     UPDATE fin_transaction t
-       SET tags = (SELECT array_agg(DISTINCT x)
-                     FROM unnest(array_append(
-                            array_remove(t.tags, m.tag), m.tag)) AS x),
-           updated_at = now()
+       SET tags = array_append(t.tags, m.tag), updated_at = now()
       FROM motivo m
      WHERE t.id = m.id AND NOT (m.tag = ANY (t.tags))
-    RETURNING t.id, t.amount_cents, (SELECT m2.tag FROM motivo m2 WHERE m2.id = t.id) AS tag`);
+    RETURNING t.id, t.amount_cents, m.tag AS tag`);
 
   const porMotivo = new Map();
   for (const r of marcadas) {
@@ -495,6 +505,9 @@ try {
 
   const pct = (ok, base) => `${((100 * Number(ok)) / Number(base)).toFixed(1)}%`;
   console.log(`\nFila de classificação — 2026 (a partir de ${DE})\n`);
+  if (simulouMigration) {
+    console.log('  [a 0056 ainda não foi aplicada: rodou dentro desta transação, que termina em ROLLBACK]\n');
+  }
   console.log('  CLASSIFICADO, POR EVIDÊNCIA');
   let totalN = 0;
   let totalV = 0;

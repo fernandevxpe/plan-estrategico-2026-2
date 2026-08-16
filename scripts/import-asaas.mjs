@@ -370,7 +370,23 @@ try {
        status, source, source_id, pdf_url, xml_url
      ) VALUES`,
     `ON CONFLICT (source, source_id) WHERE source_id IS NOT NULL
-     DO UPDATE SET status = EXCLUDED.status, number = EXCLUDED.number, document_id = EXCLUDED.document_id,
+     DO UPDATE SET status = EXCLUDED.status, number = EXCLUDED.number,
+                   -- COALESCE, não atribuição direta — mesma razão do bloco de
+                   -- fin_document acima, e o preço de esquecer já foi medido.
+                   --
+                   -- documentIdByPayment só conhece as cobranças processadas
+                   -- NESTA execução. Num import incremental o mapa tem algumas
+                   -- centenas de entradas, enquanto as notas vêm sempre inteiras
+                   -- (3.483). Sem o COALESCE, toda nota cuja cobrança ficou fora
+                   -- da janela tem seu document_id sobrescrito com NULL — e a
+                   -- ligação nota↔cobrança, que é EXATA e veio do próprio Asaas,
+                   -- é destruída por um import que só queria atualizar status.
+                   --
+                   -- Medido em 15/08/2026: 306 das 3.521 notas tinham
+                   -- document_id, contra 3.084 que o arquivo bruto liga. É esse
+                   -- buraco que derruba parcela→nota de 200/233 para 73/233 na
+                   -- frente B4 (contratos e parcelas do erp-obras).
+                   document_id = COALESCE(EXCLUDED.document_id, fin_fiscal_document.document_id),
                    pdf_url = EXCLUDED.pdf_url, xml_url = EXCLUDED.xml_url, updated_at = now()`,
     21,
     invoiceRows

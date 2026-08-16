@@ -106,6 +106,15 @@ const STEPS = [
   // agendador, pelo mesmo motivo do Asaas: estoura o watchdog de 20 min.
   { name: 'sync Inter', script: 'scripts/sync-inter.mjs', required: false },
   { name: 'importação do Inter', script: 'scripts/import-inter.mjs', required: false },
+  // Uma única consolidação depois dos dois importadores. A rotina percorre a
+  // fila completa e ancora ledger/DRE/saldos; chamá-la dentro de cada INSERT
+  // multiplicaria esse custo pelo número de linhas do extrato.
+  {
+    name: 'lifecycle da fila financeira',
+    script: 'scripts/fin-review-lifecycle.mjs',
+    args: ['--aplicar', '--actor=scheduler:financeiro'],
+    required: false
+  },
   // O backup vem DEPOIS das importações, para o artefato do dia já conter o que
   // entrou hoje. Antes, ele salvaria o estado de ontem e chamaria de hoje.
   { name: 'backup do financeiro', script: 'scripts/db-backup.mjs', required: false },
@@ -128,7 +137,7 @@ export async function runPipeline(trigger = 'agendado') {
     for (const step of STEPS) {
       try {
         log(`→ ${step.name}`);
-        await run('node', [step.script]);
+        await run('node', [step.script, ...(step.args ?? [])]);
       } catch (error) {
         failures.push({ step: step.name, message: error.message });
         if (step.required) throw new Error(`etapa obrigatória falhou: ${step.name} — ${error.message}`);

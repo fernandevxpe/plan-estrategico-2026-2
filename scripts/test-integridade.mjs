@@ -897,13 +897,37 @@ check('J', 'J2', 'nenhum lançamento antes da abertura da conta', {
   return { ...r, vacuo: Number(sem) === Number(total) ? `nenhuma das ${total} contas tem opening_balance_date preenchida` : null };
 });
 
-check('J', 'J3', 'competence_date coerente com posted_on', {
-  afirma: 'quando preenchida, |competence_date − posted_on| ≤ 90 dias',
-  porque: 'competência longe do caixa sem contrato que explique é digitação errada, e move resultado inteiro de mês'
+check('J', 'J3', 'competência coerente com a evidência declarada', {
+  afirma: 'competence_date é exatamente a data da fonte declarada em competence_rule',
+  porque: 'atraso de 300 dias pode ser verdadeiro; erro é a regra dizer "nota" e a data não ser a emissão daquela nota'
 }, async () => {
   const r = await alvo(
-    `SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs, array_agg(id) ids FROM fin_transaction
-      WHERE competence_date IS NOT NULL AND abs(competence_date - posted_on) > 90`
+    `WITH evidencia AS (
+       SELECT t.id, t.amount_cents, t.competence_date, t.competence_rule,
+              CASE t.competence_rule
+                WHEN 'nota_fiscal_emissao'      THEN fd.issue_date
+                WHEN 'cobranca_vencimento'      THEN d.due_date
+                WHEN 'documento_fiscal_despesa' THEN d.issue_date
+                WHEN 'folha_mes_referencia'     THEN
+                  CASE WHEN extract(day FROM t.posted_on) <= 5
+                       THEN (date_trunc('month', t.posted_on) - interval '1 day')::date
+                       ELSE t.posted_on END
+                WHEN 'tarifa_evento_no_caixa'       THEN t.posted_on
+                WHEN 'movimentacao_neutra'          THEN t.posted_on
+                WHEN 'competencia_presumida_caixa'  THEN t.posted_on
+                ELSE NULL
+              END AS esperada
+         FROM fin_transaction t
+         LEFT JOIN fin_settlement s ON s.transaction_id = t.id
+         LEFT JOIN fin_document d ON d.id = s.document_id
+         LEFT JOIN fin_fiscal_document fd
+                ON fd.document_id = d.id AND fd.status = 'AUTHORIZED'
+     )
+     SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs, array_agg(id) ids
+       FROM evidencia
+      WHERE competence_date IS NULL
+         OR esperada IS NULL
+         OR competence_date IS DISTINCT FROM esperada`
   );
   const { nulos, total } = await um(
     `SELECT count(*) FILTER (WHERE competence_date IS NULL) nulos, count(*) total FROM fin_transaction`

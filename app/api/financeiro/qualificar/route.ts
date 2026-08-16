@@ -98,12 +98,16 @@ export async function POST(request: Request) {
       );
 
       const { rowCount } = await cliente.query(
-        `UPDATE fin_transaction
-            SET category_id = $2, classified_by = 'humano', classified_at = now(),
-                review_status = 'ok', updated_at = now(),
-                classified_reason = jsonb_build_object('motivo','qualificação em grupo','grupo',$3::text)
-          WHERE id = ANY($1::bigint[])
-            AND NOT ('category_id' = ANY (human_locked_fields))`,
+        `UPDATE fin_transaction t
+            SET category_id = $2, classified_by = 'humano', classified_rule_id = NULL,
+                classified_at = now(), review_status = 'ok', updated_at = now(),
+                classified_reason = jsonb_build_object('motivo','qualificação em grupo','grupo',$3::text),
+                human_locked_fields = (
+                  SELECT COALESCE(array_agg(DISTINCT f), '{}'::text[])
+                    FROM unnest(t.human_locked_fields || ARRAY['category_id']) AS f
+                )
+          WHERE t.id = ANY($1::bigint[])
+            AND NOT ('category_id' = ANY (t.human_locked_fields))`,
         [ids, cat[0].id, rotulo]
       );
 

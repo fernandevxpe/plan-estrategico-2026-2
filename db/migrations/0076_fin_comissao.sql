@@ -513,12 +513,20 @@ SELECT c.erp_id                                   AS erp_contrato_id,
   LEFT JOIN fin_person pe ON pe.id = p.person_id
  GROUP BY c.erp_id, c.titulo, c.eixo, c.valor_contratado_cents, c.data_assinatura, p.papel, pe.name;
 
--- Backtest: previsto × pago por mês de competência. `erro_cents` é o que a
--- regra errou; `erro_pct` normaliza pelo pago. Uma regra que não reproduz o
--- passado não serve para prever o futuro — esta view é o teste.
+-- Backtest: o que a REGRA diz que deveria sair × o que saiu, mês a mês.
+--
+-- `previsto_cents` é BRUTO — `valor_cents + pago_cents` — e não o saldo a pagar.
+-- Usar o saldo aqui seria circular: ele já desconta a resposta, e a view diria
+-- que a regra acerta sempre. `a_pagar_cents` fica ao lado para quem quer o
+-- saldo; `erro_cents` compara o bruto, que é o teste de verdade.
+--
+-- Uma regra que não reproduz o passado não serve para prever o futuro.
 CREATE OR REPLACE VIEW fin_comissao_backtest_v AS
 WITH prev AS (
-  SELECT entity_id, competencia, sum(valor_cents) AS previsto_cents, count(*) AS n_previsto
+  SELECT entity_id, competencia,
+         sum(valor_cents + pago_cents) AS previsto_cents,
+         sum(valor_cents)              AS a_pagar_cents,
+         count(*)                      AS n_previsto
     FROM fin_comissao_prevista WHERE estado <> 'cancelado' GROUP BY 1, 2
 ), pago AS (
   SELECT entity_id, date_trunc('month', pago_em)::date AS competencia,
@@ -528,6 +536,7 @@ WITH prev AS (
 SELECT coalesce(prev.entity_id, pago.entity_id)         AS entity_id,
        coalesce(prev.competencia, pago.competencia)     AS competencia,
        coalesce(prev.previsto_cents, 0)                 AS previsto_cents,
+       coalesce(prev.a_pagar_cents, 0)                  AS a_pagar_cents,
        coalesce(pago.pago_cents, 0)                     AS pago_cents,
        coalesce(prev.previsto_cents, 0) - coalesce(pago.pago_cents, 0) AS erro_cents,
        CASE WHEN coalesce(pago.pago_cents, 0) = 0 THEN NULL

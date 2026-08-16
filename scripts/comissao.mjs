@@ -28,6 +28,7 @@
 // Uso:
 //   node scripts/comissao.mjs                 dry-run (padrão): mede e relata
 //   node scripts/comissao.mjs --backtest      só o backtest da regra
+//   node scripts/comissao.mjs --validar       exercita a escrita em transação com ROLLBACK
 //   node scripts/comissao.mjs --aplicar       grava em fin_comissao_*
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -42,6 +43,10 @@ registerFinanceTypeParsers();
 
 const APLICAR = process.argv.includes('--aplicar');
 const SO_BACKTEST = process.argv.includes('--backtest');
+// --validar exercita EXATAMENTE o caminho de escrita, dentro de uma transação
+// que termina sempre em ROLLBACK, aplicando a migration 0076 junto. Serve para
+// provar que o INSERT cabe no schema sem escrever uma linha em produção.
+const VALIDAR = process.argv.includes('--validar');
 const brl = (c) => (Number(c || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const pct = (n) => (n == null ? '—' : `${(Number(n) * 100).toFixed(2)}%`);
 const dia = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '—');
@@ -191,9 +196,13 @@ console.log('  Projeto.comissao*Pct (vendedor/eng/execução → nº de projetos
 //      transação do pai. É a rota confiável: o humano dividiu um PIX real.
 //   b) o lançamento é solto → casa por valor exato + data ±3 dias, desempatando
 //      pelo beneficiado. Ambíguo fica ambíguo; não se escolhe.
-const porPai = new Map();
-for (const l of lancamentos) if (l.pai_id) (porPai.get(l.pai_id) || porPai.set(l.pai_id, []).get(l.pai_id)).push(l);
-const filhosDe = (id) => lancamentos.filter((l) => l.pai_id === id);
+//
+// ATENÇÃO À DUPLA CONTAGEM. Quando um PIX foi rateado, o ERP guarda o PAI (a
+// transferência inteira) E os FILHOS (as partes por projeto), os dois na
+// categoria "Comissões". Somar os dois conta o mesmo dinheiro duas vezes: o PIX
+// de R$ 4.629,00 do Jonildo viraria R$ 9.258,00. Só as FOLHAS entram na conta.
+const temFilho = new Set(lancamentos.filter((l) => l.pai_id).map((l) => l.pai_id));
+const folhas = lancamentos.filter((l) => !temFilho.has(l.id));
 
 function pessoaPorNome(nome) {
   const n = norm(nome);
@@ -247,7 +256,7 @@ function ganhoDoContrato(c) {
 }
 
 const registros = [];
-for (const l of lancamentos) {
+for (const l of folhas) {
   const papel = PAPEL_POR_SUBCATEGORIA[l.subcategoria] || null;
   const contrato = l.contrato_id ? contratoPorId.get(l.contrato_id) : null;
   let tx = null;
@@ -384,6 +393,7 @@ console.log('  contrato | assinatura | 1º receb.  | 2º receb.  | 1ª comissão
 const defasagens = [];
 let obedecem = 0;
 let testaveis = 0;
+const inconsistentes = [];
 const porContrato = new Map();
 for (const r of registros) {
   if (!r.contrato || r.lanc.status !== 'PAGO') continue;
@@ -398,18 +408,29 @@ for (const [ctr, primeira] of [...porContrato.entries()].sort((a, b) => a[0] - b
   const r2 = ps[1]?.recebido_em;
   const dAssin = c?.data_assinatura ? Math.round((new Date(primeira) - new Date(c.data_assinatura)) / 86400000) : null;
   const dR2 = r2 ? Math.round((new Date(primeira) - new Date(r2)) / 86400000) : null;
-  if (dAssin != null) defasagens.push(dAssin);
-  testaveis += 1;
-  if (dR2 != null && dR2 >= 0) obedecem += 1;
+  // Comissão paga ANTES da assinatura é impossível: o vínculo contrato↔lançamento
+  // no ERP é que está errado, não a regra. Sai da estatística e entra na fila.
+  if (dAssin != null && dAssin < 0) {
+    inconsistentes.push({ ctr, dAssin, primeira, assinatura: c.data_assinatura });
+  } else {
+    if (dAssin != null) defasagens.push(dAssin);
+    testaveis += 1;
+    if (dR2 != null && dR2 >= 0) obedecem += 1;
+  }
   console.log(
     `  ${String(ctr).padStart(8)} | ${dia(c?.data_assinatura)} | ${dia(r1)} | ${dia(r2)} | ${dia(primeira)}  | ` +
-      `${(dAssin == null ? '—' : `${dAssin}d`).padStart(16)} | ${dR2 == null ? 'sem 2º recebimento' : `${dR2 >= 0 ? '+' : ''}${dR2}d  ${dR2 >= 0 ? 'SIM' : 'NÃO'}`}`
+      `${(dAssin == null ? '—' : `${dAssin}d`).padStart(16)} | ${dR2 == null ? 'sem 2º recebimento' : `${dR2 >= 0 ? '+' : ''}${dR2}d  ${dR2 >= 0 ? 'SIM' : 'NÃO'}`}` +
+      `${dAssin != null && dAssin < 0 ? '   ← comissão ANTES da assinatura: vínculo do ERP suspeito' : ''}`
   );
 }
 defasagens.sort((a, b) => a - b);
 const mediana = defasagens.length ? defasagens[Math.floor(defasagens.length / 2)] : null;
-console.log(`  → ${obedecem} de ${testaveis} contratos tiveram a comissão paga depois do 2º recebimento`);
+console.log(`  → ${obedecem} de ${testaveis} contratos com 2º recebimento tiveram a comissão paga depois dele`);
 console.log(`  → defasagem assinatura → 1ª comissão: [${defasagens.join(', ')}] dias · mediana ${mediana}`);
+if (inconsistentes.length) {
+  console.log(`  → ${inconsistentes.length} contrato(s) descartado(s) da estatística por comissão anterior à assinatura: ` +
+    inconsistentes.map((i) => `${i.ctr} (${i.dAssin}d)`).join(', '));
+}
 const datasPagto = [...new Set(registros.filter((r) => r.lanc.status === 'PAGO').map((r) => dia(r.lanc.pgto || r.lanc.venc)))].sort();
 const diasDoMes = datasPagto.map((d) => Number(d.slice(8, 10)));
 console.log(`  → datas em que comissão saiu: ${datasPagto.join(', ')}`);
@@ -459,42 +480,72 @@ function loteSeguinte(d) {
   return new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 2)).toISOString().slice(0, 10);
 }
 
+// A previsão é POR PARCELA, não por contrato inteiro. É o modelo C do backtest
+// (seção 7), o único que reproduz o passado: a comissão acompanha o caixa que
+// entra, e cada parcela do cliente carrega a sua fatia de 7% + 3% + 5%.
+//
+// A data prevista é o LOTE do mês seguinte ao recebimento — o padrão observado
+// em 6 das 10 datas de pagamento de comissão de 2026 (todas entre o dia 1 e o
+// dia 6, junto com a folha). Para parcela ainda não recebida vale o vencimento.
+//
+// O que já foi pago é consumido em ordem cronológica de parcela, e as tranches
+// consumidas nascem 'pago'. Sem isso a previsão cobraria de novo o que já saiu.
 const previsoes = [];
 for (const c of contratos) {
   if (!['OBRAS', 'AMBOS'].includes(c.eixo)) continue;
   if (['CANCELADO', 'RASCUNHO'].includes(c.status_erp)) continue;
   if (!c.valor_cents) continue;
-  const ps = (parcelasPorContrato.get(c.erp_id) || []).sort((a, b) => a.numero - b.numero);
-  const recebidas = ps.filter((p) => p.recebido_em).sort((a, b) => new Date(a.recebido_em) - new Date(b.recebido_em));
-  const gatilhoData = recebidas[1]?.recebido_em
-    ? loteSeguinte(recebidas[1].recebido_em)
-    : c.data_assinatura
-      ? new Date(new Date(c.data_assinatura).getTime() + DEFASAGEM * 86400000).toISOString().slice(0, 10)
-      : null;
-  if (!gatilhoData) continue;
+  const ps = (parcelasPorContrato.get(c.erp_id) || []).slice().sort((a, b) => a.numero - b.numero);
+  // Contrato sem parcela cadastrada vira uma parcela única no valor cheio, com
+  // a defasagem mediana sobre a assinatura. É explícito no gatilho.
+  const linhas = ps.length
+    ? ps.map((p) => ({
+        numero: p.numero,
+        valor: Number(p.valor_cents),
+        quando: p.recebido_em
+          ? loteSeguinte(p.recebido_em)
+          : p.data_vencimento
+            ? loteSeguinte(p.data_vencimento)
+            : null,
+        gatilho: p.recebido_em ? 'recebimento' : 'parcela_minima'
+      }))
+    : [{
+        numero: 1,
+        valor: Number(c.valor_cents),
+        quando: c.data_assinatura
+          ? new Date(new Date(c.data_assinatura).getTime() + DEFASAGEM * 86400000).toISOString().slice(0, 10)
+          : null,
+        gatilho: 'assinatura'
+      }];
   const ganho = ganhoDoContrato(c);
   const centro = centros.find((cc) => cc.source_id && String(cc.source_id) === String(c.erp_id));
   for (const papel of ['vendedor', 'eng_comercial', 'execucao']) {
     const alq = ALIQUOTA[papel];
     if (!alq) continue;
-    const total = Math.round(Number(c.valor_cents) * alq);
-    const jaPago = pagoPorContratoPapel.get(`${c.erp_id}|${papel}`) || 0;
-    const restante = total - jaPago;
-    previsoes.push({
-      contrato: c,
-      ganho,
-      centro,
-      papel,
-      base: Number(c.valor_cents),
-      pct: alq,
-      total,
-      jaPago,
-      restante,
-      data: gatilhoData,
-      competencia: `${gatilhoData.slice(0, 7)}-01`,
-      gatilho: recebidas[1] ? 'parcela_minima' : 'assinatura',
-      estado: restante <= 0 ? 'pago' : jaPago > 0 ? 'parcial' : 'previsto'
-    });
+    let creditoPago = pagoPorContratoPapel.get(`${c.erp_id}|${papel}`) || 0;
+    for (const [i, l] of linhas.entries()) {
+      if (!l.quando) continue;
+      const total = Math.round(l.valor * alq);
+      const jaPago = Math.min(creditoPago, total);
+      creditoPago -= jaPago;
+      previsoes.push({
+        contrato: c,
+        ganho,
+        centro,
+        papel,
+        base: l.valor,
+        pct: alq,
+        total,
+        jaPago,
+        restante: total - jaPago,
+        data: l.quando,
+        competencia: `${l.quando.slice(0, 7)}-01`,
+        tranche: i + 1,
+        tranchesTotal: linhas.length,
+        gatilho: l.gatilho,
+        estado: total - jaPago <= 0 ? 'pago' : jaPago > 0 ? 'parcial' : 'previsto'
+      });
+    }
   }
 }
 
@@ -514,6 +565,10 @@ for (const [m, v] of [...porMes.entries()].sort()) console.log(`    ${m.slice(0,
 //   por MÊS      o modelo prevê o lote inteiro do mês?
 //   por CONTRATO o modelo acerta quanto cada negócio custou de comissão?
 console.log('\n=== 7. BACKTEST — regra aplicada ao passado × o que foi pago ===');
+console.log('  Três modelos disputam. Todos usam as MESMAS alíquotas (7/3/5); o que muda é a BASE.');
+console.log('    A  10% (7+3) sobre o valor contratado, o ciclo inteiro');
+console.log('    B  15% (7+3+5) sobre o valor contratado, o ciclo inteiro');
+console.log('    C  10% (7+3) sobre o que o cliente JÁ PAGOU até a data da comissão');
 
 const pagoPorMes = new Map();
 for (const r of registros) {
@@ -521,22 +576,95 @@ for (const r of registros) {
   const m = dia(r.lanc.pgto || r.lanc.venc).slice(0, 7);
   pagoPorMes.set(m, (pagoPorMes.get(m) || 0) + Math.round(r.lanc.valor * 100));
 }
-// Modelo: a comissão de um contrato entra no lote do mês seguinte ao 2º
-// recebimento (ou assinatura + mediana), pelo total de 15% do valor contratado.
-const previstoPorMes = new Map();
-for (const p of previsoes) {
-  const m = p.competencia.slice(0, 7);
-  previstoPorMes.set(m, (previstoPorMes.get(m) || 0) + p.total);
+
+function recebidoAte(ctr, ate) {
+  return (parcelasPorContrato.get(ctr) || [])
+    .filter((p) => p.recebido_em && new Date(p.recebido_em) <= new Date(ate))
+    .reduce((s, p) => s + Number(p.settled_cents || p.valor_cents), 0);
 }
-const meses = [...new Set([...pagoPorMes.keys(), ...previstoPorMes.keys()])].sort();
+
+// Só entram no backtest os contratos que JÁ receberam comissão. Contratos sem
+// comissão nenhuma testariam a data de disparo, não a alíquota — e a data já
+// foi medida na seção 4.
+//
+// O corte de "quanto o cliente já pagou" usa a ÚLTIMA comissão do contrato, não
+// a primeira: a comissão se acumula, e cortar na primeira compararia o total
+// pago contra um recebimento parcial.
+const ultimaComissao = new Map();
+for (const r of registros) {
+  if (!r.contrato || r.lanc.status !== 'PAGO') continue;
+  const d = dia(r.lanc.pgto || r.lanc.venc);
+  const atual = ultimaComissao.get(r.contrato.erp_id);
+  if (!atual || d > atual) ultimaComissao.set(r.contrato.erp_id, d);
+}
+const contratosTeste = [...porContrato.keys()].filter((c) => contratoPorId.get(c)).sort((a, b) => a - b);
+const modelos = [
+  { nome: 'A  10% contratado', calc: (c) => Math.round(Number(c.valor_cents) * 0.10) },
+  { nome: 'B  15% contratado', calc: (c) => Math.round(Number(c.valor_cents) * 0.15) },
+  { nome: 'C  10% recebido  ', calc: (c, quando) => Math.round(recebidoAte(c.erp_id, quando) * 0.10) }
+];
+
+console.log('\n  por contrato · pago = comissão efetivamente paga até hoje');
+console.log('  contrato | contratado    | recebido      | pago          |   modelo A |   modelo B |   modelo C');
+const acum = modelos.map(() => ({ prev: 0, abs: 0 }));
+let totalPago = 0;
+for (const ctr of contratosTeste) {
+  const c = contratoPorId.get(ctr);
+  const quando = ultimaComissao.get(ctr) || porContrato.get(ctr);
+  const pg = ['vendedor', 'eng_comercial', 'execucao'].reduce((s, p) => s + (pagoPorContratoPapel.get(`${ctr}|${p}`) || 0), 0);
+  totalPago += pg;
+  const vals = modelos.map((m) => m.calc(c, quando));
+  vals.forEach((v, i) => {
+    acum[i].prev += v;
+    acum[i].abs += Math.abs(v - pg);
+  });
+  console.log(
+    `  ${String(ctr).padStart(8)} | ${brl(c.valor_cents).padStart(13)} | ${brl(recebidoAte(ctr, quando)).padStart(13)} | ` +
+      `${brl(pg).padStart(13)} | ${vals.map((v) => brl(v).padStart(10)).join(' | ')}`
+  );
+}
+console.log(`  TOTAL    | ${''.padStart(13)} | ${''.padStart(13)} | ${brl(totalPago).padStart(13)} | ` +
+  acum.map((a) => brl(a.prev).padStart(10)).join(' | '));
+console.log('\n  modelo             | previsto      | pago          | viés          | viés %  | erro absoluto | MAE %');
+let melhor = null;
+modelos.forEach((m, i) => {
+  const a = acum[i];
+  const vies = a.prev - totalPago;
+  const mae = totalPago ? (a.abs / totalPago) * 100 : null;
+  if (melhor === null || a.abs < acum[melhor].abs) melhor = i;
+  console.log(
+    `  ${m.nome} | ${brl(a.prev).padStart(13)} | ${brl(totalPago).padStart(13)} | ${brl(vies).padStart(13)} | ` +
+      `${(totalPago ? `${((vies / totalPago) * 100).toFixed(1)}%` : '—').padStart(7)} | ${brl(a.abs).padStart(13)} | ` +
+      `${mae == null ? '—' : `${mae.toFixed(1)}%`}`
+  );
+});
+console.log(`  → melhor reprodução do passado: modelo ${modelos[melhor].nome.trim()}`);
+console.log('  → LEITURA: A e B erram para CIMA porque projetam o ciclo inteiro contra pagamentos');
+console.log('    que ainda estão no meio. C erra menos porque acompanha o caixa — é o modelo que');
+console.log('    a previsão deve usar enquanto o contrato estiver aberto.');
+
+console.log('\n  por mês de caixa — SÓ a comissão que tem contrato de origem, para comparar igual com igual');
+const previstoPorMesC = new Map();
+for (const ctr of contratosTeste) {
+  const quando = ultimaComissao.get(ctr) || porContrato.get(ctr);
+  const m = dia(quando).slice(0, 7);
+  previstoPorMesC.set(m, (previstoPorMesC.get(m) || 0) + Math.round(recebidoAte(ctr, quando) * 0.10));
+}
+const pagoComContratoPorMes = new Map();
+for (const r of registros) {
+  if (r.lanc.status !== 'PAGO' || !r.contrato) continue;
+  const m = dia(r.lanc.pgto || r.lanc.venc).slice(0, 7);
+  pagoComContratoPorMes.set(m, (pagoComContratoPorMes.get(m) || 0) + Math.round(r.lanc.valor * 100));
+}
+const meses = [...new Set([...pagoComContratoPorMes.keys(), ...previstoPorMesC.keys()])].sort();
 console.log('  mês     |      previsto |          pago |          erro | erro %');
 let somaPrev = 0;
 let somaPago = 0;
 let somaAbs = 0;
 for (const m of meses) {
-  const prev = previstoPorMes.get(m) || 0;
-  const pg = pagoPorMes.get(m) || 0;
   if (m > '2026-08') continue;
+  const prev = previstoPorMesC.get(m) || 0;
+  const pg = pagoComContratoPorMes.get(m) || 0;
   somaPrev += prev;
   somaPago += pg;
   somaAbs += Math.abs(prev - pg);
@@ -547,36 +675,84 @@ for (const m of meses) {
 }
 console.log(`  TOTAL   | ${brl(somaPrev).padStart(13)} | ${brl(somaPago).padStart(13)} | ${brl(somaPrev - somaPago).padStart(13)} | ` +
   `${somaPago ? `${(((somaPrev - somaPago) / somaPago) * 100).toFixed(1)}%` : '—'}`);
-console.log(`  erro absoluto acumulado (MAE somado): ${brl(somaAbs)} sobre ${brl(somaPago)} pagos = ${somaPago ? ((somaAbs / somaPago) * 100).toFixed(1) : '—'}%`);
-
-console.log('\n  por contrato (só os que já receberam alguma comissão):');
-console.log('  contrato | contratado    | previsto 15%  | pago até hoje | erro          | erro %');
-let cPrev = 0;
-let cPago = 0;
-let cAbs = 0;
-for (const ctr of [...porContrato.keys()].sort((a, b) => a - b)) {
-  const c = contratoPorId.get(ctr);
-  if (!c) continue;
-  const prev = Math.round(Number(c.valor_cents) * (ALIQUOTA.vendedor + ALIQUOTA.eng_comercial + ALIQUOTA.execucao));
-  const pg = ['vendedor', 'eng_comercial', 'execucao'].reduce((s, p) => s + (pagoPorContratoPapel.get(`${ctr}|${p}`) || 0), 0);
-  cPrev += prev;
-  cPago += pg;
-  cAbs += Math.abs(prev - pg);
-  console.log(
-    `  ${String(ctr).padStart(8)} | ${brl(c.valor_cents).padStart(13)} | ${brl(prev).padStart(13)} | ${brl(pg).padStart(13)} | ` +
-      `${brl(prev - pg).padStart(13)} | ${pg ? `${(((prev - pg) / pg) * 100).toFixed(1)}%` : '—'}`
-  );
+console.log(`  erro absoluto somado: ${brl(somaAbs)} sobre ${brl(somaPago)} pagos = ${somaPago ? ((somaAbs / somaPago) * 100).toFixed(1) : '—'}%`);
+// -------- backtest do que o script realmente grava --------------------------
+// Os blocos acima testam a ALÍQUOTA. Este testa o ENTREGÁVEL: a previsão por
+// parcela que vai para fin_comissao_prevista, mês a mês, contra tudo que saiu
+// do caixa como comissão. É o número que decide se a regra serve para prever.
+console.log('\n  backtest do modelo entregue (previsão por parcela × comissão paga, todo o histórico)');
+const previstoEntregue = new Map();
+for (const p of previsoes) {
+  const m = p.competencia.slice(0, 7);
+  previstoEntregue.set(m, (previstoEntregue.get(m) || 0) + p.total);
 }
-console.log(`  TOTAL    | ${''.padStart(13)} | ${brl(cPrev).padStart(13)} | ${brl(cPago).padStart(13)} | ${brl(cPrev - cPago).padStart(13)} | ` +
-  `${cPago ? `${(((cPrev - cPago) / cPago) * 100).toFixed(1)}%` : '—'}`);
-console.log(`  erro absoluto acumulado: ${brl(cAbs)} = ${cPago ? ((cAbs / cPago) * 100).toFixed(1) : '—'}% do pago`);
-console.log('  LEITURA: a alíquota está certa; o erro é de MOMENTO e de BASE — parte do contrato ainda');
-console.log('           não foi comissionada porque o cliente ainda não pagou tudo. Ver seção 3.');
+const HOJE = new Date().toISOString().slice(0, 7);
+const mesesE = [...new Set([...pagoPorMes.keys(), ...previstoEntregue.keys()])].filter((m) => m <= HOJE).sort();
+console.log('  mês     |      previsto |          pago |          erro | erro %');
+let eP = 0;
+let eG = 0;
+let eA = 0;
+for (const m of mesesE) {
+  const prev = previstoEntregue.get(m) || 0;
+  const pg = pagoPorMes.get(m) || 0;
+  eP += prev;
+  eG += pg;
+  eA += Math.abs(prev - pg);
+  console.log(`  ${m} | ${brl(prev).padStart(13)} | ${brl(pg).padStart(13)} | ${brl(prev - pg).padStart(13)} | ` +
+    `${pg ? `${(((prev - pg) / pg) * 100).toFixed(1)}%` : '—'}`);
+}
+console.log(`  TOTAL   | ${brl(eP).padStart(13)} | ${brl(eG).padStart(13)} | ${brl(eP - eG).padStart(13)} | ` +
+  `${eG ? `${(((eP - eG) / eG) * 100).toFixed(1)}%` : '—'}`);
+console.log(`  → VIÉS acumulado em ${mesesE.length} meses: ${brl(eP - eG)} = ${eG ? (((eP - eG) / eG) * 100).toFixed(1) : '—'}% ` +
+  `(a regra acerta o NÍVEL do gasto)`);
+console.log(`  → ERRO ABSOLUTO mês a mês: ${brl(eA)} = ${eG ? ((eA / eG) * 100).toFixed(1) : '—'}% do pago ` +
+  `(a regra NÃO acerta o MÊS)`);
+console.log('  → Conclusão: serve para orçar o ano e para dizer quanto cada obra deve de comissão;');
+console.log('    NÃO serve para prever o caixa de um mês específico enquanto o lote for decidido à mão.');
+
+const semContratoCents = [...pagoPorMes.values()].reduce((s, v) => s + v, 0) - totalPago;
+console.log(`  Fora desta conta: ${brl(semContratoCents)} de comissão paga SEM contrato de origem — é o que`);
+console.log('  impede a previsão mensal de fechar, e é o item nº 1 da fila humana (seção 8).');
 
 // ---------------------------------------------------------------------------
 // 10. Indeterminados
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// 9b. Falso positivo: fixo mensal rotulado como comissão
+// ---------------------------------------------------------------------------
+// A categoria "Comissões" do erp-obras não é confiável sozinha. O Jonildo recebe
+// R$ 5.879,00 + R$ 1.621,00 TODO mês desde fevereiro — é o fixo dele — e a
+// instância de maio ficou marcada "Eng. comercial". Somar isso como comissão
+// infla o custo variável e some com o fixo.
+//
+// Teste: o mesmo valor exato foi pago à mesma contraparte em 3 meses distintos?
+// Então é recorrente, não comissão. Não se apaga nada — marca-se.
+const recorrentes = new Map();
+for (const t of transacoes) {
+  if (!t.counterparty_id) continue;
+  const k = `${t.counterparty_id}|${Math.abs(t.amount_cents)}`;
+  (recorrentes.get(k) || recorrentes.set(k, new Set()).get(k)).add(dia(t.posted_on).slice(0, 7));
+}
+for (const r of registros) {
+  if (!r.tx || !r.tx.counterparty_id) continue;
+  const meses = recorrentes.get(`${r.tx.counterparty_id}|${Math.abs(r.tx.amount_cents)}`);
+  if (meses && meses.size >= 3 && !r.contrato) {
+    r.suspeitaFixo = meses.size;
+    r.motivo = (r.motivo ? `${r.motivo}; ` : '') +
+      `mesmo valor pago à mesma pessoa em ${meses.size} meses — provável fixo mensal rotulado como comissão`;
+  }
+}
+
 console.log('\n=== 8. INDETERMINADOS ===');
+const suspeitos = registros.filter((r) => r.suspeitaFixo);
+if (suspeitos.length) {
+  const total = suspeitos.reduce((s, r) => s + r.lanc.valor, 0) * 100;
+  console.log(`  FALSO POSITIVO provável — fixo mensal rotulado "Comissões" no ERP: ${suspeitos.length} · ${brl(total)}`);
+  for (const r of suspeitos) {
+    console.log(`     erp ${String(r.lanc.id).padStart(5)} · ${dia(r.lanc.pgto || r.lanc.venc)} · ${brl(r.lanc.valor * 100).padStart(12)} · ` +
+      `${(r.pessoa?.name || '—').padEnd(30)} · repete em ${r.suspeitaFixo} meses`);
+  }
+}
 const semNegocio = registros.filter((r) => r.lanc.status === 'PAGO' && !r.contrato);
 const semCaixa = registros.filter((r) => r.lanc.status === 'PAGO' && !r.tx);
 const conflita = registros.filter((r) => r.papelConflita);
@@ -598,8 +774,8 @@ console.log(`  negócio ganho sem contrato no ERP (não dá para prever comissã
 // ---------------------------------------------------------------------------
 // 11. Escrita
 // ---------------------------------------------------------------------------
-if (!APLICAR || SO_BACKTEST) {
-  console.log(`\n[dry-run] nada foi gravado. Use --aplicar para persistir em fin_comissao_pagamento e fin_comissao_prevista.`);
+if ((!APLICAR && !VALIDAR) || SO_BACKTEST) {
+  console.log(`\n[dry-run] nada foi gravado. Use --validar para testar a escrita com ROLLBACK, --aplicar para persistir.`);
   await pool.end();
   process.exit(0);
 }
@@ -607,8 +783,16 @@ if (!APLICAR || SO_BACKTEST) {
 const client = await pool.connect();
 try {
   await client.query('BEGIN');
-  const { rows: existeTabela } = await client.query(
+  let { rows: existeTabela } = await client.query(
     `SELECT to_regclass('public.fin_comissao_pagamento') IS NOT NULL AS ok`);
+  if (!existeTabela[0].ok && VALIDAR) {
+    // Na validação a migration entra dentro da própria transação e some no
+    // rollback junto com os dados. Fora dela, não: aplicar migration é trabalho
+    // de db:migrate, não deste script.
+    console.log('  [validar] fin_comissao_* não existe; aplicando 0076 dentro da transação');
+    await client.query(readFileSync(resolve('db/migrations/0076_fin_comissao.sql'), 'utf8'));
+    existeTabela = [{ ok: true }];
+  }
   if (!existeTabela[0].ok) throw new Error('fin_comissao_pagamento não existe — aplique a migration 0076 antes');
 
   const regraPorPapel = new Map(regras.filter((r) => r.status === 'ativa' || r.confianca === 'medida').map((r) => [r.papel, r.id]));
@@ -645,22 +829,44 @@ try {
   await client.query(`DELETE FROM fin_comissao_prevista WHERE entity_id = $1`, [ENTITY]);
   let nPrev = 0;
   for (const p of previsoes) {
-    if (p.restante <= 0) continue;
+    // Tranche já quitada TAMBÉM entra, com valor_cents = 0 e estado 'pago'. Sem
+    // ela o cronograma ficaria com buracos e o backtest compararia o previsto de
+    // um mês contra o pago de todos — que é o erro que a view existe para evitar.
+    if (p.total <= 0) continue;
     await client.query(
       `INSERT INTO fin_comissao_prevista
          (entity_id, regra_id, erp_contrato_id, pipeline_ganho_id, cost_center_id, papel, person_id,
           base_cents, pct, valor_cents, tranche, tranches_total, competencia, data_prevista, gatilho,
           estado, pago_cents, motivo, evidencia)
-       VALUES ($1,$2,$3,$4,$5,$6,NULL,$7,$8,$9,1,1,$10,$11,$12,$13,$14,$15,$16)`,
+       VALUES ($1,$2,$3,$4,$5,$6,NULL,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
       [ENTITY, regraPorPapel.get(p.papel) ?? null, p.contrato.erp_id, p.ganho?.id ?? null, p.centro?.id ?? null,
-       p.papel, p.base, p.pct, p.restante, p.competencia, p.data, p.gatilho, p.estado, p.jaPago,
+       p.papel, p.base, p.pct, p.restante, p.tranche, p.tranchesTotal, p.competencia, p.data, p.gatilho, p.estado, p.jaPago,
        'vendedor indeterminado: nem Pipedrive nem ERP carimbam quem vendeu',
        JSON.stringify({ total_regra_cents: p.total, ja_pago_cents: p.jaPago, defasagem_dias: DEFASAGEM })]
     );
     nPrev += 1;
   }
-  await client.query('COMMIT');
-  console.log(`\n[aplicado] ${nPag} pagamento(s) e ${nPrev} previsão(ões) gravados.`);
+  const { rows: conf } = await client.query(`
+    SELECT (SELECT count(*) FROM fin_comissao_pagamento)::int AS pagamentos,
+           (SELECT count(*) FROM fin_comissao_prevista)::int  AS previsoes,
+           (SELECT coalesce(sum(valor_cents),0) FROM fin_comissao_pagamento)::bigint AS pago_cents,
+           (SELECT coalesce(sum(valor_cents),0) FROM fin_comissao_prevista)::bigint  AS previsto_cents,
+           (SELECT count(*) FROM fin_comissao_indeterminado_v)::int AS fila`);
+  console.log(`\n  gravado: ${conf[0].pagamentos} pagamento(s) ${brl(conf[0].pago_cents)} · ` +
+    `${conf[0].previsoes} previsão(ões), ${brl(conf[0].previsto_cents)} ainda a pagar · fila humana ${conf[0].fila} item(ns)`);
+  const { rows: bt } = await client.query(`SELECT * FROM fin_comissao_backtest_v ORDER BY competencia`);
+  console.log('  fin_comissao_backtest_v:');
+  for (const b of bt) {
+    console.log(`    ${dia(b.competencia)} · previsto ${brl(b.previsto_cents)} · pago ${brl(b.pago_cents)} · ` +
+      `erro ${brl(b.erro_cents)} ${b.erro_pct == null ? '' : `(${(Number(b.erro_pct) * 100).toFixed(1)}%)`}`);
+  }
+  if (VALIDAR) {
+    await client.query('ROLLBACK');
+    console.log(`\n[validar] ROLLBACK executado — nada persistido. O caminho de escrita passa no schema.`);
+  } else {
+    await client.query('COMMIT');
+    console.log(`\n[aplicado] ${nPag} pagamento(s) e ${nPrev} previsão(ões) gravados.`);
+  }
 } catch (e) {
   await client.query('ROLLBACK');
   console.error('\n[erro] rollback:', e.message);

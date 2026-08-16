@@ -13,8 +13,9 @@
 // `fin/backup/<data>/<tabela>.ndjson.gz`, reaproveitando a mesma máquina
 // durável de scripts/storage-push.mjs.
 //
-// RESTAURAÇÃO: aplicar as migrations num banco vazio, inserir as tabelas na
-// ordem abaixo (é ordem de dependência) e depois acertar as sequences com
+// RESTAURAÇÃO: aplicar as migrations num banco vazio, ler `_manifest.json.gz`,
+// inserir as tabelas na ordem registrada em `restoreOrder` e depois acertar as
+// sequences com
 // `SELECT setval(pg_get_serial_sequence('<tabela>','id'), MAX(id)) FROM <tabela>`.
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
@@ -23,73 +24,70 @@ import { ensureArtifactSchema, financePool } from './lib/artifact-db.mjs';
 import { loadEnv } from './lib/env.mjs';
 
 loadEnv();
+const DRY_RUN = process.argv.includes('--dry-run');
 
-// Ordem de dependência: pai antes de filho, para a restauração não bater em FK.
-//
-// Tabela nova que não entrar aqui não é feita backup, e ninguém percebe até
-// precisar restaurar. Por isso o script confere no fim se sobrou alguma fin_*
-// fora desta lista e falha alto.
-const TABLES = [
-  'fin_entity',
-  'fin_nucleo',
-  'fin_cost_center',
-  'fin_cash_flow_group',
-  'fin_account',
-  'fin_category',
-  'fin_counterparty',
-  'fin_counterparty_alias',
-  'fin_payee_account',
-  'fin_contract',
-  'fin_reserve',
-  'fin_rule',
-  'fin_import_batch',
-  'fin_statement_coverage',
-  'fin_document',
-  'fin_fiscal_document',
-  'fin_transaction',
-  'fin_settlement',
-  'fin_balance_snapshot',
-  // A linha crua de cada importação: é o que permite reprocessar um lote sem
-  // bater na API de novo, e o que se compara quando um número na tela não bate.
-  'fin_import_row',
-  // Planejamento: o parâmetro e o override que o humano digitou. Nenhum dos
-  // dois se reconstrói a partir de fonte externa.
-  'fin_planning_param',
-  'fin_planning_override',
-  // Reembolso e parcelamento — hoje vazios, e é exatamente por isso que
-  // precisam entrar agora: a tabela que entra no backup só quando tem dado é a
-  // tabela que fica de fora no dia em que ganha o primeiro registro.
-  'fin_reimbursement_type',
-  'fin_reimbursement',
-  'fin_reimbursement_item',
-  'fin_installment_plan',
-  // O time: cadastro, ligação com contraparte e remuneração por mês. Veio da
-  // planilha e de decisão humana sobre identidade — não há fonte externa que
-  // devolva isso.
-  'fin_person',
-  'fin_person_counterparty',
-  'fin_compensation_component',
-  'fin_person_compensation',
-  // O modelo de gestão: a estrutura da planilha do dono, o mapeamento para o
-  // plano de contas e os valores que ele digitou na tela. Reimportar extrato
-  // não devolve nada disto — o mapeamento é julgamento e o valor manual é
-  // conhecimento que só existe na cabeça de quem digitou.
-  'fin_model_line',
-  'fin_model_map',
-  'fin_model_value',
-  // Apontamento de obra: horas e custo que vêm do ClickUp, mas com correção
-  // humana por cima.
-  'fin_obra_apontamento',
-  // Decisões humanas e trilha de auditoria: é o que NÃO se reconstrói
-  // reimportando o Asaas, e portanto o que mais justifica este backup existir.
-  'fin_classification_event',
-  'fin_review_item',
-  'fin_audit_log',
-  'fin_note',
-  'fin_saved_view',
-  'fin_chart',
-  'fin_reliability_snapshot'
-];
+/**
+ * Descobre TODA tabela financeira e calcula uma ordem de restauração em que o
+ * pai de cada FK aparece antes do filho.
+ *
+ * A lista manual original nasceu com 37 tabelas e ficou congelada enquanto o
+ * schema cresceu para 69. O backup ainda terminava com erro ao perceber as
+ * esquecidas, mas só DEPOIS de escrever um conjunto parcial de artefatos — uma
+ * foto que existia no storage e parecia utilizável. Descoberta pelo catálogo
+ * torna tabela nova coberta no mesmo deploy em que ela passa a existir.
+ */
+async function discoverFinancialTables(client) {
+  const { rows: tableRows } = await client.query(`
+    SELECT c.relname AS table_name
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public'
+       AND c.relkind IN ('r', 'p')
+       AND c.relname LIKE 'fin\\_%' ESCAPE '\\'
+     ORDER BY c.relname
+  `);
+  const tables = tableRows.map((row) => row.table_name);
+  const known = new Set(tables);
+
+  const { rows: fkRows } = await client.query(`
+    SELECT child.relname AS child, parent.relname AS parent
+      FROM pg_constraint con
+      JOIN pg_class child       ON child.oid = con.conrelid
+      JOIN pg_namespace child_n ON child_n.oid = child.relnamespace
+      JOIN pg_class parent      ON parent.oid = con.confrelid
+      JOIN pg_namespace parent_n ON parent_n.oid = parent.relnamespace
+     WHERE con.contype = 'f'
+       AND child_n.nspname = 'public'
+       AND parent_n.nspname = 'public'
+       AND child.relname LIKE 'fin\\_%' ESCAPE '\\'
+       AND parent.relname LIKE 'fin\\_%' ESCAPE '\\'
+  `);
+
+  const dependencies = new Map(tables.map((table) => [table, new Set()]));
+  for (const { child, parent } of fkRows) {
+    if (known.has(child) && known.has(parent) && child !== parent) dependencies.get(child).add(parent);
+  }
+
+  const restoreOrder = [];
+  const remaining = new Set(tables);
+  while (remaining.size) {
+    const ready = [...remaining]
+      .filter((table) => [...dependencies.get(table)].every((parent) => !remaining.has(parent)))
+      .sort();
+    if (!ready.length) {
+      const cycle = [...remaining]
+        .map((table) => `${table} -> ${[...dependencies.get(table)].filter((parent) => remaining.has(parent)).join(',')}`)
+        .join('; ');
+      throw new Error(`ciclo de FK entre tabelas financeiras; restauração precisa de estratégia explícita: ${cycle}`);
+    }
+    for (const table of ready) {
+      restoreOrder.push(table);
+      remaining.delete(table);
+    }
+  }
+
+  return { tables, restoreOrder, foreignKeys: fkRows };
+}
 
 const KEEP_DAILY = 14; // backups mantidos antes de começar a podar
 
@@ -105,17 +103,16 @@ let totalCompressed = 0;
 const detail = {};
 
 try {
+  // Uma foto é indivisível: ou todas as tabelas + manifesto + registro entram,
+  // ou nenhuma entra. A versão anterior deixava artefatos parciais se a
+  // conferência final falhasse.
+  await client.query('BEGIN');
   await ensureArtifactSchema(client);
 
-  for (const table of TABLES) {
-    // Tabela que ainda não existe (migration futura) não é erro: o backup roda
-    // desde a Fatia 0 e o schema cresce ao longo das fases.
-    const { rows: exists } = await client.query('SELECT to_regclass($1) AS reg', [table]);
-    if (!exists[0].reg) {
-      detail[table] = 'ausente';
-      continue;
-    }
+  const catalog = await discoverFinancialTables(client);
+  const TABLES = catalog.restoreOrder;
 
+  for (const table of TABLES) {
     // row_to_json preserva tipos como o Postgres os serializa, incluindo bigint
     // como número JSON e date como 'YYYY-MM-DD'. Fazer o dump no servidor evita
     // trazer 12 mil linhas como objetos JS só para reserializá-las.
@@ -148,6 +145,57 @@ try {
     detail[table] = rows.length;
   }
 
+  // O manifesto é parte do backup, não documentação lateral. Ele prova quais
+  // tabelas existiam naquele dia, em que ordem restaurar e contra quais
+  // migrations a foto foi tirada.
+  const { rows: migrations } = await client.query(`
+    SELECT id, checksum_sha256, applied_at
+      FROM xpe_migrations
+     ORDER BY id
+  `);
+  const manifest = Buffer.from(
+    JSON.stringify(
+      {
+        formatVersion: 1,
+        generatedAt: startedAt.toISOString(),
+        restoreOrder: TABLES,
+        foreignKeys: catalog.foreignKeys,
+        migrations
+      },
+      null,
+      2
+    ) + '\n',
+    'utf8'
+  );
+  const manifestCompressed = gzipSync(manifest, { level: 9 });
+  const manifestChecksum = createHash('sha256').update(manifest).digest('hex');
+  await client.query(
+    `
+    INSERT INTO xpe_artifacts (
+      artifact_key, content, content_type, content_encoding, checksum_sha256,
+      byte_size, compressed_size, source_updated_at, stored_at
+    ) VALUES ($1, $2, 'application/json', 'gzip', $3, $4, $5, $6, now())
+    ON CONFLICT (artifact_key) DO UPDATE SET
+      content = EXCLUDED.content,
+      checksum_sha256 = EXCLUDED.checksum_sha256,
+      byte_size = EXCLUDED.byte_size,
+      compressed_size = EXCLUDED.compressed_size,
+      source_updated_at = EXCLUDED.source_updated_at,
+      stored_at = now()
+    `,
+    [
+      `fin/backup/${stamp}/_manifest.json.gz`,
+      manifestCompressed,
+      manifestChecksum,
+      manifest.length,
+      manifestCompressed.length,
+      startedAt
+    ]
+  );
+  totalBytes += manifest.length;
+  totalCompressed += manifestCompressed.length;
+  detail._manifest = { tables: TABLES.length, migrations: migrations.length };
+
   // Poda: mantém os KEEP_DAILY backups mais recentes. Sem isso a tabela de
   // artefatos cresce para sempre, e o banco do Railway é cobrado por volume.
   const { rows: stamps } = await client.query(`
@@ -164,29 +212,22 @@ try {
     );
   }
 
-  // Uma tabela fin_* que ninguém acrescentou a TABLES não seria salva, e o
-  // silêncio só apareceria no dia da restauração. Falhar aqui é barato.
-  const { rows: existing } = await client.query(`
-    SELECT table_name FROM information_schema.tables
-     WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name LIKE 'fin\\_%'
-  `);
-  const esquecidas = existing.map((row) => row.table_name).filter((name) => !TABLES.includes(name));
-  if (esquecidas.length) {
-    throw new Error(`tabelas fora do backup: ${esquecidas.join(', ')} — acrescente-as a TABLES em scripts/db-backup.mjs`);
-  }
-
   await client.query(
     `
     INSERT INTO xpe_artifact_sync_runs (started_at, status, artifact_count, byte_size, compressed_size, detail)
     VALUES ($1, 'ok', $2, $3, $4, $5::jsonb)
   `,
-    [startedAt, TABLES.length, totalBytes, totalCompressed, JSON.stringify({ source: 'fin-backup', stamp, detail, pruned: toPrune })]
+    [startedAt, TABLES.length + 1, totalBytes, totalCompressed, JSON.stringify({ source: 'fin-backup', stamp, detail, pruned: toPrune })]
   );
+
+  if (DRY_RUN) await client.query('ROLLBACK');
+  else await client.query('COMMIT');
 
   console.log(
     JSON.stringify(
       {
         backup: stamp,
+        dryRun: DRY_RUN,
         rows: totalRows,
         bytes: totalBytes,
         compressedBytes: totalCompressed,
@@ -197,6 +238,9 @@ try {
       2
     )
   );
+} catch (error) {
+  await client.query('ROLLBACK').catch(() => {});
+  throw error;
 } finally {
   client.release();
   await pool.end();

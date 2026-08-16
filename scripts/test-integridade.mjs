@@ -566,6 +566,28 @@ check('D', 'D5', "'fato_estrutural' só quando a evidência vem da fonte", {
   };
 });
 
+// POR QUE 'fato_estrutural' PODE CARREGAR rule_id SEM DIZER 'regra'.
+//
+// Não é frouxidão do predicado: `estagioDe(hit)` — import-asaas.mjs e
+// reclassificar.mjs — devolve 'fato_estrutural' quando a regra casou pelo
+// `source_kind`, ou seja, quando a evidência é o tipo que a FONTE declara, e não
+// um palpite sobre texto. Nesses casos uma regra decidiu de verdade: o id é
+// obrigatório e correto; só o nome do estágio muda, porque
+// `WHERE classified_by = 'fato_estrutural'` precisa continuar significando "veio
+// da fonte, confiável sem revisão". Quem policia essa promessa é o D5.
+//
+// A isenção foi AFERIDA em 16/08/2026, não presumida: das 8.993 linhas com
+// classified_by='fato_estrutural' e classified_rule_id preenchido, 8.993
+// carregam exatamente a categoria que a regra delas declara em
+// `fin_rule.actions->>'category_code'`, em 9 regras distintas. Zero divergência.
+// Nenhuma população de id órfão de decisão está escondida aqui.
+//
+// BURACO CONHECIDO, medido e hoje vazio: este predicado não verifica se a regra
+// citada realmente produziu a categoria da linha. A patologia que ele acabou de
+// pegar em `contrato` (a 0091: um UPDATE posterior sobrescreve o estágio e deixa
+// o rule_id para trás) passaria despercebida se caísse em 'fato_estrutural'. A
+// consulta que fecha esse flanco é a comparação acima, entre `fin_category.code`
+// e `actions->>'category_code'` — vale re-rodá-la antes de confiar no verde.
 check('D', 'D6', 'proveniência coerente: regra tem id, id tem regra', {
   afirma: "classified_by = 'regra' ⇒ classified_rule_id IS NOT NULL, e vice-versa",
   porque: 'sem o par completo o badge "por quê?" mente sobre quem decidiu'

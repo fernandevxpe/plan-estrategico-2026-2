@@ -975,3 +975,68 @@ conferir.
 **Opções:** *(a)* bloquear · *(b)* alertar e deixar passar · *(c)* permitir em
 silêncio. Para uma empresa deste tamanho *(b)* costuma ser o equilíbrio, mas o
 custo de (a) é baixo se houver duas pessoas na operação.
+
+---
+
+## 32. A reserva de R$ 230.547,86 tem alvo e não tem saldo
+
+As 4 reservas somam um alvo de R$ 230.547,86 e `current_cents = 0` — o dinheiro
+nunca foi separado. Como a previsão desconta o alvo para calcular caixa livre, o
+resultado é que o caixa livre nasce negativo e "dia do aperto" dá **hoje**, nos
+três cenários. É verdadeiro e é inútil: um alarme que toca sempre não avisa nada.
+
+**Opções:** *(a)* manter descontando o alvo, aceitando que o alarme fica ligado
+até a reserva existir de fato · *(b)* descontar o `current_cents`, ou seja, zero,
+e o caixa livre passa a ser o caixa inteiro · *(c)* declarar uma reserva mínima
+operacional separada do alvo — quanto você não aceita ter em conta, que é uma
+pergunta diferente de quanto quer guardar.
+
+---
+
+## 33. As 11 recorrentes de despesa continuam propostas
+
+R$ 14.207,21/mês de despesa recorrente detectada está em `proposto`, e o CHECK da
+0057 as segura fora do saldo — de propósito, porque proposta não confirmada não
+move previsão. Confirmá-las levaria a cobertura da previsão de saída de **71,7%
+para ~81%**.
+
+É decisão humana por desenho: cada uma tem contraparte, valor e dia do mês na
+fila. **Confirma as 11, confirma algumas, ou nenhuma?**
+
+---
+
+## 34. O buraco de R$ 43.059,77/mês na previsão de saída
+
+Depois de projetar folha, DAS, cartão, recorrentes e empréstimo, sobram
+R$ 43.059,77/mês de saída real que nenhuma camada explica. É gasto não
+recorrente — compra avulsa, serviço pontual, o que não tem padrão.
+
+**Opções:** *(a)* deixar a lacuna visível e a previsão otimista em ~28%, com o
+número impresso a cada execução · *(b)* criar uma camada "despesa não recorrente"
+pela mediana histórica do que as outras camadas não explicam, marcada como
+estimada — fecha o caixa, mas é média onde não há regra.
+
+---
+
+## 35. A comissão prevista entra na previsão de caixa?
+
+`fin_comissao_prevista` tem R$ 84.946,77 a pagar. Mas o `variavel_cents` da folha
+já é a mediana do acréscimo efetivamente pago, e a comissão sai **dentro do lote
+da folha** — somar as duas contaria o mesmo dinheiro duas vezes. Some a isso que
+o backtest da comissão errou 87,7% no mês.
+
+Hoje ela fica **fora** da previsão de caixa e serve para orçar e cobrar por obra.
+Confirma?
+
+---
+
+## 36. Restaurar a curva de aging no vencido?
+
+A previsão anterior aplicava a curva de recuperação por idade do documento
+(R$ 201.502,00 bruto virando R$ 70.356,88 esperados). Foi trocada por uma
+premissa plana de 50% no cenário otimista — mais visível e versionada, menos
+precisa.
+
+**Opções:** *(a)* manter a premissa plana, que qualquer pessoa lê e discute ·
+*(b)* restaurar a curva por idade, que acerta mais e ninguém consegue conferir de
+cabeça.

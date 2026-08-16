@@ -129,13 +129,38 @@ try {
   // As regras da 0056 precisam existir: sem elas os UPDATEs gravariam
   // classified_by='regra' sem classified_rule_id, e a linha ficaria dizendo
   // "por regra" sem conseguir dizer qual.
-  const { rows: regras } = await client.query(
-    `SELECT slug FROM fin_rule
-      WHERE slug IN ('receita-asaas-cobranca-recebida','reembolso-recebido-de-fornecedor',
-                     'fornecedor-lyra-m2m','fornecedor-startlaw','concessionaria-neoenergia-pe')`
-  );
-  if (regras.length < 5) {
-    throw new Error(`regras da 0056 ausentes (${regras.length}/5): rode a migration 0056 antes`);
+  //
+  // No dry-run, se a migration ainda não rodou, ela é aplicada AQUI DENTRO da
+  // mesma transação — que termina em ROLLBACK. Sem isso o preview seria inútil
+  // justamente quando é mais necessário: antes de decidir aplicar. O arquivo da
+  // migration é lido do disco, nunca reescrito aqui, para que preview e
+  // aplicação nunca divirjam. Com `--aplicar` o script recusa: aplicar
+  // migration é trabalho do `db:migrate`, que registra a versão.
+  const REGRAS_0056 = [
+    'receita-asaas-cobranca-recebida', 'reembolso-recebido-de-fornecedor',
+    'fornecedor-lyra-m2m', 'fornecedor-startlaw', 'concessionaria-neoenergia-pe'
+  ];
+  const contaRegras = async () => Number((await client.query(
+    'SELECT count(*)::int n FROM fin_rule WHERE slug = ANY($1)', [REGRAS_0056]
+  )).rows[0].n);
+
+  let simulouMigration = false;
+  if (await contaRegras() < REGRAS_0056.length) {
+    if (APLICAR) {
+      throw new Error('migration 0056 não aplicada: rode `npm run db:migrate` antes de --aplicar');
+    }
+    // Trava de lock: a 0056 tem um ALTER TABLE em fin_transaction, e esperar
+    // por ele de forma indefinida penduraria a sessão atrás de qualquer
+    // importador em curso.
+    await client.query("SET LOCAL lock_timeout = '10s'");
+    const { readFile } = await import('node:fs/promises');
+    const { fileURLToPath } = await import('node:url');
+    const caminho = fileURLToPath(new URL('../db/migrations/0056_fin_classificacao_fila.sql', import.meta.url));
+    await client.query(await readFile(caminho, 'utf8'));
+    simulouMigration = true;
+    if (await contaRegras() < REGRAS_0056.length) {
+      throw new Error('a 0056 rodou e as regras continuam ausentes — confira o arquivo da migration');
+    }
   }
 
   // -------------------------------------------------------------------------

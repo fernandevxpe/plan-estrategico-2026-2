@@ -162,7 +162,10 @@ try {
 
   const { rows: rules } = await client.query(
     `SELECT id, name, priority, match_scope, conditions, actions, confidence
-       FROM fin_rule WHERE status = 'ativa' ORDER BY priority, id`
+       FROM fin_rule
+      WHERE status = 'ativa' AND entity_id = $1
+      ORDER BY priority, id`,
+    [entityId]
   );
 
   // -------------------------------------------------------------------------

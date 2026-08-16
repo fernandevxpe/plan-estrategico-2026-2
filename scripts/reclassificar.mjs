@@ -1453,12 +1453,16 @@ async function fluxoReclassificar(client) {
       if (!rows.length) throw new Error(`conta '${opcoes.conta}' não existe`);
     }
 
-    // Todas as regras ativas, e é `classify` que descarta as de escopo errado —
-    // exatamente como scripts/import-asaas.mjs:163. Filtrar aqui abriria uma
-    // segunda definição de "quais regras valem".
+    // Todas as regras ativas DA ENTIDADE, e é `classify` que descarta as de
+    // escopo errado — exatamente como scripts/import-asaas.mjs. Uma regra de
+    // outra empresa jamais pode disputar prioridade nesta fila.
     const { rows: regras } = await client.query(
       `SELECT id, slug, name, priority, match_scope, conditions, actions, confidence
-         FROM fin_rule WHERE status = 'ativa' ORDER BY priority, id`
+         FROM fin_rule r
+         JOIN fin_entity e ON e.id = r.entity_id
+        WHERE r.status = 'ativa' AND e.slug = $1
+        ORDER BY r.priority, r.id`,
+      [ENTITY]
     );
     const { rows: cats } = await client.query(
       `SELECT c.id, c.code, c.name FROM fin_category c JOIN fin_entity e ON e.id = c.entity_id WHERE e.slug = $1`,

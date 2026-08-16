@@ -3,6 +3,125 @@
 Este documento existe para quem chega depois. Ele é auto-suficiente: se você só
 puder ler um arquivo antes de tocar em qualquer coisa, leia este.
 
+## Checkpoint — saúde da fila e das regras · 16/08/2026 (migration 0094)
+
+Frente dos três monitores fora da meta: M4, M13 e M14. **Nenhum centavo mudou de
+lugar** — a soma por conta é conferida dentro da própria migration e ela se
+recusa a commitar se mudar.
+
+```
+                          antes            depois
+M4  itens na fila          1.535            1.556   (+25 expostos, −4 resolvidos)
+M4  R$ em jogo    R$ 1.387.768,92  R$ 1.329.163,99
+M13 categorias ociosas     17/56            16/56   ✓ dentro da meta (≤ 30%)
+M14 regras bloqueantes      2/58             0/58   ✓ dentro da meta
+caixa                     6/6 fecham       6/6 fecham
+invariantes                39/41            39/41   (a falha restante é F1, dado ausente)
+```
+
+### M4 subiu, e subir era o certo
+
+Três achados, nesta ordem de importância:
+
+**1. A régua de 300 é inalcançável por aritmética, não por preguiça.** Das 1.556
+pendências, **1.026 (R$ 927.406,83) têm alvo anterior a 2026** — fora do escopo
+que o dono declarou. E elas não podem sair: o H3 exige item pendente para todo
+lançamento indeciso, e ele está certo. O monitor novo `M4·escopo` mostra os
+**530 itens de 2026** ao lado, sem tocar em M4. Decisão em aberto: dúvida 54.
+
+**2. A regra 40 `meios-de-pagamento` tinha 25 acertos e zero verdadeiros
+positivos.** Ela procurava `stone|cielo|pagseguro|…` no texto do extrato — e o
+Nubank põe o **banco de destino do recebedor** no fim da linha de todo PIX
+enviado. Posto de combustível, restaurante, imobiliária e oito PIX a pessoa
+física estavam em `4.05 Tarifas bancárias`. Pessoa física não emite tarifa
+bancária. A regra foi estreitada (a condição passa a ser sobre a contraparte) e
+os 25 voltaram para a fila com a evidência na nota — daí o +25. Dúvida 52.
+
+**3. O lado do lançamento não sabia dizer "classifiquei, confirme".** O gatilho
+`fin_transaction_revisao_sincroniza` forçava `review_status='ok'` assim que
+existisse categoria, e o resolvedor do import fechava o item na sync seguinte.
+Do lado do documento esse estado existe e tem 413 ocupantes. Era por isso que os
+25 rótulos errados eram invisíveis. Corrigido.
+
+**O que foi classificado por evidência:** os dois créditos de R$ 17.000,00 do
+CONDOMINIO LE PARC de 2026-03-12 → **3.03**, e as duas cobranças que o Asaas
+gerou a partir deles. A cadeia: NF 190 e NF 192 emitidas em 10/03 contra as
+faturas das parcelas 1/6 e 2/6; `paid_on` das duas parcelas = 12/03; são os
+únicos créditos de R$ 17.000 da contraparte no mês. Eram também o único caso do
+acervo de 2026 em que "indeterminado" não vinha com motivo declarado.
+
+**O que continua indeterminado, com motivo:** tudo o mais. Em especial os **9
+pagamentos de fatura do cartão do Inter (R$ 40.862,41)** — e agora um gatilho
+recusa que virem `9.01`. O cartão do Inter não está no ledger: sem
+`fin_card_transaction`, chamá-los de transferência tiraria R$ 41 mil de despesa
+real da DRE sem reaparecer em lugar nenhum. O aviso em prosa virou recusa do
+banco.
+
+### M13: o monitor lia duas de três tabelas
+
+`5.11 Frete e logística` tem um item de cartão de R$ 1.222,56 e era contada como
+linha morta, porque a contagem lia só `fin_transaction` e `fin_document`. O
+subledger do cartão carrega `category_id` desde a 0083. Corrigido, com
+`ociosas_sem_cartao` impresso ao lado para não esconder de onde veio a queda.
+
+As 16 restantes estão classificadas uma a uma na dúvida 56: **8 esperam dado que
+não existe em fonte nenhuma**, **4 esperam decisão já registrada** (6.05 é a
+dúvida 22, 9.04 é a dúvida 5), **2 perdem para outra mais específica**, e **1 —
+`3.99 Receita a classificar` — não é linha de plano de contas, é marcador de
+indecisão**: vazia significa zero receita indecisa, que é sucesso.
+
+### M14: as duas sombras foram medidas, não desativadas
+
+Nenhuma regra foi desativada. As duas bloqueantes ganharam a medição que
+faltava e viraram `sombra_esperada`, **com validade de 90 dias** — se ninguém
+confirmar, expiram e M14 volta a acusar 2. Dúvida 55.
+
+- **Regra 14 (usina solar) — 52 documentos, R$ 57.600,00.** Em 52 de 52 a regra
+  vencedora casou a palavra que nomeia o **serviço** ("assessoria", "laudo",
+  "estudo", "projeto") e a regra 14 casou o **objeto** ("usina solar"). O plano
+  3.01–3.14 é lista de serviços. A asserção anterior falava em conflito
+  3.01×3.09; são quatro categorias, não duas.
+- **Regra 24 (ART) — 1 documento, R$ 1.000,00.** Candidato único em 3.406, e o
+  texto é mensagem de PIX, não descrição de serviço. Um regex de três letras
+  sobre texto livre, da mesma família do "CNPJ = 14 dígitos em qualquer campo".
+
+A regra 40, estreitada, passou a `zero_esperado` com asserção — zero hit ali é o
+resultado desejado, não uma regra morta.
+
+### Duas restrições que custaram trabalho, e por quê
+
+**`classified_by` e `classified_rule_id` não foram tocados** (frente do D6 na
+0091). Consequência: o invariante E1 exige `classified_by IN ('humano','trava')`
+em toda linha travada, então **nenhuma trava foi posta em `fin_transaction`**. E
+nenhum lançamento com `classified_rule_id` teve a categoria trocada — trocar sem
+poder limpar o ponteiro deixaria a linha dizendo "decidiu a regra 40" com uma
+categoria que a regra 40 não produz. Isso custou uma classificação bem
+evidenciada (Ancora Imobiliária, R$ 300,00, 9 lançamentos anteriores em 5.01):
+ela virou pergunta com a evidência na nota. **Quando a 0091 fechar, vale
+carimbar `humano` + trava nos ids 1603 e 1604.**
+
+**A 0094 foi aplicada sozinha**, com um script que reproduz o runner por
+arquivo. `npm run db:migrate` teria tentado a 0090 primeiro, que falhava na
+própria pré-condição, e abortado antes de chegar na 0094. Mover migration de
+outro agente para fora do diretório já apagou trabalho alheio uma vez (§6).
+
+### O que a fila é hoje, por população
+
+```
+415 · R$ 500.008,10  sem categoria, alvo pré-2026        fora do escopo
+413 · R$ 334.498,66  conferência de confiança            82 em 2026
+346 · R$ 218.608,32  cobrança sem texto na fonte         79 em 2026
+237 · R$ 112.492,54  marcado 3.99/5.99                  224 em 2026
+120 · R$ 154.161,30  sem categoria em 2026
+ 25 · R$   9.395,07  rótulo por trilho de pagamento
+```
+
+`fin_fila_saude_v` devolve isso por item, com `em_escopo_2026` e o que destrava
+cada população. Somar as cinco num número só foi o que fez a régua de 300
+parecer atingível.
+
+---
+
 ## Checkpoint Codex — 16/08/2026 04:10 BRT
 
 Este é o checkpoint mais recente. As seções históricas abaixo explicam as
@@ -240,6 +359,34 @@ nenhuma, então o saldo previsto subia sem nunca cair e "quando o caixa aperta"
 respondia "nunca". Hoje cobre 71,7%, e o buraco de R$ 43.059,77/mês é impresso
 em toda execução em vez de escondido numa média (migration 0079).
 
+**A previsão passou a ter erro medido — e o primeiro número é ruim.** Até
+16/08/2026 ela era o **único módulo desta base sem backtest**, justamente o teste
+que pegou os +37% da receita recorrente e os +75% da comissão. Havia uma foto só
+em `fin_cash_forecast`, tirada à mão, e `fin_previsao_afericao_v` devolvia 0 de
+91 dias aferíveis. A causa não era o predicado de junção: era que a foto só fala
+do futuro (CHECK `fin_cash_forecast_dia_futuro`) e o ledger só sabe do passado.
+A migration 0097 amarra a aferibilidade à **cobertura de extrato** em vez de "tem
+linha realizada" — dia coberto e sem movimento realiza zero, que é medida —, põe
+`prever-caixa.mjs --aplicar` no scheduler (idempotente pela chave
+`fin_cash_forecast_foto_key`; duas execuções no mesmo dia reescrevem a foto, não
+duplicam) e grava a linha de base em `fin_previsao_linha_base`:
+
+```
+cobertura da saída prevista ........  72,4%   alvo 100%   buraco R$ 43.809,02/mês
+acerto da cobrança emitida em 30d ..  90,4%   alvo 100%   12 referências medidas
+```
+
+**Foto retroativa foi medida e recusada, com evidência.** `fin_recurring` tem 145
+linhas e nenhuma anterior a 01/08/2026; `fin_forecast_scenario.vigente_de` é
+16/08/2026 e só existe a versão 1; duas premissas são ajustadas sobre janelas que
+terminam depois de qualquer data retro plausível; `fin_audit_log` não historiou
+`fin_document` nem `fin_recurring`; e as seis views da cadeia fixam `now()`.
+Reconstruir a foto inteira usaria julho para prever julho. O que **é**
+determinístico é a camada `cobranca_emitida` — 79% da entrada projetada —, porque
+`issue_date`, `due_date` e `paid_on` estão no próprio documento e não há
+documento cancelado na base. Ela virou `fin_previsao_cobranca_backtest_v`, que
+não grava foto nenhuma e declara célula fora da cobertura em vez de medi-la.
+
 **Reembolso já está dentro do caixa.** Ele é pago no mês seguinte junto do fixo
 e classificado como salário. Somar a planilha ao extrato inflaria a folha em
 ~R$ 6 mil/mês. A regra está gravada no schema para ninguém somar de novo.
@@ -285,6 +432,81 @@ assinatura, o previsto caiu. Menor e verdadeiro.
 correto — as 114 metas são 100% de escopo `obras` e o realizado delas mora no
 erp-obras. **A API não pode devolver 0 no lugar de null**: zero é uma afirmação
 sobre o dinheiro, ausência é uma afirmação sobre o dado.
+
+**M7·fonte subiu de 167 para 243 pernas (R$ 2.224.767,97 → R$ 2.456.359,27).**
+Diagnosticado em 16/08/2026: é a migration `0089_fin_transferencias_lacunas.sql`
+(commit `2c00e51`, aplicada 08:29 UTC) fazendo exatamente o que se pediu dela.
+Ela separou as 252 linhas `em_transito` em populações e deu **motivo verificável**
+a 76 que antes contavam como pendência acionável:
+
+```
+sem_cobertura_extrato ..................................... 167  R$ 2.224.767,97
+sem_cobertura_extrato:nubank-caixinhas-antes-2026-07-10 ....  67  R$   182.071,30
+destino_fora_do_ledger:caixa-economica-...783083433 ........   5  R$    25.400,00
+sem_cobertura_extrato:conta-destino-nao-identificada .......   4  R$    24.120,00
+                                                            ───  ───────────────
+                                                            243  R$ 2.456.359,27
+```
+
+Os 67 são a lacuna de 181 dias das caixinhas do Nubank; os 5 são a 7ª conta
+Caixa (dúvida 5, e os R$ 25.400 batem com a linha dela na §5 do
+`MAPA_CONCLUSAO.md`); os 4 são transferências Asaas de 2026 para conta própria
+não identificada. **Nenhum lançamento novo entrou** — o denominador não mudou.
+
+O monitor piorou porque a base parou de chamar impossibilidade de trabalho.
+A prova de que a direção está certa está no mesmo movimento: pernas acionáveis
+caíram para **0**, M6 foi a 100%, e "transferência resolvida" subiu de 97,8%
+para 98,0% porque a 0089 tirou de `em_transito` 8 pagamentos de fatura (que
+liquidam subledger de cartão, não têm segunda perna de caixa) e 1 PIX a
+fornecedor com CNPJ diferente do da casa. São exatamente 9 linhas: 3.793 → 3.802
+de 3.878.
+
+**Não "conserte" M7·fonte.** Ele só desce com extrato novo (dúvidas 4, 5 e 3).
+Trocar o motivo por um status que não conta seria a versão elegante de esconder.
+
+### E uma queda que NÃO é custo assumido — leia antes de replicar o padrão
+
+**"Categoria atribuída" caiu de 98,8% para 97,1%. Isso é REGRESSÃO, não decisão.**
+Está aqui, e não numa lista de defeitos, porque é exatamente onde quem procurar a
+explicação vai olhar primeiro — e porque as duas quedas foram medidas juntas.
+
+A causa, provada em 16/08/2026: a passagem do scheduler de **08:24 BRT**
+(`fin_audit_log` id 68544, `sync-asaas`) rodou o passo 5 de `import-asaas.mjs`
+— a herança de categoria do documento liquidado — **antes** da correção, que só
+foi commitada às 11:08 BRT (`11b763e`). O UPDATE não exigia
+`d.category_id IS NOT NULL`, então gravou `category_id = NULL` por cima do que
+já estava decidido, sempre que o documento liquidado não tinha categoria. O
+relatório da própria execução conta a história inteira:
+
+```
+categorias_herdadas_do_documento: 188   =   123 herdaram categoria de verdade
+                                          +  65 herdaram o NADA
+```
+
+Os 123 são a coorte A da §11 (a 0091 limpou o `classified_rule_id` deles). Os 65
+são a coorte B, e são **exatamente** a queda:
+
+```
+3.829 / 3.878 = 98,74%    ← antes
+3.764 / 3.878 = 97,06%    ← depois (65 linhas a menos, mesmo denominador)
+```
+
+As duas hipóteses óbvias estão **refutadas pela medida**: o denominador não se
+mexeu (3.878 nos dois momentos), então não foi dado novo entrando; e não houve
+reclassificação para 3.99/5.99, porque 3.99 é `category_id` preenchido e
+continuaria contando. Não caiu porque a régua ficou honesta: caiu porque 65
+decisões foram apagadas. Todas as 65 carregam
+`classified_reason = {"origem":"herdado do documento liquidado"}` e um documento
+com `category_id` nulo.
+
+**O que já está resolvido:** a causa. `import-asaas.mjs` exige
+`d.category_id IS NOT NULL` desde `11b763e`; a mesma execução não se repete.
+
+**O que continua vermelho, de propósito:** as 65 linhas. Restaurá-las exige
+escolher entre a decisão humana de 11/08 e o 3.99 da regra 73, e isso mexe em
+categoria — ou seja, na DRE. É a **dúvida 40**, e é do Fernando. Enquanto ela não
+for respondida, o indicador fica em 97,1% e **isso é a leitura correta**: 65
+lançamentos realmente não têm categoria hoje. Não invente uma para o número subir.
 
 ---
 

@@ -100,6 +100,19 @@ const LIMIARES = {
   // liquida em minutos. Passou de 30 dias, o par não vem mais sozinho.
   emTransitoMaxDias: 30,
 
+  // Dias de previsão que já podem ser cobrados contra o realizado. 30 é um
+  // ciclo mensal fechado — a menor janela em que folha, DAS e cobrança emitida
+  // aparecem TODOS. Aferir 7 dias mediria só a semana de boleto e chamaria isso
+  // de erro da previsão.
+  previsaoDiasAferidosMin: 30,
+
+  // Acerto da camada `cobranca_emitida` em 30 dias. 95% e não 90%: a premissa
+  // `receber_fator = 1,000` afirma que cobrança emitida a vencer entra INTEIRA
+  // pelo valor de face no dia do vencimento. É a premissa mais forte da
+  // previsão e a que sustenta 79% da entrada projetada; se ela erra mais de 5%,
+  // o saldo previsto está alto por construção — e erro para cima é o caro.
+  previsaoAcertoCobrancaPct: 95,
+
   // Contraparte sem CPF/CNPJ. Sem documento não há como detectar que ela é a
   // própria empresa, nem cruzar com nota fiscal.
   contrapartesSemDocumentoPct: 5,
@@ -997,7 +1010,7 @@ try {
 
   // -------------------------------------------------------------------------
   // Métricas dos monitores. Uma leva só, em paralelo.
-  const [ct, cd, fila, transf, contas, cps, pessoas, estornos, dups, cats, regras, velhas] = await Promise.all([
+  const [ct, cd, fila, transf, contas, cps, pessoas, estornos, dups, cats, regras, velhas, filaSaude] = await Promise.all([
     um(`SELECT count(*) total, count(category_id) com_cat,
                coalesce(sum(abs(amount_cents)), 0) rs_total,
                coalesce(sum(abs(amount_cents)) FILTER (WHERE category_id IS NOT NULL), 0) rs_class
@@ -1021,8 +1034,21 @@ try {
            AND c.kind IN ('custo_variavel_direto', 'despesa_operacional', 'pessoal', 'imposto', 'investimento')
            AND lower(t.description_norm) ~ '(estorno|reembolso|devolu|refund|cancelamento)'`),
     um(`SELECT * FROM fin_duplicate_monitor_v`),
+    // "Categoria nunca usada" tem de significar "nenhum fato financeiro aponta
+    // para ela". Eram TRÊS as tabelas que carregam category_id desde a 0083, e
+    // esta contagem lia duas: 281 itens de cartão classificados eram invisíveis
+    // aqui. 5.11 "Frete e logística" tem um item de cartão de R$ 1.222,56 e era
+    // contada como linha morta do plano de contas.
+    //
+    // É o mesmo padrão que a auditoria já pegou duas vezes (§8 do CONTINUACAO):
+    // o buraco mora do lado de fora do indicador que a frente vizinha estava
+    // otimizando. `ociosas_sem_cartao` fica ao lado de propósito — esconder de
+    // onde veio a queda seria trocar um número cego por outro.
     um(`SELECT count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM fin_transaction t WHERE t.category_id = c.id)
-                                 AND NOT EXISTS (SELECT 1 FROM fin_document d WHERE d.category_id = c.id)) ociosas,
+                                 AND NOT EXISTS (SELECT 1 FROM fin_document d WHERE d.category_id = c.id)
+                                 AND NOT EXISTS (SELECT 1 FROM fin_card_transaction x WHERE x.category_id = c.id)) ociosas,
+               count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM fin_transaction t WHERE t.category_id = c.id)
+                                 AND NOT EXISTS (SELECT 1 FROM fin_document d WHERE d.category_id = c.id)) ociosas_sem_cartao,
                count(*) total FROM fin_category c`),
     um(`SELECT count(*) FILTER (WHERE is_blocking) bloqueantes,
                count(*) FILTER (WHERE is_external_gap) lacunas_fonte,
@@ -1032,7 +1058,15 @@ try {
     um(`SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs FROM fin_transaction
          WHERE transfer_status = 'em_transito'
            AND transfer_unresolved_reason IS NULL
-           AND CURRENT_DATE - posted_on > $1`, [LIMIARES.emTransitoMaxDias])
+           AND CURRENT_DATE - posted_on > $1`, [LIMIARES.emTransitoMaxDias]),
+    um(`SELECT count(*) FILTER (WHERE em_escopo_2026) escopo,
+               coalesce(sum(abs(amount_cents)) FILTER (WHERE em_escopo_2026), 0) escopo_rs,
+               count(*) FILTER (WHERE NOT em_escopo_2026) fora,
+               coalesce(sum(abs(amount_cents)) FILTER (WHERE NOT em_escopo_2026), 0) fora_rs,
+               count(*) FILTER (WHERE populacao = 'conferencia_de_confianca') conferencia,
+               count(*) FILTER (WHERE populacao = 'sem_texto_na_fonte') sem_texto,
+               count(*) FILTER (WHERE populacao = 'rotulo_por_trilho') trilho
+          FROM fin_fila_saude_v WHERE status = 'pendente'`)
   ]);
 
   const monitores = [];
@@ -1061,8 +1095,22 @@ try {
   });
   monitor('M4', 'itens pendentes na fila de revisão', {
     valor: Number(fila.n), texto: num(fila.n), limiar: LIMIARES.filaMaxItens, comparador: '<=', unidade: ' itens',
-    justificativa: '300 é o que uma pessoa vence em ~2h. Acima disso a fila deixa de ser trabalho e vira paisagem.',
+    justificativa: `300 é o que uma pessoa vence em ~2h. Acima disso a fila deixa de ser trabalho e vira paisagem. `
+      + `Mas 300 foi escrito quando a fila era só "falta categoria": hoje ${num(filaSaude.conferencia)} itens são `
+      + `conferência de linha já classificada e ${num(filaSaude.sem_texto)} são cobranças que a fonte entregou sem `
+      + `texto nenhum. Ver fin_fila_saude_v e M4·escopo.`,
     rs: fila.rs
+  });
+  // Companheiro diagnóstico, no padrão de M7·fonte e M12·bruto: separa o que é
+  // trabalho de 2026 — o escopo que o dono declarou — do que ficou preso na
+  // fila pelo H3 sem ser meta de completude. Não muda M4 nem o limiar dele.
+  monitor('M4·escopo', 'itens da fila com alvo em 2026', {
+    valor: Number(filaSaude.escopo), texto: `${num(filaSaude.escopo)} de ${num(fila.n)}`,
+    limiar: LIMIARES.filaMaxItens, comparador: '<=', unidade: ' itens',
+    justificativa: `${num(filaSaude.fora)} itens (${brl(filaSaude.fora_rs)}) têm alvo anterior a 2026 e estão fora do `
+      + `escopo declarado em OBJETIVOS_METAS §1. Eles não saem da fila: o H3 os prende de propósito, e apagá-los `
+      + `seria esconder dinheiro. Enquanto existirem, M4 ≤ 300 é aritmeticamente impossível — ver dúvida 54.`,
+    rs: filaSaude.escopo_rs
   });
   monitor('M5', 'idade do item mais antigo da fila', {
     valor: Number(fila.idade), texto: `${num(fila.idade)} d`, limiar: LIMIARES.filaMaxIdadeDias, comparador: '<=', unidade: ' dias',
@@ -1133,7 +1181,9 @@ try {
   const pctOciosas = (cats.ociosas / cats.total) * 100;
   monitor('M13', 'categorias nunca usadas', {
     valor: pctOciosas, texto: `${num(cats.ociosas)}/${num(cats.total)}`, limiar: LIMIARES.categoriasOciosasPct, comparador: '<=', unidade: '%',
-    justificativa: `plano de contas com ${pct(pctOciosas)} de linhas mortas enquanto ${brl(semCategoria)} ficam sem categoria: o problema não é falta de opção, é falta de regra.`
+    justificativa: `plano de contas com ${pct(pctOciosas)} de linhas mortas enquanto ${brl(semCategoria)} ficam sem categoria: `
+      + `o problema não é falta de opção, é falta de regra. Contando só fin_transaction e fin_document seriam `
+      + `${num(cats.ociosas_sem_cartao)} — o subledger do cartão também carrega category_id desde a 0083.`
   });
   monitor('M14', 'regras ativas com saúde bloqueante', {
     valor: Number(regras.bloqueantes), texto: `${num(regras.bloqueantes)}/${num(regras.total)}`, limiar: 0, comparador: '<=', unidade: '',
@@ -1149,6 +1199,55 @@ try {
     justificativa: 'zero, sem tolerância: um ledger que não fecha com ele mesmo não fecha com o banco.',
     rs: divergencia
   });
+
+  // -------------------------------------------------------------------------
+  // M16 e M17 — a previsão finalmente tem erro medido.
+  //
+  // Até 16/08/2026 a previsão era o ÚNICO módulo desta base sem backtest, e
+  // backtest é o que pegou os +37% da receita recorrente e os +75% da comissão.
+  // `fin_cash_forecast` tinha uma foto só, tirada à mão, e
+  // `fin_previsao_afericao_v` nunca produziu uma linha.
+  //
+  // Os dois monitores medem coisas diferentes de propósito:
+  //   M16 é sobre o INSTRUMENTO — a série de fotos está sendo acumulada?
+  //   M17 é sobre o DETECTOR   — quando dá para cobrar, ele acerta?
+  //
+  // Sem M16, M17 pode ficar verde para sempre por falta de dado; sem M17, M16
+  // celebra ter fotos que ninguém conferiu.
+  const previsao = (await q(
+    `SELECT to_regclass('public.fin_previsao_afericao_resumo_v') IS NOT NULL AS tem`
+  ))[0]?.tem
+    ? {
+        foto: await um(`SELECT count(*)::int fotos,
+                               coalesce(max(dias_aferiveis), 0)::int melhor_afericao,
+                               coalesce(max(gerado_em)::text, '—') ultima
+                          FROM fin_previsao_afericao_resumo_v`),
+        backtest: await um(`SELECT (PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY acerto_pct))::numeric mediana,
+                                   count(*)::int refs, min(referencia)::text de, max(referencia)::text ate
+                              FROM fin_previsao_cobranca_backtest_v
+                             WHERE mensuravel AND horizonte_dias = 30 AND acerto_pct IS NOT NULL`)
+      }
+    : null;
+
+  if (previsao) {
+    monitor('M16', 'dias de previsão já cobráveis', {
+      valor: Number(previsao.foto.melhor_afericao), texto: `${num(previsao.foto.melhor_afericao)} d`,
+      limiar: LIMIARES.previsaoDiasAferidosMin, comparador: '>=', unidade: ' dias',
+      justificativa: `${num(previsao.foto.fotos)} foto(s), a mais recente de ${previsao.foto.ultima}. `
+        + 'Uma foto só vira medida quando os dias que ela previu entram na cobertura do extrato; '
+        + `${LIMIARES.previsaoDiasAferidosMin} dias é um ciclo mensal fechado, que é a menor janela em que folha, DAS e cobrança aparecem todos. `
+        + 'Zero aqui NÃO é acerto: é foto jovem demais para ser cobrada.'
+    });
+    monitor('M17', 'acerto da cobrança emitida em 30 dias', {
+      valor: Number(previsao.backtest.mediana ?? 0),
+      texto: previsao.backtest.mediana === null ? '—' : `${previsao.backtest.mediana}%`,
+      limiar: LIMIARES.previsaoAcertoCobrancaPct, comparador: '>=', unidade: '%',
+      justificativa: `mediana de ${num(previsao.backtest.refs)} referências mensuráveis (${previsao.backtest.de} a ${previsao.backtest.ate}), `
+        + 'reconstruídas das três datas do próprio documento — sem foto sintética. '
+        + '95% porque a premissa receber_fator = 1,000 assume que a cobrança emitida a vencer entra INTEIRA no vencimento; '
+        + 'abaixo disso a previsão de entrada é otimista por construção, e erro para cima só dói na hora de contar com o dinheiro.'
+    });
+  }
 
   // -------------------------------------------------------------------------
   // DINHEIRO DISTINTO. Os mesmos 671 lançamentos aparecem em C3, H3 e H4; somar

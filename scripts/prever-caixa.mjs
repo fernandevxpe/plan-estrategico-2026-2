@@ -236,24 +236,81 @@ async function main() {
     }
 
     // ── aferição ──────────────────────────────────────────────────────────
+    //
+    // Duas leituras, e elas respondem coisas diferentes:
+    //
+    //   1. AFERIÇÃO DAS FOTOS — o que a foto de um dia dizia contra o que
+    //      aconteceu depois. É o backtest de verdade, e ele só começa a existir
+    //      quando houver foto ANTIGA: uma foto tirada hoje só prevê o futuro, e
+    //      o CHECK `fin_cash_forecast_dia_futuro` garante isso. Enquanto o
+    //      scheduler não acumular dias, `dias` é 0 — e 0 aqui significa "ainda
+    //      não dá para cobrar", nunca "acertou".
+    //
+    //   2. BACKTEST DETERMINÍSTICO DA COBRANÇA EMITIDA — este já tem número
+    //      hoje, porque não depende de foto: é reconstruído das três datas do
+    //      próprio documento (0097). É a maior camada de entrada da previsão, e
+    //      é a única reconstruível sem estimar nada.
     if (AFERIR) {
+      const { rows: [temResumo] } = await cli.query(
+        `SELECT to_regclass('public.fin_previsao_afericao_resumo_v') IS NOT NULL AS ok`
+      );
       linha();
-      const { rows: erros } = await cli.query(`
-        SELECT gerado_em::text, cenario, COUNT(*) FILTER (WHERE aferivel)::int AS dias_aferidos,
-               MAX(dias_a_frente) FILTER (WHERE aferivel)::int AS horizonte_aferido,
-               SUM(liquido_previsto_cents) FILTER (WHERE aferivel)::bigint AS previsto_cents,
-               SUM(liquido_realizado_cents) FILTER (WHERE aferivel)::bigint AS realizado_cents,
-               (PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ABS(erro_dia_cents)))::bigint AS erro_dia_mediano_cents
-          FROM fin_previsao_afericao_v
-         GROUP BY 1,2 ORDER BY 1 DESC, 2`);
-      if (!erros.length) {
-        console.log('AFERIÇÃO: nenhuma foto gravada ainda. Rode --aplicar primeiro e volte quando os dias passarem.');
+      if (!temResumo.ok) {
+        console.log('AFERIÇÃO: a migration 0097 ainda não foi aplicada — sem resumo e sem backtest.');
       } else {
-        console.log('AFERIÇÃO — o que a foto dizia contra o que aconteceu\n');
-        console.log(`  ${'foto'.padEnd(12)}${'cenário'.padEnd(13)}${pad('dias', 5)}${pad('previsto', 14)}${pad('realizado', 14)}${pad('erro', 14)}  erro/dia (mediana)`);
-        for (const e of erros) {
-          const erro = Number(e.previsto_cents || 0) - Number(e.realizado_cents || 0);
-          console.log(`  ${e.gerado_em.padEnd(12)}${e.cenario.padEnd(13)}${pad(e.dias_aferidos, 5)}${pad(brl(e.previsto_cents), 14)}${pad(brl(e.realizado_cents), 14)}${pad(brl(erro), 14)}  ${brl(e.erro_dia_mediano_cents)}`);
+        const { rows: erros } = await cli.query(`
+          SELECT gerado_em::text, cenario, dias_na_foto, dias_aferiveis,
+                 horizonte_aferido, cobertura_ate::text,
+                 previsto_cents, realizado_cents, erro_cents,
+                 erro_dia_mediano_cents, vies_pct
+            FROM fin_previsao_afericao_resumo_v
+           ORDER BY gerado_em DESC, cenario`);
+        console.log('AFERIÇÃO DAS FOTOS — o que a foto dizia contra o que aconteceu\n');
+        if (!erros.length) {
+          console.log('  nenhuma foto gravada ainda. Rode --aplicar primeiro.');
+        } else {
+          console.log(`  ${'foto'.padEnd(12)}${'cenário'.padEnd(13)}${pad('dias', 6)}${pad('previsto', 14)}${pad('realizado', 14)}${pad('erro', 14)}${pad('viés', 8)}`);
+          for (const e of erros) {
+            const dias = `${e.dias_aferiveis}/${e.dias_na_foto}`;
+            console.log(`  ${e.gerado_em.padEnd(12)}${e.cenario.padEnd(13)}${pad(dias, 6)}${pad(brl(e.previsto_cents), 14)}${pad(brl(e.realizado_cents), 14)}${pad(brl(e.erro_cents), 14)}${pad(e.vies_pct === null ? '—' : `${e.vies_pct}%`, 8)}`);
+          }
+          const mudos = erros.filter((e) => e.dias_aferiveis === 0);
+          if (mudos.length) {
+            console.log(`\n  ${mudos.length} foto(s) com 0 dias aferíveis: o extrato mais atrasado cobre até`);
+            console.log(`  ${erros[0].cobertura_ate} e a foto só fala de dias posteriores a ela.`);
+            console.log('  Isso NÃO é acerto — é foto jovem demais para ser cobrada.');
+          }
+        }
+
+        const { rows: bt } = await cli.query(`
+          SELECT horizonte_dias,
+                 count(*) FILTER (WHERE mensuravel)::int AS celulas,
+                 count(*) FILTER (WHERE NOT mensuravel)::int AS fora_da_cobertura,
+                 (PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY acerto_pct))::numeric AS mediana_pct,
+                 MIN(acerto_pct) AS pior_pct, MAX(acerto_pct) AS melhor_pct,
+                 SUM(previsto_cents) FILTER (WHERE mensuravel)::bigint AS previsto_cents,
+                 SUM(realizado_cents) FILTER (WHERE mensuravel)::bigint AS realizado_cents
+            FROM fin_previsao_cobranca_backtest_v
+           GROUP BY 1 ORDER BY 1`);
+        linha();
+        console.log('BACKTEST DA COBRANÇA EMITIDA — determinístico, sem foto sintética\n');
+        console.log(`  ${'horizonte'.padEnd(11)}${pad('refs', 6)}${pad('previsto', 14)}${pad('realizado', 14)}${pad('mediana', 10)}${pad('pior', 8)}${pad('melhor', 8)}  fora da cobertura`);
+        for (const b of bt) {
+          console.log(`  ${`${b.horizonte_dias} dias`.padEnd(11)}${pad(b.celulas, 6)}${pad(brl(b.previsto_cents), 14)}${pad(brl(b.realizado_cents), 14)}${pad(`${b.mediana_pct}%`, 10)}${pad(`${b.pior_pct}%`, 8)}${pad(`${b.melhor_pct}%`, 8)}  ${b.fora_da_cobertura}`);
+        }
+        console.log('\n  Abaixo de 100% significa que cobrança emitida a vencer NÃO entra toda');
+        console.log('  pelo valor de face no vencimento — que é o que receber_fator = 1,000 assume.');
+
+        const { rows: lb } = await cli.query(`
+          SELECT metrica, medido_em::text, valor, unidade, alvo, base_medida
+            FROM fin_previsao_linha_base ORDER BY metrica, medido_em DESC`);
+        if (lb.length) {
+          linha();
+          console.log('LINHA DE BASE — o erro que a próxima versão tem de bater\n');
+          for (const l of lb) {
+            console.log(`  ${l.metrica.padEnd(30)}${pad(`${l.valor}${l.unidade}`, 8)}  alvo ${l.alvo}${l.unidade}   medido em ${l.medido_em}`);
+            console.log(`    ${l.base_medida}`);
+          }
         }
       }
     }

@@ -115,6 +115,35 @@ const STEPS = [
     args: ['--aplicar', '--actor=scheduler:financeiro'],
     required: false
   },
+  // A foto datada da previsão. Vem DEPOIS dos dois importadores e do lifecycle
+  // porque a âncora dela é o saldo das contas: tirada antes, fotografaria o
+  // saldo de ontem e carimbaria a data de hoje.
+  //
+  // POR QUE ISTO PRECISA SER DIÁRIO, e não sob demanda: `fin_cash_forecast` é a
+  // única memória do que a plataforma ACHAVA. A view responde "o que eu acho
+  // agora" e muda de ideia amanhã sem deixar rastro — uma previsão que ninguém
+  // pode cobrar depois volta a ser palpite. Até 16/08/2026 existia UMA foto, a
+  // que alguém tirou à mão, e por isso `fin_previsao_afericao_v` nunca produziu
+  // uma linha: a previsão é o único módulo desta base sem backtest, justo o
+  // teste que pegou os +37% da receita recorrente e os +75% da comissão.
+  //
+  // IDEMPOTÊNCIA: rodar duas vezes no mesmo dia não duplica foto. A chave
+  // `fin_cash_forecast_foto_key (entity_id, gerado_em, cenario, dia)` e o
+  // `ON CONFLICT ... DO UPDATE` de prever-caixa.mjs fazem a segunda execução
+  // reescrever a linha do dia em vez de criar outra. Reescrever é o
+  // comportamento certo: a foto vale o que o ledger sabia na última vez que
+  // olhou naquele dia.
+  //
+  // `required: false` como o resto do financeiro: uma falha aqui não derruba o
+  // painel comercial. E não escreve em caixa — só lê views e grava em
+  // `fin_cash_forecast`, que é tabela de previsão e nenhuma consulta de saldo
+  // soma.
+  {
+    name: 'foto da previsão de caixa',
+    script: 'scripts/prever-caixa.mjs',
+    args: ['--aplicar'],
+    required: false
+  },
   // O backup vem DEPOIS das importações, para o artefato do dia já conter o que
   // entrou hoje. Antes, ele salvaria o estado de ontem e chamaria de hoje.
   { name: 'backup do financeiro', script: 'scripts/db-backup.mjs', required: false },

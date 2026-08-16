@@ -40,10 +40,15 @@ Indicadores de 2026 (meta 90%):
 | núcleo definido | **90,6%** (3074/3393) | 90,6% ✓ |
 | centro de custo | **1,1%** (39/3393) | 1,1% ✓ — teto de fonte |
 
-> A queda de `categoria atribuída` de 98,8% para 97,1% não tem explicação
-> registrada em documento nenhum. Não é a queda de propósito do §5 de
-> `CONTINUACAO.md` — aquela foi na *revisão concluída*, e essa continua em 91,3%.
-> Quem retomar deve descobrir se é efeito colateral de uma das frentes em voo.
+> ~~A queda de `categoria atribuída` de 98,8% para 97,1% não tem explicação
+> registrada em documento nenhum.~~ **RESPONDIDO em 16/08/2026.** É regressão, não
+> decisão: a passagem do scheduler das 08:24 BRT rodou o passo 5 de
+> `import-asaas.mjs` antes da correção `11b763e` (11:08 BRT) e gravou
+> `category_id = NULL` em **65 lançamentos** cujo documento liquidado não tinha
+> categoria — a coorte B da §11 de `CONTINUACAO.md`. 3.829 → 3.764 sobre o mesmo
+> denominador de 3.878. A causa já está corrigida no código; as 65 linhas
+> dependem da **dúvida 40** porque restaurá-las mexe na DRE. Diagnóstico completo
+> no §5 de `CONTINUACAO.md`.
 
 As duas falhas de invariante:
 
@@ -178,6 +183,19 @@ fin_previsao_afericao_v ...... 91 dias · 0 aferíveis
 A view que compara previsto contra realizado **existe e nunca produziu uma
 linha**. A pergunta "posso confiar nesta previsão?" tem instrumento instalado e
 zero leitura.
+
+> **Atacado em 16/08/2026 — migration 0097.** Os 0 aferíveis não eram defeito de
+> junção: a única foto foi tirada hoje, o CHECK `fin_cash_forecast_dia_futuro`
+> garante que todos os 91 dias dela estejam no futuro, e o ledger vai até 15/08.
+> A interseção era vazia por construção. O defeito real era outro e estava no
+> `aferivel = (r.dia IS NOT NULL)`: dia coberto **sem movimento** contava como
+> não aferível, misturando "não houve movimento" com "ainda não sei" no mesmo
+> NULL. A 0097 amarra a aferibilidade à cobertura de extrato, põe
+> `prever-caixa.mjs --aplicar` no scheduler (idempotente pela chave
+> `fin_cash_forecast_foto_key`) e entrega o primeiro erro medido: a camada
+> `cobranca_emitida` acerta **90,4%** em 30 dias, mediana de 12 referências
+> reconstruídas das datas do próprio documento. Foto retroativa foi **medida e
+> recusada** — ver o cabeçalho da 0097 para as cinco evidências.
 
 ### 2.5 O que a "regra zero" não mede, e já se sabia
 
@@ -457,7 +475,7 @@ e não tem como dizer se acerta.
 | **0091 (D6) pode escolher o que faz o teste passar** | 0091 | As 186 linhas dizem duas coisas ao mesmo tempo. **A trilha decide, não a conveniência.** E cuidado: os 8.993 lançamentos `fato_estrutural` com `classified_rule_id` **não são violação** — D6 os isenta de propósito e D5 valida a evidência deles. "Limpar" esses 8.993 quebraria D5 |
 | **0093 aplica a 0090** | 0093 | `0090_fin_fila_casos_lifecycle.sql` está pendente **e não versionada**, junto de `fin-review-lifecycle.mjs` e `test-fila-casos-lifecycle.mjs`, mais modificações soltas em `package.json`, `import-asaas.mjs`, `reclassificar.mjs` e `scheduler.mjs`. Aplicar a 0090 muda a fila — **o que colide com 0094 e com a FRENTE 2**. Ordem certa: 0093 → 0094 → FRENTE 2 |
 | **`next build` é recurso exclusivo** | todas | O lock do `next build` derrubou minha verificação duas vezes nesta sessão. Uma frente por vez roda `build:app`; as outras usam `npx tsc --noEmit`, que não disputa lock |
-| **A queda de `categoria atribuída`** | ? | 98,8% → **97,1%** sem explicação em documento nenhum. Pode ser efeito colateral de uma frente em voo. Quem achar a causa, escreva-a |
+| ~~**A queda de `categoria atribuída`**~~ | **resolvido** | Causa achada em 16/08: o passo 5 de `import-asaas.mjs`, na passagem do scheduler das 08:24 BRT, herdou categoria nula de 65 documentos sem categoria. Corrigido no código por `11b763e`; as 65 linhas viram **dúvida 40**. Ver §5 de `CONTINUACAO.md` |
 | **FRENTE 1 não colide com ninguém** | — | É `app/api/**` e nenhuma frente em voo toca lá. Pode rodar em paralelo com todas |
 
 ---

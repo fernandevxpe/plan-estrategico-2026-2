@@ -562,20 +562,42 @@ try {
   //
   // A regra é conceitualmente certa, não um remendo: o dinheiro que entrou
   // pertence à categoria do serviço que o gerou.
+  //
+  // DUAS CORREÇÕES, ambas medidas em 16/08/2026 (invariante D6, R$ 390.057,45):
+  //
+  // 1. `classified_rule_id = NULL`. Este UPDATE roda DEPOIS do upsert, e o
+  //    upsert já carimbou a regra que casou no extrato — desde a 0056 a regra
+  //    `receita-asaas-cobranca-recebida` casa TODO PAYMENT_RECEIVED, que é
+  //    exatamente esta população. Sem limpar o id, a linha passava a dizer
+  //    "quem decidiu foi o contrato" carregando o id de uma regra cuja ação
+  //    (3.99 + review) não sobreviveu em campo nenhum. Eram 123 lançamentos,
+  //    R$ 310.792,10, com o badge "por quê?" mentindo sobre quem decidiu.
+  //
+  // 2. `d.category_id IS NOT NULL`. Herdar de um documento SEM categoria não é
+  //    herdar: era gravar NULL por cima do que já estava decidido e ainda
+  //    carimbar 'contrato' — o que apaga o carimbo 'humano' de que o
+  //    classificar-fila.mjs depende para não voltar em cima de decisão de
+  //    gente. Destruiu 52 classificações feitas na tela em 11/08 e criou 63
+  //    linhas em `classified_by='contrato'` com categoria nula, o "estado
+  //    impossível" que o próprio classificar-fila.mjs descreve: o motor de
+  //    regras protege 'contrato' e nunca mais volta nelas. Ausência de
+  //    categoria no documento é ausência de evidência, não uma categoria nula.
   const { rowCount: herdadas } = await client.query(
     `UPDATE fin_transaction t
         SET category_id = d.category_id,
             nucleo = COALESCE(t.nucleo, d.nucleo),
             counterparty_id = COALESCE(t.counterparty_id, d.counterparty_id),
             classified_by = 'contrato',
+            classified_rule_id = NULL,
             classified_reason = jsonb_build_object('origem', 'herdado do documento liquidado', 'document_id', d.id),
-            review_status = CASE WHEN d.category_id IS NULL THEN 'pendente' ELSE 'ok' END,
+            review_status = 'ok',
             updated_at = now()
        FROM fin_settlement s
        JOIN fin_document d ON d.id = s.document_id
       WHERE s.transaction_id = t.id
         AND t.account_id = $1
         AND NOT ('category_id' = ANY (t.human_locked_fields))
+        AND d.category_id IS NOT NULL
         AND d.category_id IS DISTINCT FROM t.category_id`,
     [accountId]
   );
@@ -668,12 +690,15 @@ try {
   report.classificadas_por_historico = porHistorico;
 
   // As entradas de caixa herdam de novo, agora que o histórico preencheu mais
-  // documentos.
+  // documentos. `classified_rule_id = NULL` pelo mesmo motivo do bloco 5:
+  // carimbar 'contrato' e manter o id da regra que casou no upsert faz o par de
+  // proveniência contar duas histórias sobre a mesma linha (D6).
   await client.query(
     `UPDATE fin_transaction t
         SET category_id = d.category_id,
             nucleo = COALESCE(t.nucleo, d.nucleo),
             classified_by = 'contrato',
+            classified_rule_id = NULL,
             review_status = 'ok',
             updated_at = now()
        FROM fin_settlement s

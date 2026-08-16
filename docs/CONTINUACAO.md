@@ -486,6 +486,43 @@ deve dizer qual.
 Não "conserte" escolhendo o que faz o teste passar. O invariante está certo; o
 dado é que está ambíguo.
 
+#### Diagnóstico fechado — 16/08/2026
+
+**Nenhum commit desta retomada mudou o código que viola D6.**
+`import-asaas.mjs`, `classificar-fila.mjs` e `sync-asaas.mjs` são byte a byte
+idênticos entre `992d6c5` e `e1499bb`. O que mudou foi o banco: a migration
+`0056_fin_classificacao_fila.sql`, pendente desde 11/08, foi aplicada em
+**16/08 às 03:56:20** — dentro da janela do commit `8eca05b` (03:56). Ela semeia
+a **regra 73** (`receita-asaas-cobranca-recebida`, prioridade 2), a primeira do
+acervo que casa TODO `PAYMENT_RECEIVED` do Asaas. Antes dela nenhuma regra ativa
+casava um PAYMENT_RECEIVED puro. E essa é exatamente a população que o passo 5 do
+importador reclassifica logo depois, herdando a categoria do documento — sem
+limpar o `classified_rule_id` que o upsert acabara de gravar.
+
+**As 186 são duas populações, e o dado as separa:**
+
+| coorte | linhas | valor | documento liquidado | leitura sustentada |
+|---|---|---|---|---|
+| A | 123 | R$ 310.792,10 | **com** categoria | o contrato decidiu; a regra é resíduo |
+| B | 63 | R$ 79.265,35 | **sem** categoria | decisão real destruída — não escolher |
+
+A leitura "a regra é que decidiu" está **refutada** na coorte A: a regra 73 só
+sabe produzir 3.99 com `review=true`, e as 123 estão em 3.01–3.14 e 9.02, todas
+com `review='ok'`, sem nenhum evento em `fin_classification_event`.
+
+Na coorte B o importador herdou o NADA — gravou `category_id = NULL` por cima do
+que existia e carimbou `'contrato'`, apagando inclusive o carimbo `'humano'` de
+**52 classificações feitas na tela em 11/08**. Restaurar exige escolher entre a
+decisão humana e o 3.99 da regra, e mexe em categoria, ou seja, na DRE. É
+decisão do Fernando: **dúvida 40**.
+
+**Resolvido:** migration `0091_fin_proveniencia_d6.sql` limpa o
+`classified_rule_id` só da coorte A. `import-asaas.mjs` passa a gravar
+`classified_rule_id = NULL` nos dois UPDATEs de herança e a exigir
+`d.category_id IS NOT NULL` no passo 5 — herdar de documento sem categoria não é
+herdar, é apagar. D6 vai de **186 (R$ 390.057,45) para 63 (R$ 79.265,35)**, e
+os 63 restantes ficam vermelhos de propósito.
+
 ### O que ficou pendente no Codex
 
 `0090_fin_fila_casos_lifecycle.sql` está **não aplicada e não versionada**, junto

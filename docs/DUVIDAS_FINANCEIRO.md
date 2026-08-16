@@ -1193,3 +1193,77 @@ folha, o que abre a chance de estar contado duas vezes.
 
 A diferença entre 2,5% e 5% nos dois primeiros meses são R$ 4.793,01. O fixo de
 R$ 120.000/ano precisa de resposta à parte sobre dupla contagem com a folha.
+
+---
+
+## 40. As 63 cobranças que perderam a classificação — quem decidia era o humano ou a regra?
+
+**Valor em jogo: R$ 79.265,35** · 63 lançamentos · mantém o invariante **D6**
+falhando de propósito.
+
+### O que aconteceu, na ordem, com trilha
+
+O passo 5 do `scripts/import-asaas.mjs` faz a entrada de caixa herdar a
+categoria da cobrança que ela liquidou. Até 16/08/2026 ele fazia isso **mesmo
+quando o documento não tinha categoria nenhuma** — e "herdar o nada" gravava
+`category_id = NULL` por cima do que já estava decidido, carimbando
+`classified_by = 'contrato'` junto.
+
+Para estas 63 linhas o rastro em `fin_classification_event` mostra três camadas:
+
+| quando | quem | o que decidiu | o que restou |
+|---|---|---|---|
+| 11/08 20:29–20:46 | **humano, pela tela** (qualificação em grupo, `accepted=true`) | categoria específica em **52** das 63 | apagado por um sync posterior |
+| 16/08 03:57:11 | `classificar-fila.mjs`, regra 73, estágio `fato_estrutural` | **3.99** "Receita a classificar" nas 63 | apagado pelo sync das 11:24 |
+| 16/08 11:24:21 | `sync-asaas` | nada — o documento não tem categoria | `contrato` + categoria **NULA** |
+
+O carimbo `'humano'` é exatamente o que o `classificar-fila.mjs` usa para não
+voltar em cima de decisão de gente (`GUARDA`: `classified_by IS DISTINCT FROM
+'humano'`). Ao sobrescrevê-lo com `'contrato'`, o sync não só apagou a categoria:
+apagou a proteção. E `reclassificar.mjs` protege `'contrato'` e nunca mais volta
+nelas — é o "estado impossível" que o próprio `classificar-fila.mjs` descreve.
+
+**O código já foi corrigido** (mesmo commit desta dúvida): o passo 5 agora exige
+`d.category_id IS NOT NULL`. O buraco não se reabre. O que falta é decidir o que
+fazer com as 63 linhas que já foram atropeladas.
+
+### Por que não escolhi
+
+Não é ambiguidade de leitura, é ambiguidade de **autoridade**. Duas decisões
+reais existiram e ambas foram destruídas pelo mesmo defeito; restaurar uma é
+descartar a outra. E qualquer restauração mexe em `category_id`, ou seja, **na
+DRE** — R$ 79.265,35 saem de "sem categoria" e entram em alguma linha de receita.
+Isso não é conserto de proveniência.
+
+As outras 123 linhas do mesmo defeito (R$ 310.792,10) **foram corrigidas** na
+migration `0091`: nelas o documento TINHA categoria, o contrato de fato decidiu,
+e o `classified_rule_id` era resíduo comprovado — nenhuma tinha evento de
+classificação e nenhuma estava na categoria que a regra sabe produzir.
+
+### Opções
+
+- **(a) Restaurar a decisão humana de 11/08** nas 52 que a têm, com a categoria
+  específica que a pessoa escolheu, e travar `category_id` em
+  `human_locked_fields` para nenhum sync futuro derrubar de novo. As 11 restantes
+  vão para 3.99 pela regra 73. É a opção que trata trabalho humano como
+  autoridade máxima — e a única que devolve categoria específica a receita que
+  tem uma.
+- **(b) Repor 3.99 nas 63** (estado que o `classificar-fila.mjs` deixou às
+  03:57), estágio `fato_estrutural`, e mandar todas para a fila de revisão. É
+  honesto quanto ao que a máquina sabe, mas descarta as 52 decisões de 11/08 e
+  põe R$ 79.265,35 em "receita a classificar".
+- **(c) Não restaurar nada**: assumir que categoria nula é o estado verdadeiro,
+  e então `classified_by` precisa deixar de dizer `'contrato'` — porque o
+  contrato não decidiu. Viraria `NULL`, e as 63 voltam para a fila como nunca
+  classificadas. D6 fecharia sem mentir, ao custo de jogar fora as duas camadas
+  de decisão.
+
+**A pergunta curta:** a qualificação em grupo feita na tela em 11/08 vale como
+decisão definitiva (a), ou era rascunho que pode ser substituído pelo 3.99 da
+regra (b)?
+
+### Enquanto não houver resposta
+
+D6 continua acusando **63 violações, R$ 79.265,35**, com causa conhecida e
+escrita. É de propósito: invariante falhando com causa conhecida é melhor que
+invariante verde com dado errado.

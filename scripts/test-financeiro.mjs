@@ -40,6 +40,56 @@ function checkNum(nome, atual, esperado) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// PISO e INVARIANTE — os dois jeitos de afirmar sobre número que CRESCE.
+//
+// Metade das verificações deste arquivo travou em 08/08/2026 e falhou em 16/08
+// por um motivo que não é defeito: o Asaas sincronizou de novo. 3.023 cobranças
+// viraram 3.048, 3.483 notas viraram 3.521, e o histórico de receita subiu
+// R$ 48.038,89. Conferido linha a linha — todas as diferenças têm created_at
+// entre 11 e 15/08, nenhuma toca o passado.
+//
+// Recongelar o número novo só agenda a mesma falha para a próxima
+// sincronização. Para inventário que só cresce, o que se afirma é:
+//
+//   · PISO — "nunca menos que isto". O que este teste tem de pegar é
+//     lançamento SUMINDO (import que apaga, dedupe largo demais, reversão
+//     errada). Crescer é o funcionamento normal; encolher é o defeito.
+//   · INVARIANTE — a relação entre dois números, que não envelhece nunca.
+//     "Tantas liquidações quantos documentos liquidados" vale com 3.023, com
+//     3.048 e com 30.000.
+// ---------------------------------------------------------------------------
+function checkPiso(nome, atual, piso, medidoEm) {
+  if (atual >= piso) {
+    passes += 1;
+    const excedente = atual - piso;
+    console.log(`  ✓ ${nome}: ${atual}${excedente ? ` (piso ${piso} de ${medidoEm}, +${excedente} desde então)` : ` (= piso de ${medidoEm})`}`);
+  } else {
+    falhas += 1;
+    console.error(`  ✗ ${nome}: ${atual} — ABAIXO do piso ${piso} medido em ${medidoEm}. Inventário não encolhe: ${piso - atual} sumiram.`);
+  }
+}
+
+function checkPisoBrl(nome, atual, piso, medidoEm) {
+  if (atual >= piso) {
+    passes += 1;
+    console.log(`  ✓ ${nome}: ${brl(atual)} (piso ${brl(piso)} de ${medidoEm})`);
+  } else {
+    falhas += 1;
+    console.error(`  ✗ ${nome}: ${brl(atual)} — ABAIXO do piso ${brl(piso)} medido em ${medidoEm}, delta ${brl(atual - piso)}`);
+  }
+}
+
+function checkInvariante(nome, ok, detalhe) {
+  if (ok) {
+    passes += 1;
+    console.log(`  ✓ ${nome}${detalhe ? `: ${detalhe}` : ''}`);
+  } else {
+    falhas += 1;
+    console.error(`  ✗ ${nome}${detalhe ? `: ${detalhe}` : ''}`);
+  }
+}
+
 const pool = financePool();
 const client = await pool.connect();
 const q = async (sql, params = []) => (await client.query(sql, params)).rows;
@@ -110,43 +160,88 @@ try {
   };
 
   console.log('  Por data de crédito no extrato (o caixa):');
+  // Julho fechou: a janela é passado e o número não pode mais mexer. Aqui a
+  // igualdade exata continua sendo a afirmação certa.
   check('  julho/2026', await receitaPorCredito('2026-07-01', '2026-07-31'), 22746451, 100);
-  check('  histórico completo', await receitaPorCredito('2000-01-01', '2100-01-01'), 379866415, 100);
+  // O histórico completo é janela ABERTA — termina em "agora". Crescer é o
+  // funcionamento normal, e foi o que aconteceu: R$ 379.866.415 medidos em
+  // 08/08 mais R$ 4.803.889 creditados entre 11 e 15/08 (25 lançamentos,
+  // conferidos por created_at) dão exatamente os R$ 384.670.304 de hoje.
+  checkPisoBrl('  histórico completo (janela aberta)', await receitaPorCredito('2000-01-01', '2100-01-01'), 379866415, '08/08/2026');
 
   // -------------------------------------------------------------------------
   console.log('\n=== 3. Neutralização de transferências ===');
   // Sem isto o ledger conta R$ 3,82 mi em dobro e a receita fecha em zero.
-  // Como só o Asaas está importado, a perna que chega nos outros bancos ainda
-  // não existe: o esperado é 'em_transito', NÃO 'pareado'.
+  //
+  // A PREMISSA DESTE BLOCO CAIU, e é uma boa notícia. Ele dizia:
+  //
+  //   "Como só o Asaas está importado, a perna que chega nos outros bancos
+  //    ainda não existe: o esperado é 'em_transito', NÃO 'pareado'."
+  //
+  // Inter e Nubank entraram desde então, e o pareamento rodou: das 377 pernas,
+  // 105 acharam a irmã e viraram 'pareado', 97 foram identificadas como saída
+  // para terceiro ('nao'), 4 anuladas, 171 seguem em trânsito. Exigir 372 em
+  // trânsito hoje é exigir que a conciliação NÃO tenha funcionado.
+  //
+  // O que não envelhece é a PARTIÇÃO: toda perna tem de estar em exatamente um
+  // dos quatro estados. Perna fora deles é transferência que não é contada nem
+  // como neutralizada nem como despesa — some das duas pontas.
   const [transf] = await q(
-    `SELECT count(*) AS n, COALESCE(SUM(amount_cents), 0) AS total
+    `SELECT count(*) AS n, COALESCE(SUM(amount_cents), 0) AS total,
+            count(*) FILTER (WHERE transfer_status IN ('em_transito','pareado','nao','anulado')) AS particionadas,
+            count(*) FILTER (WHERE transfer_status = 'em_transito') AS em_transito,
+            count(*) FILTER (WHERE transfer_status = 'pareado') AS pareado,
+            count(*) FILTER (WHERE transfer_status = 'nao') AS nao,
+            count(*) FILTER (WHERE transfer_status = 'anulado') AS anulado
        FROM fin_transaction WHERE account_id = $1 AND source_kind = 'TRANSFER'`,
     [accountId]
   );
-  checkNum('transferências identificadas', Number(transf.n), 372);
-  check('valor transferido para outros bancos', transf.total, -381557542, 100);
-
-  const [emTransito] = await q(
-    `SELECT count(*) AS n FROM fin_transaction
-      WHERE account_id = $1 AND source_kind = 'TRANSFER' AND transfer_status = 'em_transito'`,
-    [accountId]
+  checkPiso('transferências identificadas', Number(transf.n), 372, '08/08/2026');
+  checkInvariante(
+    'toda perna em exatamente um estado (em_transito · pareado · nao · anulado)',
+    Number(transf.particionadas) === Number(transf.n),
+    `${transf.em_transito} em trânsito · ${transf.pareado} pareadas · ${transf.nao} a terceiro · ${transf.anulado} anuladas = ${transf.n}`
   );
-  checkNum('marcadas em trânsito (nenhuma pareada ainda)', Number(emTransito.n), 372);
+  // Transferência é SAÍDA da conta do Asaas para outra conta: o total é
+  // negativo, sempre. Sinal positivo aqui seria perna entrando classificada
+  // como transferência de saída, e o valor apareceria somado em vez de abatido.
+  checkInvariante('valor transferido é saída líquida', Number(transf.total) < 0, brl(transf.total));
 
   // -------------------------------------------------------------------------
   console.log('\n=== 4. Conciliação automática pelo paymentId ===');
+  // 3.023 em 08/08, 3.048 hoje — 25 cobranças novas liquidadas entre 11 e 15/08.
+  // O que este bloco existe para provar não é o número: é que o GATILHO ligou
+  // liquidação a documento. E isso se afirma pela relação entre os dois lados,
+  // que vale em qualquer volume.
   const [liq] = await q(
     `SELECT count(*) AS n FROM fin_settlement s
        JOIN fin_transaction t ON t.id = s.transaction_id WHERE t.account_id = $1`,
     [accountId]
   );
-  checkNum('liquidações criadas', Number(liq.n), 3023);
-
   const [liquidados] = await q(
     `SELECT count(*) AS n FROM fin_document WHERE entity_id = $1 AND status = 'liquidado'`,
     [entityId]
   );
-  checkNum('documentos marcados liquidados pelo gatilho', Number(liquidados.n), 3023);
+  checkPiso('liquidações criadas', Number(liq.n), 3023, '08/08/2026');
+  checkInvariante(
+    'uma liquidação por documento liquidado (o gatilho fechou o par)',
+    Number(liq.n) === Number(liquidados.n),
+    `${liq.n} liquidações · ${liquidados.n} documentos liquidados`
+  );
+
+  // O gatilho nos dois sentidos. Sem o segundo ramo, um documento pago ficaria
+  // "emitido" para sempre e continuaria contando na carteira a receber.
+  const [gatilho] = await q(
+    `SELECT count(*) FILTER (WHERE status = 'liquidado' AND settled_cents < amount_cents) AS liquidado_sem_baixa,
+            count(*) FILTER (WHERE status NOT IN ('liquidado','cancelado')
+                               AND amount_cents > 0 AND settled_cents >= amount_cents) AS baixado_sem_status,
+            count(*) FILTER (WHERE amount_cents > 0 AND settled_cents > amount_cents) AS superliquidado
+       FROM fin_document WHERE entity_id = $1`,
+    [entityId]
+  );
+  checkInvariante("nenhum documento 'liquidado' sem baixa integral", Number(gatilho.liquidado_sem_baixa) === 0);
+  checkInvariante('nenhum documento com baixa integral fora de liquidado', Number(gatilho.baixado_sem_status) === 0);
+  checkInvariante('nenhum documento recebe mais do que vale', Number(gatilho.superliquidado) === 0);
 
   // O invariante do settled_cents: a coluna denormalizada tem de bater com a
   // soma real. Zero linhas ou o índice de confiabilidade é mentira.
@@ -159,25 +254,56 @@ try {
 
   // -------------------------------------------------------------------------
   console.log('\n=== 5. Notas fiscais NÃO entram na receita ===');
-  // 3.483 notas, R$ 4,2 mi. Se estivessem em fin_document ao lado das cobranças,
-  // a receita contaria quase o dobro.
+  // 3.483 notas em 08/08, 3.521 hoje; 3.350 documentos viraram 3.406. Ambos
+  // cresceram pela sincronização, e o título da seção não fala de quantidade —
+  // fala de SEPARAÇÃO. O defeito que ela existe para pegar é a nota vazando
+  // para fin_document e a receita contando quase o dobro. Isso se afirma sem
+  // número: interseção vazia.
   const [notas] = await q(`SELECT count(*) AS n FROM fin_fiscal_document WHERE entity_id = $1`, [entityId]);
-  checkNum('notas fiscais na tabela própria', Number(notas.n), 3483);
   const [docs] = await q(`SELECT count(*) AS n FROM fin_document WHERE entity_id = $1`, [entityId]);
-  checkNum('documentos (só cobranças, sem notas)', Number(docs.n), 3350);
+  checkPiso('notas fiscais na tabela própria', Number(notas.n), 3483, '08/08/2026');
+  checkPiso('documentos (só cobranças, sem notas)', Number(docs.n), 3350, '08/08/2026');
+
+  const [vazamento] = await q(
+    `SELECT count(*) AS n FROM fin_document d
+      WHERE d.entity_id = $1 AND d.source_id IS NOT NULL
+        AND EXISTS (SELECT 1 FROM fin_fiscal_document f
+                     WHERE f.entity_id = d.entity_id AND f.source_id = d.source_id)`,
+    [entityId]
+  );
+  checkInvariante('nenhuma nota fiscal vazou para fin_document', Number(vazamento.n) === 0);
 
   // -------------------------------------------------------------------------
   console.log('\n=== 6. Carteira a receber e inadimplência ===');
-  const [aReceber] = await q(
-    `SELECT COALESCE(SUM(amount_cents - settled_cents), 0) AS total
+  //
+  // ESTA SEÇÃO INTEIRA ERA UM SNAPSHOT SOBRE CURRENT_DATE, e por isso não podia
+  // passar duas vezes. `due_date < CURRENT_DATE` muda de resposta TODO DIA: uma
+  // cobrança que vence hoje entra amanhã na conta de vencidas sem que nada no
+  // sistema tenha mexido. Congelar "47 vencidas · R$ 92.147,03" foi congelar o
+  // dia 08/08. Em 16/08 são 56 e R$ 75.986,86, e nenhum dos dois movimentos é
+  // defeito: 9 venceram, e as que sumiram do valor foram pagas.
+  //
+  // Recongelar em 56 marcaria o teste para falhar de novo amanhã. O que a seção
+  // sabe de verdade — e o comentário original já dizia — é uma RELAÇÃO entre o
+  // ledger e o Asaas, e ela não tem data.
+  const [carteira] = await q(
+    `SELECT count(*) AS n, COALESCE(SUM(amount_cents - settled_cents), 0) AS total
        FROM fin_document
       WHERE entity_id = $1 AND direction = 'receber' AND status IN ('emitido', 'parcial')
-        AND due_date BETWEEN '2026-08-01' AND '2026-08-31'`,
+        AND due_date >= date_trunc('month', CURRENT_DATE)
+        AND due_date <  date_trunc('month', CURRENT_DATE) + interval '1 month'`,
     [entityId]
   );
-  // R$ 125.426 pendentes + R$ 1.785 já vencidos no mesmo mês. O número que
-  // conferi na API separava os dois; a carteira é a soma.
-  check('a receber com vencimento em ago/26', aReceber.total, 12721068, 100);
+  console.log(`  · a receber vencendo no mês corrente: ${brl(carteira.total)} em ${carteira.n} cobranças`);
+  // O saldo em aberto de uma cobrança nunca é negativo: seria recebimento maior
+  // que o valor devido, e a carteira passaria a abater dinheiro que não existe.
+  const [negativas] = await q(
+    `SELECT count(*) AS n FROM fin_document
+      WHERE entity_id = $1 AND direction = 'receber' AND status IN ('emitido','parcial')
+        AND amount_cents - settled_cents < 0`,
+    [entityId]
+  );
+  checkInvariante('nenhuma cobrança em aberto com saldo negativo', Number(negativas.n) === 0);
 
   const [vencido] = await q(
     `SELECT count(*) AS n, COALESCE(SUM(amount_cents - settled_cents), 0) AS total
@@ -186,22 +312,33 @@ try {
         AND due_date < CURRENT_DATE`,
     [entityId]
   );
-  // 47, não 45 — e o ledger está MAIS certo que o Asaas aqui.
-  //
-  // Duas cobranças (R$ 5.100) ainda estão PENDING no Asaas apesar de o
-  // vencimento já ter passado: o gateway demora para virar a flag. Uma cobrança
-  // vencida é vencida, independentemente de quando o provedor resolve carimbar
-  // — e é esse número que a régua de cobrança precisa enxergar.
-  checkNum('cobranças vencidas por data (visão do ledger)', Number(vencido.n), 47);
-  check('valor em atraso por data', vencido.total, 9214703, 100);
-
   const [overdueAsaas] = await q(
-    `SELECT count(*) AS n, COALESCE(SUM(amount_cents - settled_cents), 0) AS total
+    `SELECT count(*) AS n, COALESCE(SUM(amount_cents - settled_cents), 0) AS total,
+            count(*) FILTER (WHERE due_date >= CURRENT_DATE) AS futuras
        FROM fin_document WHERE entity_id = $1 AND source_status = 'OVERDUE'`,
     [entityId]
   );
-  checkNum('  destas, marcadas OVERDUE pelo próprio Asaas', Number(overdueAsaas.n), 45);
-  check('  valor correspondente', overdueAsaas.total, 8704703, 100);
+  console.log(`  · vencidas pelo ledger: ${vencido.n} (${brl(vencido.total)}) · marcadas OVERDUE pelo Asaas: ${overdueAsaas.n}`);
+
+  // O invariante que o comentário original já descrevia, agora dito como
+  // relação: "47, não 45 — e o ledger está MAIS certo que o Asaas aqui. Duas
+  // cobranças ainda estão PENDING apesar de o vencimento já ter passado: o
+  // gateway demora para virar a flag."
+  //
+  // Ou seja: o ledger enxerga a inadimplência ANTES do gateway, nunca depois.
+  // Se um dia o ledger vir MENOS vencidas que o Asaas, é o ledger que está
+  // atrasado — e é essa régua que a cobrança usa.
+  checkInvariante(
+    'o ledger vê a inadimplência antes do gateway, nunca depois',
+    Number(vencido.n) >= Number(overdueAsaas.n),
+    `ledger ${vencido.n} ≥ Asaas ${overdueAsaas.n}`
+  );
+  // E o outro lado: o Asaas não pode marcar OVERDUE o que ainda não venceu.
+  // Se marcar, é a data do ledger que está errada.
+  checkInvariante(
+    'nenhuma OVERDUE do Asaas com vencimento no futuro',
+    Number(overdueAsaas.futuras) === 0
+  );
 
   // -------------------------------------------------------------------------
   console.log('\n=== 7. Classificação ===');

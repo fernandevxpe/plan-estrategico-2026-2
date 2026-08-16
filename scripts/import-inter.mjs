@@ -249,11 +249,48 @@ try {
   }
   relatorio.contrapartes = idContraparte.size;
 
+  // ------------------------------------------------------ trilha da linha crua
+  // Todo lote confirmado precisa da linha crua atrás dele (invariante C3): sem
+  // ela não há preview, o dedupe não é auditável e o desfazer não sabe o que
+  // reverter. Este importador criava o lote e os lançamentos sem nunca gravar a
+  // trilha — os lotes 15, 17 e 30 ficaram com 684 lançamentos e ZERO linhas
+  // cruas, e o desfazer deles prometia algo que não sabia cumprir.
+  //
+  // A linha é gravada para TODA transação lida, inclusive a que não virou
+  // lançamento: o lote 30 declara "161 lidas, 13 inseridas", e esse 148 de
+  // diferença só é auditável se cada uma disser por que não entrou.
+  const gravarLinhaCrua = (t, i, campos) =>
+    client.query(
+      `INSERT INTO fin_import_row
+         (batch_id, row_number, raw, posted_on, amount_cents, description_raw,
+          dedupe_hash, status, transaction_id, message)
+       VALUES ($1,$2,$3::jsonb,$4,$5,$6,$7,$8,$9,$10)`,
+      [
+        batchId,
+        i + 1,
+        JSON.stringify(t),
+        campos.data ?? null,
+        campos.cents ?? null,
+        campos.desc ?? null,
+        campos.hash ?? null,
+        campos.status,
+        campos.transactionId ?? null,
+        campos.message ?? null
+      ]
+    );
+
   // ------------------------------------------------------------ lançamentos
-  for (const t of transacoes) {
+  for (const [i, t] of transacoes.entries()) {
     const data = t.dataTransacao ?? t.dataEntrada;
     const cents = valorEmCentavos(t);
-    if (!cents) continue;
+    if (!cents) {
+      await gravarLinhaCrua(t, i, {
+        status: 'ignorado',
+        data,
+        message: 'valor ausente, zero ou ilegível — não vira lançamento'
+      });
+      continue;
+    }
 
     const c = extrairContraparte(t);
     const proprio = Boolean(cnpjProprio && c.documento === cnpjProprio);
@@ -305,7 +342,7 @@ try {
        -- um lote dizendo 150 inserções com zero linhas atrás dele, e o desfazer
        -- passou a mentir — reverter esse lote não apagaria nada, e reverter o
        -- anterior apagaria linhas que a tela atribui a ele.
-       RETURNING (xmax = 0) AS inserido`,
+       RETURNING id, (xmax = 0) AS inserido`,
       [
         entityId,
         accountId,
@@ -338,16 +375,41 @@ try {
     if (proprio) relatorio.proprias += 1;
     if (c.documento) relatorio.comLastro += 1;
     if (c.endToEndId) relatorio.comE2E += 1;
-    if (gravado.rows[0]?.inserido) relatorio.inseridas += 1;
+    const inserido = Boolean(gravado.rows[0]?.inserido);
+    if (inserido) relatorio.inseridas += 1;
     else relatorio.atualizadas += 1;
+
+    // 'importado' e 'duplicado' espelham exatamente o xmax=0 que decide
+    // inserted_count: a trilha e o contador do lote contam a mesma história.
+    await gravarLinhaCrua(t, i, {
+      status: inserido ? 'importado' : 'duplicado',
+      transactionId: gravado.rows[0]?.id ?? null,
+      data,
+      cents,
+      desc,
+      hash
+    });
   }
 
   // --------------------------------------------------------- cobertura
   await client.query(
     // 'api' e não 'extrato': a cobertura por API é contínua e sem buraco de
     // arquivo esquecido, e o alarme de extrato parado precisa saber a diferença.
+    //
+    // DO UPDATE, e não DO NOTHING: o único é (account_id, source, period_start),
+    // e o sync do Inter sempre começa na mesma data. Com DO NOTHING, toda
+    // sincronização depois da primeira do mês era engolida em silêncio — a
+    // janela ficou parada em 2026-08-04 enquanto os lançamentos chegavam até
+    // 2026-08-14, e os 13 do dia 14 passaram a existir fora de qualquer
+    // cobertura declarada (invariante F3), com o monitor de extrato do Inter
+    // acusando 12 dias de atraso que não existiam.
+    //
+    // GREATEST porque uma janela nunca encolhe: um sync parcial que trouxesse
+    // menos dias não pode apagar cobertura já provada por outro.
     `INSERT INTO fin_statement_coverage (account_id, period_start, period_end, source)
-     VALUES ($1,$2,$3,'api') ON CONFLICT DO NOTHING`,
+     VALUES ($1,$2,$3,'api')
+     ON CONFLICT (account_id, source, period_start) DO UPDATE
+       SET period_end = GREATEST(fin_statement_coverage.period_end, EXCLUDED.period_end)`,
     [accountId, periodoInicio, periodoFim]
   );
 

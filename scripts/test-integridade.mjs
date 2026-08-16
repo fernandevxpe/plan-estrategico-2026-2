@@ -318,13 +318,41 @@ check('B', 'B4', 'as duas pernas estão em contas diferentes', {
 // NÃO "saiu para uma conta nossa". A migração 0023 estreitou a regra 18 para
 // exigir o nome da empresa no texto; sem este teste, a próxima regra larga
 // reabre o buraco e ninguém percebe até a auditoria seguinte.
+//
+// ---------------------------------------------------------------------------
+// CORREÇÃO DE 16/08/2026: a prova documental entrou na lista de provas aceitas.
+// ---------------------------------------------------------------------------
+// A versão anterior aceitava três provas: par montado, `counterparty_id` não
+// nulo, ou o nome da empresa no texto. A segunda NUNCA pode acontecer, e é o
+// invariante A1 deste mesmo arquivo que garante isso: nenhuma fin_counterparty
+// pode carregar o CNPJ da própria empresa. Se A1 vale, "contraparte própria"
+// não existe como linha, e o ramo estava morto desde que foi escrito.
+//
+// A prova de titularidade que de fato existe hoje é OUTRA, e é mais forte que
+// as duas vivas: `counterparty_document` igual ao CNPJ da entidade. Ela chegou
+// depois deste teste, pela 0042 (persistiu o lastro do PIX do Inter) e pela
+// 0053. scripts/import-inter.mjs diz isso na íntegra, no comentário do INSERT:
+//
+//   "O lastro vai para o banco INCLUSIVE quando é o CNPJ da própria empresa —
+//    ali ele é justamente o que prova a transferência interna. Note que
+//    `counterparty_id` continua nulo nesse caso: a empresa não é contraparte de
+//    si mesma. O documento fica no lançamento, não no cadastro."
+//
+// E é exatamente o predicado que a 0059 usou como evidência estrutural para
+// reclassificar 81 transferências próprias — 156 linhas irmãs destas 5, mesmo
+// CNPJ, mesma categoria 9.01, já pareadas e por isso invisíveis a este teste.
+//
+// Trocar texto por documento não afrouxa o invariante: aperta. "XPE Tecnologia"
+// e "XP ENERGY SERVICOS" são a mesma empresa e nenhuma comparação de nome diria
+// isso — o CNPJ diz.
 check('B', 'B5', 'transferência própria não pode ter só o source_kind como prova de titularidade', {
-  afirma: 'perna marcada como transferência entre contas próprias precisa de par, de contraparte própria OU do nome da empresa no texto',
+  afirma: 'perna marcada como transferência entre contas próprias precisa de par, do CNPJ da empresa no documento da contraparte OU do nome da empresa no texto',
   porque: 'tratar TRANSFER como prova de titularidade escondeu R$ 356.506,34 de pagamento a terceiro dentro da despesa'
 }, async () => {
   const linhas = await q(
     `WITH marca AS (
-       SELECT lower(split_part(legal_name, ' ', 1) || ' ' || split_part(legal_name, ' ', 2)) nome
+       SELECT lower(split_part(legal_name, ' ', 1) || ' ' || split_part(legal_name, ' ', 2)) nome,
+              regexp_replace(cnpj, '[^0-9]', '', 'g') cnpj
          FROM fin_entity WHERE id = $1
      )
      SELECT t.id, t.posted_on, t.amount_cents, left(t.description_raw, 58) d
@@ -332,6 +360,7 @@ check('B', 'B5', 'transferência própria não pode ter só o source_kind como p
       WHERE t.transfer_status <> 'nao'
         AND t.transfer_group_id IS NULL
         AND t.counterparty_id IS NULL
+        AND coalesce(t.counterparty_document, '') <> m.cnpj
         AND t.source_kind IN ('TRANSFER', 'PIX', 'TED')
         AND position(m.nome IN lower(t.description_norm)) = 0
       ORDER BY abs(t.amount_cents) DESC`,
@@ -480,16 +509,54 @@ check('D', 'D4', 'documento a receber não carrega categoria de despesa, nem o c
 // 'fato_estrutural' é o único carimbo que dispensa revisão humana: significa
 // "veio da fonte". Se um LIKE sobre texto livre puder carimbá-lo, a distinção
 // some e a fila de revisão para de enxergar o que precisa de olho.
+//
+// ---------------------------------------------------------------------------
+// CORREÇÃO DE 16/08/2026: a evidência estrutural deixou de ser só `source_kind`.
+// ---------------------------------------------------------------------------
+// Quando este invariante foi escrito, `source_kind` era o único campo estrutural
+// que o ledger tinha. Não é mais, e as fontes novas são tão duras quanto ele:
+//
+//   documento_da_contraparte     0059 — CNPJ da contraparte, do lastro do PIX
+//   tipo_declarado_pela_fonte    classificar-fila.mjs — o Asaas declara o tipo
+//   perna_irma_do_grupo_de_transferencia — o par já conciliado
+//   categoria_padrao_da_pessoa   0050 — cadastro de fin_person
+//
+// Manter a exigência literal de `campo='source_kind'` reprovaria 143 lançamentos
+// (R$ 1.039.051,08) cuja evidência é MELHOR que um source_kind — o CNPJ resolve
+// o que o nome esconde — e ainda deixaria passar o que o invariante existe para
+// pegar, se um dia alguém carimbasse `campo='source_kind'` sem ter olhado.
+//
+// A regra fica dita pelo que ela sempre quis dizer, e com mais dentes:
+//
+//   1. fato_estrutural TEM de declarar a evidência (campo ou origem). Carimbo
+//      sem evidência nenhuma era metade das violações e é indefensável.
+//   2. A evidência TEM de estar na lista fechada abaixo.
+//   3. Campo de TEXTO LIVRE nunca entra na lista, que é o buraco original.
+//
+// Ampliar a lista é decisão consciente: exige editar esta constante, com o nome
+// da migration que criou a evidência ao lado.
+const EVIDENCIA_ESTRUTURAL = [
+  'source_kind',                          // o tipo que a fonte declara (0002)
+  'documento_da_contraparte',             // CNPJ da contraparte (0042 · 0059)
+  'tipo_declarado_pela_fonte',            // Asaas declara PAYMENT_RECEIVED (classificar-fila)
+  'perna_irma_do_grupo_de_transferencia', // o par já conciliado (0044)
+  'categoria_padrao_da_pessoa'            // cadastro de fin_person (0050)
+];
+
 check('D', 'D5', "'fato_estrutural' só quando a evidência vem da fonte", {
-  afirma: "classified_by = 'fato_estrutural' ⇒ classified_reason->>'campo' = 'source_kind'",
+  afirma: `classified_by = 'fato_estrutural' ⇒ a evidência declarada está em {${EVIDENCIA_ESTRUTURAL.join(', ')}} — nunca um campo de texto livre`,
   porque: 'palpite sobre texto livre carimbado como fato dispensa a revisão exatamente onde ela mais faz falta'
 }, async () => {
   const linhas = await q(
-    `SELECT coalesce(t.classified_reason->>'campo', '(sem evidência)') campo,
+    `SELECT coalesce(t.classified_reason->>'campo',
+                     t.classified_reason->>'origem', '(sem evidência)') campo,
             count(*) n, coalesce(sum(abs(t.amount_cents)), 0) rs, array_agg(t.id) ids
        FROM fin_transaction t
-      WHERE t.classified_by = 'fato_estrutural' AND coalesce(t.classified_reason->>'campo', '') <> 'source_kind'
-      GROUP BY 1 ORDER BY 3 DESC`
+      WHERE t.classified_by = 'fato_estrutural'
+        AND coalesce(t.classified_reason->>'campo',
+                     t.classified_reason->>'origem', '') <> ALL ($1::text[])
+      GROUP BY 1 ORDER BY 3 DESC`,
+    [EVIDENCIA_ESTRUTURAL]
   );
   return {
     n: linhas.reduce((s, l) => s + Number(l.n), 0),
@@ -673,23 +740,53 @@ check('G', 'G2', 'nenhum snapshot de saldo com variância', {
 // meio. 503 itens apontando para linhas JÁ classificadas foi o que a auditoria
 // achou — R$ 368 mil de fila que não era fila.
 // =========================================================================
+// ---------------------------------------------------------------------------
+// CORREÇÃO DE 16/08/2026: o motivo do item decide o que é ruído.
+// ---------------------------------------------------------------------------
+// A versão anterior de H1/H2 dizia "item pendente ⇒ alvo sem categoria", e isso
+// contradiz o próprio esquema. A 0004 define SETE motivos, e um deles —
+// `baixa_confianca` — só é escrito por scripts/import-asaas.mjs no ramo em que o
+// documento JÁ TEM categoria:
+//
+//   CASE WHEN d.category_id IS NULL AND (...) THEN 'texto_generico'
+//        WHEN d.category_id IS NULL           THEN 'sem_categoria'
+//        ELSE                                      'baixa_confianca' END
+//
+// 'baixa_confianca' é literalmente "classifiquei, confirme para mim". Exigir que
+// o alvo dele não tenha categoria proíbe a revisão de confiança de existir — e
+// as 413 violações do lado do documento eram 413 de 413 desse motivo, ou seja,
+// zero defeito real e um invariante pedindo para apagar a fila de conferência.
+//
+// E a correção anda para o outro lado também: 'a classificar' (3.99 e 5.99) NÃO
+// tira a linha da fila. É o marcador de indeciso, e contá-lo como classificado é
+// o mesmo vício que infla o indicador de categoria para 96,5% quando o real é
+// 90,9%. Item pendente sobre uma linha em 5.99 é trabalho de verdade.
+const MOTIVO_EXIGE_SEM_CATEGORIA = ['sem_categoria', 'texto_generico'];
+const CODIGO_A_CLASSIFICAR = ['3.99', '5.99'];
+
 check('H', 'H1', 'nenhum item pendente aponta para lançamento que já tem categoria', {
-  afirma: "fin_review_item 'pendente' ⇒ a fin_transaction alvo tem category_id IS NULL",
+  afirma: "fin_review_item 'pendente' de motivo sem_categoria/texto_generico ⇒ a fin_transaction alvo está sem categoria ou em 'a classificar'",
   porque: 'a auditoria achou 503 destes, R$ 368 mil de ruído que empurra o trabalho real para fora da tela'
 }, () => alvo(
   `SELECT count(*) n, coalesce(sum(abs(ri.amount_cents)), 0) rs, array_agg(t.id) ids
-     FROM fin_review_item ri JOIN fin_transaction t ON t.id = ri.target_id AND ri.target_table = 'fin_transaction'
-    WHERE ri.status = 'pendente' AND t.category_id IS NOT NULL`
+     FROM fin_review_item ri
+     JOIN fin_transaction t ON t.id = ri.target_id AND ri.target_table = 'fin_transaction'
+     JOIN fin_category c ON c.id = t.category_id
+    WHERE ri.status = 'pendente' AND ri.reason = ANY ($1::text[]) AND c.code <> ALL ($2::text[])`,
+  [MOTIVO_EXIGE_SEM_CATEGORIA, CODIGO_A_CLASSIFICAR]
 ));
 
 check('H', 'H2', 'nenhum item pendente aponta para documento que já tem categoria', {
-  afirma: "fin_review_item 'pendente' ⇒ o fin_document alvo tem category_id IS NULL",
+  afirma: "fin_review_item 'pendente' de motivo sem_categoria/texto_generico ⇒ o fin_document alvo está sem categoria ou em 'a classificar'",
   porque: 'mesmo ruído do H1 do lado da carteira'
 }, () => alvo(
   `SELECT count(*) n, coalesce(sum(abs(ri.amount_cents)), 0) rs, array_agg(d.id) ids
-     FROM fin_review_item ri JOIN fin_document d ON d.id = ri.target_id AND ri.target_table = 'fin_document'
-    WHERE ri.status = 'pendente' AND d.category_id IS NOT NULL`,
-  [], 'doc'
+     FROM fin_review_item ri
+     JOIN fin_document d ON d.id = ri.target_id AND ri.target_table = 'fin_document'
+     JOIN fin_category c ON c.id = d.category_id
+    WHERE ri.status = 'pendente' AND ri.reason = ANY ($1::text[]) AND c.code <> ALL ($2::text[])`,
+  [MOTIVO_EXIGE_SEM_CATEGORIA, CODIGO_A_CLASSIFICAR],
+  'doc'
 ));
 
 check('H', 'H3', 'nenhum lançamento sem categoria fica fora da fila', {

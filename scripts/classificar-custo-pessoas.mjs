@@ -103,8 +103,15 @@ try {
           SET category_id = $2,
               review_status = CASE WHEN review_status IN ('adiado','ignorado')
                                    THEN review_status ELSE 'ok' END,
-              classified_by = 'regra',
-              classified_reason = jsonb_build_object('motivo','custo de pessoa roteado por vínculo','pessoa',$3::text),
+              -- 'favorecido' e não 'regra': nenhuma fin_rule decidiu isto. Quem
+              -- decide é o VÍNCULO de quem recebeu, lido do cadastro. Carimbar
+              -- 'regra' sem classified_rule_id quebrava o invariante D6 em 371
+              -- lançamentos (R$ 548.652,57) e fazia o badge "por quê?" prometer
+              -- uma regra que a tela nunca conseguiria abrir.
+              classified_by = 'favorecido',
+              classified_reason = jsonb_build_object(
+                'campo','fin_person.employment_type',
+                'motivo','custo de pessoa roteado por vínculo','pessoa',$3::text),
               classified_at = now(),
               updated_at = now()
         WHERE counterparty_id = $1
@@ -126,8 +133,12 @@ try {
           SET category_id = $2,
               review_status = CASE WHEN t.review_status IN ('adiado','ignorado')
                                    THEN t.review_status ELSE 'ok' END,
-              classified_by = 'regra',
-              classified_reason = jsonb_build_object('motivo','fornecedor conhecido','servico',$3::text),
+              -- Mesmo motivo do bloco acima: quem decide é o FORNECEDOR casado
+              -- por nome normalizado, não uma fin_rule.
+              classified_by = 'favorecido',
+              classified_reason = jsonb_build_object(
+                'campo','fin_counterparty.normalized_name',
+                'motivo','fornecedor conhecido','servico',$3::text),
               classified_at = now(),
               updated_at = now()
          FROM fin_counterparty c

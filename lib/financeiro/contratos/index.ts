@@ -51,6 +51,10 @@ export {
   getPrioridadeReceita,
   type Recebivel,
   type FiltrosReceber,
+  // A rota HTTP precisa da lista branca de ordenação para recusar `?ordenarPor=`
+  // desconhecido com 400. Sem este export ela teria de importar do módulo por
+  // dentro, e o "ponto de entrada único" deixaria de ser único.
+  type CampoOrdenacaoReceber,
   type ContasAPagar,
   type CamadaAPagar,
   type LinhaPrioridade

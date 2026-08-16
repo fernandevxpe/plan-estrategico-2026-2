@@ -940,6 +940,49 @@ A diferença não é técnica: em (a) a empresa só sabe que deve quando alguém
 lembra; em (b) a obrigação existe desde que o fornecedor emitiu. **Enquanto for
 (a), a previsão de saída nunca fica completa.**
 
+### Medido em 16/08/2026 — de onde ela pode nascer, fonte a fonte
+
+A modelagem de (b) já existia desde a 0030 e nunca tinha sido exercitada. A
+frente da 0095 mediu cada fonte que já está no banco e perguntou uma coisa só:
+**essa fonte declara uma obrigação FUTURA, ou só guarda despesa que já foi
+paga?** A matriz vive em `fin_pagar_origem_v` e se recalcula sozinha.
+
+| origem | evidência declarada | derivável | valor | caminho |
+|---|---|---|---:|---|
+| ClickUp "Fluxo de caixa" | tarefa com vencimento futuro e valor | ✅ **aplicado** | R$ 23.600,00 | `import-clickup-compromissos.mjs --apply` |
+| folha contratada | `fin_person_compensation` fixo/contratado, 19 pessoas ativas | ✅ com trava | R$ 58.600,00/mês | contrato 'pagar' + documento mensal — **ver dúvida 41** |
+| cartão: ciclo aberto + parcelamento | compra já feita, fatura não paga; plano declarado pelo emissor | ✅ | R$ 8.556,63 | `fin_card_compromisso_mensal_v` já modela; falta materializar |
+| reembolso aprovado | aprovação humana registrada, `paid_document_id` vazio | ✅ | R$ 4.733,20 (11) | **ver dúvida 43** |
+| fatura de cartão em aberto | saldo devedor declarado pelo emissor | ✅ | R$ 494,33 (2) | `fin_card_bill` já tem due_date |
+| recorrente de fornecedor | **só o histórico pago** | ❌ | R$ 14.207,21/mês (11) | vira documento = contar duas vezes |
+| NFe de entrada | **não existe** — 3.521 notas, 100% emitidas pela XPE | ❌ | — | **ver dúvida 45** |
+| contrato de fornecedor | `erp_contrato` é 100% contrato de cliente | ❌ | — | cadastro humano |
+| boleto agendado no Inter | credencial usa escopo `extrato.read` | ❌ | — | o extrato só mostra depois de pago |
+| tributo apurado | a apuração declara que não calcula | ❌ | — | depende da dúvida 21 |
+
+**O primeiro documento a pagar entrou.** `fin_document` deixou de ser 100%
+'receber': 12 linhas `direction='pagar'`, R$ 23.600,00, status `previsto`,
+vencendo de setembro a dezembro, cada uma amarrada a uma tarefa do ClickUp e
+a um `fin_contract` de folha. A previsão de dezembro caiu R$ 23.600,00 — menor
+e verdadeira.
+
+**Derivável hoje, sem humano nenhum: R$ 37.384,16** (ClickUp aplicado + cartão +
+reembolso + fatura parcial), mais R$ 58.600,00/mês de folha contratada assim que
+a trava de dupla contagem da dúvida 41 for decidida.
+
+**Só um humano resolve: R$ 14.207,21/mês.** São 11 fornecedores com nome, valor
+e dia do mês — Âncora Imobiliária, contabilidade, marketing, Compesa,
+Neoenergia, Google One, pró-labore — em `fin_pagar_lacuna_v`. O extrato prova
+que a XPE paga todo mês; **nenhuma fonte declara o próximo vencimento.** Pedir
+contrato, boleto ou carnê a esses 11 é o passo que falta, e é fora do sistema.
+
+A cobertura da previsão de saída, medida agora em `fin_pagar_cobertura_v`: 77,5%
+em setembro, caindo para 68,0% em fevereiro/27 — a lacuna cresce porque folha e
+DAS são projetados com prazo e o resto não. Dos R$ 33.899,43/mês que faltam em
+setembro, **R$ 11.593,04 já estão medidos e conscientemente fora do saldo**: são
+as recorrentes de fornecedor, que a 0057 segura justamente por não terem
+documento. Um documento por fornecedor fecharia um terço do buraco.
+
 ---
 
 ## 29. Nenhum favorecido tem conta cadastrada
@@ -1267,3 +1310,147 @@ regra (b)?
 D6 continua acusando **63 violações, R$ 79.265,35**, com causa conhecida e
 escrita. É de propósito: invariante falhando com causa conhecida é melhor que
 invariante verde com dado errado.
+
+---
+
+## 41. A folha contratada vira documento a pagar, ou continua só projeção?
+
+`fin_person_compensation` declara **R$ 58.600,00/mês de fixo contratado para 19
+pessoas ativas**. É contrato, não histórico: o valor foi combinado, não medido no
+extrato. Cabe inteiro no modelo de 0030 (`fin_contract direction='pagar'` +
+`fin_document` mensal).
+
+O problema não é criar — é **não somar duas vezes**. A camada `pagar_folha` de
+`fin_previsao_evento_v` já projeta R$ 90.186,85/mês de folha. Se o documento
+entrar sem trava, a previsão passa a contar folha por dois caminhos, e o erro
+tem exatamente a cara do que a 0061 corrigiu do lado da receita ("cobrança
+emitida vence projeção", migration 0061).
+
+**Opções:** *(a)* materializar o documento e aplicar a regra espelho —
+**documento vence projeção**: onde existe `fin_document` a pagar para aquela
+pessoa naquele mês, a camada `pagar_folha` não projeta · *(b)* deixar a folha só
+como projeção e reservar `fin_document` a pagar para fornecedor · *(c)*
+materializar só quem tem contrato assinado, mantendo os demais em projeção.
+
+Em (a) a folha ganha vencimento e favorecido e entra na fila de pagamento; em
+(b) a fila de pagamento nunca vê a maior saída da empresa.
+
+**Em jogo: R$ 58.600,00/mês.**
+
+---
+
+## 42. Os três nomes do ClickUp que a folha não confirma
+
+Os 12 documentos a pagar que entraram (R$ 23.600,00, set–dez) vieram da lista
+"Fluxo de caixa" do ClickUp. Três deles não fecham com `fin_person_compensation`,
+e o importador **não decidiu** — gravou o contrato como `previsto` ou `suspenso`
+e relatou:
+
+| pessoa | ClickUp | planilha de folha | o que o script fez |
+|---|---:|---:|---|
+| **Felipe** (Marcelo Felipe Dias Lacerda) | R$ 2.500,00/mês | inativo desde 2026-08-01 | contrato `suspenso`, **R$ 10.000,00 NÃO viraram documento** |
+| **Adryan Kennie** | R$ 1.600,00/mês | R$ 3.200,00 de fixo | contrato `previsto`, documento criado por R$ 1.600,00 |
+| **Denilson Ferreira da Silva** | R$ 2.100,00/mês | não tem fixo contratado | contrato `previsto`, documento criado |
+
+**As perguntas:** *(1)* o Felipe saiu em 01/08 e o ClickUp programa set–dez — a
+empresa deve esses R$ 10.000,00 (rescisão, acordo) ou é resíduo de planejamento
+que ninguém apagou? *(2)* o Adryan recebe R$ 1.600 ou R$ 3.200 — o ClickUp é
+metade da folha dele ou a planilha está desatualizada? *(3)* o Denilson tem
+contrato de fixo que a planilha não conhece?
+
+Isso conversa com a dúvida 24 (Felipe inativo recebeu em julho e agosto).
+
+**Em jogo: R$ 10.000,00 + R$ 6.400,00/quadrimestre de divergência.**
+
+---
+
+## 43. Os 11 reembolsos aprovados de jan–jul: devidos ou já pagos?
+
+`fin_reimbursement` tem **11 linhas `status='aprovado'`, R$ 4.733,20**, com
+`paid_document_id` vazio — de janeiro a julho de 2026. Do lado de 70 linhas
+`pago` o campo também está vazio, então a ausência do ponteiro não distingue os
+dois casos.
+
+Se estiverem devidos, são conta a pagar com aprovação humana já registrada — a
+origem mais barata de todas. Se já foram pagos junto da folha do mês seguinte
+(que é a regra declarada), o status é que ficou para trás, e criar documento
+inventaria uma dívida que não existe.
+
+**Opções:** *(a)* conciliar cada um contra a folha do mês seguinte e fechar os
+que casarem · *(b)* tratar todos como devidos e materializar o documento ·
+*(c)* perguntar pessoa a pessoa.
+
+A (b) é a única que não posso executar sem resposta: reembolso de janeiro
+aprovado e ainda em aberto em agosto é improvável o bastante para não virar
+obrigação por omissão.
+
+**Em jogo: R$ 4.733,20.**
+
+---
+
+## 44. Cartão: o ciclo aberto e as parcelas viram documento a pagar?
+
+`fin_card_compromisso_mensal_v` já modela **R$ 8.556,63** de obrigação de cartão
+— R$ 3.888,61 de compras já feitas no ciclo aberto e R$ 4.668,02 em 21 parcelas
+contratadas até abril/27. A compra aconteceu; a fatura ainda não foi paga. É
+conta a pagar por definição.
+
+Hoje isso já entra na previsão pelas camadas `pagar_cartao_ciclo` e
+`pagar_cartao_parcela`. Materializar como documento daria vencimento, favorecido
+e fila de pagamento — e exige a mesma trava da dúvida 41 para não contar duas
+vezes.
+
+**Opções:** *(a)* materializar um documento por fatura (uma linha por mês,
+valor = ciclo + parcelas) · *(b)* um documento por parcela · *(c)* manter só
+como projeção.
+
+**Em jogo: R$ 8.556,63.**
+
+---
+
+## 45. Por onde a nota de entrada chega?
+
+`fin_fiscal_document` tem 3.521 notas e **todas foram emitidas pela XPE** (nfse
+via Asaas). Não existe nenhum repositório de documento de entrada — e é por isso
+que a regra de competência `documento_fiscal_despesa` cobre **zero linhas** desde
+que foi criada, e por que "os MEIs emitem nota?" segue sem resposta.
+
+Não é falta de modelo: `fin_fiscal_document` aceita os dois lados. É falta de
+**fonte**. Antes de qualquer importador, alguém precisa dizer por onde a nota
+chega.
+
+**Opções:** *(a)* caixa de e-mail dedicada (nota@) com parser de XML anexo ·
+*(b)* consulta ao SEFAZ pelo CNPJ da XPE, que devolve as NFe emitidas *contra* a
+empresa · *(c)* upload manual na tela, aceitando cobertura parcial · *(d)*
+assumir que a XPE não recebe NFe relevante (serviço de MEI costuma vir por
+NFS-e municipal) e cadastrar só o que o contador já recebe.
+
+Sem isso, a competência da despesa continua sendo a data do pagamento — o que
+significa que a DRE por competência do lado da despesa é a DRE de caixa com
+outro nome.
+
+---
+
+## 46. A conta corrente do Nubank não tem saldo declarado por fonte externa
+
+Descoberto ao auditar as 114 linhas repetidas: das 4 contas com movimento,
+**Asaas, Inter e Nubank—Caixinhas têm `fin_balance_snapshot` com `source='api'` e
+variância zero** — o banco declara o saldo e ele bate com o ledger. A **conta
+corrente do Nubank não tem snapshot nenhum**: o "fecha" dela compara o ledger
+contra `fin_account.current_balance_cents`, coluna escrita pelo próprio
+importador (migration 0041, valor R$ 11.682,57).
+
+Fonte conferindo a si mesma não é conferência. As 14 assinaturas repetidas que
+moram no Nubank foram provadas por outros eixos — totais direcionais do PDF e
+contagem espelhada no Polp — mas a âncora de saldo, que é a prova mais forte
+disponível nas outras contas, não existe ali.
+
+**Opções:** *(a)* o Polp expõe saldo da conta corrente? Se sim, gravar snapshot
+diário como já se faz com as caixinhas · *(b)* extrato/PDF novo com saldo final
+declarado, e gravar o snapshot na importação · *(c)* aceitar e registrar que a
+conta corrente do Nubank fecha contra si mesma.
+
+Isso não muda nenhum número hoje. Muda o que "6/6 contas fecham" significa para
+uma delas.
+
+---

@@ -537,3 +537,127 @@ Tributário (0081) · planilha (0082) · cartão (0083) · trilha (0084) · matr
 APIs e o cartão têm commit próprio na branch dele. **O módulo tributário
 continua sendo a maior lacuna**, e ele depende da dúvida 21 (em que conta ficam
 os MEIs), porque isso decide o Fator R e portanto o anexo do Simples.
+
+---
+
+## 12. Frente D+28 — as repetidas triadas e a primeira conta a pagar (16/08/2026)
+
+Duas frentes irmãs sobre o mesmo buraco: **a empresa não sabe o que deve**.
+Migrations `0095_fin_duplicata_e_pagar.sql` e
+`0096_fin_pagar_origem_fornecedor.sql`, aplicadas **seletivamente** — 0090, 0092
+e 0094 são de outras frentes e continuam pendentes, sem terem sido arrastadas.
+
+### Parte A — os 54 grupos do M12, triados com evidência nomeada
+
+```
+provado distinto ....... 54 grupos · 114 repetidas · R$ 80.499,81
+provado duplicado ......  0 grupos ·   0 repetidas · R$      0,00
+indeterminado ..........  0 grupos ·   0 repetidas · R$      0,00
+```
+
+| prova | grupos | repetidas | excedente |
+|---|---:|---:|---:|
+| espelho de transferência em outra conta | 4 | 4 | R$ 42.327,82 |
+| id do provedor distinto (ftn/idTransacao/Polp/ERP) | 25 | 40 | R$ 18.697,78 |
+| estorno no extrato | 1 | 1 | R$ 10.300,00 |
+| `endToEndId` distinto | 13 | 55 | R$ 5.781,21 |
+| totais direcionais do extrato (PDF com SHA) | 7 | 10 | R$ 2.272,62 |
+| contagem espelhada no open finance (Polp) | 4 | 4 | R$ 1.120,38 |
+
+A hierarquia de `fin_duplicate_triagem_v` ordena as provas por **quanto elas
+dependem do nosso próprio parser**. O nível 7 — "a linha crua existe" — é
+circular de propósito e nunca decide: "o parser emitiu 4 linhas" não responde
+"o extrato tinha 4 movimentos". Nenhum caso parou nele.
+
+Dois casos ganharam prova mais forte que a registrada pela 0087: o
+**estorno** (Asaas 11/05, R$ 10.300 — um PIX foi anulado pelo banco e o outro
+pareado com o Inter) e o **espelho** (os R$ 16.700 × 2 do Asaas casam um a um
+com dois créditos do Nubank, dois `transfer_group_id` distintos). Ambos eram
+"ids distintos" antes.
+
+### O que o M12 não mede — três detectores novos, todos zerados
+
+A assinatura do M12 é `(conta, data, valor, descrição normalizada)`. A descrição
+do Inter ("Pix enviado") e a do PDF do Nubank ("Transferência enviada pelo Pix")
+são textos diferentes para o mesmo dinheiro: **um movimento ingerido por duas
+fontes nunca aparece como grupo repetido.** `fin_duplicidade_cruzada_v` varre o
+que a assinatura não alcança:
+
+```
+end_to_end_id repetido ................ 0   (o mesmo PIX contado duas vezes)
+documento liquidado duas vezes ........ 0   (a mesma cobrança, via fin_settlement/paymentId)
+mesmo movimento em duas fontes ........ 0   (conta+data+valor, fontes distintas)
+```
+
+Zero aqui não é monitor desligado: são 13.881 lançamentos varridos por três
+provas independentes. É a razão de o balde "provado duplicado" valer R$ 0,00 —
+e, por isso, **nada foi neutralizado**. `fin_duplicate_ledger_guard_v` continua
+`neutralization_enabled = false`, reafirmado por assertiva da própria 0095.
+
+**A âncora que vale mais que qualquer id:** se uma das 114 fosse fantasma, a
+conta não fecharia — o calculado passaria do declarado exatamente pelo
+excedente. Em Asaas, Inter e Nubank—Caixinhas o declarado vem de snapshot de API
+com variância zero. A conta corrente do Nubank **não tem** essa âncora: virou
+dúvida 46.
+
+### Parte B — `fin_document` deixou de ser 100% "receber"
+
+```
+antes:  3.406 documentos · 100% receber · 0% pagar
+depois: 3.418 documentos ·  12 a pagar · R$ 23.600,00 · status 'previsto'
+```
+
+Vieram da lista "Fluxo de caixa" do ClickUp por
+`scripts/import-clickup-compromissos.mjs --apply` (a flag é `--apply`, não
+`--aplicar`), que existia desde a 0030 e nunca tinha rodado. 16 tarefas futuras,
+4 contratos `direction='pagar'`; os R$ 10.000,00 do Felipe **não** viraram
+documento — o contrato nasceu `suspenso` porque ele está inativo desde 01/08, e
+essa é decisão do Fernando (dúvida 42).
+
+`fin_pagar_origem_v` mede, fonte a fonte, de onde mais a conta a pagar pode
+nascer:
+
+```
+derivável hoje ......... R$ 37.384,16  (ClickUp aplicado + cartão + reembolso + fatura)
+derivável com trava .... R$ 58.600,00/mês (folha contratada — dúvida 41)
+só humano resolve ...... R$ 14.207,21/mês (11 fornecedores nomeados)
+não há fonte ........... NFe de entrada, contrato de fornecedor, boleto agendado, tributo
+```
+
+**A regra que governa a Parte B:** despesa já paga NÃO vira documento a pagar.
+As 11 recorrentes de fornecedor são detecção sobre histórico — viram previsão,
+nunca obrigação. O gatilho `fin_document_pagar_guard` (0095) passa a recusar a
+forma mais direta do erro: documento a pagar que **nasce liquidado**.
+
+Cobertura da saída, agora medida em `fin_pagar_cobertura_v`: 77,5% em setembro
+caindo a 68,0% em fevereiro/27. Dos R$ 33.899,43/mês que faltam em setembro,
+R$ 11.593,04 já estão medidos e conscientemente fora do saldo — são exatamente
+as recorrentes sem documento.
+
+### Estado depois, medido
+
+```
+caixa .............. 6/6 contas fecham · M15 R$ 0,00
+invariantes ........ 39 passam · 2 falham (D6 e F1, de outras frentes)
+I1 I2 I3 C1 C4 C5 .. todos passam
+M12 ................ 0 casos · M12E 0 casos · M12·bruto 54 grupos (diagnóstico)
+test-financeiro .... 23 verificações ok
+test-contabil ...... 28 verificações ok
+test-duplicidade ... 7 provas ok
+```
+
+Nada foi apagado, nenhum `transfer_status`, `transfer_group_id`,
+`classified_by` ou `classified_rule_id` foi tocado. Backup completo
+(81 tabelas) antes da primeira escrita.
+
+### O que ficou para o Fernando
+
+Dúvidas **41** (folha contratada vira documento? R$ 58.600/mês), **42** (Felipe,
+Adryan e Denilson — R$ 10.000 + divergências), **43** (11 reembolsos aprovados,
+R$ 4.733,20), **44** (cartão, R$ 8.556,63), **45** (por onde chega a NFe de
+entrada) e **46** (Nubank sem saldo de fonte externa).
+
+A fila do resíduo do M12 (`fin_duplicate_residuo_v`) está **vazia**: nenhum dos
+54 grupos ficou sem prova. Se um lançamento novo criar um caso que nenhum eixo
+separe, ele aparece ali com o motivo e o que destrava — nunca com um lado
+escolhido.

@@ -537,6 +537,38 @@ tentativas com 25s entre elas resolveu todas as vezes.
 duas vezes (`.valida-sql-tmp.mjs`, `probe-comissao.tmp.mjs`). Prefira `git add`
 com caminhos explícitos.
 
+**Caminho nominal não basta — o índice do git é compartilhado por toda a
+árvore.** Isto aconteceu duas vezes na mesma tarde, em direções opostas: uma
+frente (previsão/aferição) deu `git add` em caminhos seus e ainda não tinha
+commitado quando duas outras frentes rodaram `git commit` — cada `git commit`
+sem pathspec grava **tudo que está staged**, não só o que a frente atual
+tocou. O trabalho dela foi parar dentro dos commits `7ef4821` e `8256805`.
+Nada se perdeu (cada caminho foi conferido no HEAD depois), mas a mensagem de
+commit que explicava o raciocínio dela sumiu, e teve de ser reconstruída à
+parte (`8f15846`).
+
+`git add` com caminho nominal não protege contra isso — ele evita você
+adicionar o lixo alheio, mas não evita que o `git commit` de outra frente leve
+o que você deixou staged. **A proteção real é `git commit -- <caminhos>`**
+(commit limitado por pathspec): ele grava só os caminhos listados,
+independente do que mais está no índice. Regra fixa: com N frentes na mesma
+árvore, use sempre `git commit -- <caminhos>`, nunca `git commit` sem
+pathspec — e não deixe nada staged por mais que um passo entre `add` e
+`commit`.
+
+**Um gatilho recém-criado por uma migration pode invalidar um UPDATE que
+parecia óbvio.** A 0094 ensinou `fin_transaction_revisao_sincroniza` a checar
+se ainda existe `fin_review_item` **pendente** antes de aceitar
+`review_status='ok'`. Um UPDATE que resolve o item de fila *depois* de
+atualizar a transação, na mesma transação SQL mas em statement seguinte, sofre
+o gatilho lendo o item como ainda pendente — o `review_status='ok'` explícito
+é sobrescrito de volta para `'pendente'`. A ordem importa: **resolva o item de
+fila primeiro, atualize a transação depois.** Isso derrubou H4 por um instante
+(39→38 invariantes) até ser diagnosticado e corrigido. Lição maior: depois de
+qualquer UPDATE manual em `fin_transaction`, rode `test:integridade --strict`
+antes de seguir — um gatilho pode ter mudado de comportamento desde a última
+vez que você escreveu esse padrão de UPDATE.
+
 ---
 
 ## 7. As frentes: o que rodou e o que falta

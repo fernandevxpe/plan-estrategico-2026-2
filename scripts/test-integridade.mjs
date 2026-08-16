@@ -987,10 +987,7 @@ try {
     um(`SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs,
                coalesce(max(CURRENT_DATE - created_at::date), 0) idade
           FROM fin_review_item WHERE status = 'pendente'`),
-    um(`SELECT count(*) FILTER (WHERE transfer_status = 'pareado') pareadas,
-               count(*) FILTER (WHERE transfer_status <> 'nao') total,
-               coalesce(sum(amount_cents) FILTER (WHERE transfer_status = 'em_transito'), 0) liquido
-          FROM fin_transaction`),
+    um(`SELECT * FROM fin_transfer_monitor_v`),
     q(`SELECT a.slug, max(sc.period_end) fim, CURRENT_DATE - max(sc.period_end) atraso
          FROM fin_account a LEFT JOIN fin_statement_coverage sc ON sc.account_id = a.id
         WHERE a.is_active GROUP BY 1 ORDER BY 3 DESC NULLS FIRST`),
@@ -1001,16 +998,19 @@ try {
          WHERE NOT t.is_split_parent AND t.amount_cents > 0
            AND c.kind IN ('custo_variavel_direto', 'despesa_operacional', 'pessoal', 'imposto', 'investimento')
            AND lower(t.description_norm) ~ '(estorno|reembolso|devolu|refund|cancelamento)'`),
-    um(`SELECT count(*) grupos, coalesce(sum(n - 1), 0) excedentes, coalesce(sum(abs(amount_cents) * (n - 1)), 0) rs
-          FROM (SELECT account_id, posted_on, amount_cents, description_norm, count(*) n
-                  FROM fin_transaction WHERE NOT is_split_parent
-                 GROUP BY 1, 2, 3, 4 HAVING count(*) > 1) x`),
+    um(`SELECT * FROM fin_duplicate_monitor_v`),
     um(`SELECT count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM fin_transaction t WHERE t.category_id = c.id)
                                  AND NOT EXISTS (SELECT 1 FROM fin_document d WHERE d.category_id = c.id)) ociosas,
                count(*) total FROM fin_category c`),
-    um(`SELECT count(*) FILTER (WHERE hits_count = 0) sem_hit, count(*) total FROM fin_rule WHERE status = 'ativa'`),
+    um(`SELECT count(*) FILTER (WHERE is_blocking) bloqueantes,
+               count(*) FILTER (WHERE is_external_gap) lacunas_fonte,
+               count(*) FILTER (WHERE health_state = 'produtiva') produtivas,
+               count(*) total
+          FROM fin_rule_health_v`),
     um(`SELECT count(*) n, coalesce(sum(abs(amount_cents)), 0) rs FROM fin_transaction
-         WHERE transfer_status = 'em_transito' AND CURRENT_DATE - posted_on > $1`, [LIMIARES.emTransitoMaxDias])
+         WHERE transfer_status = 'em_transito'
+           AND transfer_unresolved_reason IS NULL
+           AND CURRENT_DATE - posted_on > $1`, [LIMIARES.emTransitoMaxDias])
   ]);
 
   const monitores = [];
@@ -1046,16 +1046,21 @@ try {
     valor: Number(fila.idade), texto: `${num(fila.idade)} d`, limiar: LIMIARES.filaMaxIdadeDias, comparador: '<=', unidade: ' dias',
     justificativa: '14 dias garante que nada atravesse o fechamento do mês ainda pendente.'
   });
-  const pctPareadas = transf.total ? (transf.pareadas / transf.total) * 100 : 100;
-  monitor('M6', 'transferências pareadas', {
+  const pctPareadas = Number(transf.actionable_resolution_pct ?? 100);
+  monitor('M6', 'transferências acionáveis resolvidas', {
     valor: pctPareadas, texto: pct(pctPareadas), limiar: LIMIARES.transferenciasPareadasPct, comparador: '>=', unidade: '%',
-    justificativa: `${num(transf.pareadas)} de ${num(transf.total)} pernas pareadas. O que não parou de pé é ${brl(transf.liquido)} líquido que saiu de uma conta e não foi visto chegar em nenhuma.`,
-    rs: Math.abs(transf.liquido)
+    justificativa: `${num(transf.paired_legs)} pernas pareadas, ${num(transf.reversed_legs)} anuladas e ${num(transf.actionable_legs)} ainda acionáveis. Lacuna de extrato não entra no denominador e aparece separadamente em M7·fonte.`,
+    rs: transf.actionable_cents
   });
   monitor('M7', `pernas em trânsito há mais de ${LIMIARES.emTransitoMaxDias} dias`, {
     valor: Number(velhas.n), texto: num(velhas.n), limiar: 0, comparador: '<=', unidade: '',
-    justificativa: `transferência entre contas próprias liquida em minutos. ${brl(velhas.rs)} parados: ou falta importar a conta de destino, ou não era transferência.`,
+    justificativa: `Transferência entre contas próprias liquida em minutos. ${brl(velhas.rs)} continuam sem par e sem motivo de fonte; ausência já comprovada aparece separadamente.`,
     rs: velhas.rs
+  });
+  monitor('M7·fonte', 'pernas sem extrato/conta de contraparte', {
+    valor: Number(transf.declared_gap_legs), texto: num(transf.declared_gap_legs), limiar: 0, comparador: '<=', unidade: '',
+    justificativa: `${brl(transf.declared_gap_cents)} permanecem integralmente no caixa, mas não podem ser pareados até obter o extrato ou identificar a conta de destino. Declarar o motivo não fabrica a perna ausente.`,
+    rs: transf.declared_gap_cents
   });
   for (const c of contas) {
     const atraso = c.fim === null ? 9999 : Number(c.atraso);
@@ -1082,19 +1087,39 @@ try {
     justificativa: `${brl(estornos.rs)} de dinheiro voltando carimbado com categoria de despesa. Abater a despesa ou virar receita é convenção contábil — precisa de decisão, não de conserto.`,
     rs: estornos.rs
   });
-  monitor('M12', 'linhas repetidas (conta+data+valor+texto)', {
-    valor: Number(dups.excedentes), texto: num(dups.excedentes), limiar: 0, comparador: '<=', unidade: '',
-    justificativa: `${num(dups.grupos)} grupos, ${brl(dups.rs)} de excedente. Todas passaram pelo índice único porque têm dedupe_hash distinto — pagamento legítimo repetido no mesmo dia tem exatamente esta cara, então isto é conferência humana, não conserto automático.`,
-    rs: dups.rs
+  monitor('M12·bruto', 'assinaturas visuais repetidas (diagnóstico)', {
+    valor: Number(dups.raw_groups),
+    texto: `${num(dups.raw_groups)} grupos · ${num(dups.raw_repeated)} rep.`,
+    limiar: 0, comparador: '>=', unidade: ' grupos',
+    justificativa: `${num(dups.raw_members)} lançamentos e ${brl(dups.raw_cents)} nominais. Este detector não afirma dinheiro inflado: pagamentos econômicos distintos podem ter conta, data, valor e texto iguais.`,
+    rs: dups.raw_cents
+  });
+  monitor('M12', 'casos novos, reabertos ou sem sync', {
+    valor: Number(dups.unreviewed_cases),
+    texto: `${num(dups.unreviewed_cases)} casos · ${num(dups.unreviewed_repeated)} rep.`,
+    limiar: 0, comparador: '<=', unidade: ' casos',
+    justificativa: `${brl(dups.unreviewed_cents)} nominais aguardam decisão ou sincronização. O total inclui caso novo/reaberto, assinatura bruta ainda sem caso e decisão cuja fingerprint ficou stale; nenhuma delas neutraliza caixa.`,
+    rs: dups.unreviewed_cents
+  });
+  monitor('M12E', 'casos aguardando evidência durável', {
+    valor: Number(dups.awaiting_evidence_cases),
+    texto: `${num(dups.awaiting_evidence_cases)} casos · ${num(dups.awaiting_evidence_repeated)} rep.`,
+    limiar: 0, comparador: '<=', unidade: ' casos',
+    justificativa: `${brl(dups.awaiting_evidence_cents)} nominais já foram examinados, mas a prova original ainda precisa estar arquivada e ligada ao lote antes da revisão final.`,
+    rs: dups.awaiting_evidence_cents
   });
   const pctOciosas = (cats.ociosas / cats.total) * 100;
   monitor('M13', 'categorias nunca usadas', {
     valor: pctOciosas, texto: `${num(cats.ociosas)}/${num(cats.total)}`, limiar: LIMIARES.categoriasOciosasPct, comparador: '<=', unidade: '%',
     justificativa: `plano de contas com ${pct(pctOciosas)} de linhas mortas enquanto ${brl(semCategoria)} ficam sem categoria: o problema não é falta de opção, é falta de regra.`
   });
-  monitor('M14', 'regras ativas SEM hit registrado', {
-    valor: Number(regras.sem_hit), texto: `${num(regras.sem_hit)}/${num(regras.total)}`, limiar: 0, comparador: '<=', unidade: '',
-    justificativa: 'hits_count é o que revela regra larga demais e regra morta. Zerado em todas, a tela de regras não informa nada.'
+  monitor('M14', 'regras ativas com saúde bloqueante', {
+    valor: Number(regras.bloqueantes), texto: `${num(regras.bloqueantes)}/${num(regras.total)}`, limiar: 0, comparador: '<=', unidade: '',
+    justificativa: `${num(regras.produtivas)} regras têm hit na versão corrente. As bloqueantes são zero inesperado, asserção vencida/invalidada ou sombra sem decisão — não falsos zeros de regras documentais.`
+  });
+  monitor('M14·fonte', 'regras aguardando fonte externa', {
+    valor: Number(regras.lacunas_fonte), texto: `${num(regras.lacunas_fonte)}/${num(regras.total)}`, limiar: 0, comparador: '<=', unidade: '',
+    justificativa: 'Uma asserção datada explica a ausência atual, mas não transforma folha, contas a pagar ou contratos ausentes em cobertura concluída.'
   });
   const divergencia = saldos.reduce((s, l) => s + Math.abs(Number(l.delta)), 0);
   monitor('M15', 'divergência total de saldo', {

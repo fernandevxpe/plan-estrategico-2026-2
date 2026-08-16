@@ -665,11 +665,29 @@ agg AS (
          max(h.mes) FILTER (WHERE h.pago_cents > 0) AS ultimo_pagamento,
          (percentile_cont(0.5) WITHIN GROUP (ORDER BY h.remuneracao_cents)
             FILTER (WHERE h.pago_cents > 0))::bigint AS remuneracao_mediana_cents,
-         (percentile_cont(0.5) WITHIN GROUP (ORDER BY GREATEST(h.divergencia_cents, 0))
-            FILTER (WHERE h.pago_cents > 0))::bigint AS acrescimo_mediana_cents,
          (percentile_cont(0.5) WITHIN GROUP (ORDER BY h.reembolso_no_mes_cents))::bigint AS reembolso_mediana_cents
     FROM hist h
    GROUP BY 1,2,3,4,5,6
+),
+-- A base fixa PRECISA ser resolvida antes do variável, e não junto. Quem não
+-- tem contrato declarado tem a mediana da remuneração como fixo — e aí o
+-- acréscimo sobre ela é, por construção, quase zero. Medir o variável contra
+-- `fixo_contratado_cents = 0` faria a remuneração inteira contar duas vezes:
+-- uma como fixo observado, outra como variável. Eram R$ 7.002,50/mês de folha
+-- fantasma em seis pessoas.
+base AS (
+  SELECT a.*,
+         CASE WHEN a.fixo_contratado_cents > 0 THEN a.fixo_contratado_cents
+              ELSE COALESCE(a.remuneracao_mediana_cents, 0) END AS base_fixa_cents
+    FROM agg a
+),
+varia AS (
+  SELECT b.person_id,
+         (percentile_cont(0.5) WITHIN GROUP (ORDER BY GREATEST(h.remuneracao_cents - b.base_fixa_cents, 0))
+            FILTER (WHERE h.pago_cents > 0))::bigint AS acrescimo_mediana_cents
+    FROM base b
+    JOIN hist h ON h.person_id = b.person_id
+   GROUP BY b.person_id
 )
 SELECT a.entity_id,
        (date_trunc('month', CURRENT_DATE) + interval '1 month')::date AS mes_previsto,
@@ -677,17 +695,16 @@ SELECT a.entity_id,
        a.meses_pagos,
        a.ultimo_pagamento,
        -- 1. FIXO
-       CASE WHEN a.fixo_contratado_cents > 0 THEN a.fixo_contratado_cents
-            ELSE COALESCE(a.remuneracao_mediana_cents, 0) END AS fixo_cents,
+       a.base_fixa_cents AS fixo_cents,
        CASE WHEN a.fixo_contratado_cents > 0 THEN 'contratado' ELSE 'observado' END AS fixo_confianca,
        CASE WHEN a.fixo_contratado_cents > 0
             THEN 'aba "Via de Pagamento" da planilha de comissionamento 2026'
             ELSE 'mediana da remuneração paga nos últimos 6 meses (não há contrato declarado)'
        END AS fixo_base,
        -- 2. VARIÁVEL
-       COALESCE(a.acrescimo_mediana_cents, 0) AS variavel_cents,
+       COALESCE(vr.acrescimo_mediana_cents, 0) AS variavel_cents,
        'estimado'::text AS variavel_confianca,
-       CASE WHEN COALESCE(a.acrescimo_mediana_cents, 0) = 0
+       CASE WHEN COALESCE(vr.acrescimo_mediana_cents, 0) = 0
             THEN 'sem acréscimo na janela: previsto zero'
             WHEN a.comissao_contratada_cents > 0
             THEN 'mediana do acréscimo sobre o fixo nos últimos 6 meses; a pessoa tem comissão contratada de '
@@ -700,15 +717,15 @@ SELECT a.entity_id,
        'estimado'::text AS reembolso_confianca,
        'mediana do reembolso embutido no pagamento nos últimos 6 meses' AS reembolso_base,
        -- Total de caixa previsto para a pessoa.
-       CASE WHEN a.fixo_contratado_cents > 0 THEN a.fixo_contratado_cents
-            ELSE COALESCE(a.remuneracao_mediana_cents, 0) END
-         + COALESCE(a.acrescimo_mediana_cents, 0)
+       a.base_fixa_cents
+         + COALESCE(vr.acrescimo_mediana_cents, 0)
          + COALESCE(a.reembolso_mediana_cents, 0) AS total_cents,
        -- Quem parou de receber não entra no mês que vem só porque tem contrato.
        CASE WHEN a.ultimo_pagamento IS NULL THEN 'sem pagamento na janela'
             WHEN a.ultimo_pagamento < (SELECT ultimo_mes FROM janela) THEN 'não recebeu no último mês'
             ELSE 'ativo na folha' END AS situacao_na_folha
-  FROM agg a;
+  FROM base a
+  LEFT JOIN varia vr ON vr.person_id = a.person_id;
 
 COMMENT ON VIEW fin_folha_previsao_v IS
   'Previsão de folha do próximo mês, com fixo e variável separados e a base de cada número '

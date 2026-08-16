@@ -77,6 +77,11 @@ function zero(nome, valor, formatar = brl) {
   igual(nome, valor, 0, formatar);
 }
 const inteiro = (n) => String(n);
+// pg devolve DATE como string quando fin-types registra o parser, e como Date
+// quando não registra. Formatar sem saber qual é evita um teste que quebra por
+// causa do driver em vez de por causa do número.
+const mes = (d) => (typeof d === 'string' ? d : d.toISOString()).slice(0, 7);
+const dia = (d) => (typeof d === 'string' ? d : d.toISOString()).slice(0, 10);
 
 const pool = financePool();
 const client = await pool.connect();
@@ -183,13 +188,28 @@ try {
   console.log('\n=== 3. Os três invariantes ===');
 
   // 3.1 Transferência entre contas próprias é NEUTRA na DRE.
+  //
+  // O teste é sobre dre_line='nao_operacional' (9.01 a 9.05), não sobre o grupo
+  // 'movimentacao' inteiro. O grupo também abriga 9.10 rendimentos, 9.11 juros e
+  // 9.12 marcação, que têm dre_line='resultado_financeiro' e DEVEM entrar no
+  // resultado — rendimento de aplicação é resultado financeiro, não transferência.
+  // Testar pelo grupo reprovaria o comportamento correto.
   const [neutra] = await q(`
     SELECT count(*) AS vazadas FROM fin_dre_lancamento_v l
       JOIN fin_transaction t ON t.id = l.lancamento_id AND l.origem = 'ledger'
       JOIN fin_category c ON c.id = t.category_id
       JOIN fin_dre_linha d ON d.slug = l.linha
-     WHERE c.cash_flow_group = 'movimentacao' AND d.secao = 'resultado'`);
-  igual('movimentação que vazou para a cadeia de resultado', neutra.vazadas, 0, inteiro);
+     WHERE c.dre_line = 'nao_operacional' AND d.secao = 'resultado'`);
+  igual('transferência própria que vazou para o resultado', neutra.vazadas, 0, inteiro);
+
+  // E o outro lado: o dinheiro de movimentação não pode simplesmente sumir.
+  const [neutraTotal] = await q(`
+    SELECT (SELECT COALESCE(sum(t.amount_cents), 0) FROM fin_transaction t
+              JOIN fin_category c ON c.id = t.category_id
+             WHERE NOT t.is_split_parent AND c.dre_line = 'nao_operacional'
+               AND NOT EXISTS (SELECT 1 FROM fin_card_bill b WHERE b.paid_transaction_id = t.id)) AS ledger,
+           (SELECT COALESCE(sum(movimentacao_cents), 0) FROM fin_dre_mensal_v WHERE visao = 'caixa') AS dre`);
+  igual('movimentação preservada na seção fora', neutraTotal.dre, neutraTotal.ledger);
 
   // 3.2 Fatura de cartão não é despesa — nas duas direções.
   const [fatura] = await q(`
@@ -265,14 +285,14 @@ try {
       JOIN LATERAL (SELECT date, balance_cents FROM fin_balance_snapshot b
                      WHERE b.account_id = a.id AND b.source = 'api'
                      ORDER BY b.date DESC LIMIT 1) s ON true`);
-  for (const s of snaps) igual(`saldo da API bate em ${s.slug} (${s.date.toISOString().slice(0, 10)})`, s.ledger, s.api);
+  for (const s of snaps) igual(`saldo da API bate em ${s.slug} (${dia(s.date)})`, s.ledger, s.api);
 
   console.log('\n  Fluxo dos últimos 6 meses:');
   for (const f of await q(`
       SELECT mes, saldo_inicial_cents, operacional_cents, investimento_cents, financiamento_cents,
              transferencia_interna_cents, saida_sem_historico_cents, nao_classificado_cents, saldo_final_cents
         FROM fin_fluxo_caixa_v ORDER BY mes DESC LIMIT 6`)) {
-    console.log(`    ${f.mes.toISOString().slice(0, 7)}  in ${brl(f.saldo_inicial_cents).padStart(14)}` +
+    console.log(`    ${mes(f.mes)}  in ${brl(f.saldo_inicial_cents).padStart(14)}` +
       `  oper ${brl(f.operacional_cents).padStart(14)}  inv ${brl(f.investimento_cents).padStart(12)}` +
       `  fin ${brl(f.financiamento_cents).padStart(10)}  transf ${brl(f.transferencia_interna_cents).padStart(13)}` +
       `  s/hist ${brl(f.saida_sem_historico_cents).padStart(12)}  n/class ${brl(f.nao_classificado_cents).padStart(12)}` +
@@ -303,7 +323,7 @@ try {
     // Não é falha automaticamente: o desenho admite diferença, desde que ela
     // esteja na linha certa. Mas ela precisa aparecer no relatório.
     falhou('meses com não conciliado ≠ 0',
-      naoConc.map((r) => `${r.mes.toISOString().slice(0, 7)} ${brl(r.nao_conciliado_cents)}`).join(' · '));
+      naoConc.map((r) => `${mes(r.mes)} ${brl(r.nao_conciliado_cents)}`).join(' · '));
   }
 
   console.log('\n  Balanço na data mais recente:');
@@ -332,9 +352,12 @@ try {
 
   const incompletos = await q(`
     SELECT mes, folha_media_3m_cents FROM fin_dre_cobertura_v
-     WHERE visao = 'competencia' AND NOT folha_do_mes_ja_paga ORDER BY mes`);
+     WHERE visao = 'competencia' AND NOT folha_do_mes_ja_paga
+       -- folha_media_3m nula = os meses ao redor também não tinham folha, então
+       -- o mês não está "incompleto", só é anterior à folha existir no ledger.
+       AND folha_media_3m_cents IS NOT NULL ORDER BY mes`);
   for (const i of incompletos) {
-    console.log(`  ! ${i.mes.toISOString().slice(0, 7)} ainda não viu a folha dele — ` +
+    console.log(`  ! ${mes(i.mes)} ainda não viu a folha dele — ` +
       `resultado superestimado em torno de ${brl(i.folha_media_3m_cents ?? 0)}`);
   }
 } finally {

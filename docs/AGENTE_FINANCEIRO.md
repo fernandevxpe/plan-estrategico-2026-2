@@ -85,7 +85,7 @@ Se não existirem, recrie-os: `psql "$URL"` com
 | Fonte | Estado | O que entrega |
 |---|---|---|
 | **Asaas** `/financialTransactions` | 200 · funciona | Extrato completo com `type` (PAYMENT_RECEIVED, TRANSFER, INVOICE_FEE…). `/transfers` e `/pix/transactions` dão **403** |
-| **Inter** `/banking/v3/extrato/completo` | funciona | `detalhes` com `cpfCnpjPagador`, `cpfCnpjRecebedor`, **`endToEndId`** (87%) |
+| **Inter** `/banking/v2/extrato/completo` | funciona | `detalhes` com `cpfCnpjPagador`, `cpfCnpjRecebedor`, **`endToEndId`** (87%) |
 | **Polp** (Nubank open finance) | funciona, GET | CNPJ da contraparte em **89%**, `operation_type`, `merchant`, categorias, **62 RDBs (caixinhas)**, cartão com faturas e compras PENDING. **NÃO tem endToEndId** — `referenceNumber` é null em 865/865 |
 | **erp-obras** (banco) | leitura | `projetoId` por lançamento, 144 contratos, 466 parcelas, 124 metas de orçamento |
 

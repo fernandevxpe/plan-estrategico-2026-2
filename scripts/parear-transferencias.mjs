@@ -27,11 +27,38 @@
 // despesa real, e as duas somem do relatório sem deixar rastro. Toda vez que a
 // evidência é ambígua, este script NÃO pareia e reporta.
 //
+// O QUE MUDOU EM 15/08/2026 (frente A6)
+// Três buracos, medidos contra o acervo, cada um com sua correção:
+//
+//   1. CONTRAPARTE NÃO ERA OLHADA. O motor casava por valor+data e mais nada.
+//      Dois pares falsos entraram por aí (ids 1162 e 696, desfeitos na
+//      migration 0044): um recebimento de cliente anulado contra um pagamento a
+//      fornecedor, R$ 3.000 de receita e R$ 3.000 de despesa somem juntos. Agora
+//      há veto de contraparte, espelhando o gatilho que a 0044 instalou no banco.
+//
+//   2. O UNIVERSO ERA SÓ 'em_transito'. A perna que chega do outro lado quase
+//      nunca está em trânsito: o Nubank entra por CSV/ERP e nasce 'nao'. As duas
+//      transferências de R$ 16.700 de 20/03 tinham os dois créditos no Nubank o
+//      dia inteiro, e o motor nunca os viu. Agora linhas 'nao' entram TAMBÉM,
+//      mas só com evidência positiva de remessa própria (categoria 9.01, ou o
+//      CNPJ da casa escrito na descrição, ou a razão social por extenso) — 8
+//      linhas no acervo atual, não um universo aberto. Todo par continua
+//      exigindo ao menos uma perna em trânsito como âncora.
+//
+//   3. ESTORNO ERA VETO, NÃO EXPLICAÇÃO. Uma saída estornada ficava órfã para
+//      sempre, ocupando o indicador como se fosse trabalho pendente. E quando
+//      havia DUAS saídas idênticas para UM estorno, o motor desistia das duas —
+//      embora só uma tenha voltado. Agora o estorno é consumido por contagem: r
+//      estornos anulam r saídas do balde, e as k−r restantes continuam elegíveis
+//      a parear. Foi o que destravou o nó de 11/05 (R$ 10.300).
+//
 // Uso:
 //   node scripts/parear-transferencias.mjs                 dry-run (padrão)
 //   node scripts/parear-transferencias.mjs --aplicar        grava
 //   node scripts/parear-transferencias.mjs --janela=5       janela do critério C
 //   node scripts/parear-transferencias.mjs --tolerancia     liga o critério D
+//   node scripts/parear-transferencias.mjs --sem-ampliacao  volta ao universo só-em_transito
+//   node scripts/parear-transferencias.mjs --sem-anulacao   não marca estorno como anulado
 //   node scripts/parear-transferencias.mjs --json           saída legível por máquina
 import { readFile } from 'node:fs/promises';
 
@@ -56,9 +83,15 @@ const valor = (nome, padrao) => {
 const APLICAR = flag('aplicar');
 const JSON_OUT = flag('json');
 const TOLERANCIA = flag('tolerancia');
+const AMPLIAR = !flag('sem-ampliacao');
+const ANULAR = !flag('sem-anulacao');
 const JANELA = Math.max(0, Number(valor('janela', '3')) || 0);
 const ENTITY_SLUG = valor('entidade', 'xpe');
 const ATOR = 'parear-transferencias';
+
+// O CNPJ da casa. Contraparte com este documento é conta própria; com qualquer
+// outro, é terceiro — e terceiro não é perna de transferência interna.
+const CNPJ_CASA = '34776108000192';
 
 const brl = (c) => (Number(c || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const dias = (a, b) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86_400_000);
@@ -209,10 +242,50 @@ const KINDS_POUPANCA = new Set(['APLICACAO', 'APLICACAO_RDB', 'RESGATE_RDB', 'RE
 // necessariamente falso.
 const KINDS_SEM_CONTRAPARTE = new Set(['FATURA_CARTAO']);
 
+/**
+ * Contraparte: o veto que faltava, e que custou R$ 6.000 de resultado invisível.
+ *
+ * Duas afirmações, ambas sobre evidência POSITIVA — contraparte nula não
+ * bloqueia nada, porque 143 dos 145 grupos legítimos do acervo têm as duas
+ * pernas sem contraparte identificada (a identificação está em 25,8%). Uma
+ * regra que exigisse contraparte trocaria dois falsos positivos por uma enxurrada
+ * de falsos negativos.
+ *
+ *   (i)  perna cujo contraparte é cliente ou fornecedor com documento diferente
+ *        do CNPJ da casa: é fato com terceiro, não movimento entre contas
+ *        próprias. Foi o caso dos dois pares falsos.
+ *   (ii) as duas pernas apontando para documentos diferentes: seja qual for a
+ *        leitura, elas não são o mesmo dinheiro.
+ *
+ * 'socio' e 'colaborador' ficam de fora do veto de propósito: são pessoas
+ * ligadas à casa, e decidir se um repasse via sócio é transferência interna ou
+ * dois fatos separados muda o resultado da empresa — é pergunta para o humano,
+ * não veto de motor. A vista fin_transferencia_suspeita (0044) os exibe.
+ */
+function vetoContraparte(s, e) {
+  for (const p of [s, e]) {
+    if (p.cp_doc && p.cp_doc !== CNPJ_CASA && (p.cp_kind === 'cliente' || p.cp_kind === 'fornecedor')) {
+      return 'contraparte_terceiro';
+    }
+  }
+  if (s.cp_doc && e.cp_doc && s.cp_doc !== e.cp_doc) return 'contrapartes_divergentes';
+  return null;
+}
+
 function vetos(s, e, contas) {
   // Duas pernas da mesma conta nunca são uma transferência entre contas.
   if (s.account_id === e.account_id) return 'mesma_conta';
   if (s.entity_id !== e.entity_id) return 'entidades_diferentes';
+
+  // Um par precisa de âncora: ao menos uma perna declarada em trânsito. As
+  // linhas admitidas por evidência própria (universo ampliado) entram para SER
+  // encontradas, não para casar entre si.
+  if (s.transfer_status !== 'em_transito' && e.transfer_status !== 'em_transito') {
+    return 'nenhuma_perna_em_transito';
+  }
+
+  const cp = vetoContraparte(s, e);
+  if (cp) return cp;
 
   // Perna que voltou atrás não chegou a lugar nenhum.
   if (s.estornada || e.estornada) return 'perna_estornada';
@@ -244,7 +317,10 @@ function vetos(s, e, contas) {
 // ------------------------------------------------------------------ execução
 const pool = financePool();
 const client = await pool.connect();
-const relatorio = { criterios: [], pares: [], ambiguos: [], orfas: [], ancora: [], impacto: [] };
+const relatorio = {
+  criterios: [], pares: [], ambiguos: [], orfas: [], ancora: [], impacto: [],
+  blocos: [], anulacoes: []
+};
 
 try {
   const { rows: contaRows } = await client.query(
@@ -255,23 +331,63 @@ try {
   if (!contaRows.length) throw new Error(`entidade '${ENTITY_SLUG}' não tem contas`);
   const contas = new Map(contaRows.map((c) => [c.id, c]));
 
+  // A data a partir da qual existe QUALQUER outra conta para casar. Antes dela
+  // não há falha de pareamento — há ausência de acervo, e o relatório precisa
+  // dizer isso com essas palavras. Medido, não decorado: se um dia 2022–2025 for
+  // importado, este número anda sozinho.
+  const { rows: [cobertura] } = await client.query(
+    `SELECT min(t.posted_on) AS primeira FROM fin_transaction t
+       JOIN fin_entity e ON e.id = t.entity_id
+      WHERE e.slug = $1 AND t.account_id <> (
+        SELECT a.id FROM fin_account a JOIN fin_entity e2 ON e2.id = a.entity_id
+         WHERE e2.slug = $1 ORDER BY (SELECT count(*) FROM fin_transaction x WHERE x.account_id = a.id) DESC
+         LIMIT 1)`,
+    [ENTITY_SLUG]
+  );
+  const primeiraOutraConta = cobertura?.primeira ?? '1970-01-01';
+
   // ---------------------------------------------------------------- universo
   //
-  // Só 'em_transito' entra. 'nao' fica de fora de propósito: uma receita de
-  // cliente e uma despesa com fornecedor de mesmo valor no mesmo dia casariam
-  // pelos critérios de valor+data, e o motor apagaria as duas do relatório.
-  // Ampliar o universo é decisão humana, não default.
+  // 'em_transito' entra sempre. 'nao' entra SÓ com evidência positiva de que a
+  // linha é remessa própria — e é uma lista curta e verificável:
+  //
+  //   · categoria 9.01, que já afirma "transferência entre contas próprias";
+  //   · o CNPJ da casa escrito na descrição (o extrato do Nubank via ERP traz
+  //     "… - 34.776.108/0001-92 - ASAAS IP S.A. …", que é a origem dita por
+  //     extenso);
+  //   · a razão social por extenso, para o formato curto ("Transferência
+  //     Recebida|XP ENERGY SERVICOS DE MEDICAO DE ENERGIA LTDA").
+  //
+  // No acervo de 15/08/2026 isso admite 8 linhas — não é abrir o universo, é
+  // apontar para oito. O medo original (uma receita de cliente casando com uma
+  // despesa de fornecedor de mesmo valor no mesmo dia) continua endereçado por
+  // três camadas: a evidência exigida aqui, o veto de contraparte, e a exigência
+  // de que todo par tenha ao menos uma perna em trânsito.
+  //
+  // O LIKE do CNPJ vai em description_raw porque description_norm quebra a
+  // pontuação: "34.776.108/0001-92" vira "34 776 108 0001 92".
   const { rows: pernas } = await client.query(
     `SELECT t.id, t.entity_id, t.account_id, t.posted_on, t.amount_cents, t.source, t.source_id,
-            t.source_kind, t.description_raw, t.transfer_status, t.human_locked_fields
+            t.source_kind, t.description_raw, t.transfer_status, t.human_locked_fields,
+            cat.code AS categoria_code,
+            cp.kind AS cp_kind, cp.name AS cp_nome, cp.document_number AS cp_doc
        FROM fin_transaction t
        JOIN fin_entity e ON e.id = t.entity_id
+       LEFT JOIN fin_category cat ON cat.id = t.category_id
+       LEFT JOIN fin_counterparty cp ON cp.id = t.counterparty_id
       WHERE e.slug = $1
-        AND t.transfer_status = 'em_transito'
         AND t.transfer_group_id IS NULL
         AND NOT t.is_split_parent
+        AND (
+          t.transfer_status = 'em_transito'
+          OR ($2::boolean AND t.transfer_status = 'nao' AND (
+                cat.code = '9.01'
+             OR t.description_raw LIKE '%' || $3::text || '%'
+             OR t.description_norm LIKE '%' || $4::text || '%'
+          ))
+        )
       ORDER BY t.posted_on, t.id`,
-    [ENTITY_SLUG]
+    [ENTITY_SLUG, AMPLIAR, '34.776.108/0001-92', 'xp energy servicos de medicao de energia']
   );
 
   // ------------------------------------------------------------- estornos
@@ -281,20 +397,42 @@ try {
   // perna do outro lado para achar, e casar essa saída com uma entrada
   // qualquer inventaria uma transferência que não aconteceu.
   //
-  // Medido: 4 saídas em trânsito têm estorno gêmeo, e uma delas (2026-05-11,
-  // R$ 10.300) tem DUAS saídas idênticas para um estorno só — impossível saber
-  // qual foi a que voltou. Nesse caso as duas ficam de fora, por construção.
+  // O QUE MUDOU: o estorno deixou de ser veto e virou EXPLICAÇÃO.
+  //
+  // Antes, qualquer saída com estorno gêmeo era vetada e virava órfã — para
+  // sempre. Duas consequências ruins: (a) a saída ficava em 'em_transito'
+  // prometendo um par que não existe, e (b) quando havia DUAS saídas idênticas
+  // e UM estorno só, o motor desistia das duas, embora só uma tenha voltado.
+  //
+  // Agora o estorno é um recurso CONTADO. Num balde (conta, dia, valor) com k
+  // saídas e r estornos, r saídas são anuladas e k−r seguem elegíveis a parear.
+  // Foi o que destravou 2026-05-11: duas saídas de R$ 10.300 no Asaas, um
+  // estorno, e um crédito de R$ 10.300 no Inter no mesmo dia — uma voltou, a
+  // outra chegou. Antes as duas ficavam órfãs e o crédito do Inter também.
+  //
+  // QUAL das saídas idênticas é a anulada é indecidível — e inconsequente: elas
+  // são iguais em conta, data, valor e descrição, então qualquer atribuição dá
+  // o mesmo saldo, a mesma DRE e o mesmo total por categoria. A escolha é
+  // declarada e determinística (menor id primeiro) para ser reproduzível.
   //
   // A consulta traz só as linhas de estorno (dezenas, não milhares) e o
   // cruzamento acontece em memória. O auto-join equivalente em SQL varria a
   // tabela inteira contra ela mesma e levava minutos — caro demais para um
   // guard-rail que existe para ser barato o bastante para rodar sempre.
   const { rows: reversoes } = await client.query(
-    `SELECT account_id, posted_on, amount_cents FROM fin_transaction
-      WHERE description_norm ~ '(estorno|devolucao|devolvido|reembolso)'
-         OR source_kind ILIKE '%REFUND%'`
+    `SELECT id, account_id, posted_on, amount_cents, transfer_status FROM fin_transaction
+      WHERE (description_norm ~ '(estorno|devolucao|devolvido|reembolso)'
+         OR source_kind ILIKE '%REFUND%')
+        AND transfer_status <> 'anulado'`
   );
-  const chaveEstorno = new Set(reversoes.map((r) => `${r.account_id}|${r.posted_on}|${-r.amount_cents}`));
+  // Balde de estornos disponíveis, indexado pela saída que eles anulariam.
+  const estornosLivres = new Map();
+  for (const r of reversoes) {
+    const chave = `${r.account_id}|${r.posted_on}|${-r.amount_cents}`;
+    if (!estornosLivres.has(chave)) estornosLivres.set(chave, []);
+    estornosLivres.get(chave).push(r);
+  }
+  for (const lista of estornosLivres.values()) lista.sort((a, b) => a.id - b.id);
 
   const dicasCru = await dicasDoInterCru();
   const travadas = [];
@@ -311,11 +449,40 @@ try {
     p.e2e = cru?.e2e ?? null;
     p.dica = cru?.contraparte ?? dicaPelaDescricao(p.description_raw);
     p.conta = contas.get(p.account_id)?.slug ?? String(p.account_id);
-    p.estornada = chaveEstorno.has(`${p.account_id}|${p.posted_on}|${p.amount_cents}`);
+    p.admissao = p.transfer_status === 'em_transito' ? 'em_transito' : 'evidencia_propria';
+    p.estornada = false;
     universo.push(p);
   }
 
-  const saidas = universo.filter((p) => p.amount_cents < 0);
+  // ------------------------------------------------------- anulação por estorno
+  //
+  // Consome os estornos disponíveis, do menor id para o maior, e só entre as
+  // pernas realmente em trânsito: uma linha admitida por evidência própria não
+  // é candidata a anulação, porque ninguém afirmou que ela está pendente.
+  const anulacoes = [];
+  for (const p of universo) {
+    if (!ANULAR) break;
+    if (p.transfer_status !== 'em_transito' || p.amount_cents >= 0) continue;
+    const chave = `${p.account_id}|${p.posted_on}|${p.amount_cents}`;
+    const livres = estornosLivres.get(chave);
+    if (!livres?.length) continue;
+    const estorno = livres.shift();
+    p.estornada = true;
+    anulacoes.push({
+      grupo: `rv:${Math.min(p.id, estorno.id)}-${Math.max(p.id, estorno.id)}`,
+      saida: p,
+      estorno,
+      // Quantas saídas idênticas disputavam este estorno. > 1 significa escolha
+      // arbitrária entre linhas indistinguíveis, e o relatório precisa dizer.
+      irmas: universo.filter((x) => x.transfer_status === 'em_transito'
+        && x.account_id === p.account_id && x.posted_on === p.posted_on
+        && x.amount_cents === p.amount_cents).length
+    });
+  }
+  const anuladas = new Set(anulacoes.map((a) => a.saida.id));
+
+  // Anuladas saem do pareamento: não há outro lado para achar.
+  const saidas = universo.filter((p) => p.amount_cents < 0 && !anuladas.has(p.id));
   const entradas = universo.filter((p) => p.amount_cents > 0);
 
   // ------------------------------------------------------------ pareamento
@@ -379,6 +546,91 @@ try {
       }
     }
 
+    // ------------------------------------------------ bloco fechado e homogêneo
+    //
+    // A unicidade mútua trava num caso que NÃO é ambíguo de verdade: k saídas
+    // idênticas contra k entradas idênticas, e nada mais. Foi o que aconteceu em
+    // 2026-03-20 — duas saídas de R$ 16.700 do Asaas e dois créditos de
+    // R$ 16.700 no Nubank, no mesmo dia. O motor via 2×2, chamava de ambíguo e
+    // não pareava nenhum, deixando R$ 33.400 de dupla contagem de pé.
+    //
+    // Mas "qual saída casa com qual entrada" só é uma pergunta se as respostas
+    // diferirem em algo. Aqui não diferem: as saídas são iguais entre si em
+    // conta, data e valor; as entradas também. As duas atribuições possíveis
+    // produzem exatamente o mesmo saldo por conta, a mesma DRE e o mesmo
+    // conjunto de linhas neutralizadas. Recusar é preferir uma dupla contagem
+    // real a uma escolha sem consequência.
+    //
+    // As três condições, todas necessárias:
+    //   · FECHADO   — nenhum membro do bloco tem candidato fora dele; se tivesse,
+    //                 a escolha passaria a ter consequência;
+    //   · HOMOGÊNEO — todas as saídas idênticas entre si, idem as entradas;
+    //   · QUADRADO  — mesma quantidade dos dois lados, ninguém sobra.
+    const assinatura = (p) => `${p.account_id}|${p.posted_on}|${p.amount_cents}`;
+    const blocos = new Map();
+    for (const s of saidas) {
+      if (usada.has(s.id)) continue;
+      const opcoes = (candidatosDe.get(s.id) ?? []).filter((e) => !usada.has(e.id));
+      if (opcoes.length < 2) continue;
+      // Chave do bloco: a assinatura da saída somada à das entradas candidatas.
+      const chave = `${assinatura(s)}>>${opcoes.map(assinatura).sort().join('~')}`;
+      if (!blocos.has(chave)) blocos.set(chave, { saidas: [], entradas: opcoes });
+      blocos.get(chave).saidas.push(s);
+    }
+
+    for (const bloco of blocos.values()) {
+      const ss = bloco.saidas.filter((s) => !usada.has(s.id)).sort((a, b) => a.id - b.id);
+      const ee = bloco.entradas.filter((e) => !usada.has(e.id)).sort((a, b) => a.id - b.id);
+      if (ss.length < 2 || ss.length !== ee.length) continue;
+
+      const homogeneo = new Set(ss.map(assinatura)).size === 1
+                     && new Set(ee.map(assinatura)).size === 1;
+      if (!homogeneo) continue;
+
+      // Fechado nos dois sentidos: ninguém do bloco enxerga fora dele, e
+      // ninguém de fora enxerga para dentro.
+      const idsE = new Set(ee.map((e) => e.id));
+      const idsS = new Set(ss.map((s) => s.id));
+      const fechado = ss.every((s) => {
+        const op = (candidatosDe.get(s.id) ?? []).filter((e) => !usada.has(e.id));
+        return op.length === idsE.size && op.every((e) => idsE.has(e.id));
+      }) && ee.every((e) => {
+        const op = (candidatosPara.get(e.id) ?? []).filter((s) => !usada.has(s.id));
+        return op.length === idsS.size && op.every((s) => idsS.has(s.id));
+      });
+      if (!fechado) continue;
+
+      for (let i = 0; i < ss.length; i += 1) {
+        const s = ss[i];
+        const e = ee[i];
+        usada.add(s.id);
+        usada.add(e.id);
+        pares.push({
+          criterio: criterio.id,
+          rotulo: criterio.rotulo,
+          // Confiança do bloco, não da linha: sabemos que o CONJUNTO está certo,
+          // e que a atribuição interna não muda nada observável.
+          confianca: criterio.confianca,
+          bloco: ss.length,
+          grupo: `tg:${Math.min(s.id, e.id)}-${Math.max(s.id, e.id)}`,
+          saida: s,
+          entrada: e,
+          delta_dias: dias(e.posted_on, s.posted_on),
+          delta_cents: e.amount_cents + s.amount_cents
+        });
+      }
+      relatorio.blocos.push({
+        criterio: criterio.id,
+        tamanho: ss.length,
+        valor: Math.abs(ss[0].amount_cents),
+        data: ss[0].posted_on,
+        de: ss[0].conta,
+        para: ee[0].conta,
+        saidas: ss.map((s) => s.id),
+        entradas: ee.map((e) => e.id)
+      });
+    }
+
     // O resíduo ambíguo do nível, para o relatório.
     for (const s of saidas) {
       if (usada.has(s.id)) continue;
@@ -419,6 +671,16 @@ try {
     entrada: { id: p.entrada.id, conta: p.entrada.conta, data: p.entrada.posted_on, cents: p.entrada.amount_cents, dica: p.entrada.dica, descricao: p.entrada.description_raw }
   }));
 
+  relatorio.anulacoes = anulacoes.map((a) => ({
+    grupo: a.grupo,
+    data: a.saida.posted_on,
+    conta: a.saida.conta,
+    valor: Math.abs(a.saida.amount_cents),
+    saida: a.saida.id,
+    estorno: a.estorno.id,
+    irmas: a.irmas
+  }));
+
   for (const criterio of CRITERIOS) {
     const meus = pares.filter((p) => p.criterio === criterio.id);
     relatorio.criterios.push({
@@ -430,18 +692,20 @@ try {
     });
   }
 
-  const orfas = universo.filter((p) => !usada.has(p.id));
+  // Anuladas e admitidas por evidência própria não são órfãs: as primeiras estão
+  // explicadas, e as segundas nunca foram declaradas pendentes.
+  const orfas = universo.filter((p) => !usada.has(p.id)
+    && !anuladas.has(p.id) && p.transfer_status === 'em_transito');
   const porMotivo = new Map();
   for (const p of orfas) {
     // Por que esta perna não fechou. A pergunta que o relatório precisa
     // responder não é "quantas sobraram" e sim "o que falta no acervo".
     let motivo;
-    if (p.estornada) motivo = 'saída estornada na própria conta — nunca chegou a outro banco';
-    else if (KINDS_SEM_CONTRAPARTE.has(p.source_kind)) motivo = 'conta destino não existe no ledger (cartão)';
+    if (KINDS_SEM_CONTRAPARTE.has(p.source_kind)) motivo = 'conta destino não existe no ledger (cartão)';
     else if (p.source === 'inter_api' && p.source_kind === 'PAGAMENTO') motivo = 'pagamento a terceiro marcado como transferência (ver 0022)';
     else if (p.dica === 'caixa') motivo = 'destino Caixa — conta sem nenhum lançamento importado';
     else if (KINDS_POUPANCA.has(p.source_kind)) motivo = 'perna da conta de aplicação fora do período importado';
-    else if (p.posted_on < '2026-01-01') motivo = 'anterior à cobertura dos extratos de destino (2026-01)';
+    else if (p.posted_on < primeiraOutraConta) motivo = 'sem cobertura de extrato: nenhuma outra conta tem linha nessa data';
     else motivo = 'sem contraparte de mesmo valor na janela';
     if (!porMotivo.has(motivo)) porMotivo.set(motivo, { motivo, pernas: 0, valor: 0, contas: new Set() });
     const bucket = porMotivo.get(motivo);
@@ -494,15 +758,57 @@ try {
     // A cláusula de segurança está no WHERE, não só no JS: mesmo que o motor
     // tenha errado, o UPDATE se recusa a tocar numa perna já pareada ou que
     // outro processo tenha alterado no meio do caminho.
+    //
+    // 'nao' entra na lista porque o universo ampliado admite pernas que nunca
+    // foram declaradas em trânsito — é o caso dos créditos do Nubank, que
+    // chegam por CSV/ERP e nascem 'nao'. O que continua barrado é o que
+    // importa: já pareado, já anulado, ou grupo preenchido por outro processo.
     const r = await client.query(
       `UPDATE fin_transaction
           SET transfer_status = 'pareado', transfer_group_id = $2, updated_at = now()
         WHERE id = ANY($1::bigint[])
-          AND transfer_status = 'em_transito'
+          AND transfer_status IN ('em_transito', 'nao')
           AND transfer_group_id IS NULL`,
       [[p.saida.id, p.entrada.id], p.grupo]
     );
     if (r.rowCount !== 2) throw new Error(`par ${p.grupo}: esperava atualizar 2 pernas, atualizou ${r.rowCount}`);
+  }
+
+  // ------------------------------------------------------------- anulações
+  //
+  // Escrita separada da de pareamento porque o fato é outro: aqui não há duas
+  // contas, há uma conta e um movimento que voltou. A coluna reversal_group_id
+  // e o status 'anulado' vêm da migration 0044 — se ela ainda não rodou, o
+  // motor não inventa a coluna: reporta e segue só com o pareamento.
+  const { rows: [temColuna] } = await client.query(
+    `SELECT count(*) n FROM information_schema.columns
+      WHERE table_name = 'fin_transaction' AND column_name = 'reversal_group_id'`
+  );
+  const anulacaoDisponivel = Number(temColuna.n) > 0;
+
+  if (anulacaoDisponivel) {
+    for (const a of anulacoes) {
+      await client.query(
+        `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, before, after, fields, actor)
+         SELECT t.entity_id, 'fin_transaction', t.id, 'bulk_update',
+                jsonb_build_object('transfer_status', t.transfer_status),
+                jsonb_build_object('transfer_status', 'anulado', 'reversal_group_id', $2::text,
+                                   'motivo', 'estorno na própria conta, mesmo dia e valor',
+                                   'saidas_identicas_no_balde', $3::int),
+                ARRAY['transfer_status', 'reversal_group_id'], $4
+           FROM fin_transaction t WHERE t.id = ANY($1::bigint[])`,
+        [[a.saida.id, a.estorno.id], a.grupo, a.irmas, ATOR]
+      );
+      const r = await client.query(
+        `UPDATE fin_transaction
+            SET transfer_status = 'anulado', reversal_group_id = $2, updated_at = now()
+          WHERE id = ANY($1::bigint[])
+            AND transfer_status <> 'anulado'
+            AND reversal_group_id IS NULL`,
+        [[a.saida.id, a.estorno.id], a.grupo]
+      );
+      if (r.rowCount !== 2) throw new Error(`anulação ${a.grupo}: esperava 2 pernas, atualizou ${r.rowCount}`);
+    }
   }
 
   // -------------------------------------------------------------- invariantes
@@ -512,6 +818,44 @@ try {
       GROUP BY 1 HAVING count(*) <> 2 OR count(DISTINCT account_id) <> 2 OR sum(amount_cents) <> 0`
   );
   if (grupos.length) throw new Error(`grupos inválidos após escrita: ${JSON.stringify(grupos.slice(0, 5))}`);
+
+  // Contraparte: o mesmo teste que o gatilho da 0044 faz no banco, repetido aqui
+  // para que o dry-run acuse ANTES de qualquer COMMIT, com a lista na mão.
+  const { rows: divergentes } = await client.query(
+    `SELECT t.transfer_group_id AS grupo,
+            string_agg(DISTINCT cp.name || ' (' || cp.kind || ')', ' × ') AS contrapartes
+       FROM fin_transaction t
+       JOIN fin_counterparty cp ON cp.id = t.counterparty_id
+      WHERE t.transfer_group_id IS NOT NULL AND cp.document_number IS NOT NULL
+      GROUP BY 1
+     HAVING count(DISTINCT cp.document_number) > 1
+         OR bool_or(cp.kind IN ('cliente','fornecedor') AND cp.document_number <> $1)`,
+    [CNPJ_CASA]
+  );
+  // Um grupo incompatível criado AGORA é bug do motor e derruba o COMMIT. Um
+  // que já estava lá é dívida — o motor não a criou e não pode consertá-la por
+  // conta própria (desfazer classificação é escrita destrutiva, e é o que a
+  // migration 0044 faz, com prova e registro). Abortar por causa dela deixaria
+  // o motor refém de um passivo que ele não produziu, então aqui ela é
+  // denunciada, não engolida.
+  const meusGrupos = new Set(pares.map((p) => p.grupo));
+  const criadosAgora = divergentes.filter((d) => meusGrupos.has(d.grupo));
+  if (criadosAgora.length) {
+    throw new Error(
+      `o motor criou ${criadosAgora.length} par(es) com contrapartes incompatíveis — isto é bug: ${
+        criadosAgora.slice(0, 5).map((d) => `${d.grupo} [${d.contrapartes}]`).join('; ')}`
+    );
+  }
+  relatorio.suspeitos = divergentes.map((d) => ({ grupo: d.grupo, contrapartes: d.contrapartes }));
+
+  if (anulacaoDisponivel) {
+    const { rows: rev } = await client.query(
+      `SELECT reversal_group_id, count(*) pernas, count(DISTINCT account_id) contas, sum(amount_cents) soma
+         FROM fin_transaction WHERE reversal_group_id IS NOT NULL
+        GROUP BY 1 HAVING count(*) <> 2 OR count(DISTINCT account_id) <> 1 OR sum(amount_cents) <> 0`
+    );
+    if (rev.length) throw new Error(`anulações inválidas: ${JSON.stringify(rev.slice(0, 5))}`);
+  }
 
   const { rows: meiosPares } = await client.query(
     `SELECT count(*) n FROM fin_transaction
@@ -558,14 +902,37 @@ try {
     const linha = '─'.repeat(78);
     console.log(`\n${linha}\nPAREAMENTO DE TRANSFERÊNCIAS — ${APLICAR ? 'APLICADO' : 'DRY-RUN (nada gravado)'}`);
     console.log(`janela do critério C: ${JANELA} dia(s) · tolerância: ${TOLERANCIA ? 'LIGADA' : 'desligada'}`);
-    console.log(`universo: ${universo.length} pernas em trânsito (${saidas.length} saídas, ${entradas.length} entradas)`);
+    const ampliadas = universo.filter((p) => p.admissao === 'evidencia_propria').length;
+    console.log(`universo: ${universo.length} pernas (${saidas.length} saídas, ${entradas.length} entradas)`);
+    console.log(`  · em trânsito declarado: ${universo.length - ampliadas}`);
+    console.log(`  · admitidas por evidência de remessa própria: ${ampliadas}${AMPLIAR ? '' : ' (ampliação DESLIGADA)'}`);
     if (travadas.length) console.log(`travadas por decisão humana, intocadas: ${travadas.length}`);
     console.log(`dicas de instituição do JSON cru do Inter: ${dicasCru.size || 'indisponível (degradado)'}`);
+    console.log(`cobertura: a primeira linha fora da conta principal é de ${primeiraOutraConta}`);
 
     console.log(`\n${linha}\nPARES POR CRITÉRIO`);
     console.table(relatorio.criterios.map((c) => ({ ...c, valor: brl(c.valor) })));
     const total = pares.reduce((a, p) => a + Math.abs(p.saida.amount_cents), 0);
     console.log(`TOTAL: ${pares.length} pares · ${brl(total)} de dupla contagem eliminada`);
+
+    if (relatorio.blocos.length) {
+      console.log(`\n${linha}\nBLOCOS FECHADOS — ambiguidade k×k resolvida por equivalência (${relatorio.blocos.length})`);
+      for (const b of relatorio.blocos) {
+        console.log(`  ${b.data}  ${b.tamanho}×${b.tamanho}  ${brl(b.valor)}  ${b.de} → ${b.para}`);
+        console.log(`      saídas ${b.saidas.join(', ')}  ↔  entradas ${b.entradas.join(', ')}`);
+      }
+      console.log('  As pernas de cada lado são idênticas entre si: qualquer atribuição dá o mesmo resultado.');
+    }
+
+    if (relatorio.anulacoes.length) {
+      console.log(`\n${linha}\nANULAÇÕES — saída estornada na própria conta (${relatorio.anulacoes.length})`);
+      console.table(relatorio.anulacoes.map((a) => ({
+        data: a.data, conta: a.conta, valor: brl(a.valor),
+        saida: a.saida, estorno: a.estorno,
+        escolha: a.irmas > 1 ? `arbitrária entre ${a.irmas} idênticas` : 'única'
+      })));
+      console.log('  Não são transferências: o dinheiro nunca saiu do banco.');
+    }
 
     console.log(`\n${linha}\nPERNAS ÓRFÃS (${orfas.length} de ${universo.length}) — por quê`);
     console.table(relatorio.orfas.map((o) => ({ motivo: o.motivo, pernas: o.pernas, valor: brl(o.valor), contas: o.contas })));
@@ -590,6 +957,13 @@ try {
         for (const c of a.candidatos) console.log(`      ? ${c}`);
       }
       if (relatorio.ambiguos.length > 20) console.log(`  ... +${relatorio.ambiguos.length - 20}`);
+    }
+
+    if (relatorio.suspeitos?.length) {
+      console.log(`\n${linha}\nPARES FALSOS PREEXISTENTES — não foram criados por este motor (${relatorio.suspeitos.length})`);
+      for (const s of relatorio.suspeitos) console.log(`  ! ${s.grupo}  ${s.contrapartes}`);
+      console.log('  As duas pernas apontam para contrapartes sem relação. Desfazer é escrita');
+      console.log('  destrutiva: está na migration db/migrations/0044_fin_conciliacao.sql.');
     }
 
     if (!APLICAR) console.log(`\n${linha}\nNada foi gravado. Para aplicar: node scripts/parear-transferencias.mjs --aplicar\n`);

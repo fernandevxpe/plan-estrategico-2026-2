@@ -1868,3 +1868,18 @@ Em qualquer opção, **3.99 não deveria contar**: ela não é linha de plano de
 contas, é marcador.
 
 ---
+
+---
+
+## Resolvida — Ancora Imobiliária, R$ 300,00 classificada por precedente
+
+A regra `meios-de-pagamento` (v1) tinha 25 acertos e zero verdadeiros
+positivos — procurava banco no texto, não finalidade. Uma frente já corrigiu a
+regra para o futuro; este item específico (transação 85894, R$ 300,00) ficou
+na fila com a evidência escrita: 9 de 9 lançamentos anteriores da mesma
+contraparte (Ancora Imobiliária) já confirmados por humano em 5.01 Aluguel e
+condomínio, com trava.
+
+Precedente de 9/9 é evidência forte o bastante para classificar sem
+esperar confirmação adicional. Reclassificado para 5.01, travado, com trilha
+em `fin_classification_event`.

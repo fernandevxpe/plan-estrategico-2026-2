@@ -165,12 +165,23 @@ const titulo = (t) => `\n${'━'.repeat(78)}\n${t}\n${'━'.repeat(78)}`;
  * canônico, e reclassificar tem de responder "o que o motor decidiria hoje", não
  * "o que um motor parecido decidiria".
  *
- * Duas diferenças, ambas para MAIS informação, e ambas hoje sem efeito medido:
- * `counterparty_name_norm`/`counterparty_document` vêm do cadastro (o Asaas
- * passa vazio porque não tem contraparte no extrato) e `account_slug` vem da
- * conta real. Nenhuma regra ativa usa esses três campos — o relatório verifica
- * isso a cada execução e AVISA se passar a usar, porque nesse dia o importador e
- * este script começam a divergir e alguém precisa decidir qual dos dois muda.
+ * Duas diferenças, ambas para MAIS informação: `counterparty_name_norm` vem do
+ * cadastro (o Asaas passa vazio porque não tem contraparte no extrato),
+ * `counterparty_document` vem do lastro do lançamento com o cadastro como
+ * fallback (ver SQL_LINHAS), e `account_slug` vem da conta real.
+ *
+ * ATENÇÃO — desde a 0042 isso deixou de ser teórico. A regra
+ * `transferencia-cnpj-proprio` usa `counterparty_document`, e nenhum dos dois
+ * importadores passa esse campo ao motor: `lib/financeiro/importacao.ts` (CSV)
+ * monta um sujeito com quatro campos, e `scripts/import-inter.mjs` não roda o
+ * motor nenhuma vez — ele resolve o CNPJ próprio no próprio código, comparando
+ * com `fin_entity.cnpj`, e grava `transfer_status='em_transito'` direto.
+ *
+ * Na prática as duas decisões coincidem, porque leem a MESMA evidência (o
+ * documento vindo de `lib/inter-lastro.mjs`). Mas o relatório continua avisando
+ * a cada execução, e o aviso segue válido: no dia em que uma fonte com
+ * documento passar pelo importador de CSV, os dois caminhos vão discordar e
+ * alguém precisa decidir qual dos dois muda.
  */
 function sujeitoDeTransacao(linha) {
   return {
@@ -380,7 +391,21 @@ const SQL_LINHAS = `
          t.classified_at::text AS classified_at,
          t.review_status, t.human_locked_fields, t.is_split_parent, t.parent_id,
          COALESCE(cp.normalized_name, '') AS counterparty_name_norm,
-         cp.document_number AS counterparty_document,
+         -- O LASTRO DO LANCAMENTO VEM PRIMEIRO, O CADASTRO E O FALLBACK.
+         --
+         -- t.counterparty_document (0042) e o que a FONTE afirmou sobre esta
+         -- transacao; cp.document_number e o CADASTRO da contraparte ligada.
+         -- A ordem importa no caso central da A3: transferencia entre contas
+         -- proprias tem counterparty_id NULO de proposito (a empresa nao e
+         -- contraparte de si mesma), entao o cadastro nao tem o que oferecer e
+         -- so o lastro responde. Sem este COALESCE a regra
+         -- transferencia-cnpj-proprio nunca casaria: leria sempre nulo
+         -- justamente nas linhas que existe para reconhecer.
+         --
+         -- Onde os dois existem, eles concordam: medido em 15/08/2026, nas 504
+         -- linhas do Inter com contraparte cadastrada com documento, cadastro e
+         -- extrato batem em 504 de 504.
+         COALESCE(t.counterparty_document, cp.document_number) AS counterparty_document,
          EXTRACT(DAY FROM t.posted_on)::int AS day_of_month,
          EXISTS (SELECT 1 FROM fin_settlement s WHERE s.transaction_id = t.id) AS tem_liquidacao
     FROM fin_transaction t

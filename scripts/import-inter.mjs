@@ -20,6 +20,7 @@ import { financePool } from './lib/artifact-db.mjs';
 import { loadEnv } from './lib/env.mjs';
 import { dedupeHash, normalizeDescription, normalizeName, toCents } from './lib/fin-normalize.mjs';
 import { registerFinanceTypeParsers } from './lib/fin-types.mjs';
+import { lastroDaTransacao } from './lib/inter-lastro.mjs';
 import { rawDirUrl } from './lib/paths.mjs';
 
 loadEnv();
@@ -96,23 +97,30 @@ function extrairContraparte(t) {
     }
   }
 
-  // Em boleto (`PAGAMENTO`), `cpfCnpj` é o do PAGADOR — nós — e não o do
-  // beneficiário. Usá-lo fazia a checagem de CNPJ próprio casar com o lado
-  // errado e marcar 31 boletos de COMPESA, EMBRASUL e STARTLAW (R$ 28.263,64)
-  // como transferência entre contas próprias. Boleto identifica o beneficiário
-  // por `empresaEmissora`, e documento nenhum: melhor sem documento do que com
-  // o documento errado.
-  const boleto = t.tipoTransacao === 'PAGAMENTO';
-  const documento = boleto ? null : saida ? d.cpfCnpjRecebedor : d.cpfCnpjPagador;
-  const digitos = String(documento ?? '').replace(/\D/g, '');
+  // O documento sai de `lib/inter-lastro.mjs`, e não daqui.
+  //
+  // Aquele arquivo é a ÚNICA definição de "qual é o documento da contraparte
+  // desta transação" — inclusive da regra de que boleto (`PAGAMENTO`) não tem
+  // documento de contraparte, porque ali `cpfCnpj` é o do pagador (nós). O
+  // backfill do histórico lê a mesma função; se esta lógica existisse em dois
+  // lugares, o lançamento importado hoje e o mesmo lançamento reprocessado pelo
+  // backfill poderiam discordar sobre ser ou não transferência própria.
+  //
+  // Diferença em relação ao que este arquivo fazia antes: documento com
+  // comprimento diferente de 11 ou 14 agora vira `null` em vez de ser gravado
+  // com `tipoDocumento` nulo. Medido no extrato de 15/08/2026, nenhum caso muda
+  // (só existem 247 de 11 dígitos e 338 de 14) — mas é o que o CHECK
+  // `fin_transaction_documento_coerente` da 0042 exige daqui para frente.
+  const lastro = lastroDaTransacao(t);
 
   return {
     nome: (nome ?? '').trim() || null,
-    documento: digitos || null,
+    documento: lastro.documento,
     sentido: saida ? 'saida' : 'entrada',
-    // 11 dígitos é CPF, 14 é CNPJ. É esta linha que separa custo com pessoa
+    // 11 dígitos é CPF, 14 é CNPJ. É esta distinção que separa custo com pessoa
     // física de custo com empresa sem depender de ninguém marcar à mão.
-    tipoDocumento: digitos.length === 11 ? 'cpf' : digitos.length === 14 ? 'cnpj' : null
+    tipoDocumento: lastro.tipoDocumento,
+    endToEndId: lastro.endToEndId
   };
 }
 
@@ -124,7 +132,18 @@ function descricao(t) {
 
 const pool = financePool();
 const client = await pool.connect();
-const relatorio = { lidas: transacoes.length, contrapartes: 0, inseridas: 0, atualizadas: 0, semDocumento: 0, pf: 0, pj: 0, proprias: 0 };
+const relatorio = {
+  lidas: transacoes.length,
+  contrapartes: 0,
+  inseridas: 0,
+  atualizadas: 0,
+  semDocumento: 0,
+  pf: 0,
+  pj: 0,
+  proprias: 0,
+  comLastro: 0,
+  comE2E: 0
+};
 
 try {
   await client.query('BEGIN');
@@ -246,10 +265,26 @@ try {
       `INSERT INTO fin_transaction (
          entity_id, account_id, posted_on, amount_cents, description_raw, description_norm,
          counterparty_raw, counterparty_id, source_kind, source, source_id, dedupe_hash,
-         review_status, import_batch_id, transfer_status
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pendente',$13,$14)
+         review_status, import_batch_id, transfer_status,
+         counterparty_document, counterparty_document_type, end_to_end_id
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pendente',$13,$14,$15,$16,$17)
        ON CONFLICT (account_id, dedupe_version, dedupe_hash) DO UPDATE SET
          source_kind = EXCLUDED.source_kind,
+         -- O LASTRO PREENCHE VAZIO, NUNCA SOBRESCREVE.
+         --
+         -- COALESCE na ordem "o que já está" primeiro, e não por timidez: estas
+         -- três colunas são a evidência de um fato encerrado — quem pagou quem,
+         -- e sob qual identificador do Banco Central. Um valor DIFERENTE vindo
+         -- de uma reimportação significa que a fonte mudou a história de uma
+         -- transação já liquidada, e isso é assunto para uma pessoa olhar, não
+         -- para um sync noturno resolver sozinho sobrescrevendo em silêncio.
+         --
+         -- É também a cláusula que protege o trabalho do backfill: rodar o
+         -- import de novo não apaga o lastro que ele reconstruiu a partir do
+         -- arquivo bruto.
+         counterparty_document      = COALESCE(fin_transaction.counterparty_document, EXCLUDED.counterparty_document),
+         counterparty_document_type = COALESCE(fin_transaction.counterparty_document_type, EXCLUDED.counterparty_document_type),
+         end_to_end_id              = COALESCE(fin_transaction.end_to_end_id, EXCLUDED.end_to_end_id),
          -- Mesma cláusula do import do Asaas, e pelo mesmo motivo: 'pareado' é
          -- resultado de conciliação com a outra ponta. Rebaixar para
          -- 'em_transito' num sync desfaria a neutralização e a transferência
@@ -288,10 +323,21 @@ try {
         // 'em_transito' e não 'nao': a perna existe, mas o par ainda não foi
         // conciliado. Marcar como transferência tira o valor da despesa sem
         // fingir que o pareamento já aconteceu.
-        proprio ? 'em_transito' : 'nao'
+        proprio ? 'em_transito' : 'nao',
+        // O lastro vai para o banco INCLUSIVE quando é o CNPJ da própria
+        // empresa — ali ele é justamente o que prova a transferência interna, e
+        // é o campo que a regra `transferencia-cnpj-proprio` (0042) lê. Note
+        // que `counterparty_id` continua nulo nesse caso: a empresa não é
+        // contraparte de si mesma. O documento fica no lançamento, não no
+        // cadastro.
+        c.documento,
+        c.tipoDocumento,
+        c.endToEndId
       ]
     );
     if (proprio) relatorio.proprias += 1;
+    if (c.documento) relatorio.comLastro += 1;
+    if (c.endToEndId) relatorio.comE2E += 1;
     if (gravado.rows[0]?.inserido) relatorio.inseridas += 1;
     else relatorio.atualizadas += 1;
   }
@@ -368,5 +414,6 @@ try {
 
 console.log(
   `[inter] ${relatorio.lidas} lidas · ${relatorio.inseridas} gravadas · ` +
-    `${relatorio.contrapartes} contrapartes (${relatorio.pf} PF, ${relatorio.pj} PJ, ${relatorio.semDocumento} sem doc) · ${relatorio.proprias} entre contas próprias`
+    `${relatorio.contrapartes} contrapartes (${relatorio.pf} PF, ${relatorio.pj} PJ, ${relatorio.semDocumento} sem doc) · ${relatorio.proprias} entre contas próprias\n` +
+    `        lastro: ${relatorio.comLastro} com documento da contraparte · ${relatorio.comE2E} com endToEndId`
 );

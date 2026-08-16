@@ -26,6 +26,8 @@
 import { financePool } from './lib/artifact-db.mjs';
 import { loadEnv } from './lib/env.mjs';
 import { SQL_PENDENTES, agrupar } from './lib/fin-qualificacao.mjs';
+import { normalizeName } from './lib/fin-normalize.mjs';
+import { classify } from './lib/fin-rules.mjs';
 
 loadEnv();
 
@@ -52,6 +54,64 @@ const ENTIDADE = 'xpe';
 
 const brl = (c) => (Number(c || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const dia = (d) => String(d).slice(4, 15);
+
+/**
+ * Uma decisão humana não precisa gerar uma segunda regra quando o motor atual
+ * já explica TODOS os itens representativos com a mesma categoria.
+ *
+ * Foi assim que nasceram as regras impossíveis de CREA e Lyra: o CLI copiou o
+ * rótulo cru para counterparty_name_norm e, sem antes perguntar ao motor, criou
+ * uma duplicata pior que as regras determinísticas já existentes.
+ */
+async function regraAtivaEquivalente(client, ids, categoryCode, entitySlug) {
+  const { rows: regras } = await client.query(
+    `SELECT r.id, r.slug, r.name, r.priority, r.match_scope,
+            r.conditions, r.actions, r.confidence
+       FROM fin_rule r
+       JOIN fin_entity e ON e.id = r.entity_id
+      WHERE r.status = 'ativa'
+        AND e.slug = $1
+      ORDER BY r.priority, r.id`,
+    [entitySlug]
+  );
+  const { rows: linhas } = await client.query(
+    `SELECT t.id, t.description_norm, t.counterparty_raw, t.amount_cents,
+            t.source_kind, EXTRACT(DAY FROM t.posted_on)::int AS day_of_month,
+            a.slug AS account_slug,
+            COALESCE(cp.normalized_name, '') AS counterparty_name_norm,
+            COALESCE(t.counterparty_document, cp.document_number) AS counterparty_document
+       FROM fin_transaction t
+       JOIN fin_account a ON a.id = t.account_id
+       JOIN fin_entity e ON e.id = t.entity_id
+       LEFT JOIN fin_counterparty cp ON cp.id = t.counterparty_id
+      WHERE t.id = ANY($1::bigint[])
+        AND e.slug = $2
+      ORDER BY t.id`,
+    [ids, entitySlug]
+  );
+  if (linhas.length !== ids.length) return null;
+
+  const vencedoras = new Set();
+  for (const linha of linhas) {
+    const amount = Number(linha.amount_cents);
+    const hit = classify(regras, {
+      scope: 'transaction',
+      description_norm: linha.description_norm,
+      counterparty_name_norm: linha.counterparty_name_norm || normalizeName(linha.counterparty_raw),
+      counterparty_document: linha.counterparty_document,
+      account_slug: linha.account_slug,
+      amount_cents: amount,
+      amount_abs: Math.abs(amount),
+      source_kind: linha.source_kind,
+      billing_type: null,
+      direction: amount >= 0 ? 'receber' : 'pagar',
+      day_of_month: linha.day_of_month
+    });
+    if (!hit || hit.actions?.category_code !== categoryCode) return null;
+    vencedoras.add(hit.rule.slug);
+  }
+  return [...vencedoras];
+}
 
 const pool = financePool();
 const client = await pool.connect();
@@ -195,37 +255,53 @@ try {
   );
 
   let regra = null;
+  let regrasReutilizadas = null;
   if (CRIAR_REGRA) {
     // A regra nasce do que o grupo tem em comum, e só quando isso é específico
     // o bastante. Padrão curto ("pix enviado") viraria uma regra que engole
     // metade do extrato — é exatamente a regra 42, cuja precisão medida é 15,2%.
     const alvo = g.porContraparte ? null : g.rotulo;
-    if (!g.porContraparte && (!alvo || alvo.length < 18)) {
+    const contraparteNorm = g.porContraparte ? normalizeName(g.rotulo) : null;
+    if (g.porContraparte && !contraparteNorm) {
+      console.log(
+        `\n  REGRA NÃO CRIADA: a contraparte "${g.rotulo}" fica vazia após normalizeName().`
+      );
+    } else if (!g.porContraparte && (!alvo || alvo.length < 18)) {
       console.log(`\n  REGRA NÃO CRIADA: o padrão "${alvo}" é curto demais e pegaria coisa alheia.`);
     } else {
       const slug = `qualificacao-${(g.porContraparte ? g.rotulo : alvo).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 46)}`;
       const cond = g.porContraparte
-        ? { all: [{ op: 'equals', field: 'counterparty_name_norm', value: g.rotulo.toLowerCase() }] }
+        ? { all: [{ op: 'equals', field: 'counterparty_name_norm', value: contraparteNorm }] }
         : { all: [{ op: 'contains_any', field: 'description_norm', value: [alvo.replace(/#/g, '').replace(/\s+/g, ' ').trim().slice(0, 60)] }] };
-      const { rows: [r] } = await client.query(
-        `INSERT INTO fin_rule (entity_id, slug, name, priority, match_scope, conditions, actions,
-                               confidence, source, status, created_by, notes)
-         SELECT e.id, $1, $2, 120, 'transaction', $3::jsonb,
-                jsonb_build_object('category_code', $4::text), 75, 'humano', 'ativa', 'qualificar-cli', $5
-           FROM fin_entity e WHERE e.slug = $6
-           ON CONFLICT (entity_id, slug) DO UPDATE
-              SET actions = EXCLUDED.actions, conditions = EXCLUDED.conditions, updated_at = now()
-         RETURNING slug`,
-        [slug, `Qualificação: ${g.rotulo.slice(0, 50)}`, JSON.stringify(cond), code,
-         `Criada ao qualificar ${g.n} lançamentos (${brl(g.valorCents)}).`, ENTIDADE]
-      );
-      regra = r?.slug ?? null;
+      const equivalentes = await regraAtivaEquivalente(client, ids, code, ENTIDADE);
+      if (equivalentes?.length) {
+        regrasReutilizadas = equivalentes;
+        console.log(
+          `\n  REGRA NÃO CRIADA: ${equivalentes.join(', ')} já cobre(m) todos os itens ` +
+          `com a categoria ${code}.`
+        );
+      } else {
+        const { rows: [r] } = await client.query(
+          `INSERT INTO fin_rule (entity_id, slug, name, priority, match_scope, conditions, actions,
+                                 confidence, source, status, created_by, notes)
+           SELECT e.id, $1, $2, 120, 'transaction', $3::jsonb,
+                  jsonb_build_object('category_code', $4::text), 75, 'humano', 'ativa', 'qualificar-cli', $5
+             FROM fin_entity e WHERE e.slug = $6
+             ON CONFLICT (entity_id, slug) DO UPDATE
+                SET actions = EXCLUDED.actions, conditions = EXCLUDED.conditions, updated_at = now()
+           RETURNING slug`,
+          [slug, `Qualificação: ${g.rotulo.slice(0, 50)}`, JSON.stringify(cond), code,
+           `Criada ao qualificar ${g.n} lançamentos (${brl(g.valorCents)}).`, ENTIDADE]
+        );
+        regra = r?.slug ?? null;
+      }
     }
   }
 
   const { rows: [total] } = await client.query(`SELECT sum(amount_cents) v FROM fin_transaction`);
   console.log(`\n  ${rowCount} lançamentos → ${cat.code} ${cat.name}`);
   if (regra) console.log(`  regra criada: ${regra} (as próximas chegam classificadas)`);
+  if (regrasReutilizadas) console.log(`  regra reutilizada: ${regrasReutilizadas.join(', ')}`);
   console.log(`  âncora — soma do ledger: ${brl(total.v)} (não pode mudar)`);
 
   if (APLICAR) {

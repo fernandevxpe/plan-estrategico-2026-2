@@ -431,3 +431,72 @@ pagamento passa da fila. Isso é desenho, não defeito.
   em `DUVIDAS_FINANCEIRO.md` com opções e o valor em jogo, e siga fazendo o que
   não depende dela.
 - **Commite sempre**, mesmo no meio. Trabalho não commitado é trabalho perdido.
+
+---
+
+## 11. Conferência independente da retomada do Codex — 16/08/2026
+
+Medido por mim, do lado de fora, sobre a branch `codex/financeiro-conclusao-2026-08-16`.
+
+**A base do Codex é legítima.** `git merge-base --is-ancestor` confirma que
+`992d6c5` (último commit do Claude) é ancestral de `e1499bb`. Nenhum trabalho foi
+perdido; os 15 commits do Codex estão *em cima* dos 34 anteriores, não ao lado.
+
+**O saldo é positivo, medido agora:**
+
+```
+migrations aplicadas ....... 80 → 82
+invariantes ................ 38/41 → 39/41
+monitores .................. 13 de 20 → 17 de 24   (4 monitores novos)
+caixa ...................... 6/6 fecham            (intacto)
+```
+
+C3 e J3 fecharam — a trilha de importação e a competência. Sobra F1, que é
+bloqueio de dado (a 7ª conta Caixa, dúvida 5).
+
+### ⚠️ Mas D6 quebrou, e é regressão nova — R$ 390.057,45
+
+```
+✗ [D6] proveniência coerente: regra tem id, id tem regra
+       186 violação(ões) · R$ 390.057,45
+```
+
+D6 estava **passando** antes desta retomada. A causa, diagnosticada:
+
+```
+classified_by   classified_rule_id   linhas    valor
+contrato        preenchido            186      R$ 390.057,45
+```
+
+São 186 lançamentos que dizem "fui classificado por contrato" e ao mesmo tempo
+carregam o id de uma regra. O invariante existe porque **o par incompleto faz o
+badge "por quê?" mentir sobre quem decidiu** — a tela mostraria "regra X" para
+algo que veio do contrato, ou o contrário.
+
+Nenhum deles aponta para regra inexistente (`fin_rule` tem 64 linhas, 58 ativas),
+então não é referência órfã: é o campo `classified_by` e o `classified_rule_id`
+contando histórias diferentes sobre a mesma linha.
+
+**Isto é a primeira coisa a resolver ao retomar.** Duas leituras possíveis, e o
+dado separa: ou a classificação por contrato deveria ter limpado o
+`classified_rule_id` que sobrou de uma passagem anterior, ou o `classified_by`
+foi sobrescrito e a regra é que decidiu de verdade. A trilha em `fin_audit_log`
+deve dizer qual.
+
+Não "conserte" escolhendo o que faz o teste passar. O invariante está certo; o
+dado é que está ambíguo.
+
+### O que ficou pendente no Codex
+
+`0090_fin_fila_casos_lifecycle.sql` está **não aplicada e não versionada**, junto
+com `scripts/fin-review-lifecycle.mjs` e `scripts/test-fila-casos-lifecycle.mjs`.
+E há modificações não commitadas em `package.json`, `import-asaas.mjs`,
+`reclassificar.mjs` e `scheduler.mjs`.
+
+### Seis frentes morreram por limite de sessão, não por erro
+
+Tributário (0081) · planilha (0082) · cartão (0083) · trilha (0084) · matriz
+(0085) · APIs. O Codex retomou e concluiu parte delas — a trilha, a matriz, as
+APIs e o cartão têm commit próprio na branch dele. **O módulo tributário
+continua sendo a maior lacuna**, e ele depende da dúvida 21 (em que conta ficam
+os MEIs), porque isso decide o Fator R e portanto o anexo do Simples.

@@ -32,6 +32,7 @@
     "sync:inter": "node scripts/sync-inter.mjs",
     "import:inter": "node scripts/import-inter.mjs",
     "test:integridade": "node scripts/test-integridade.mjs",
+    "test:contabil": "node scripts/test-contabil.mjs",
     "parear": "node scripts/parear-transferencias.mjs",
     "reclassificar": "node scripts/reclassificar.mjs",
     "semear:categoria": "node scripts/semear-categoria-padrao.mjs",

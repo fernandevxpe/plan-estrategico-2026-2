@@ -13,9 +13,15 @@
 // as afirmações contra o estado resultante e dá ROLLBACK. Nada é persistido, e
 // o que está sendo testado é exatamente o SQL que será aplicado.
 //
-// Depois de aplicadas de verdade, o teste continua valendo: os três arquivos
-// são idempotentes (CREATE OR REPLACE, ADD COLUMN IF NOT EXISTS, ON CONFLICT
-// DO UPDATE), então reaplicá-los dentro da transação não muda nada.
+// Depois de aplicadas de verdade, o teste PARA de reaplicá-las, e isso não é
+// economia de tempo — é convivência. `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+// pega ACCESS EXCLUSIVE em fin_transaction ANTES de descobrir que a coluna já
+// existe, e segura esse lock até o fim da transação. Com outros agentes lendo o
+// ledger ao mesmo tempo, isso os trava por minutos. Medido: 5 consultas de
+// outras sessões esperando 2min27s por causa de um ALTER que não fazia nada.
+//
+// Então: se o schema já tem as views, o teste só afirma. `--aplicar` força a
+// aplicação, que é o modo de validar migration ainda pendente.
 //
 // ---------------------------------------------------------------------------
 // O QUE ESTE TESTE PROVA, E O QUE ELE DELIBERADAMENTE NÃO PROVA
@@ -54,6 +60,8 @@ const MIGRATIONS = [
   'db/migrations/0073_fin_balanco_fluxo.sql',
 ];
 
+const forcarAplicacao = process.argv.includes('--aplicar');
+
 const brl = (c) => (Number(c) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 let falhas = 0;
@@ -89,11 +97,24 @@ const q = async (sql, params = []) => (await client.query(sql, params)).rows;
 
 try {
   await client.query('BEGIN');
+  // Falhar rápido é melhor que fazer fila: se alguém está com o ledger travado,
+  // este teste desiste em 5s em vez de segurar lock atrás de lock.
+  await client.query("SET LOCAL lock_timeout = '5s'");
 
-  console.log('\n=== 0. Aplicando 0071–0073 na transação (rollback no fim) ===');
-  for (const arquivo of MIGRATIONS) {
-    await client.query(readFileSync(join(raiz, arquivo), 'utf8'));
-    console.log(`  · ${arquivo}`);
+  const [{ pronto }] = await q(
+    `SELECT (to_regclass('fin_competence_rule') IS NOT NULL
+         AND to_regclass('fin_dre_linha') IS NOT NULL
+         AND to_regclass('fin_balanco_mensal_v') IS NOT NULL) AS pronto`);
+
+  if (pronto && !forcarAplicacao) {
+    console.log('\n=== 0. Schema já tem 0071–0073; afirmando contra o banco como está ===');
+    console.log('     (use --aplicar para reaplicar as migrations dentro da transação)');
+  } else {
+    console.log('\n=== 0. Aplicando 0071–0073 na transação (rollback no fim) ===');
+    for (const arquivo of MIGRATIONS) {
+      await client.query(readFileSync(join(raiz, arquivo), 'utf8'));
+      console.log(`  · ${arquivo}`);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -118,7 +139,7 @@ try {
   // idempotente, mexe em linha — e aí rodar o backfill duas vezes daria
   // resultados diferentes, que é o pior tipo de bug num ledger.
   const rerun = await q(`SELECT * FROM fin_competencia_backfill(true)`);
-  igual('backfill idempotente (2ª execução)', rerun.length, 0, inteiro);
+  igual('backfill idempotente (nada muda ao rodar de novo)', rerun.length, 0, inteiro);
 
   console.log('\n  Cobertura por regra:');
   for (const r of await q(`

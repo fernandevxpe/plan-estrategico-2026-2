@@ -128,19 +128,39 @@ try {
            count(*) FILTER (WHERE health_state = 'produtiva')::integer AS productive,
            count(*) FILTER (WHERE health_state = 'aguardando_fonte')::integer AS external_gaps,
            count(*) FILTER (WHERE health_state = 'sombreada_nao_justificada')::integer AS shadows,
+           count(*) FILTER (WHERE health_state = 'sombra_esperada')::integer AS expected_shadows,
+           count(*) FILTER (WHERE health_state = 'zero_esperado')::integer AS expected_zero,
            count(*) FILTER (WHERE health_state NOT IN (
-             'produtiva', 'aguardando_fonte', 'sombreada_nao_justificada'
+             'produtiva', 'aguardando_fonte', 'sombreada_nao_justificada',
+             'sombra_esperada', 'zero_esperado'
            ))::integer AS unexpected,
            count(*) FILTER (
              WHERE health_state = 'produtiva' AND hits_current_version <= 0
            )::integer AS false_productive
       FROM fin_rule_health_v
   `);
+  // ATUALIZADO EM 16/08/2026 PELA 0094.
+  //
+  // A 0088 deixou 58 ativas = 53 produtivas + 3 lacunas + 2 sombras NÃO
+  // justificadas. A 0094 mexeu em duas coisas, e as duas mudam esta contagem
+  // de propósito:
+  //
+  //   · a regra 40 `meios-de-pagamento` foi estreitada. Os 25 acertos dela
+  //     eram, todos, o banco de destino do recebedor no texto do PIX — zero
+  //     tarifa real. A versão 2 tem zero hit, e isso é o resultado desejado:
+  //     ela sai de 'produtiva' e entra em 'zero_esperado', com asserção;
+  //   · as 2 sombras ganharam a medição que faltava e viraram
+  //     'sombra_esperada', com validade de 90 dias. Se ninguém confirmar, elas
+  //     expiram e voltam a bloquear — que é o ponto de a asserção ser datada.
+  //
+  // O total de 58 ativas não muda: nenhuma regra foi criada nem arquivada.
   assert(Number(health.active) === 58, `monitor trouxe ${health.active} ativas, esperado 58`);
   assert(Number(health.unique_rules) === 58, 'monitor nao trouxe exatamente uma linha por regra ativa');
-  assert(Number(health.productive) === 53, `monitor trouxe ${health.productive} produtivas, esperado 53`);
+  assert(Number(health.productive) === 52, `monitor trouxe ${health.productive} produtivas, esperado 52`);
   assert(Number(health.external_gaps) === 3, `monitor trouxe ${health.external_gaps} lacunas, esperado 3`);
-  assert(Number(health.shadows) === 2, `monitor trouxe ${health.shadows} sombras, esperado 2`);
+  assert(Number(health.shadows) === 0, `monitor trouxe ${health.shadows} sombras sem justificativa, esperado 0`);
+  assert(Number(health.expected_shadows) === 2, `monitor trouxe ${health.expected_shadows} sombras esperadas, esperado 2`);
+  assert(Number(health.expected_zero) === 1, `monitor trouxe ${health.expected_zero} zeros esperados, esperado 1`);
   assert(Number(health.unexpected) === 0, `monitor deixou ${health.unexpected} regra(s) sem estado honesto`);
   assert(Number(health.false_productive) === 0, 'monitor chamou versao sem hit de produtiva');
 
@@ -574,7 +594,7 @@ try {
   const beforeRollback = await classificationSnapshot();
   assertSameSnapshot(afterMigration, beforeRollback, 'fixtures removidos');
 
-  console.log('✓ 0088 em ROLLBACK: 58 ativas = 53 produtivas + 3 lacunas + 2 sombras');
+  console.log('✓ 0088+0094 em ROLLBACK: 58 ativas = 52 produtivas + 3 lacunas + 2 sombras esperadas + 1 zero esperado');
   console.log('✓ hits transacao/documento: +1, troca e -1; recontagem combinada sem divergencia');
   console.log('✓ versao imutavel: INSERT real, FK composta, telemetria neutra e memoria historica preservada');
   console.log('✓ saude por versao: definicao nova zera produtividade; assercao expira e invalida');

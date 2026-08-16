@@ -38,6 +38,11 @@ vazio declarado.
 | 48 | A empresa paga o DAS-MEI dos seus MEIs | R$ 2.925,70 em 2026 | **aberta · fato medido, classificação pendente** |
 | 49 | Jun/26: nota sem DAS correspondente | R$ 22.644,22 de base (~R$ 3.032 de DAS) | **aberta · o PGDAS resolve** |
 | 50 | Notas emitidas fora do Asaas | R$ 55.567,69 em 7 competências | **aberta · medida por reversão do DAS** |
+| **52** | **Rótulo por trilho de pagamento: 25 lançamentos em 4.05 que não são tarifa** | R$ 9.395,07 | **aberta · regra estreitada na 0094, 10 com precedente na casa** |
+| 53 | Histórico da contraparte: baixar o piso de 3 cobranças para 1 quando a dominância é 100% | R$ 79.938,48 em 147 documentos | **aberta · destrava a maior fatia da fila da carteira** |
+| **54** | **M4 ≤ 300 é impossível: 1.026 itens são de 2021–2025 e o H3 os prende** | R$ 927.406,83 | **aberta · decisão de limiar ou de escopo** |
+| 55 | As 2 sombras de regra (usina solar, ART): confirmar em 90 dias | R$ 58.600,00 | **aberta · asserção expira em 14/11/2026 e M14 volta a 2** |
+| 56 | As 16 categorias nunca usadas: quais saem do plano de contas | 8 esperam dado, 4 esperam decisão, 2 perdem para outra | **aberta · classificadas uma a uma na 0094** |
 | 51 | Receita não segregada por anexo | 73,9% consultoria / 26,1% manutenção | **aberta · a lei manda segregar** |
 | — | XPE Tecnologia é a própria empresa? | R$ 25.400,00/ano | ✅ respondida |
 
@@ -1642,5 +1647,224 @@ registrou isso como lacuna bloqueante.
 
 **Pergunta direta:** o contador segrega hoje? Se sim, em que proporção — e essa
 proporção bate com os códigos municipais das notas?
+
+---
+
+## 52. O rótulo que veio do trilho de pagamento — 25 lançamentos, R$ 9.395,07
+
+**Descoberto ao auditar M4, não como parte dela.** A regra 40
+`meios-de-pagamento` procura `pjbank|asaas|cielo|stone|pagseguro|getnet` no
+texto do extrato e manda para `4.05 Tarifas bancárias e de cobrança`. Só que o
+Nubank descreve um PIX enviado assim:
+
+```
+Transferência enviada pelo Pix — POSTO VENDA GRANDE - •••.459.0001-••
+ - PAGSEGURO INTERNET IP S.A. (0290) Agência: 1
+```
+
+O nome no fim da linha é o **banco de destino do recebedor**. Resultado medido:
+**25 acertos, zero verdadeiros positivos.** É a mesma assinatura do bug do
+"POSTO IPIRANGA", com um detalhe que o invariante D2 não alcança — aqui o sinal
+está certo (saída, despesa) e só a **linha da DRE** está errada.
+
+A 0094 estreitou a regra (a condição passa a ser sobre a contraparte, não sobre
+o texto) e devolveu os 25 para a fila com a evidência na nota. Nenhum trocou de
+categoria: trocar exigiria limpar `classified_rule_id`, que é da frente do D6.
+
+**Onde a casa já decidiu, e só falta confirmar:**
+
+| grupo | n | valor | precedente no ledger |
+|---|---|---|---|
+| Postos (Venda Grande, Alvorada, Madalena) | 3 | R$ 402,27 | regra `combustivel` → **5.06**, 36 lançamentos |
+| Alimentação (São Braz, Reforço 6, Full House ×2, Rei das Coxinhas, Empório) | 6 | R$ 391,15 | regra `alimentacao-equipe` → **6.04**, 35 lançamentos |
+| Ancora Imobiliária | 1 | R$ 300,00 | 9 lançamentos da própria contraparte em **5.01**, R$ 43.852,60 |
+
+**Onde não há precedente:**
+
+| contraparte | n | valor |
+|---|---|---|
+| DIMENSIONAL BRASIL SOLUCOES LTDA | 1 | R$ 5.022,10 |
+| PJBank por QR code, sem contraparte | 2 | R$ 1.624,40 |
+| ACESSO EQUIPAMENTOS DE SEGURANCA INDUSTRIAIS | 1 | R$ 720,00 |
+| CPF 989.393.514-87 (Pablo Michael Viana Silveira) | 5 | R$ 345,40 |
+| CPF 021.114.504-13 (Artur Pereira de Freitas) | 3 | R$ 252,01 |
+| ELETROPALMA · IGUEP · ALBERTINO JOSE DE LIMA | 3 | R$ 337,74 |
+
+**Pessoa física não emite tarifa bancária**, então os 8 lançamentos de CPF estão
+errados com certeza — só não se sabe para onde vão.
+
+**Opções:** *(a)* aplicar os precedentes aos 10 primeiros e decidir os 15
+restantes um a um · *(b)* decidir tudo por contraparte na tela de qualificação
+· *(c)* deixar em 4.05 e assumir que a DRE tem R$ 9.395,07 de "tarifa bancária"
+que é combustível, comida, aluguel e material.
+
+---
+
+## 53. Histórico da contraparte: o piso de 3 cobranças vale para o caso de 100%?
+
+O importador só classifica uma cobrança pelo histórico do cliente quando a
+categoria dominante tem **≥ 80% e no mínimo 3 cobranças de base**. Abaixo de
+90% a linha vai para a fila mesmo classificada — é a população
+`conferencia_de_confianca`, com 413 itens hoje.
+
+Medido em 16/08/2026, entre os 391 documentos pendentes **sem** categoria:
+
+```
+147 · R$ 79.938,48  dominância ≥ 90%, base 1 ou 2  ← barrados só pelo piso de 3
+116 · R$ 94.430,06  contraparte sem histórico nenhum
+ 64 · R$ 99.189,20  dominância 50–80%, base ≥ 3     ← duas leituras de verdade
+ 43 · R$ 11.763,20  dominância < 50% ou sem contraparte
+```
+
+Os 147 do topo têm um cliente cujo histórico classificado é **100% de uma
+categoria só** — só que esse histórico tem uma ou duas cobranças em vez de três.
+O `qualificar.mjs` já trata esse caso como sugestão de 70–90% de confiança; o
+importador o descarta.
+
+Nenhum documento pendente tem irmão de parcelamento classificado (medido: zero),
+então esse caminho está esgotado — o histórico da contraparte é a única
+evidência disponível para eles.
+
+**Opções:** *(a)* baixar o piso para base ≥ 1 **quando a dominância é 100%**, e
+mandar tudo para `baixa_confianca` (a linha ganha categoria e continua pedindo
+aceite) · *(b)* baixar para base ≥ 2 · *(c)* manter o piso de 3 e resolver os
+147 na tela, um a um.
+
+Em (a) e (b) o dinheiro não muda de lugar sem passar por gente: a fila continua
+com o item aberto.
+
+---
+
+## 54. M4 ≤ 300 é aritmeticamente impossível hoje — o limiar ou o escopo
+
+A régua de M4 diz *"300 é o que uma pessoa vence em ~2h"*. Ela foi escrita
+quando a fila era só "falta categoria". Hoje, das 1.556 pendências:
+
+```
+415 · R$ 500.008,10  alvo anterior a 2026, sem categoria   ← fora do escopo
+331 · R$ 271.904,30  conferência de confiança, pré-2026    ← fora do escopo
+267 · R$ 134.605,41  cobrança sem texto na fonte, pré-2026 ← fora do escopo
+224 · R$  91.603,52  marcado 3.99/5.99 em 2026
+120 · R$ 154.161,30  sem categoria em 2026
+ 82 · R$  62.594,36  conferência de confiança em 2026
+ 79 · R$  84.002,91  cobrança sem texto na fonte, em 2026
+ 25 · R$   9.395,07  rótulo por trilho de pagamento (dúvida 52)
+```
+
+**1.026 itens (R$ 927.406,83) têm alvo anterior a 2026** — fora do escopo que o
+Fernando declarou (*"quero tudo organizado que conseguir 2026"*,
+OBJETIVOS_METAS §1). E eles **não podem sair da fila**: o invariante H3 exige
+que todo lançamento indeciso tenha item pendente, e ele está certo — foi caro
+conquistá-lo, e apagá-lo esconderia dinheiro.
+
+Logo: enquanto o H3 valer e existirem 1.026 itens fora de escopo, M4 nunca
+chega a 300. O número não mede preguiça; mede uma régua que envelheceu.
+
+O monitor `M4·escopo` já mostra os **530 itens em escopo de 2026** ao lado, sem
+mexer em M4.
+
+**Opções:** *(a)* M4 passa a medir só o alvo em 2026, e o resto vira um monitor
+de acervo com limiar próprio · *(b)* M4 fica, e o limiar sobe para um número
+medido a partir das populações de `fin_fila_saude_v` · *(c)* declarar 2021–2025
+em escopo e tratar M4 como está — é trabalho real, mas não é o que você pediu.
+
+---
+
+## 55. As duas sombras de regra: confirmar em 90 dias, ou elas voltam a bloquear
+
+A 0094 mediu o que cada regra bloqueante teria pego e as declarou
+`sombra_esperada`, **com validade de 90 dias**. Se ninguém confirmar, a asserção
+expira e M14 volta a acusar 2. É de propósito: declarar não é decidir para
+sempre.
+
+**Regra 14 `gestao-de-usina-solar-e-gd` → 3.09 — 52 documentos, R$ 57.600,00**
+
+| vencedor atual | n | valor | o que a descrição diz |
+|---|---|---|---|
+| `consultoria-e-auditoria` (3.01) | 43 | R$ 34.400,00 | "Gestão da Usina Solar, Créditos e **Assessoria** junto a Neonergia" |
+| `laudos-e-inspecoes` (3.02) | 3 | R$ 15.000,00 | "**Laudo** da Usina Solar" |
+| `estudo-de-disponibilidade-de-carga` (3.03) | 3 | R$ 6.700,00 | "Laudo Técnico e **Estudo** de Disponibilidade" |
+| `projetos-e-subestacoes` (3.04) | 3 | R$ 1.500,00 | "Elaboração de **projeto** técnico" |
+
+Em 52 de 52 a regra vencedora casou a palavra que nomeia o **serviço**, e a
+regra 14 casou o **objeto** sobre o qual ele foi prestado. O plano de contas
+3.01–3.14 é uma lista de serviços; "usina solar" não é serviço. Os 43 primeiros
+são os contestáveis: se "Gestão da Usina Solar e Créditos" for gestão de
+faturas, R$ 34.400,00 saem de 3.01 e entram em 3.09.
+
+**Regra 24 `art-anotacao-responsabilidade-tecnica` → 3.01 — 1 documento, R$ 1.000,00**
+
+Candidato único em 3.406 documentos, e o texto que casou é **mensagem de PIX**,
+não descrição de serviço: *"ART projeto Carregador eletronico Edf Aluisio Moura
+Apto 1202"*. A ART é acessória de um projeto de carregador, que é o serviço
+faturado e o que a regra vencedora casou (3.14). Vale registrar o que a medição
+diz da regra em si: um detector de três letras sobre texto livre, com 1 acerto
+em 3.406 documentos, é da mesma família do "CNPJ = 14 dígitos em qualquer campo"
+que casou zero de 274 negócios.
+
+**Opções para as duas:** *(a)* confirmar — serviço declarado vence objeto, e
+serviço principal vence obrigação acessória; as asserções passam a valer por
+prazo longo · *(b)* discordar em algum caso, e aí a regra ganha prioridade menor
+(número menor vence, o motor lê `ORDER BY priority`) e a receita se move ·
+*(c)* não responder, e em 90 dias elas voltam a bloquear.
+
+---
+
+## 56. As 16 categorias que ninguém nunca usou — quais saem do plano de contas
+
+M13 mede "linhas mortas do plano de contas". Classificadas uma a uma em
+16/08/2026, elas não são a mesma coisa:
+
+**Não é linha do plano — é marcador de indecisão (1)**
+
+- **3.99 Receita a classificar.** Vazia porque o passo de herança do importador
+  sempre a substitui pela categoria da cobrança liquidada. Zero receita indecisa
+  é sucesso, não morte. A gêmea 5.99 tem 237 lançamentos e ninguém a chama de
+  morta.
+
+**Espera dado que não existe em fonte nenhuma (8)**
+
+| código | o que falta | dúvida |
+|---|---|---|
+| 3.13 Manutenção e PCM | catálogo de serviços, contratos e NFs | asserção `aguardando_fonte` |
+| 4.01 Comissão paga a vendedor | a comissão é prevista, nunca paga pelo ledger | 39 |
+| 5.09 Seguros | zero prêmio pago; as 9 linhas que casam "seguro" são tarifas do Asaas com nome de cliente | — |
+| 6.08 13º e férias | a folha do ledger não separa | — |
+| 7.03 Retenções (IRRF, CSLL, PIS/COFINS) | empresa no Simples; zero candidato | 21 |
+| 8.02 Infraestrutura e reformas | zero candidato | — |
+| 8.03 Veículos | zero candidato; a frota é locada | — |
+| 9.05 Aporte e retirada de sócio | zero candidato | — |
+
+**Espera decisão humana que já está registrada (4)**
+
+- **6.05 Reembolsos a colaboradores** — dúvida 22, ~R$ 6 mil/mês, 74 de 81
+  pedidos casam.
+- **5.07 Material de escritório e copa** — 6 candidatos entre os 25 da dúvida
+  47, R$ 391,15. Perde hoje para 6.04 "Benefícios", que a casa já usou 35 vezes.
+- **6.07 Treinamento e capacitação** — 2 lançamentos sem categoria, R$ 1.659,90
+  ("L B S DE OLIVEIRA TREINAMENTOS", "Dtx Capacitacao"), ambos na fila.
+- **9.04 Amortização de empréstimo** — dúvida 5: falta o contrato do Pronampe,
+  R$ 147.062,10.
+
+**Perde para outra mais específica (2)**
+
+- **8.04 Licenças e software perpétuo** — `software-assinaturas` (5.03) absorve;
+  nenhuma licença perpétua aparece no acervo.
+- **5.08 Manutenção e infraestrutura** — sem candidato próprio; o que existe é
+  material de obra (4.02).
+
+**Já estava sendo usada, e o monitor não via (1)**
+
+- **5.11 Frete e logística** — 1 item de cartão, R$ 1.222,56. M13 lia só
+  `fin_transaction` e `fin_document`; o subledger do cartão carrega
+  `category_id` desde a 0083. Corrigido na medição.
+
+**Opções:** *(a)* desativar as 2 que perdem para outra (8.04, 5.08) e manter as
+demais como espera declarada · *(b)* desativar também as 8 sem fonte e recriá-las
+quando o dado chegar · *(c)* manter tudo e aceitar que M13 é um retrato do que
+falta de dado, não de plano de contas inflado.
+
+Em qualquer opção, **3.99 não deveria contar**: ela não é linha de plano de
+contas, é marcador.
 
 ---

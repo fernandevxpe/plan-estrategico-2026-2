@@ -30,6 +30,9 @@ vazio declarado.
 | 17 | Estorno: o Polp não mostra, o CSV mostra | 12 linhas, líquido zero | **aberta · não afeta caixa** |
 | 18 | 42 contrapartes com CNPJ fora do cadastro | 227 linhas | **aberta · destrava a E2** |
 | 19 | Centro de custo para em 13%: o ERP só carimbou 112 | 739 linhas sem projeto | **aberta · depende do erp-obras** |
+| **37** | **Os 149 valores de referência vieram de um arquivo que não temos** | R$ 2.105.576,09 de massa comparada | **aberta · bloqueia toda a frente do previsto** |
+| **38** | **Qual planilha substitui a "Fluxo de Caixa"** | as 91 linhas do modelo | **aberta · nenhuma das 12 abas serve** |
+| 39 | Comissão: 5% em 4 parcelas ou a escala por volume? | R$ 44.205,66/ano entre as duas regras | **aberta · a planilha declara as duas** |
 | — | XPE Tecnologia é a própria empresa? | R$ 25.400,00/ano | ✅ respondida |
 
 ---
@@ -1040,3 +1043,153 @@ precisa.
 **Opções:** *(a)* manter a premissa plana, que qualquer pessoa lê e discute ·
 *(b)* restaurar a curva por idade, que acerta mais e ninguém consegue conferir de
 cabeça.
+
+---
+
+## 37. Os 149 valores de referência vieram de um arquivo que não está aqui
+
+**Medido em 16/08/2026.**
+
+`fin_model_value` tem **149 linhas com `procedencia='referencia'`**, gravadas em
+11/08/2026, todas com motivo `aba "Fluxo de Caixa", linha N`. A view
+`fin_projetado_realizado_v` (560 linhas) compara o ledger contra elas.
+
+**Nenhuma aba com esse nome existe na planilha deste repositório.** O arquivo
+`Projeção Financeira_v3.1 (2).xlsx` tem 12 abas; a migration 0034 fala numa
+"planilha de 21 abas". São arquivos diferentes, e o de 21 abas não está aqui.
+
+**Dois achados que mudam a leitura desses números:**
+
+1. **Eles cobrem só janeiro a julho** — 25, 29, 30, 25, 25, 9 e 6 células por
+   mês, e **zero de agosto a dezembro**. Projeção de 2026 teria os 12 meses.
+   O desenho é de planilha de acompanhamento sendo preenchida mês a mês.
+
+2. **32 das 149 células são idênticas ao ledger até o centavo**, em 8 linhas —
+   e em 4 delas (Locação de Usinas, Gestão de Tráfego, Comissão Mercado Livre,
+   INSS) *todos* os meses batem exatamente. Duas fontes independentes não fazem
+   isso. Essas linhas foram preenchidas a partir do mesmo extrato que alimenta o
+   ledger.
+
+**Consequência:** para essas 8 linhas, a tela "projetado × realizado" compara o
+ledger consigo mesmo. Dá divergência zero, parece saúde, e não testa nada. Para
+as outras, não se sabe se o alvo é meta, projeção ou digitação manual.
+
+**Nada foi apagado.** São a única foto que existe, e a regra é não destruir sem
+provar o substituto.
+
+**Opções:**
+- **(a)** Fernando localiza a planilha de 21 abas com a aba "Fluxo de Caixa" —
+  é o único caminho que reconstrói a referência como ela foi concebida.
+- **(b)** Marcar as 149 como `origem_perdida` no motivo, mantendo o valor mas
+  tirando-as da tela de comparação até haver origem. Honesto e reversível.
+- **(c)** Apagar. **Não recomendado** enquanto (a) não for descartado.
+
+**Valor em jogo:** R$ 2.105.576,09 de massa absoluta comparada; 12 linhas
+(R$ 141.291,94) aparecem na tela **só** com referência, sem realizado do lado —
+ali o número da planilha é a única coisa que o usuário vê.
+
+**Diagnóstico desta frente: manter os valores, corrigir o motivo.** O `motivo`
+atual afirma uma coisa falsa — que o número veio de uma aba "Fluxo de Caixa",
+o que faz qualquer pessoa procurá-la nesta planilha e não achar. O valor fica
+(é a única foto), mas o rótulo passa a dizer a verdade. Reversível, não mexe em
+nenhum `valor_cents`, e **não foi aplicado** — depende da resposta acima.
+
+```sql
+-- 149 células, 33 linhas. Dry-run conferido em 16/08/2026.
+UPDATE fin_model_value
+   SET motivo = regexp_replace(motivo, '^aba "Fluxo de Caixa", linha (\d+)$',
+         'origem perdida — aba "Fluxo de Caixa" (linha \1) de planilha ausente do repositório; ver DUVIDAS 37')
+ WHERE procedencia = 'referencia' AND motivo LIKE 'aba "Fluxo de Caixa"%';
+```
+
+---
+
+## 38. Qual aba substitui a "Fluxo de Caixa" — resposta medida: nenhuma
+
+O importador `scripts/import-modelo-referencia.mjs` foi reconectado ao arquivo
+real e agora confere o **rótulo** de cada linha antes de gravar. Rodado contra
+as **12 abas**, o alinhamento com as 87 linhas do modelo que têm `origem_linha`:
+
+| aba | alinhamento |
+|---|---|
+| Resumão Geral | **1,1%** (1 de 87) |
+| Premissas gerais · Projeção Base · Projeção Biel · Projeção Biel Ajustada · Projeção Projetos Joni | **0,0%** |
+| Reformas · Única coisa · Cronograma PE XPE · Sala material · Fernando · Máquina de Indicações | sem eixo mensal — não são importáveis |
+
+A única linha que casa é a **5, "Fontes de Receita (+)"**. Todas as outras
+apontam para outra coisa: a linha 10, que no modelo é *"Monitor BT - Monofásico
+50A"*, no "Resumão Geral" é **"Bra"** (R$ 20.501/mês). A linha 34, *"Auditorias
+de Solar e Mercado Livre"*, é **"Lucro Bruto"**. A linha 62, *"Impostos"*, é
+**"Reforma da Sala"**.
+
+E os nomes que identificam o modelo — *Monitor BT*, *Gateways*, *Fatufácil*,
+*Energy Management as a Service*, *FIN-ENERGYTECH*, *Locação de Usinas* — **não
+aparecem em nenhuma das 865 células de texto do workbook inteiro.** Esta
+planilha não é uma versão nova daquela: é outro modelo, orientado a funil
+(visita → proposta → fechamento → ticket), não a plano de contas.
+
+**Por isso não há remapeamento a propor.** Ligar linha por semelhança de nome é
+o erro que uma frente anterior existiu para desfazer, e aqui nem semelhança há.
+
+**Opções:**
+- **(a)** Fernando aponta a planilha certa (a de 21 abas). O importador já está
+  pronto: `--aba "<nome>"`, e ele recusa sozinho se o rótulo não bater.
+- **(b)** Aceitar que esta planilha é outro modelo e **remodelar** as 91 linhas
+  para o formato dela (funil e curva), abandonando o plano de contas atual.
+  Migration 0082 está reservada para isso — não foi usada.
+- **(c)** Abrir mão da referência de planilha e usar `fin_budget_target` (hoje
+  com **0 metas** na view) como único alvo do previsto.
+
+---
+
+## 39. A comissão: 5% em 4 parcelas, ou a escala por volume de vendas?
+
+A aba **"Projeção Biel Ajustada"** declara as duas coisas, e só uma chega ao
+resultado.
+
+**O que a frente de comissão leu (linhas 22–28):** comissão de consultoria a
+**5%**, dividida em 4 parcelas (`D22 = 0,05`; `E23 = E22/4`). Está lá, é premissa
+digitada, e a linha 28 confirma `% Comissão / Faturamento = 0,05` nos 12 meses.
+
+**Confirmado — e refutado como fonte.** Esse bloco é **ramo morto**: a única
+fórmula em todo o workbook que lê a linha 27 é a própria linha 28, que só calcula
+a razão de conferência. Nada mais o consome.
+
+**O que de fato vira número** está nas linhas 109–112 da mesma aba:
+
+```
+L110  qtd vendas por vendedor = (E84+E66+E11)/E5
+L111  IF(E110<=C126, C125, IF(E110<=D126, D125, ...))   → escala 0% / 2,5% / 5% / 10%
+L112  comissão = E111 * SUM(E85,E70,E13)
+L109  Fixo = C109(5000) * qtd vendedores = R$ 10.000/mês
+```
+
+E `Resumão Geral!D28` ("Comissão de Vendas") é literalmente
+`='Projeção Biel Ajustada'!E112`. A escala vem da tabela c1..c4 das linhas
+125–126: **0% até 4 vendas, 2,5% até 7, 5% até 12, 10% acima de 14**, por
+vendedor. Nos meses 1 e 2 a alíquota efetiva é 2,5%, não 5%.
+
+**Isto explica por que nenhum valor pago se reconstrói a 5%:** a planilha nunca
+usou 5% para valer. Usou uma escala, **mais um fixo de R$ 10.000/mês** que não
+está na linha de comissão — ele entra na margem (L113) e presumivelmente na
+folha, o que abre a chance de estar contado duas vezes.
+
+**Opções:**
+- **(a)** A escala por volume é a regra real; o bloco de 5% é rascunho e deve ser
+  ignorado (e de preferência apagado da planilha, para não enganar de novo).
+- **(b)** 5% é a regra combinada com o time e a escala é que é simulação — nesse
+  caso o "Resumão Geral" está errado e o lucro projetado também.
+- **(c)** Nenhuma das duas é o que se paga hoje, e a regra real precisa ser
+  declarada do zero.
+
+**Valor em jogo, medido:**
+
+| | 2026 inteiro |
+|---|---|
+| escala por volume (L112) — **é a que vira resultado** | R$ 133.134,34 |
+| 5% em 4 parcelas (L27) — ramo morto | R$ 88.928,68 |
+| **diferença entre as duas regras** | **R$ 44.205,66** |
+| fixo de R$ 10.000/mês (L109), fora da linha de comissão | R$ 120.000,00 |
+
+A diferença entre 2,5% e 5% nos dois primeiros meses são R$ 4.793,01. O fixo de
+R$ 120.000/ano precisa de resposta à parte sobre dupla contagem com a folha.

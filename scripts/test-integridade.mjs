@@ -789,14 +789,27 @@ check('H', 'H2', 'nenhum item pendente aponta para documento que já tem categor
   'doc'
 ));
 
-check('H', 'H3', 'nenhum lançamento sem categoria fica fora da fila', {
-  afirma: 'category_id IS NULL ⇒ existe fin_review_item pendente para ele',
-  porque: 'o simétrico do H1 e o mais caro: dinheiro sem categoria e sem fila não aparece em lugar nenhum — nem no DRE, nem na lista de pendências'
+// H3 cobria só `category_id IS NULL` e por isso não via 189 lançamentos —
+// 126 em 5.99 e 63 em 3.99 — que dizem "não sei o que é isso" e não tinham item
+// pendente em lugar nenhum. Dos 189, 184 tinham item marcado `resolvido`.
+//
+// A causa é a mesma dos outros três lugares onde 5.99 enganou (a view da 0055,
+// o indicador do painel, a fila de revisão): as categorias terminadas em .99
+// passam em qualquer teste que pergunte apenas "tem categoria?".
+//
+// A constante `CODIGO_A_CLASSIFICAR` já existia neste arquivo e já era usada em
+// H1 e H2, do lado do documento. Só faltava aqui, do lado do lançamento.
+check('H', 'H3', 'nenhum lançamento indeciso fica fora da fila', {
+  afirma: "category_id IS NULL ou em 3.99/5.99 ⇒ existe fin_review_item pendente para ele",
+  porque: 'o simétrico do H1 e o mais caro: dinheiro indeciso e sem fila não aparece em lugar nenhum — nem no DRE (5.99 soma em despesa administrativa, 3.99 em receita bruta, as duas mentindo), nem na lista de pendências'
 }, () => alvo(
   `SELECT count(*) n, coalesce(sum(abs(t.amount_cents)), 0) rs, array_agg(t.id) ids FROM fin_transaction t
-    WHERE NOT t.is_split_parent AND t.category_id IS NULL
+     LEFT JOIN fin_category c ON c.id = t.category_id
+    WHERE NOT t.is_split_parent
+      AND (t.category_id IS NULL OR c.code = ANY ($1::text[]))
       AND NOT EXISTS (SELECT 1 FROM fin_review_item ri
-                       WHERE ri.target_table = 'fin_transaction' AND ri.target_id = t.id AND ri.status = 'pendente')`
+                       WHERE ri.target_table = 'fin_transaction' AND ri.target_id = t.id AND ri.status = 'pendente')`,
+  [CODIGO_A_CLASSIFICAR]
 ));
 
 check('H', 'H4', "lançamento marcado 'pendente' tem item de fila", {

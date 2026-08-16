@@ -86,11 +86,17 @@ async function aplicar({ nome, evidencia, stage, regraSlug, sql, params = [] }) 
               'classificar-fila'`,
       [r.id, stage, regraSlug, r.category_id, r.code_anterior, nome, evidencia, r.amount_cents]
     );
-    await client.query(
-      `UPDATE fin_review_item SET status = 'resolvido', resolved_at = now(), resolved_by = 'classificar-fila'
-        WHERE target_table = 'fin_transaction' AND target_id = $1 AND status = 'pendente'`,
-      [r.id]
-    );
+    // NÃO fecha o item de fila aqui, e isto é uma correção.
+    //
+    // A primeira versão deste arquivo fechava o item de TODA linha que tocava
+    // — inclusive das 63 que ele mesmo mandou para 3.99. Resultado medido: 184
+    // lançamentos em 3.99/5.99 com item `resolvido`, ou seja, dizendo "não sei
+    // o que é" e fora da lista de pendências de todo mundo. Foi assim que 63
+    // receitas sumiram da fila sem que ninguém decidisse nada.
+    //
+    // Quem abre e fecha item agora é o gatilho `fin_transaction_fila_indeciso`
+    // (0080), que olha para a INDECISÃO e não para a existência de categoria.
+    // Um único lugar decide, e ele não tem como esquecer de 3.99.
   }
 
   passos.push({ nome, evidencia, n: ids.length, volume, ids });
@@ -118,7 +124,18 @@ try {
             count(*) FILTER (WHERE COALESCE(c.cash_flow_group,'') <> 'movimentacao'
                                AND t.nucleo IS NOT NULL)::int                          nucleo,
             count(*) FILTER (WHERE (t.category_id IS NULL OR c.code IN ('5.99','3.99'))
-                               AND COALESCE(c.cash_flow_group,'') <> 'movimentacao')::int fila
+                               AND COALESCE(c.cash_flow_group,'') <> 'movimentacao')::int fila,
+            -- O buraco do H3: indeciso (sem categoria OU em .99) que não tem
+            -- item PENDENTE em fin_review_item. Medido sobre o ledger inteiro,
+            -- não só 2026, porque a fila de pendências não tem recorte de data.
+            (SELECT count(*)::int FROM fin_transaction t2
+               LEFT JOIN fin_category c2 ON c2.id = t2.category_id
+              WHERE NOT t2.is_split_parent
+                AND (t2.category_id IS NULL OR c2.code IN ('5.99','3.99'))
+                AND NOT EXISTS (SELECT 1 FROM fin_review_item ri
+                                 WHERE ri.target_table = 'fin_transaction'
+                                   AND ri.target_id = t2.id AND ri.status = 'pendente')) AS indeciso_fora_da_fila,
+            count(*) FILTER (WHERE t.review_status <> 'pendente')::int revisao_ok
        FROM fin_transaction t LEFT JOIN fin_category c ON c.id = t.category_id
       WHERE t.posted_on >= $1`, [DE]
   )).rows[0];
@@ -140,28 +157,87 @@ try {
     'receita-asaas-cobranca-recebida', 'reembolso-recebido-de-fornecedor',
     'fornecedor-lyra-m2m', 'fornecedor-startlaw', 'concessionaria-neoenergia-pe'
   ];
-  const contaRegras = async () => Number((await client.query(
-    'SELECT count(*)::int n FROM fin_rule WHERE slug = ANY($1)', [REGRAS_0056]
-  )).rows[0].n);
+  const DEPENDENCIAS = [
+    { arquivo: '0056_fin_classificacao_fila.sql',
+      presente: async () => Number((await client.query(
+        'SELECT count(*)::int n FROM fin_rule WHERE slug = ANY($1)', [REGRAS_0056]
+      )).rows[0].n) === REGRAS_0056.length },
+    { arquivo: '0080_fin_indeciso_na_fila.sql',
+      presente: async () => Number((await client.query(
+        `SELECT count(*)::int n FROM pg_trigger WHERE tgname = 'fin_transaction_fila_indeciso'`
+      )).rows[0].n) === 1 }
+  ];
 
-  let simulouMigration = false;
-  if (await contaRegras() < REGRAS_0056.length) {
+  const simuladas = [];
+  for (const dep of DEPENDENCIAS) {
+    if (await dep.presente()) continue;
     if (APLICAR) {
-      throw new Error('migration 0056 não aplicada: rode `npm run db:migrate` antes de --aplicar');
+      throw new Error(`migration ${dep.arquivo} não aplicada: rode \`npm run db:migrate\` antes de --aplicar`);
     }
-    // Trava de lock: a 0056 tem um ALTER TABLE em fin_transaction, e esperar
-    // por ele de forma indefinida penduraria a sessão atrás de qualquer
-    // importador em curso.
+    // Trava de lock: as duas migrations mexem em fin_transaction, e esperar por
+    // isso de forma indefinida penduraria a sessão atrás de qualquer importador
+    // em curso.
     await client.query("SET LOCAL lock_timeout = '10s'");
     const { readFile } = await import('node:fs/promises');
     const { fileURLToPath } = await import('node:url');
-    const caminho = fileURLToPath(new URL('../db/migrations/0056_fin_classificacao_fila.sql', import.meta.url));
-    await client.query(await readFile(caminho, 'utf8'));
-    simulouMigration = true;
-    if (await contaRegras() < REGRAS_0056.length) {
-      throw new Error('a 0056 rodou e as regras continuam ausentes — confira o arquivo da migration');
+    await client.query(await readFile(
+      fileURLToPath(new URL(`../db/migrations/${dep.arquivo}`, import.meta.url)), 'utf8'));
+    if (!(await dep.presente())) {
+      throw new Error(`${dep.arquivo} rodou e o que ela declara continua ausente`);
     }
+    simuladas.push(dep.arquivo);
   }
+  const simulouMigration = simuladas.length > 0;
+
+  // -------------------------------------------------------------------------
+  // PASSO 0 — devolver o indeciso para a fila de pendências
+  // -------------------------------------------------------------------------
+  // O gatilho da 0080 garante daqui para a frente; este passo conserta o que já
+  // está fechado. Medido antes de escrever: 189 lançamentos em 3.99/5.99 sem
+  // item pendente — 184 com item marcado `resolvido` (fechados pela primeira
+  // versão deste próprio arquivo) e 5 que nunca tiveram item.
+  //
+  // Sem recorte de data: a fila de pendências não é sobre 2026, é sobre o que
+  // está indeciso. `adiado` e `ignorado` continuam intocados — quem adiou
+  // escolheu adiar.
+  //
+  // O gatilho não faz isso sozinho porque só dispara em INSERT/UPDATE de
+  // `category_id`, e estas linhas não vão ser tocadas de novo.
+  const { rows: [reabertos] } = await client.query(`
+    WITH indeciso AS (
+      SELECT t.id, t.entity_id, t.amount_cents
+        FROM fin_transaction t LEFT JOIN fin_category c ON c.id = t.category_id
+       WHERE NOT t.is_split_parent
+         AND (t.category_id IS NULL OR c.code IN ('5.99', '3.99'))
+    ), ins AS (
+      INSERT INTO fin_review_item (entity_id, target_table, target_id, reason, amount_cents, status)
+      SELECT i.entity_id, 'fin_transaction', i.id, 'sem_categoria', i.amount_cents, 'pendente'
+        FROM indeciso i
+      ON CONFLICT (target_table, target_id) DO UPDATE
+         SET status = 'pendente', resolved_at = NULL, resolved_by = NULL
+       WHERE fin_review_item.status NOT IN ('pendente', 'adiado', 'ignorado')
+      RETURNING 1
+    )
+    SELECT count(*)::int n FROM ins`);
+
+  // E a coluna `review_status` junto, pelo mesmo motivo. O gatilho da 0080 só
+  // dispara em INSERT/UPDATE de `category_id`; as linhas que já estão em
+  // 3.99/5.99 não vão ser tocadas de novo e continuariam marcadas 'ok'.
+  //
+  // Medido: 300 lançamentos saem de 'ok' para 'pendente', e o indicador
+  // "revisão concluída" do painel cai de 96,9% para 94,8% no ledger inteiro. A
+  // queda É o resultado: nenhum lançamento mudou de lugar, o painel é que parou
+  // de chamar "não sei o que é isso" de revisão concluída.
+  const { rows: [repend] } = await client.query(`
+    WITH upd AS (
+      UPDATE fin_transaction t
+         SET review_status = 'pendente', updated_at = now()
+        FROM fin_category c
+       WHERE c.id = t.category_id AND c.code IN ('5.99', '3.99')
+         AND t.review_status = 'ok'
+      RETURNING 1
+    )
+    SELECT count(*)::int n FROM upd`);
 
   // -------------------------------------------------------------------------
   // PASSO 1 — Asaas: a MESMA contraparte, o MESMO valor exato, já decidido
@@ -251,6 +327,11 @@ try {
           JOIN fin_account a ON a.id = t.account_id
           LEFT JOIN fin_category c99 ON c99.id = t.category_id
          WHERE ${NA_FILA} AND ${GUARDA}
+           -- Só o que ainda não tem categoria nenhuma. Uma linha que JÁ está em
+           -- 3.99 recebeu este mesmo carimbo numa rodada anterior; regravá-lo
+           -- não muda nada no banco e faria o relatório contar como
+           -- classificação o que é repetição.
+           AND t.category_id IS NULL
            AND a.slug = 'asaas' AND t.source_kind = 'PAYMENT_RECEIVED'
            AND t.amount_cents > 0
            AND EXISTS (
@@ -449,11 +530,32 @@ try {
        WHERE c.code NOT IN ('5.99', '3.99')
          AND t.counterparty_id IN (SELECT counterparty_id FROM fila WHERE counterparty_id IS NOT NULL)
        GROUP BY 1
+    ), assinatura AS (
+      -- Cobrança que é de uma assinatura identificada do Asaas: casa por
+      -- (contraparte, valor exato) com fin_contract, e só quando o casamento é
+      -- 1:1 — nenhum cliente com duas assinaturas do mesmo valor. Ver
+      -- fin_receita_assinatura_v e o cabeçalho da 0080.
+      SELECT DISTINCT f.id
+        FROM fila f
+        JOIN fin_transaction t2 ON t2.id = f.id
+        JOIN fin_contract fc ON fc.counterparty_id = t2.counterparty_id
+                            AND fc.amount_cents    = t2.amount_cents
+       WHERE fc.asaas_subscription_id IS NOT NULL
+         AND 1 = (SELECT count(*) FROM fin_contract f2
+                   WHERE f2.counterparty_id = fc.counterparty_id
+                     AND f2.amount_cents    = fc.amount_cents
+                     AND f2.asaas_subscription_id IS NOT NULL)
     ), motivo AS (
       SELECT f.id, f.amount_cents,
              CASE
                WHEN f.description_norm LIKE '%fatura%' AND f.amount_cents < 0
                  THEN 'indeterminado:fatura-sem-itemizacao'
+               -- Mais específico que servico-nao-declarado, e por isso vem
+               -- antes: aqui a dúvida é sobre 7 contratos, não sobre 45
+               -- cobranças. Responder uma vez resolve todas — inclusive as
+               -- futuras.
+               WHEN asg.id IS NOT NULL
+                 THEN 'indeterminado:assinatura-sem-servico-declarado'
                WHEN f.code_atual = '3.99'
                  THEN 'indeterminado:servico-nao-declarado'
                -- Contraparte COM decisões anteriores que este script não pôde
@@ -470,12 +572,41 @@ try {
              END AS tag
         FROM fila f
         LEFT JOIN historico h ON h.counterparty_id = f.counterparty_id
+        LEFT JOIN assinatura asg ON asg.id = f.id
     )
     UPDATE fin_transaction t
-       SET tags = array_append(t.tags, m.tag), updated_at = now()
+       -- Remove antes de acrescentar: uma linha que já tinha outro motivo
+       -- (servico-nao-declarado, por exemplo) e agora tem um mais específico
+       -- não pode acumular os dois, senão a contagem por motivo passa a somar
+       -- mais que a fila.
+       SET tags = array_append(
+                    ARRAY(SELECT x FROM unnest(t.tags) AS x
+                           WHERE x NOT LIKE 'indeterminado:%'), m.tag),
+           updated_at = now()
       FROM motivo m
-     WHERE t.id = m.id AND NOT (m.tag = ANY (t.tags))
+     WHERE t.id = m.id
+       AND ARRAY(SELECT x FROM unnest(t.tags) AS x WHERE x LIKE 'indeterminado:%') IS DISTINCT FROM ARRAY[m.tag]
     RETURNING t.id, t.amount_cents, m.tag AS tag`);
+
+  // Quem saiu da fila perde a tag. Sem isto, `fin_indeterminado_v` viraria um
+  // cemitério: a linha classificada com evidência continuaria listada como
+  // impossível de determinar, e o motivo mais honesto do banco passaria a ser
+  // o mais desatualizado.
+  const { rows: [limpas] } = await client.query(`
+    WITH fora AS (
+      SELECT t.id
+        FROM fin_transaction t
+        LEFT JOIN fin_category c99 ON c99.id = t.category_id
+       WHERE EXISTS (SELECT 1 FROM unnest(t.tags) AS u(tag) WHERE u.tag LIKE 'indeterminado:%')
+         AND NOT (${NA_FILA})
+    ), upd AS (
+      UPDATE fin_transaction t
+         SET tags = ARRAY(SELECT x FROM unnest(t.tags) AS x WHERE x NOT LIKE 'indeterminado:%'),
+             updated_at = now()
+        FROM fora WHERE t.id = fora.id
+      RETURNING 1
+    )
+    SELECT count(*)::int n FROM upd`);
 
   const porMotivo = new Map();
   for (const r of marcadas) {
@@ -506,7 +637,7 @@ try {
   const pct = (ok, base) => `${((100 * Number(ok)) / Number(base)).toFixed(1)}%`;
   console.log(`\nFila de classificação — 2026 (a partir de ${DE})\n`);
   if (simulouMigration) {
-    console.log('  [a 0056 ainda não foi aplicada: rodou dentro desta transação, que termina em ROLLBACK]\n');
+    console.log(`  [não aplicada(s) ainda: ${simuladas.join(', ')} — rodaram dentro desta transação, que termina em ROLLBACK]\n`);
   }
   console.log('  CLASSIFICADO, POR EVIDÊNCIA');
   let totalN = 0;
@@ -519,9 +650,41 @@ try {
   }
   console.log(`  ${n4(totalN)}  ${brl(totalV).padStart(14)}  TOTAL`);
 
-  console.log('\n  DECLARADO COMO INDETERMINADO');
+  console.log('\n  DECLARADO COMO INDETERMINADO (motivo gravado ou trocado nesta rodada)');
   for (const [tag, x] of [...porMotivo.entries()].sort((a, b) => b[1].n - a[1].n)) {
     console.log(`  ${n4(x.n)}  ${brl(x.v).padStart(14)}  ${tag.replace('indeterminado:', '')}`);
+  }
+  console.log(`  ${n4(limpas.n)}  ${''.padStart(14)}  saíram da fila e perderam a tag`);
+
+  const { rows: estoque } = await client.query(
+    `SELECT motivo, count(*)::int n, sum(abs(amount_cents))::bigint v
+       FROM fin_indeterminado_v WHERE posted_on >= $1 GROUP BY 1 ORDER BY 2 DESC`, [DE]);
+  console.log('\n  INDETERMINADO — ESTOQUE DE 2026 DEPOIS DA RODADA');
+  for (const e of estoque) {
+    console.log(`  ${n4(e.n)}  ${brl(e.v).padStart(14)}  ${e.motivo.replace('indeterminado:', '')}`);
+  }
+  const somaEstoque = estoque.reduce((s, e) => s + e.n, 0);
+  console.log(`  ${n4(somaEstoque)}  ${''.padStart(14)}  TOTAL — tem de bater com a fila de 2026`);
+
+  console.log('\n  FILA DE PENDÊNCIAS (fin_review_item)');
+  console.log(`  ${n4(reabertos.n)}  itens reabertos ou criados para lançamento indeciso`);
+  console.log(`        └ indeciso FORA da fila: ${antes.indeciso_fora_da_fila} → ${depois.indeciso_fora_da_fila}` +
+              `  (é o buraco do invariante H3)`);
+  console.log(`  ${n4(repend.n)}  lançamentos em 3.99/5.99 voltaram a review_status='pendente'`);
+
+  const { rows: perguntas } = await client.query(
+    `SELECT assinatura, cliente_documento, left(cliente, 24) cliente, valor_mensal_cents,
+            cobrancas_na_fila, valor_na_fila_cents, sugestao, base_sugestao
+       FROM fin_receita_assinatura_v ORDER BY cobrancas_na_fila DESC`);
+  if (perguntas.length) {
+    console.log('\n  PERGUNTA PARA O FERNANDO — qual serviço presta cada assinatura do Asaas');
+    console.log('  (responder 7 linhas resolve as cobranças abaixo e todas as futuras)');
+    console.log('   cob.        valor/mês  cliente                   CNPJ             sugestão');
+    for (const p of perguntas) {
+      console.log(`  ${n4(p.cobrancas_na_fila)}  ${brl(p.valor_mensal_cents).padStart(13)}  ` +
+        `${String(p.cliente).padEnd(24)}  ${String(p.cliente_documento).padEnd(15)}  ` +
+        `${p.sugestao ? `${p.sugestao} (base ${p.base_sugestao})` : '— sem base, não sugerido'}`);
+    }
   }
 
   console.log('\n  ANTES → DEPOIS (2026)');
@@ -531,7 +694,9 @@ try {
   linha('categoria atribuída', antes.com_categoria, depois.com_categoria, { a: antes.total, b: depois.total });
   linha('núcleo definido', antes.nucleo, depois.nucleo, { a: antes.base_dre, b: depois.base_dre });
   linha('contraparte identificada', antes.contraparte, depois.contraparte, { a: antes.total, b: depois.total });
+  linha('revisão concluída', antes.revisao_ok, depois.revisao_ok, { a: antes.total, b: depois.total });
   console.log(`  ${'fila (a classificar)'.padEnd(26)} ${String(antes.fila).padStart(5)} → ${String(depois.fila).padStart(5)}`);
+  console.log('  (revisão concluída CAI de propósito: a 0080 fez 3.99/5.99 pararem de contar como revisadas)');
 
   // -------------------------------------------------------------------------
   // ÂNCORA DE DINHEIRO — a única trava que reprova a rodada inteira

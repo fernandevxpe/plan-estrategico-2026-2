@@ -801,3 +801,103 @@ A curva do erp-obras é boa e está subindo (2,5% mai · 13,1% jun · 47,5% jul 
 leitura para nós e trabalho lá · *(c)* atribuir projeto aqui por regra
 (fornecedor recorrente → obra), o que inventaria margem por obra a partir de
 palpite — a pior das três.
+
+---
+
+## 20. Os 4 vínculos órfãos de abril — R$ 21.285,00
+
+Em 01/04/2026 o Inter mudou o formato da descrição de cinco PIX: em vez do
+nome, veio `Pix Enviado — Cp: 18236120-…`. O importador não reconheceu e criou
+contraparte nova para quatro pessoas já cadastradas. O dinheiro saiu, o
+lançamento existe, mas está pendurado em ninguém:
+
+| pessoa  | valor       | evidência na descrição      |
+|---------|-------------|-----------------------------|
+| Igor    | R$ 10.885,00| raiz de CNPJ 64266025 — bate |
+| Flavio  | R$  5.100,00| raiz 64677654 — bate         |
+| Tawany  | R$  1.300,00| raiz 63384563 — bate         |
+| Audrey  | R$  4.000,00| **só o nome** — sem CNPJ     |
+
+É por isso que abril parece o mês em que meio time não recebeu: o Flavio consta
+com R$ 298 num contrato de R$ 5.100. Os quatro entraram como `proposto`, não
+`confirmado` — nenhum número muda até alguém olhar.
+
+**Opções:** *(a)* confirmar os três com prova de CNPJ e deixar a Audrey pendente
+· *(b)* confirmar os quatro, aceitando o nome como evidência suficiente ·
+*(c)* não confirmar nenhum e tratar como despesa sem dono.
+
+---
+
+## 21. Em que conta contábil ficam os MEIs — R$ 264.206,66 em 2026
+
+Doze MEIs receberam R$ 264.206,66 este ano, e **R$ 255.936,66 disso está em
+6.01 Salários** — a conta de empregado, para quem não é empregado. Não foi
+decisão: a 0050 deixou os MEIs sem categoria padrão de propósito, e o padrão do
+importador venceu no silêncio.
+
+O efeito colateral já aparece nos números: `folha_sem_mei_cents` inclui MEI ao
+contrário do próprio nome, e `mei_cents` mostra só o Kevin — 3,1% do que
+deveria.
+
+**Opções:** *(a)* 4.03 Terceirização — juridicamente correto, tira o MEI da
+folha fiscal · *(b)* conta nova 6.09 "Serviços de MEI" — mantém no grupo de
+pessoal mas separa do salário · *(c)* por pessoa, conforme o serviço prestado ·
+*(d)* manter em 6.01 e assumir a mistura. Em qualquer opção falta a mesma
+informação: **qual serviço cada um presta**, descrito.
+
+---
+
+## 22. Reembolso: fica em 6.01 junto do salário, ou vai para a 6.05?
+
+A conta 6.05 "Reembolsos a colaboradores" existe e está zerada. Reclassificar
+move ~R$ 6 mil/mês de "folha" para "reembolso" e faz a DRE dizer a verdade
+sobre quanto custa a equipe.
+
+O obstáculo é o casamento: de 81 pedidos, 46 casam pelo total e 28 pelos itens,
+mas **7 (R$ 3.456,33) não têm par no extrato** — foram pagos junto com o fixo, e
+o valor não existe isolado em lugar nenhum. Separá-los exigiria rateio
+inventado. E não há comprovante: **0 de 193 itens** têm anexo.
+
+**Opções:** *(a)* reclassificar só os 74 que casam e deixar os 7 em 6.01 ·
+*(b)* esperar o comprovante pelo app do time e reclassificar tudo de uma vez ·
+*(c)* manter tudo em 6.01.
+
+---
+
+## 23. Oito pessoas recebem todo mês sem contrato declarado
+
+Denilson, Rita, Luiz Eduardo, Dantre, Sandro, Lorena, Kevin e Kalebe recebem
+com regularidade mensal e **não têm linha de contrato em lugar nenhum** — nem na
+aba Hardware, nem na Software. Somados dão R$ 7.002,50/mês de fixo observado,
+mais o Kevin. Três deles (Denilson, Rita, Luiz Eduardo) estão como `indefinido`
+no cadastro; o Kalebe não tem CNPJ e recebeu só em fevereiro.
+
+Enquanto o vínculo é indefinido, a previsão de folha os projeta pela mediana —
+que funciona, mas não sabe se aquilo continua no mês que vem.
+
+**Pergunta direta:** qual o vínculo de cada um — MEI, sócio, estágio, avulso?
+
+---
+
+## 24. Felipe está inativo no cadastro e recebeu em julho e agosto
+
+R$ 2.500 em 01/07 e R$ 2.500 em 01/08, com o status `inativo`. Ou foi desligado
+e essas são verbas rescisórias, ou o status está errado e ele segue ativo. A
+diferença muda a previsão de setembro em R$ 2.500.
+
+---
+
+## 25. Quem é o Paulo Silva Barroso
+
+CPF 08665157476, R$ 300 em 6.01 este ano, lançado na conta de Estágio. **Não é o
+Paulo estagiário**, que tem CPF 71266090436. São duas pessoas com o mesmo nome, e
+a segunda não está no cadastro.
+
+---
+
+## 26. O contrato do João: R$ 1.000 ou R$ 3.000?
+
+A aba de Software diz R$ 1.000. A lista "Falta pagar" diz R$ 3.000. Ele recebeu
+**R$ 3.000 nos oito meses de 2026**. O pagamento é a evidência mais forte, então
+o mais provável é que a aba de Software esteja desatualizada — mas quem sabe é
+você.

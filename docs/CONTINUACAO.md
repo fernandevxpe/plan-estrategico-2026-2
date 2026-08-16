@@ -534,9 +534,30 @@ E há modificações não commitadas em `package.json`, `import-asaas.mjs`,
 
 Tributário (0081) · planilha (0082) · cartão (0083) · trilha (0084) · matriz
 (0085) · APIs. O Codex retomou e concluiu parte delas — a trilha, a matriz, as
-APIs e o cartão têm commit próprio na branch dele. **O módulo tributário
-continua sendo a maior lacuna**, e ele depende da dúvida 21 (em que conta ficam
-os MEIs), porque isso decide o Fator R e portanto o anexo do Simples.
+APIs e o cartão têm commit próprio na branch dele.
+
+**O módulo tributário fechou na 0092** (`fin_regime_comparativo`), que completa
+a 0081 sem desfazer a recusa dela. O que mudou:
+
+- **A dúvida 21 está precificada:** o Fator R vira 38,96% com o MEI e 23,42%
+  sem, contra um limiar legal de 28%. O MEI decide o anexo, e a diferença vale
+  de R$ 87 mil a R$ 100 mil por ano. A leitura legal (art. 18 §§24 e 25) exclui
+  o MEI — porque ele é PJ e não é remuneração informada em GFIP.
+- **A carga de 9,17% não existe.** Era três bases erradas somadas: DAS-MEI de
+  terceiro no numerador, período desalinhado e caixa no lugar de competência. A
+  carga real é 12,9%–13,7%, que é a alíquota do Anexo III.
+- **A empresa já está no Anexo III, e o DAS pago prova.** A base implícita
+  reproduz as notas dentro de 5% em 4 de 7 competências; sob o Anexo V ela teria
+  declarado 32% menos receita sete meses seguidos.
+- **O ISS não era indeterminado:** 5,00% declarados em 2.826 NFS-e.
+- **O que continua aberto** virou dúvida com preço: 47 (CNAE, que não existe em
+  lugar nenhum desta base), 48 (a empresa paga o DAS-MEI dos seus MEIs), 49
+  (jun/26 com nota sem DAS), 50 (R$ 55.567,69 de nota fora do Asaas, medidos por
+  reversão) e 51 (receita não segregada por anexo).
+
+A 0092 **não foi aplicada** — validada em transação com `ROLLBACK`, sem nenhuma
+escrita. Ela só cria views e duas tabelas de parâmetro/evidência; não toca
+`fin_transaction`, `fin_document` nem `fin_category`.
 
 ---
 

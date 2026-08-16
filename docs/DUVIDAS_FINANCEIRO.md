@@ -33,6 +33,12 @@ vazio declarado.
 | **37** | **Os 149 valores de referência vieram de um arquivo que não temos** | R$ 2.105.576,09 de massa comparada | **aberta · bloqueia toda a frente do previsto** |
 | **38** | **Qual planilha substitui a "Fluxo de Caixa"** | as 91 linhas do modelo | **aberta · nenhuma das 12 abas serve** |
 | 39 | Comissão: 5% em 4 parcelas ou a escala por volume? | R$ 44.205,66/ano entre as duas regras | **aberta · a planilha declara as duas** |
+| **21** | **Em que conta ficam os MEIs** | **R$ 87 mil a R$ 100 mil/ano** | **aberta · precificada na 0092 — decide o anexo do Simples** |
+| **47** | **O CNAE da XP ENERGY não existe na base** | **R$ 87 mil a R$ 100 mil/ano** | **aberta · basta o cartão CNPJ** |
+| 48 | A empresa paga o DAS-MEI dos seus MEIs | R$ 2.925,70 em 2026 | **aberta · fato medido, classificação pendente** |
+| 49 | Jun/26: nota sem DAS correspondente | R$ 22.644,22 de base (~R$ 3.032 de DAS) | **aberta · o PGDAS resolve** |
+| 50 | Notas emitidas fora do Asaas | R$ 55.567,69 em 7 competências | **aberta · medida por reversão do DAS** |
+| 51 | Receita não segregada por anexo | 73,9% consultoria / 26,1% manutenção | **aberta · a lei manda segregar** |
 | — | XPE Tecnologia é a própria empresa? | R$ 25.400,00/ano | ✅ respondida |
 
 ---
@@ -848,6 +854,40 @@ pessoal mas separa do salário · *(c)* por pessoa, conforme o serviço prestado
 *(d)* manter em 6.01 e assumir a mistura. Em qualquer opção falta a mesma
 informação: **qual serviço cada um presta**, descrito.
 
+### O preço, medido em 16/08/2026 (migration 0092)
+
+A frente tributária mediu o que essa decisão custa, e é a mais cara da lista.
+
+O Fator R decide o anexo do Simples: ≥ 28% vai para o Anexo III, abaixo disso
+para o V (LC 123/2006 art. 18 §§5º-J e 5º-M). Na competência de ago/26, sobre a
+base de NFS-e:
+
+```
+com MEI no numerador ......... 38,96%  →  Anexo III
+sem MEI (leitura legal) ...... 23,42%  →  Anexo V
+```
+
+Sobre a base do ledger, 32,94% e 19,81% — mesma virada. **O MEI decide o
+anexo**, e a diferença de alíquota efetiva entre V e III vale de **R$ 87 mil a
+R$ 100 mil por ano** de receita, conforme a base (`fin_regime_indeterminacao_v`
+recalcula).
+
+E a lei aponta para um lado: o § 24 manda contar *"remunerações a pessoas
+físicas decorrentes do trabalho"* e o § 25 restringe às informadas na forma do
+art. 32, IV, da Lei 8.212/1991 (GFIP/eSocial). MEI é pessoa jurídica e emite
+nota. **A leitura legal exclui o MEI do numerador — e é a que aponta Anexo V.**
+
+Dois avisos antes de alguém concluir qualquer coisa:
+
+- A janela de 12 meses tem **7 meses de folha**, porque os extratos de Inter e
+  Nubank começam em 01/01/2026 (dúvida 4). O Fator R medido é **piso**, nunca
+  valor. Anualizado, até a leitura legal estrita passa de 28%.
+- O DAS efetivamente pago prova que a empresa **está no Anexo III hoje** — a
+  base implícita reproduz as notas dentro de 5% em 4 de 7 competências. A
+  pergunta não é "para onde ir", é "o enquadramento atual se sustenta".
+
+Isso é leitura gerencial e **depende de validação do contador**.
+
 ---
 
 ## 22. Reembolso: fica em 6.01 junto do salário, ou vai para a 6.05?
@@ -1452,5 +1492,155 @@ conta corrente do Nubank fecha contra si mesma.
 
 Isso não muda nenhum número hoje. Muda o que "6/6 contas fecham" significa para
 uma delas.
+
+---
+
+## 47. O CNAE da XP ENERGY não existe em lugar nenhum — e ele decide três coisas
+
+Procurado em `fin_entity`, `fin_counterparty`, `fin_person`, em todas as views e
+no repositório inteiro: **não há nenhuma coluna de CNAE nesta base**. A consulta
+ao CNPJ no site da Receita Federal exige captcha e não foi feita. Agregadores de
+cadastro não são fonte primária e foram descartados — a migration 0092 grava o
+CNAE como `indeterminada`, sem valor, e uma asserção impede que alguém o
+preencha com palpite.
+
+Ele decide **três coisas ao mesmo tempo**:
+
+| se o CNAE for | dispositivo | consequência |
+|---|---|---|
+| medição / engenharia / testes e análises técnicas | art. 18 § 5º-I, VI | Anexo V, com Fator R levando ao III |
+| consultoria, auditoria, gestão | art. 18 § 5º-I, IX | idem |
+| instalação, reparo e manutenção em geral | art. 18 § 5º-B, IX | **Anexo III sempre**, sem Fator R |
+| obras de engenharia, execução de projetos | art. 18 § 5º-C, I | **Anexo IV** — e a CPP sai do DAS |
+
+Além do anexo, o CNAE fixa o **grau de risco do RAT** (1%, 2% ou 3%,
+Lei 8.212/1991 art. 22, II) e o **código FPAS/Terceiros**. As três lacunas
+estão abertas por causa da mesma folha de papel.
+
+O que a base já sabe, e que estreita o campo: **nenhuma das 2.826 NFS-e
+autorizadas declara o item 7.02** (execução de obra). Em 2026 são só dois
+códigos — 17.01 (assessoria/consultoria, 73,9%) e 14.01 (manutenção elétrica,
+26,1%). Isso **afasta o Anexo IV** apesar de existir uma categoria interna
+"Obras e Adequações" com R$ 269.273,69.
+
+**Pergunta direta:** qual o CNAE principal e quais os secundários? Basta o
+cartão CNPJ. Vale de R$ 87 mil a R$ 100 mil por ano — o mesmo intervalo da
+dúvida 21, e pelo mesmo motivo.
+
+---
+
+## 48. A empresa paga o DAS-MEI dos seus próprios MEIs — R$ 2.925,70 em 2026
+
+34 pagamentos de **R$ 86,05 exatos** aparecem em `7.01 Simples Nacional`, cinco
+ou seis por mês, entre fevereiro e agosto. O valor não é coincidência:
+
+```
+5% × R$ 1.621,00 (salário mínimo de 2026) = R$ 81,05   INSS
+                                          + R$  5,00   ISS
+                                          = R$  86,05
+```
+
+LC 123/2006 art. 18-A § 3º, IV e V, c/c Lei 8.212/1991 art. 21 § 2º, II, b, e
+Decreto 12.797/2025 art. 1º. É o DAS-MEI de prestador de serviços, ao centavo.
+
+**Duas consequências, uma contábil e uma que não é:**
+
+A contábil já está resolvida na 0092: esse valor **sai do numerador** de
+qualquer carga tributária da empresa, porque é tributo de terceiro. Foi um dos
+três erros que produziam a carga fantasma de 9,17%.
+
+A outra é uma pergunta que a plataforma não responde: uma empresa que paga a
+guia do MEI que lhe presta serviço está fazendo um reembolso contratado, um
+benefício informal, ou registrando um indício de vínculo? **A base não qualifica
+isso e não deve tentar.** Fica registrado o fato medido.
+
+**Opções para a classificação:** *(a)* categoria própria "DAS-MEI de
+prestadores", fora de `7.01`, porque não é imposto da empresa · *(b)* dentro de
+4.03 Terceirização, junto do serviço a que se refere · *(c)* manter em `7.01` e
+conviver com o fato de que "imposto pago" mistura dois contribuintes.
+
+---
+
+## 49. Jun/26: R$ 22.644,22 de nota sem DAS correspondente
+
+A reconciliação reversa da 0092 divide o DAS efetivamente pago pela alíquota
+efetiva do Anexo III e obtém a base que a empresa teria declarado. Em 5 das 7
+competências o resultado bate com as NFS-e do Asaas dentro de 5%. **Jun/26 não
+bate, e erra para baixo:**
+
+```
+notas Asaas na competência ....... R$ 140.369,42
+base implícita no DAS pago ....... R$ 117.725,20
+diferença ........................ R$  22.644,22  (16,1%)
+```
+
+Três leituras possíveis, e a base não separa: *(a)* uma ou mais notas foram
+canceladas ou substituídas depois da apuração e o ledger ainda mostra a versão
+autorizada · *(b)* houve ISS retido na fonte reduzindo a base declarada — mas
+nenhuma nota de 2026 tem `iss_withheld` verdadeiro · *(c)* o DAS de jun/26 foi
+recolhido a menor, e faltam cerca de **R$ 3.032** de principal.
+
+Nas outras direções o mesmo método achou o oposto: jan/26 e fev/26 têm base
+implícita **maior** que as notas do Asaas em R$ 40.061,92 e R$ 24.611,42, o que
+é a assinatura das notas emitidas fora do Asaas (dúvida 50).
+
+**Pergunta direta:** o contador tem o PGDAS de jun/26? O valor declarado ali
+fecha a questão em um minuto.
+
+---
+
+## 50. As notas emitidas fora do Asaas: R$ 55.567,69 medidos, não estimados
+
+O Fernando antecipou em conversa: *"pode ter algumas divergências por algumas
+notas emitidas diretamente pelo site da prefeitura"*. A 0065 mediu a divergência
+entre ledger e notas e chegou a ±R$ 70 mil/mês, mas sem conseguir dizer qual dos
+dois lados estava certo.
+
+A 0092 mede pelo terceiro lado — **o imposto efetivamente pago**. Somando as sete
+competências de dez/25 a jun/26:
+
+```
+NFS-e autorizadas no Asaas ....... R$ 877.874,63
+base implícita no DAS pago ....... R$ 933.442,32
+notas fora do Asaas .............. R$  55.567,69   (6,3%)
+```
+
+Concentradas em jan/26 (R$ 40.061,92) e fev/26 (R$ 24.611,42) — os mesmos meses
+em que a 0065 viu o ledger superar as notas.
+
+Isso **não é estimativa**: é o que a alíquota da lei e a guia paga implicam em
+conjunto. Mas também não é a lista das notas. `fin_fiscal_document` continua
+tendo só o que veio do Asaas, e enquanto assim for a receita bruta fiscal desta
+base é piso.
+
+**Opções:** *(a)* exportar do portal da prefeitura do Recife as NFS-e do CNPJ e
+importar as que faltam · *(b)* pedir ao contador o PGDAS mês a mês, que declara
+a receita bruta e fecha a conta sem depender do portal · *(c)* aceitar e
+registrar que a base fiscal cobre ~94% e que o resto é conhecido em valor, não
+em documento.
+
+---
+
+## 51. A receita não está segregada por anexo, e a lei manda segregar
+
+O art. 18 § 4º, IV da LC 123/2006 obriga a considerar destacadamente as receitas
+de cada grupo de serviços. A empresa emite em dois códigos municipais:
+
+```
+17.01  assessoria ou consultoria .... R$ 823.075,10   73,9%   → §5º-I, IX → Anexo V com Fator R
+14.01  manutenção elétrica .......... R$ 290.820,00   26,1%   → §5º-B, IX → Anexo III sempre
+```
+
+Se o Fator R ficar abaixo de 28%, **os dois pedaços vão para anexos
+diferentes**: a manutenção continua no III e a consultoria vai para o V. Hoje a
+apuração trata 100% da receita como um bloco só — e a 0092 também, de propósito,
+porque escolher a proporção sem a lista de serviços por nota seria inventar.
+
+O mesmo vale no Lucro Presumido: o art. 15 § 2º da Lei 9.249/1995 manda aplicar
+o percentual de presunção **de cada atividade**. A 0092 aplicou 32% a tudo, e
+registrou isso como lacuna bloqueante.
+
+**Pergunta direta:** o contador segrega hoje? Se sim, em que proporção — e essa
+proporção bate com os códigos municipais das notas?
 
 ---

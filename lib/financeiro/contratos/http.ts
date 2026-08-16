@@ -6,8 +6,29 @@ import type { Contrato, Pendencia } from "./base";
 /**
  * A tradução HTTP dos contratos financeiros.
  *
- * Existe para que as 15 rotas de leitura gerencial não repitam — e portanto não
- * divirjam — as três decisões que valem para todas elas:
+ * QUANTAS ROTAS EXISTEM, MEDIDO — 16/08/2026
+ *
+ * Este comentário afirmava "as 15 rotas de leitura gerencial" quando existiam 9.
+ * A frase não era arredondamento: era uma intenção escrita no passado que ninguém
+ * conferiu depois, e `MAPA_CONCLUSAO.md` teve de descobrir por auditoria que 27
+ * contratos escritos, tipados e compilando não tinham URL nenhuma. O número abaixo
+ * é medido, não pretendido, e quem acrescentar uma rota atualiza aqui:
+ *
+ *   ```
+ *   contratos que devolvem Contrato<T> ....... 36   (+ getCobertura, que devolve o cru)
+ *   com rota de leitura em app/api ........... 32
+ *   sem rota ................................. 5    fila de pagamento, solicitação,
+ *                                                   fila de compra, lotes e alçadas —
+ *                                                   território da frente de pagamentos
+ *   ```
+ *
+ * As 32 vivem sob `app/api/financeiro/gerencial/**`. O prefixo não é organização:
+ * `/api/financeiro` é o que `lib/auth/perfis.ts` marca como **só admin**, e uma
+ * rota de leitura fora dele nasceria aberta ao perfil comum. Bloquear só a página
+ * deixaria o ledger a um `curl` de distância.
+ *
+ * Existe para que essas rotas não repitam — e portanto não divirjam — as três
+ * decisões que valem para todas elas:
  *
  * 1. O ENVELOPE VIAJA INTEIRO, SEMPRE.
  *    A rota devolve o `Contrato<T>` como está: `dado`, `cobertura`,

@@ -24,6 +24,13 @@ loadEnv();
 registerFinanceTypeParsers();
 
 const JSON_OUT = process.argv.includes('--json');
+// O escopo de trabalho é 2026: o Fernando declarou o histórico anterior fora de
+// escopo, e medir tudo junto esconde isso. O Asaas carrega 8.400 linhas de
+// 2021–2025 que arrastam qualquer percentual para baixo sem que haja trabalho a
+// fazer nelas. `--tudo` mostra a base inteira quando alguém quiser conferir.
+const TUDO = process.argv.includes('--tudo');
+const DESDE = TUDO ? '1900-01-01' : '2026-01-01';
+const ESCOPO = TUDO ? 'base inteira' : 'ano de 2026';
 const brl = (c) => (Number(c || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const pct = (n) => `${Number(n).toFixed(1)}%`;
 
@@ -110,14 +117,28 @@ try {
             count(*) FILTER (WHERE COALESCE(c.cash_flow_group,'') <> 'movimentacao'
                                AND t.nucleo IS NOT NULL)                             AS nucleo_dre,
             count(*) FILTER (WHERE COALESCE(c.cash_flow_group,'') <> 'movimentacao'
-                               AND t.cost_center_id IS NOT NULL)                     AS centro_dre
+                               AND t.cost_center_id IS NOT NULL)                     AS centro_dre,
+            count(*) FILTER (WHERE COALESCE(c.cash_flow_group,'') <> 'movimentacao'
+                               AND t.counterparty_id IS NOT NULL)                     AS contraparte_dre
        FROM fin_transaction t
-       LEFT JOIN fin_category c ON c.id = t.category_id`
+       LEFT JOIN fin_category c ON c.id = t.category_id
+      WHERE t.posted_on >= $1::date`,
+    [DESDE]
   );
 
   const indicadores = [
     ['centro de custo (projeto)', ind.centro_dre, ind.base_dre],
-    ['contraparte identificada', ind.contraparte, ind.total],
+    // Contraparte também mede sobre a base de resultado, e pelo mesmo motivo do
+    // núcleo: transferência entre contas próprias, aplicação e resgate não TÊM
+    // contraparte externa a identificar. A empresa não é contraparte de si mesma
+    // — regra que o projeto já aplica desde o import do Inter ("o CNPJ da
+    // própria empresa não é contraparte").
+    //
+    // Medido em 16/08: das 512 linhas de 2026 sem contraparte, 161 carregam o
+    // CNPJ da casa (100% das que têm documento) e o resto é aplicação/resgate de
+    // RDB, onde a outra ponta é o próprio banco. Sobre todas as linhas o
+    // indicador dava 86,8%; sobre o que pode ter contraparte, 98,5%.
+    ['contraparte identificada', ind.contraparte_dre, ind.base_dre],
     ['núcleo definido', ind.nucleo_dre, ind.base_dre],
     ['revisão concluída', ind.revisao, ind.total],
     ['lastro de origem', ind.lastro, ind.total],
@@ -162,7 +183,7 @@ try {
     console.log('  ⚠ enquanto uma conta não fecha, os indicadores abaixo não valem nada');
   }
 
-  console.log('\n══ INDICADORES (meta 90%) ══\n');
+  console.log(`\n══ INDICADORES (meta 90%) — ${ESCOPO} ══\n`);
   for (const i of indicadores) {
     const barra = '█'.repeat(Math.round(i.pct / 5)).padEnd(20, '·');
     const marca = i.pct >= META ? '✓' : '·';

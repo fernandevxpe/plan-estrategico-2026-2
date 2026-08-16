@@ -901,3 +901,77 @@ A aba de Software diz R$ 1.000. A lista "Falta pagar" diz R$ 3.000. Ele recebeu
 **R$ 3.000 nos oito meses de 2026**. O pagamento é a evidência mais forte, então
 o mais provável é que a aba de Software esteja desatualizada — mas quem sabe é
 você.
+
+---
+
+## 27. A alçada de aprovação — sem ela, a fila de pagamento não anda
+
+`fin_approval_rule` nasceu **vazia de propósito**: semear um teto seria inventar
+governança que ninguém combinou. Mas o gatilho recusa qualquer aprovação sem
+régua, então enquanto a tabela estiver vazia nenhum pagamento passa da fila.
+
+**Opções:** *(a)* um nível só — Fernando aprova tudo, sem teto · *(b)* duas
+faixas: até R$ X um aprovador, acima disso dois · *(c)* três faixas com teto por
+transação.
+
+Pergunta acoplada: se o Fernando também abre a solicitação, ou a faixa baixa
+precisa de `permite_autoaprovacao` declarado, ou o solicitante tem de ser outra
+pessoa. As duas saídas são legítimas; a que não serve é a solicitação travar
+sem ninguém entender por quê.
+
+---
+
+## 28. Onde nasce a conta a pagar
+
+O ledger tem **100% da receita e 0% da despesa como documento**: `fin_document`
+tem 3.406 linhas e todas são `direction='receber'`. A despesa só existe depois
+de paga, como lançamento no extrato — o que significa que hoje não existe
+"contas a pagar", só "contas pagas".
+
+**Opções:** *(a)* a fila de pagamento é a única origem — a obrigação nasce
+quando alguém pede para pagar · *(b)* `fin_document` ganha `direction='pagar'`,
+alimentado por boleto e NFe de entrada, e a fila referencia o documento ·
+*(c)* como (b), com a fila obrigada a apontar para um documento.
+
+A diferença não é técnica: em (a) a empresa só sabe que deve quando alguém
+lembra; em (b) a obrigação existe desde que o fornecedor emitiu. **Enquanto for
+(a), a previsão de saída nunca fica completa.**
+
+---
+
+## 29. Nenhum favorecido tem conta cadastrada
+
+`fin_payee_account` está com zero linhas, e não dá para preencher sozinho: o
+lastro do Inter e do Polp entrega CNPJ, não chave PIX nem agência e conta.
+
+**Opções:** *(a)* cadastrar na primeira vez que pagar cada fornecedor, com a
+fila travando até lá — é o comportamento de hoje · *(b)* afrouxar a exigência e
+pagar com o dado digitado direto no banco, aceitando que o sistema não confere
+favorecido.
+
+A trava de (a) é chata no começo e é justamente ela que pega troca de
+favorecido depois.
+
+---
+
+## 30. Orçamento de escopo empresa
+
+As 114 metas carregadas do ERP são **100% de escopo `obras`**, e o realizado
+delas mora no erp-obras. Para a XPE como empresa não existe meta nenhuma — por
+isso "orçamento disponível" sai null em todas as 75 linhas.
+
+**Opções:** *(a)* declarar metas manuais por linha do modelo · *(b)* usar o
+`fin_model_value` de procedência `referencia` como meta implícita · *(c)* manter
+indeterminado e tirar o alerta de estouro da tela.
+
+---
+
+## 31. Quem aprovou pode registrar que pagou?
+
+Hoje pode, e fica visível na trilha. Separar as duas mãos é o controle clássico
+contra pagamento que foi aprovado e registrado pela mesma pessoa sem ninguém
+conferir.
+
+**Opções:** *(a)* bloquear · *(b)* alertar e deixar passar · *(c)* permitir em
+silêncio. Para uma empresa deste tamanho *(b)* costuma ser o equilíbrio, mas o
+custo de (a) é baixo se houver duas pessoas na operação.

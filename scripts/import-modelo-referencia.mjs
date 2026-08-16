@@ -46,7 +46,9 @@
 //   node scripts/import-modelo-referencia.mjs <arquivo.xlsx> --aba "<nome>" --aplicar
 //
 // Opcionais: --ano 2026 · --col-rotulo C · --col-mes1 E  (default: detectados)
+import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import { financePool } from './lib/artifact-db.mjs';
 import { loadEnv } from './lib/env.mjs';
 
@@ -66,7 +68,7 @@ const COL_MES1 = arg('--col-mes1');
 const ENTIDADE = 'xpe';
 
 // Abaixo disto, o alinhamento entre modelo e aba é ruído: gravar seria inventar.
-const MINIMO_ALINHADO = 0.5;
+const MINIMO_ALINHADO = 0.9;
 
 if (!ARQUIVO || ARQUIVO.startsWith('--')) {
   console.error('uso: node scripts/import-modelo-referencia.mjs <arquivo.xlsx> --aba "<nome>" [--ano 2026] [--aplicar]');
@@ -141,7 +143,13 @@ async function abrirPlanilha(caminho) {
     desescapar([...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((t) => t[1]).join(''))
   );
 
-  return { arquivos, relAlvo, abas, textos };
+  return {
+    arquivos,
+    relAlvo,
+    abas,
+    textos,
+    checksumSha256: createHash('sha256').update(buf).digest('hex')
+  };
 }
 
 /** Devolve `numeros` (Map "linha:col" → número) e `rotulos` (Map "linha:col" → texto). */
@@ -279,6 +287,9 @@ function acharColunaRotulo(rotulos) {
 }
 
 const pack = await abrirPlanilha(ARQUIVO);
+// O banco guarda o nome lógico e o conteúdo; nunca um caminho absoluto da
+// máquina de quem importou.
+const ARTEFATO = basename(ARQUIVO);
 
 // Sem --aba não há default: o default anterior era 'Fluxo de Caixa', uma aba que
 // não existe neste arquivo, e adivinhar a substituta pelo nome é exatamente o
@@ -369,6 +380,24 @@ try {
     let vazias = 0;
     const porLinha = [];
 
+    // Uma nova foto desta mesma fonte substitui a anterior dentro da transação.
+    // Sem isto, célula apagada na planilha continuaria no banco para sempre.
+    // Referências de outro artefato/aba e valores manuais não são tocados.
+    const { rows: [fotoAnterior] } = await client.query(
+      `SELECT count(*)::int AS celulas,
+              COALESCE(sum(abs(valor_cents)), 0)::bigint AS massa_cents
+         FROM fin_model_value
+        WHERE entity_id = $1 AND ano = $2 AND procedencia = 'referencia'
+          AND origem_artefato = $3 AND origem_aba = $4`,
+      [ent.id, ANO, ARTEFATO, ABA]
+    );
+    await client.query(
+      `DELETE FROM fin_model_value
+        WHERE entity_id = $1 AND ano = $2 AND procedencia = 'referencia'
+          AND origem_artefato = $3 AND origem_aba = $4`,
+      [ent.id, ANO, ARTEFATO, ABA]
+    );
+
     for (const L of pareadas) {
       // Subtotal e calculado não recebem referência: eles são a soma dos filhos.
       // Importar o subtotal da planilha ao lado dos filhos dela criaria duas
@@ -396,11 +425,31 @@ try {
         const cents = valores[mes - 1];
         if (cents === null) continue;
         await client.query(
-          `INSERT INTO fin_model_value (entity_id, line_slug, ano, mes, procedencia, valor_cents, motivo, updated_by)
-           VALUES ($1,$2,$3,$4,'referencia',$5,$6,'import-modelo-referencia')
+          `INSERT INTO fin_model_value
+             (entity_id, line_slug, ano, mes, procedencia, valor_cents, motivo, updated_by,
+              origem_status, origem_artefato, origem_aba, origem_checksum_sha256)
+           VALUES ($1,$2,$3,$4,'referencia',$5,$6,'import-modelo-referencia',
+                   'rastreada',$7,$8,$9)
            ON CONFLICT (entity_id, line_slug, ano, mes, procedencia)
-           DO UPDATE SET valor_cents = EXCLUDED.valor_cents, motivo = EXCLUDED.motivo, updated_at = now()`,
-          [ent.id, L.slug, ANO, mes, cents, `aba "${ABA}", linha ${L.origem_linha}`]
+           DO UPDATE SET valor_cents = EXCLUDED.valor_cents,
+                         motivo = EXCLUDED.motivo,
+                         updated_by = EXCLUDED.updated_by,
+                         origem_status = EXCLUDED.origem_status,
+                         origem_artefato = EXCLUDED.origem_artefato,
+                         origem_aba = EXCLUDED.origem_aba,
+                         origem_checksum_sha256 = EXCLUDED.origem_checksum_sha256,
+                         updated_at = now()`,
+          [
+            ent.id,
+            L.slug,
+            ANO,
+            mes,
+            cents,
+            `aba "${ABA}", linha ${L.origem_linha}`,
+            ARTEFATO,
+            ABA,
+            pack.checksumSha256
+          ]
         );
         gravadas += 1;
       }
@@ -417,6 +466,49 @@ try {
     console.log(`  linhas com valor: ${porLinha.length}`);
     console.log(`  linhas zeradas na planilha: ${vazias}`);
     console.log(`  linhas do modelo sem par nesta aba: ${trocadas.length + ausentes.length}`);
+    console.log(`  SHA-256 da fonte: ${pack.checksumSha256}`);
+
+    if (gravadas === 0) {
+      throw new Error('a aba passou na estrutura, mas não contém nenhuma célula mensal numérica; foto anterior preservada por ROLLBACK');
+    }
+
+    const { rows: [fotoNova] } = await client.query(
+      `SELECT count(*)::int AS celulas,
+              COALESCE(sum(abs(valor_cents)), 0)::bigint AS massa_cents
+         FROM fin_model_value
+        WHERE entity_id = $1 AND ano = $2 AND procedencia = 'referencia'
+          AND origem_artefato = $3 AND origem_aba = $4`,
+      [ent.id, ANO, ARTEFATO, ABA]
+    );
+
+    // Uma linha agregada identifica a foto inteira; o checksum permite
+    // reconstruir cada célula a partir do artefato sem duplicar 149 eventos.
+    await client.query(
+      `INSERT INTO fin_audit_log
+         (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
+       VALUES ($1, 'fin_model_value', $1, 'import', $2::jsonb, $3::jsonb,
+               ARRAY['valor_cents','origem_artefato','origem_aba','origem_checksum_sha256'],
+               $4::uuid, 'import-modelo-referencia')`,
+      [
+        ent.id,
+        JSON.stringify({
+          ano: ANO,
+          origem_artefato: ARTEFATO,
+          origem_aba: ABA,
+          celulas: Number(fotoAnterior.celulas ?? 0),
+          massa_cents: Number(fotoAnterior.massa_cents ?? 0)
+        }),
+        JSON.stringify({
+          ano: ANO,
+          origem_artefato: ARTEFATO,
+          origem_aba: ABA,
+          origem_checksum_sha256: pack.checksumSha256,
+          celulas: Number(fotoNova.celulas ?? 0),
+          massa_cents: Number(fotoNova.massa_cents ?? 0)
+        }),
+        randomUUID()
+      ]
+    );
 
     if (APLICAR) {
       await client.query('COMMIT');

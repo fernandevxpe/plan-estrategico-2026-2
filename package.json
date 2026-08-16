@@ -33,6 +33,7 @@
     "import:inter": "node scripts/import-inter.mjs",
     "test:integridade": "node scripts/test-integridade.mjs",
     "test:import-guard": "node scripts/test-import-guard.mjs",
+    "test:modelo-referencia": "node scripts/test-modelo-referencia.mjs",
     "test:contabil": "node scripts/test-contabil.mjs",
     "parear": "node scripts/parear-transferencias.mjs",
     "reclassificar": "node scripts/reclassificar.mjs",

@@ -189,7 +189,15 @@ CREATE TABLE fin_receita_prevista (
   confirmacao_nota text,
   -- O "nao vai acontecer" do pedido. Nao se apaga: neutraliza com trilha.
   ignorado_motivo  text,
-  realizado_transaction_id bigint REFERENCES fin_transaction(id) ON DELETE SET NULL,
+  -- RESTRICT e nao SET NULL, e a licao e da 0106 (que corrigiu exatamente isto
+  -- na 0100, depois de aplicada). Com SET NULL, apagar um lancamento dispararia
+  -- um UPDATE aqui que o CHECK do estado 'realizado' recusaria de qualquer
+  -- jeito: a protecao existiria, mas falando de "aponta para lancamento
+  -- inexistente" a respeito de um DELETE em OUTRA tabela — e quem lesse o erro
+  -- procuraria o defeito no lugar errado. RESTRICT diz a verdade na primeira
+  -- linha: um lancamento reivindicado por uma receita prevista nao se apaga sem
+  -- antes desfazer a reivindicacao.
+  realizado_transaction_id bigint REFERENCES fin_transaction(id) ON DELETE RESTRICT,
   realizado_em     timestamptz,
 
   created_by  text NOT NULL DEFAULT 'sistema',

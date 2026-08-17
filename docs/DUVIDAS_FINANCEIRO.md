@@ -2191,6 +2191,124 @@ alguém a marque como determinada sem que o serviço de cada MEI esteja descrito
 
 ---
 
+## 64. Com que frequência o extrato manual (CSV/PDF) deve ser importado?
+
+**Em jogo:** duas contas. `nubank` tem arquivo até **07/08** e `nubank-caixinhas`
+até **31/07** — 6 e 11 dias úteis atrás, medidos em 17/08/2026.
+
+**O fato.** `import_csv` é o arquivo que uma pessoa exporta do banco e sobe pela
+tela de importação. Até a 0109 ele era cobrado com a mesma régua da API — D+1 —
+e por isso aparecia vermelho todo dia, para sempre. Cobrar D+1 de importação
+manual é cobrar que alguém exporte um PDF todo dia, inclusive domingo.
+
+**Por que a régua não foi inventada.** O acervo inteiro tem **um único dia de
+importação manual**: 08/08/2026, dez lotes de uma vez. Um evento não é uma
+cadência. Derivar "a cada 8 dias" de um ponto seria exatamente o que a dúvida 59
+recusa fazer com o valor da fila, e o que a restrição absoluta nº 5 proíbe.
+
+**O que foi feito.** `fin_fonte_catalogo.tolerancia_util` fica **NULL com motivo
+escrito na linha** para toda fonte manual, e o banco garante que fonte não
+automática **nunca** gere alarme (asserção 6 da 0109). A tela de fontes continua
+mostrando a data do último arquivo, o estado `sem régua` com hachura roxa, e o
+motivo. Nada some; o que some é a cobrança sem régua.
+
+**Opções:**
+
+*(a)* **Mensal, até o dia 5.** Casa com o fechamento contábil e com o fato de o
+único evento ter sido uma carga histórica.
+*(b)* **Quinzenal.** Metade do risco de descobrir tarde uma divergência de saldo.
+*(c)* **Nenhuma régua — e é resposta legítima.** Se o Polp e o erp-obras
+cobrirem essas contas em tempo real (é o caso hoje: `nubank` tem `erp_obras` até
+15/08 e `nubank-caixinhas` tem `polp` até 15/08), o CSV é só backup histórico e
+não precisa de cadência nenhuma. Nesse caso a resposta certa é declarar isso, e
+a tela passa a dizer "backup histórico" em vez de "sem régua".
+
+*(c)* é a hipótese mais provável e depende da dúvida 65: se polp e erp-obras
+entrarem no agendador, o CSV vira redundância declarada.
+
+---
+
+## 65. Polp e erp-obras são API e não estão no agendador — entram?
+
+**Em jogo:** **2 das 4 contas com acervo.** `nubank` (R$ 11.682,57) é alimentada
+por `erp_obras`; `nubank-caixinhas` (R$ 27.700,17) por `polp`.
+
+**O fato, medido em 17/08/2026.** `scripts/scheduler.mjs` tem etapa para Asaas e
+para Inter. Não tem etapa nenhuma para `sync-polp-investimentos.mjs` nem para
+`sync-erp-obras.mjs`. As duas fontes estão em dia hoje — último dado em 15/08,
+ingerido em 15 e 16/08 — **porque alguém rodou os comandos à mão**, não porque
+alguma automação as mantenha.
+
+Isso não aparecia em lugar nenhum. `fin_fonte_cobertura_v` mede cobertura, não
+agendamento, e o aviso antigo tratava toda fonte como se alguém a estivesse
+mantendo. A 0109 separa `natureza` (é API?) de `agendada` (roda sozinha?)
+justamente porque colapsá-las escondia isto:
+
+```
+automática e agendada ....... asaas, inter_api      o botão e o cron alcançam
+automática SEM agendamento .. polp, erp_obras       só andam se alguém digitar
+manual ...................... import_csv            alguém exporta um arquivo
+```
+
+**Por que não foi resolvido nesta frente.** Pôr as duas no agendador — e no
+botão — cria um caminho de escrita não supervisionado que nunca rodou
+desassistido. `sync-polp-investimentos.mjs` grava pernas espelhadas de
+transferência e recalcula `current_balance_cents`; `sync-erp-obras.mjs` lê o
+banco do Adryan, que é **somente leitura** (restrição absoluta nº 1) e cuja
+disponibilidade não controlamos. Nenhuma das duas decisões é minha.
+
+**Opções:**
+
+*(a)* **As duas entram no scheduler**, `required: false` como o resto do
+financeiro, e passam a ser alcançadas pelo botão. É o que faz "6/6 contas
+fecham" continuar verdadeiro sozinho.
+*(b)* **Só o Polp entra.** Ele é a fonte externa do saldo das caixinhas e não
+depende do banco de terceiro. O erp-obras continua manual, com a dependência do
+Adryan declarada.
+*(c)* **Nenhuma entra**, e a tela de fontes passa a ser o lugar onde se vê que
+elas precisam de gente — que é o estado de hoje, agora visível.
+
+---
+
+## 66. O calendário só tem feriado NACIONAL — e a empresa é de Recife
+
+**Em jogo:** um dia de atraso aparente por feriado local, em cada fonte, em cada
+data que o calendário não conhece.
+
+**O fato.** A 0109 passou a contar atraso de fonte em **dias úteis**, e
+`fin_feriado_nacional` está semeada com 2026 e 2027 conferidos: feriados
+federais mais Carnaval e Corpus Christi, que não são feriado por lei mas fecham
+o banco. `fin_calendario_ano` declara quais anos foram conferidos, e
+`fin_dias_uteis_coberto()` devolve falso fora deles — a tela mostra a ressalva
+em vez de fingir precisão.
+
+O que ela **não** tem é feriado municipal e estadual. Para Recife/PE isso inclui
+pelo menos **24/06 (São João)**, **06/03 (Revolução Pernambucana)** e
+**12/12 (Nossa Senhora da Conceição)**. Em cada um deles o banco não compensa e
+o extrato não anda — e a régua vai contar aquele dia como dia útil, fazendo a
+fonte parecer um dia mais atrasada do que está.
+
+**Por que não foi resolvido.** Não sei quais feriados a empresa observa, nem se
+o banco de cada conta segue o calendário de Recife (o Inter é de Belo Horizonte,
+o Nubank de São Paulo, e a compensação nacional segue a praça do banco, não a do
+cliente). Chutar a lista produziria uma tolerância errada em silêncio, que é
+exatamente o defeito que esta frente veio consertar.
+
+**O efeito prático é pequeno e está limitado:** um dia, e só nos dias em questão.
+A tolerância de 1 dia útil absorve a maior parte dos casos. Mas é um vazamento
+conhecido, e por isso está escrito na tela, não só aqui.
+
+**Opções:**
+
+*(a)* **Semear os feriados de Recife/PE** e assumir que a praça do cliente manda.
+*(b)* **Semear por conta**, já que Inter e Nubank têm praças diferentes. Mais
+correto e mais trabalhoso; exige uma coluna de praça em `fin_account`.
+*(c)* **Subir a tolerância para 2 dias úteis** nas fontes bancárias e não mexer
+no calendário. Resolve o sintoma sem o dado, ao custo de descobrir uma sync
+parada um dia depois.
+
+---
+
 ## Resolvida — Ancora Imobiliária, R$ 300,00 classificada por precedente
 
 A regra `meios-de-pagamento` (v1) tinha 25 acertos e zero verdadeiros

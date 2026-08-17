@@ -33,6 +33,18 @@ import "server-only";
 
 export * from "./base";
 export { getCobertura, frescorDe, type Cobertura, type FrescorConta } from "./cobertura";
+// Irmã da cobertura, e a diferença é o eixo: `cobertura` mede por CONTA (lendo
+// fin_account.last_statement_at), `fontes` mede por FONTE. Foi confundir os dois
+// que fez um aviso de conta virar cinco avisos de fonte com a mesma data.
+export {
+  getFontes,
+  type PainelFontes,
+  type LinhaFonte,
+  type ExecucaoSync,
+  type EtapaExecucao,
+  type EstadoFonte,
+  type NaturezaFonte
+} from "./fontes";
 
 export { getVisaoExecutiva, type VisaoExecutiva, type IndicadorExecutivo } from "./executivo";
 export { getBancos, getConciliacao, type PainelBancos, type ContaBancaria, type Conciliacao } from "./bancos";

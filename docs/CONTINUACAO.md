@@ -3,6 +3,252 @@
 Este documento existe para quem chega depois. Ele é auto-suficiente: se você só
 puder ler um arquivo antes de tocar em qualquer coisa, leia este.
 
+## Frente do alarme de fonte — o lobo, os dias úteis e o botão · 17/08/2026 (migration 0109)
+
+O pedido, olhando a tela:
+
+> *"e tbm tem dizendo que tem fontes sem atualizar... precisa mesmo ficar
+> mostrando? é importante atualizar? pq n tem botão para atualizar as fontes?
+> mostrar quais nao estão atualizadas?"*
+
+**Migration `0109_fin_fonte_frescor.sql` — validada, NÃO aplicada.**
+`npm run test:fonte-frescor` executa o arquivo inteiro em transação, prova 19
+coisas contra o acervo real e dá ROLLBACK. Âncora de dinheiro idêntica antes e
+depois, conferida por `EXCEPT ALL` nos dois sentidos.
+
+### O que ele estava vendo, e por que era mentira
+
+Cinco notificações, todas "visto 6×", todas com o mesmo corpo — *"2 dia(s) sem
+dado novo — a tolerância declarada é 1"*. E, no mesmo instante, o log do
+agendador em produção dizia `último sync há 3h, não precisa rodar agora`. A sync
+tinha rodado. **Três defeitos independentes produziam aqueles cinco avisos:**
+
+**1. A régua contava dias CORRIDOS.** 14/08 foi sexta, 15/08 sábado, 16/08
+domingo, 17/08 segunda. Uma fonte que fecha no sábado e é olhada na segunda tem
+**1 dia útil** de atraso, não 2. Com tolerância de 1 dia corrido, o alarme
+disparava **toda segunda-feira, por construção**.
+
+Que fim de semana não é dia morto está medido, não suposto — em 2026:
+
+```
+Sex 862 · Ter 861 · Seg 720 · Qui 683 · Qua 541 · Sáb 155 · Dom 57
+```
+
+Há movimento no sábado (PIX não dorme), mas um por semana, não um por dia.
+
+**2. A data era da CONTA, e o aviso dizia que era da FONTE.** O gerador lia
+`fin_fonte_cobertura_v.ultimo_extrato_em`, que é `fin_account.last_statement_at`
+— coluna **da conta**. Toda fonte que já alimentou aquela conta herdava a mesma
+data. Daí 5 avisos para 3 contas. E daí uma afirmação falsa:
+
+```
+conta             fonte         o aviso dizia   o dado real
+asaas             asaas         17/08           17/08
+inter             inter_api     15/08           15/08
+nubank-caixinhas  polp          15/08           15/08
+nubank            import_csv    15/08           07/08   ← 8 dias de diferença
+nubank-caixinhas  import_csv    15/08           31/07   ← 15 dias de diferença
+inter             import_csv    15/08           NUNCA PRODUZIU LANÇAMENTO
+```
+
+A última linha é a mais reveladora: os três lotes `inter_csv` (ids 5, 6, 7) estão
+todos `descartado`/`revertido` e produziram **zero** lançamentos. O sino avisava,
+todo dia, que uma fonte que nunca entregou nada estava dois dias sem entregar.
+
+**3. Importação manual tratada como sync quebrada.** `import_csv` é o arquivo que
+uma pessoa exporta e sobe. Cobrar D+1 dela é cobrar que alguém exporte um PDF
+todo dia; ela ficaria eternamente vermelha e afogaria a fonte que de fato
+quebrasse.
+
+### O resultado, medido
+
+```
+                                        antes    depois
+avisos de fonte na caixa                    5         0
+fontes fora da tolerância (dias corridos)   1         —
+fontes fora da tolerância (dias úteis)      —         0
+caixa                              6/6 fecham   6/6 fecham
+invariantes                            39/41     39/41   (D6 e F1, de outras frentes)
+```
+
+Zero **não** é o alarme desligado, e essa distinção é o teste que mais importa
+aqui: a prova 8 de `test:fonte-frescor` baixa a tolerância de `inter_api` e
+`polp` para 0 dentro de um savepoint e exige que o aviso apareça, agregado, com
+as duas dentro. *(A frente anterior entregou código inerte porque comparava
+`"2026-08-01"` com `"2026-08"` em texto; código certo que nunca dispara é
+indistinguível de código ausente.)*
+
+### A separação que a medição achou: são TRÊS degraus, não dois
+
+O pedido era separar automática de manual. O dado separou em três:
+
+```
+automática e agendada ....... asaas, inter_api    rodam no scheduler.mjs
+automática SEM agendamento .. polp, erp_obras     só andam se alguém digitar
+manual ...................... import_csv          alguém exporta um arquivo
+```
+
+**Polp e erp-obras alimentam `nubank` e `nubank-caixinhas` — 2 das 4 contas com
+acervo — e não têm etapa nenhuma no agendador.** Elas estão em dia hoje porque
+alguém rodou os comandos em 15 e 16/08, não porque algo as mantenha. Isso não
+aparecia em lugar nenhum: `fin_fonte_cobertura_v` mede cobertura, não
+agendamento. **Dúvida 65.**
+
+Fonte manual não gera alarme, e o banco garante (asserção 6): `tolerancia_util`
+fica NULL com motivo, porque o acervo tem **um único dia de importação manual**
+(08/08/2026, 10 lotes) e um evento não é uma cadência. **Dúvida 64.**
+
+### Dias úteis, com a ignorância declarada
+
+`fin_dias_uteis(de, ate)` conta no intervalo semiaberto `(de, ate]` — o dia da
+entrega não conta contra a fonte. `fin_feriado_nacional` tem 2026 e 2027
+conferidos, com Carnaval e Corpus Christi incluídos (não são feriado por lei, mas
+o banco não compensa). `fin_calendario_ano` declara **quais anos** foram
+conferidos e `fin_dias_uteis_coberto()` devolve falso fora deles — a tela mostra
+ressalva em vez de fingir precisão.
+
+Calcular a Páscoa em SQL foi avaliado e recusado: o algoritmo é curto mas não é
+óbvio, e um erro nele produz tolerância errada **em silêncio**, que é o defeito
+que esta frente veio consertar. Feriado municipal e estadual não entram, e isso
+é vazamento conhecido e escrito na tela: **dúvida 66**.
+
+### O botão
+
+```
+POST /api/financeiro/gerencial/fontes/sincronizar   {"fonte":"asaas"} → 202 {execucaoId}
+GET  /api/financeiro/gerencial/fontes/sincronizar?execucao=12         → estado etapa a etapa
+GET  /api/financeiro/gerencial/fontes                                 → a lista
+```
+
+**Ele não reescreve ingestão nenhuma.** `scripts/sincronizar-fontes.mjs` chama,
+na mesma ordem, o bloco financeiro de `scheduler.mjs` — sync-asaas, import-asaas,
+sync-inter, import-inter, lifecycle, notificar. Uma segunda implementação seria
+um segundo caminho para o dinheiro entrar no ledger, e o invariante da frente é
+justamente que sincronizar não altere saldo por outro caminho.
+
+`prever-caixa.mjs` ficou **de fora** de propósito: ele grava a foto datada da
+previsão, e uma foto extra no meio do dia reescreveria a do dia sem ninguém ter
+pedido previsão nova.
+
+**Somente GET nas APIs externas, conferido verbo a verbo:** `sync-asaas.mjs` usa
+`createJsonFetcher`, que chama `fetch(url, options)` sem `method`; `sync-inter.mjs`
+usa `createInterClient`, que tem **exatamente um POST** — `/oauth/v2/token`, o
+endpoint de autenticação — e passa todo dado por `get()`; os `import-*.mjs` não
+falam com API nenhuma.
+
+**Uma sync por vez, garantida pelo banco.** O índice único parcial
+`fin_fonte_sync_uma_por_vez` recusa a segunda linha `rodando`. Uma flag em
+memória como a `running` do scheduler não serve: rota e trabalhador são processos
+diferentes e o Railway pode ter mais de uma instância. O segundo clique recebe
+**409 com o id da execução viva**, e a tela passa a acompanhar aquela.
+
+Execução pendurada vira `perdida` por `fin_fonte_sync_recolher_perdidas()`, que
+roda antes de cada disparo. A mensagem dela diz *"NÃO afirma que a sync falhou —
+afirma que ninguém sabe como ela terminou"*, e um teste exige essa frase: o
+processo pode ter concluído e morrido antes do UPDATE final, e chamar isso de
+falha seria inventar um fato.
+
+### Três armadilhas que custaram tempo e que vão reincidir
+
+**1. O arquivo da 0105 no repositório NÃO é o que está no banco.** `CREATE OR
+REPLACE VIEW fin_notificacao_fato_v` exige o corpo inteiro, e transcrever da
+0105 teria **revertido em silêncio** correções posteriores: o arquivo diz
+`r.item_count` numa coluna que não existe, filtra pagamento por
+`'aguardando_aprovacao'` onde o banco filtra `'rascunho'`, e traz outro título e
+outro corpo em `alcada`, `reembolso` e `compra`. A view compila igual e responde
+diferente — nada acusaria.
+
+A defesa não é atenção: `test:fonte-frescor` fotografa o conjunto
+`(kind, dedupe_key, titulo, corpo, valor)` antes e depois de instalar a migration
+**na mesma transação** e exige que a única diferença esteja nos dois tipos que a
+frente muda. **Quem recriar uma view grande daqui em diante: transcreva de
+`pg_get_viewdef`, nunca do arquivo, e prove com uma fotografia.**
+
+**2. Um `.mjs` de script importado por rota executa o corpo dele.**
+`lib/financeiro/fontes.ts` importa `ETAPAS` do trabalhador para que a lista da
+tela não divirja da lista que roda. Enquanto o corpo executável ficou no topo do
+módulo, importá-lo de uma rota rodava `loadEnv()`, abria um pool e chamava
+`process.exit(2)` por falta de `--execucao` — **derrubando o servidor web na
+primeira vez que alguém abrisse a tela**. A guarda é a mesma do `scheduler.mjs`:
+efeito colateral só dentro de `principal()`, atrás de
+`process.argv[1]?.endsWith(...)`.
+
+**3. Turbopack trata `new URL('..', import.meta.url)` como asset.** A rota
+respondia 500 com `Module not found: Can't resolve '..'`. Use
+`path.dirname(fileURLToPath(import.meta.url))`.
+
+E uma quarta, menor mas visível ao usuário: **"a última linha do stderr" é
+`Node.js v22.18.0` em todo crash do Node.** A tela mostrava a versão do runtime
+onde deveria dizer que o arquivo não existe. `mensagemDeErro()` prefere, nesta
+ordem, a convenção `✗ mensagem` da casa, depois `Error:`, depois a última linha
+que não seja ruído de pilha.
+
+### A régua do valor: a mensagem mudou, o corte NÃO foi inventado
+
+O corpo do aviso da fila expunha `fin_notificacao_regra.fila_decisao_valor_cents`
+para quem não é desenvolvedor. Nome de coluna não é explicação — é a confissão de
+que ninguém traduziu. A mensagem agora diz, em português, o que falta decidir e
+qual é o caminho; `fila_decisao_valor_cents` continua **NULL**, e a asserção 9 da
+0109 recusa a migration se alguém tiver posto valor ali. A dúvida **59** é do
+Fernando.
+
+### Provas
+
+`npm run test:fonte-frescor` — 19 provas, tudo em ROLLBACK:
+
+```
+dias úteis .......... sexta→segunda 3 corridos / 1 útil · sábado→segunda 2 / 1
+                      04/09→08/09 atravessa 07/09 e dá 1, não 2
+                      calendário cobre 2026: true · cobre 2025: false
+frescor ............. 7 linhas, 4 automáticas · 3 manuais · 1 nunca entregou
+alarme .............. 5 avisos → 0, e volta a 1 agregado quando a régua aperta
+CTEs intocadas ...... 10 tipos de fato idênticos, linha a linha
+sync ................ as 5 antigas viram 'resolvida' sozinhas · 2ª passagem cria 0
+trava ............... 2º INSERT 'rodando' recusado pelo índice único parcial
+executor ............ etapa real ok · etapa que falha diz o quê e por quê
+âncora .............. impressão idêntica em 4 contas
+```
+
+Rotas medidas contra o banco real (0109 ainda não aplicada, então a degradação é
+o que se vê):
+
+```
+GET  /api/financeiro/gerencial/fontes                  503 + motivo ("0109 não aplicada")
+POST /api/financeiro/gerencial/fontes/sincronizar {}   503 + motivo
+POST ... {"fonte":"import_csv"}                        422 + as fontes alcançadas
+POST ... corpo inválido / fonte não-texto              400
+GET  ... (sem execucao)                                200 + fontesAtualizaveis
+GET  ... ?execucao=abc                                 400
+/financeiro/fontes                                     200, degradando com o motivo
+```
+
+`exigeAdmin()` é true para os três caminhos novos; `npm run test:perfil-guard`
+passa. Em produção o perfil comum recebe **404**, não 403.
+
+**Para aplicar — e há um bloqueio de outra frente na frente desta.**
+`npm run db:migrate` está travado enquanto o checksum da 0108 não for reparado
+(ver a seção seguinte). A ordem é:
+
+1. `node scripts/reparo-0108-checksum.mjs --aplicar` — destrava o runner;
+2. `npm run db:backup`;
+3. a 0109 **sozinha**. 0107 continua sendo de outra frente e não deve ser
+   arrastada (§6);
+4. `npm run notificar:aplicar` — as 5 notificações antigas viram `resolvida`
+   sozinhas, porque a chave delas sumiu do fato, e o agregado novo entra no
+   lugar. Medido em transação: `7 criada(s) · 1 repetida(s) · 5 resolvida(s)`.
+
+Depois disso `/financeiro/fontes` mostra a lista completa com os botões vivos.
+Até lá a tela existe e **degrada dizendo o que falta** — a rota devolve 503 com
+o motivo em vez de uma lista vazia, que seria indistinguível de "está tudo em
+dia".
+
+**A 0109 não depende do reparo da 0108 para estar correta**, mas depende dele
+para poder ser aplicada — e a asserção da seção 7 dela lê o estado REAL da
+composição de `fin_notificacao_fato_v`, então ela enxerga a 0108 como aplicada,
+que é o que o banco diz hoje.
+
+---
+
 ## ⚠ Frente do catálogo de custo fixo · 17/08/2026 (migration 0108 — APLICADA POR ENGANO)
 
 **Leia o parágrafo de aviso antes de rodar `db:migrate`.**

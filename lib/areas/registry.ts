@@ -9,6 +9,15 @@ export type AreaDefinition = {
   businessTypes?: string[];
   serviceMatch?: string[];
   keywords?: RegExp;
+  /**
+   * Fora da navegação, mas viva.
+   *
+   * Seis áreas nasceram no plano e nunca entraram em uso. Mantê-las no menu
+   * cobrava atenção de quem passava e não entregava nada — e um menu que
+   * cansa é um menu que se para de ler. A página continua respondendo pela
+   * URL e o dado continua no repositório: voltar é apagar esta linha.
+   */
+  oculta?: boolean;
 };
 
 export const AREA_DEFINITIONS: AreaDefinition[] = [
@@ -86,6 +95,7 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
   },
   {
     id: "obras",
+    oculta: true,
     name: "Obras",
     shortName: "Obras",
     description: "Obras elétricas, execução em campo e ticket alto.",
@@ -97,6 +107,7 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
   },
   {
     id: "eventos",
+    oculta: true,
     name: "Eventos",
     shortName: "Eventos",
     description: "FESÍNDICO set/26 (estande pago), eventos próprios, carteira PE e pipeline presencial com origem CRM.",
@@ -106,6 +117,7 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
   },
   {
     id: "automacoes-ferramentas",
+    oculta: true,
     name: "Automações e Ferramentas",
     shortName: "Automações",
     description: "App offline campo + plataforma web + ClickUp — 6 módulos de serviço, testes e automação por gargalo.",
@@ -115,6 +127,7 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
   },
   {
     id: "smart-charging",
+    oculta: true,
     name: "Smart Charging",
     shortName: "Smart Charging",
     description: "Controlador de Carga, Central EV, produção e validação em cliente — precede Medidores IoT.",
@@ -125,6 +138,7 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
   },
   {
     id: "medidores-iot",
+    oculta: true,
     name: "Medidores IoT",
     shortName: "IoT",
     description: "Frota 4G, SM3F2.0 (Controlador de Carga), SA3F1.0 — evolução após Smart Charging.",
@@ -134,6 +148,7 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
   },
   {
     id: "escala",
+    oculta: true,
     name: "Escala",
     shortName: "Escala",
     description: "Expansão geográfica EV/Smart Charging — estudo mercado, ranking regiões e headcount comercial.",
@@ -144,5 +159,10 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
 ];
 
 export const ROOT_AREA_IDS = AREA_DEFINITIONS.filter((area) => !area.parentId).map((area) => area.id);
+
+/** O que a navegação mostra: raiz e em uso. As ocultas seguem alcançáveis por URL. */
+export const AREA_IDS_VISIVEIS = AREA_DEFINITIONS.filter((area) => !area.parentId && !area.oculta).map(
+  (area) => area.id
+);
 
 export const AREA_SLUGS = AREA_DEFINITIONS.map((area) => area.id);

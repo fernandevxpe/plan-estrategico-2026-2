@@ -183,11 +183,18 @@ export const SECOES: Secao[] = [
     prefixo: "/financeiro"
   },
   {
-    label: "Comercial",
-    href: "/comercial",
+    // Marketing e vendas são um funil só, e estavam separados: marketing morava
+    // enterrado em /areas junto de nove áreas que ninguém abre, e vendas
+    // aparecia solto no topo. Quem acompanha o funil precisa dos quatro passos
+    // lado a lado — verba, conversa, oportunidade, fechamento.
+    label: "Mkt e Vendas",
+    href: "/areas/funil-360",
     rotas: [
-      { href: "/comercial", label: "Comercial" },
+      { href: "/areas/funil-360", label: "Funil 360°" },
+      { href: "/areas/marketing", label: "Marketing" },
+      { href: "/areas/pre-vendas", label: "Pré-vendas" },
       { href: "/areas/vendas", label: "Vendas" },
+      { href: "/comercial", label: "Comercial" },
       { href: "/mix", label: "Serviços" }
     ]
   },

@@ -259,7 +259,10 @@ function buildAreaItem(analysis: Analysis, areaId: string): AreaDashboardItem {
 }
 
 export function buildAreasDashboard(analysis: Analysis): AreasDashboard {
-  const roots = AREA_DEFINITIONS.filter((area) => !area.parentId).map((area) =>
+  // `oculta` fica de fora do painel e da barra lateral. A página continua
+  // respondendo pela URL — quem tiver link salvo não perde — mas ela não
+  // ocupa mais espaço no menu de quem passa por ali todo dia.
+  const roots = AREA_DEFINITIONS.filter((area) => !area.parentId && !area.oculta).map((area) =>
     buildAreaItem(analysis, area.id)
   );
 

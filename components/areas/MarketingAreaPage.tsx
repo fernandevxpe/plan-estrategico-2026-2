@@ -19,7 +19,9 @@ import {
 import { MarketingCreativesTab } from "@/components/areas/MarketingCreativesTab";
 import { MarketingGestorIA } from "@/components/areas/MarketingGestorIA";
 import { MarketingHistoryChart, MarketingHistorySparkline } from "@/components/areas/MarketingHistoryCharts";
+import { MarketingThumb } from "@/components/areas/MarketingThumb";
 import { MarketingTrendChart } from "@/components/areas/MarketingTrendChart";
+import { Ressalva } from "@/components/financeiro/Certeza";
 
 const BASE_PERIODS: Array<{ key: MarketingPeriodKey; label: string }> = [
   { key: "last7d", label: "7 dias" },
@@ -108,6 +110,118 @@ function deliveryLabel(delivery: AdDelivery | undefined, lifetime?: AdDelivery |
   return `${source.activeDays} dias · ${shortDate(source.firstDate)} → ${shortDate(source.lastDate)}`;
 }
 
+const DIA_MS = 86400000;
+
+const mesLongo = (periodo: string) =>
+  new Date(`${periodo}-15T12:00:00`).toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).replace(" de ", "/");
+
+/**
+ * O frescor do acervo, dito antes dos números.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE ISTO EXISTE
+ * ---------------------------------------------------------------------------
+ * A barra de cima já imprimia `syncedAt`, mas uma data solta não é um aviso:
+ * quem entra na tela lê "Meta Ads" e assume hoje. Em 16/08/2026 o acervo era de
+ * 11/08 e nada na página dizia isso — a régua desta base é que dado velho não é
+ * dado de hoje, e ela precisava valer aqui também.
+ *
+ * Duas armadilhas específicas, e as duas são invisíveis sem este bloco:
+ *
+ * 1. Os botões de período ancoram em `syncedAt`, não em hoje (`dailyWindow`).
+ *    Com o acervo parado, "7 dias" quer dizer os sete dias que terminaram na
+ *    última sincronização. O rótulo diz uma coisa e a janela é outra, então a
+ *    janela real vai escrita ao lado.
+ * 2. O histórico diário por criativo pode ter meses que a Meta recusou. Sem
+ *    declará-los, um mês sem linha desenha como mês sem anúncio.
+ *
+ * A idade é calculada depois da montagem, não durante a renderização: "agora"
+ * no servidor e "agora" no cliente são instantes diferentes, e comparar os dois
+ * quebraria a hidratação.
+ * ---------------------------------------------------------------------------
+ */
+function FrescorDoAcervo({
+  syncedAt,
+  gaps,
+  janela,
+  periodoAtual
+}: {
+  syncedAt: string;
+  gaps: MarketingDashboard["adDailyGaps"];
+  janela: { primeiro: string; ultimo: string } | null;
+  periodoAtual: string;
+}) {
+  const [agora, setAgora] = useState<number | null>(null);
+  useEffect(() => setAgora(Date.now()), [syncedAt]);
+
+  const sincronizado = new Date(syncedAt);
+  const idadeMs = agora == null ? null : agora - sincronizado.getTime();
+  const dias = idadeMs == null ? null : Math.floor(idadeMs / DIA_MS);
+  /* A etapa do Meta roda todo dia no `scheduler.mjs`. Passar de um dia não é
+     uma régua inventada aqui: é a própria cadência do sistema não ter cumprido. */
+  const atrasado = dias != null && dias >= 1;
+
+  const idadeEmPalavras =
+    dias == null
+      ? null
+      : dias >= 1
+        ? `${dias} dia${dias > 1 ? "s" : ""} atrás`
+        : `hoje, há ${Math.max(1, Math.round(idadeMs! / 3600000))}h`;
+
+  const temLacuna = gaps.desconhecido || gaps.periodos.length > 0;
+  if (!atrasado && !temLacuna) return null;
+
+  return (
+    <div className="marketing-frescor">
+      <Ressalva>
+        {atrasado ? (
+          <p>
+            <strong>
+              O acervo do Meta é de {sincronizado.toLocaleString("pt-BR")}
+              {idadeEmPalavras ? ` — ${idadeEmPalavras}` : ""}.
+            </strong>{" "}
+            Os números desta página são desse dia, não de hoje. Quem tiver gasto ou resultado depois
+            disso não aparece aqui — para atualizar, rode <code>npm run sync:meta</code> seguido de{" "}
+            <code>npm run analyze:meta</code>.
+          </p>
+        ) : null}
+
+        {atrasado && janela ? (
+          <p>
+            Os períodos ancoram no dia da sincronização, não em hoje: <strong>{periodoAtual}</strong>{" "}
+            está mostrando {shortDate(janela.primeiro)} → {shortDate(janela.ultimo)}.
+          </p>
+        ) : null}
+
+        {gaps.desconhecido ? (
+          <p>
+            Este acervo não declara lacunas — foi sincronizado antes de o sync passar a registrá-las.
+            Não é o mesmo que não haver lacuna: sobre os meses ausentes no histórico por criativo,{" "}
+            <strong>não se sabe</strong> se faltou anúncio ou faltou resposta da Meta.
+          </p>
+        ) : gaps.periodos.length ? (
+          <>
+            <p>
+              O histórico diário por criativo <strong>não cobre</strong>{" "}
+              {gaps.periodos.map((gap) => mesLongo(gap.periodo)).join(", ")} — a Meta recusou a
+              consulta. Nesses meses os gráficos de criativo e de campanha ficam vazios por falta de
+              resposta, não por falta de anúncio. Os totais da conta e por campanha não dependem
+              dessa consulta e seguem completos.
+            </p>
+            <ul className="marketing-frescor-lacunas">
+              {gaps.periodos.map((gap) => (
+                <li key={gap.periodo}>
+                  <strong>{mesLongo(gap.periodo)}</strong> · {gap.motivo}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </Ressalva>
+    </div>
+  );
+}
+
 function AdCreativeCard({
   row,
   delivery,
@@ -133,11 +247,7 @@ function AdCreativeCard({
 
   return (
     <article className={selected ? "marketing-creative-card is-selected" : "marketing-creative-card"}>
-      {row.creative?.thumbnailUrl ? (
-        <img src={row.creative.thumbnailUrl} alt="" loading="lazy" />
-      ) : (
-        <div className="marketing-creative-placeholder">Sem miniatura</div>
-      )}
+      <MarketingThumb url={row.creative?.thumbnailUrl} />
       <div>
         <div className="marketing-creative-card-top">
           <span>{row.campaignName}</span>
@@ -432,6 +542,17 @@ export function MarketingAreaPage({ data }: { area: AreaDashboardItem; data: Mar
         </div>
       </div>
 
+      <FrescorDoAcervo
+        syncedAt={data.syncedAt}
+        gaps={data.adDailyGaps}
+        janela={
+          daily.length
+            ? { primeiro: daily[0]!.date, ultimo: daily.at(-1)!.date }
+            : null
+        }
+        periodoAtual={periodOptions.find((item) => item.key === period)?.label ?? String(period)}
+      />
+
       <nav className="marketing-tabs" aria-label="Análises de marketing">
         <button type="button" className={view === "overview" ? "active" : ""} onClick={() => setView("overview")}>
           <strong>Visão geral</strong>
@@ -589,11 +710,8 @@ export function MarketingAreaPage({ data }: { area: AreaDashboardItem; data: Mar
               <div className="marketing-instagram-grid">
                 {media.map((item) => (
                   <a key={item.id} href={item.permalink} target="_blank" rel="noreferrer" className="marketing-media-card">
-                    {item.thumbnailUrl ? (
-                      <img src={item.thumbnailUrl} alt="" loading="lazy" />
-                    ) : (
-                      <div className="marketing-creative-placeholder">{item.mediaProductType}</div>
-                    )}
+                    <MarketingThumb url={item.thumbnailUrl} vazio={item.mediaProductType} />
+
                     <strong>{integer(item.views)} views</strong>
                     <span>
                       {integer(item.reach)} alcance · {integer(item.interactions)} interações

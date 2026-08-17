@@ -10,6 +10,22 @@ async function readRaw(name) {
   return JSON.parse(await readFile(new URL(name, rawDir), 'utf8'));
 }
 
+/**
+ * Igual ao `readRaw`, mas para arquivo que pode não existir num acervo antigo.
+ *
+ * Só vale para arquivo cuja ausência é informação legítima — não para acervo
+ * faltando. Um acervo sem `meta-ad-daily-gaps.json` foi sincronizado por uma
+ * versão do sync anterior à declaração de lacunas: não se sabe se houve lacuna,
+ * e é isso que o `desconhecido` diz.
+ */
+async function readRawOpcional(name, quandoFalta) {
+  try {
+    return await readRaw(name);
+  } catch {
+    return quandoFalta;
+  }
+}
+
 function number(value) {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -77,6 +93,12 @@ const [account, campaigns, adsets, ads, accountPeriods, accountDaily, campaignPe
   readRaw('meta-instagram-account-insights.json'),
   readRaw('meta-pixel.json')
 ]);
+
+// As lacunas são a única parte do acervo que fala do que NÃO foi coletado. Sem
+// carregá-las aqui, um mês que a Meta recusou vira série vazia lá na frente — e
+// gráfico de criativo com buraco silencioso é indistinguível de "não anunciou
+// nesse mês". O sync já as declara; o que faltava era chegarem à tela.
+const adDailyGapsRaw = await readRawOpcional('meta-ad-daily-gaps.json', null);
 
 const adsById = new Map(ads.data.map((item) => [item.id, item]));
 const campaignsById = new Map(campaigns.data.map((item) => [item.id, item]));
@@ -157,6 +179,19 @@ const report = {
   }))])),
   adPeriods: Object.fromEntries(Object.entries(adPeriods.data).map(([period, rows]) => [period, rows.map(normalizeAdRow)])),
   adDaily: adDaily.data.map(normalizeAdDailyRow),
+  /**
+   * O que o histórico diário por criativo NÃO cobre.
+   *
+   * `desconhecido` distingue "o sync não achou lacuna" de "este acervo é antigo
+   * demais para saber" — as duas produzem lista vazia, e só uma delas autoriza
+   * ler os gráficos como completos.
+   */
+  adDailyGaps: {
+    desconhecido: adDailyGapsRaw == null,
+    syncedAt: adDailyGapsRaw?.syncedAt ?? null,
+    periodos: (adDailyGapsRaw?.data ?? []).map((gap) => ({ periodo: gap.periodo, motivo: gap.motivo })),
+    mesesComDado: [...new Set(adDaily.data.map((row) => String(row.date_start ?? '').slice(0, 7)).filter(Boolean))].sort()
+  },
   instagram: {
     profile: instagramProfile.data,
     accountInsights30d: {
@@ -206,6 +241,7 @@ console.log(JSON.stringify({
   campaignRows: Object.values(report.campaignPeriods).reduce((total, rows) => total + rows.length, 0),
   adRows: Object.values(report.adPeriods).reduce((total, rows) => total + rows.length, 0),
   adDailyRows: report.adDaily.length,
+  adDailyGaps: report.adDailyGaps.desconhecido ? 'desconhecido' : report.adDailyGaps.periodos.map((gap) => gap.periodo),
   instagramMedia: report.instagram.media.length,
   pixelStatsAvailable: report.pixel.statsAvailable
 }, null, 2));

@@ -216,6 +216,21 @@ export type MarketingDashboard = {
   campaignPeriods: Record<MarketingPeriodKey, MarketingPerformanceRow[]>;
   adPeriods: Record<MarketingPeriodKey, MarketingPerformanceRow[]>;
   adDaily: MarketingDailyCreativeRow[];
+  /**
+   * Os meses que o histórico diário por criativo não cobre, declarados pelo
+   * sync com o motivo que a Meta devolveu.
+   *
+   * Existe porque a série de `adDaily` não sabe se um mês vazio significa "não
+   * anunciamos" ou "a API recusou". A resposta está aqui, e a tela precisa dela
+   * para não desenhar um buraco como se fosse zero.
+   */
+  adDailyGaps: {
+    /** Acervo anterior à declaração de lacunas: não se sabe se houve. */
+    desconhecido: boolean;
+    syncedAt: string | null;
+    periodos: Array<{ periodo: string; motivo: string }>;
+    mesesComDado: string[];
+  };
   instagram: {
     profile: { id: string; username: string; name: string; followers_count: number; follows_count: number; media_count: number; profile_picture_url: string };
     media: Array<{
@@ -501,8 +516,20 @@ export async function buildMarketingDashboard(analysis: Analysis): Promise<Marke
   const revenue = paidWon?.value ?? 0;
   const spend = data.periods.ytd.spend;
 
+  /* Um marketing.json gerado antes desta mudança não tem o campo. Ausente vira
+     `desconhecido`, nunca lista vazia: "o sync não achou lacuna" e "este acervo
+     não sabe dizer" são afirmações diferentes, e só a primeira autoriza ler os
+     gráficos como completos. */
+  const adDailyGaps = data.adDailyGaps ?? {
+    desconhecido: true,
+    syncedAt: null,
+    periodos: [],
+    mesesComDado: []
+  };
+
   return {
     ...data,
+    adDailyGaps,
     gestorEditions,
     revenueBaseline: buildRevenueBaseline(analysis, funnel, data),
     attribution: {

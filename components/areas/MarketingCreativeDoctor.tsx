@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { chartTheme } from "@/lib/chart-theme";
 import { Collapsible } from "@/components/areas/Collapsible";
+import { MarketingThumb } from "@/components/areas/MarketingThumb";
 import type { CreativeFact, CreativeIntelligence, CreativeVerdict } from "@/lib/areas/marketing-ai";
 
 const money = (value: number) =>
@@ -84,7 +85,7 @@ function CreativeRow({ item }: { item: CreativeFact }) {
         <tr className="gia-detail-row">
           <td colSpan={12}>
             <div className="gia-detail">
-              {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" loading="lazy" /> : null}
+              {item.thumbnailUrl ? <MarketingThumb url={item.thumbnailUrl} /> : null}
               <div>
                 <p className="gia-detail-hook">{item.copy.hook}</p>
                 <ul className="gia-tags">
@@ -243,7 +244,7 @@ export function MarketingCreativeDoctor({ intelligence }: { intelligence: Creati
                   <small>{item.campaignName}</small>
                 </div>
               </header>
-              {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" loading="lazy" /> : null}
+              {item.thumbnailUrl ? <MarketingThumb url={item.thumbnailUrl} /> : null}
               <p>{item.copy.hook}</p>
               <dl>
                 <div>

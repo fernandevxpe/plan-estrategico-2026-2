@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { MarketingDashboard, MarketingMetrics, MarketingPerformanceRow, MarketingPeriodKey } from "@/lib/areas/build-marketing-dashboard";
+import { MarketingThumb } from "@/components/areas/MarketingThumb";
 
 type Aggregation = "day" | "week" | "month";
 type Ranking = "conversations" | "outboundCpc" | "ctr" | "spend" | "video";
@@ -58,9 +59,7 @@ function rankingValue(row: MarketingPerformanceRow, ranking: Ranking) {
 }
 
 function CreativeThumb({ row }: { row: MarketingPerformanceRow }) {
-  return row.creative?.thumbnailUrl
-    ? <img src={row.creative.thumbnailUrl} alt={`Criativo ${row.adName ?? ""}`} loading="lazy" />
-    : <div className="marketing-creative-placeholder">Sem miniatura</div>;
+  return <MarketingThumb url={row.creative?.thumbnailUrl} alt={`Criativo ${row.adName ?? ""}`} />;
 }
 
 export function MarketingCreativesTab({ data, period }: { data: MarketingDashboard; period: MarketingPeriodKey }) {

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { AppNav } from "@/components/layout/AppNav";
 import { CABECALHO_PERFIL, type Perfil } from "@/lib/auth/perfis";
 import { DataFreshness, type SyncState } from "@/components/layout/DataFreshness";
+import { Sino } from "@/components/notificacoes/Sino";
 import { readProcessed } from "@/lib/data/processed-store";
 import { readFile } from "node:fs/promises";
 import { dataPath } from "@/lib/data/processed-store";
@@ -40,6 +41,12 @@ export async function AppShell({ children }: Props) {
           </Link>
           <div className="topbar-right">
             <DataFreshness syncedAt={snapshot.syncedAt} syncState={syncState} />
+            {/* O sino vive na moldura, não numa tela: um aviso que só aparece
+                em /notificacoes depende de alguém ir lá por hábito, que é
+                exatamente o problema que ele existe para resolver. O conteúdo é
+                filtrado no servidor pelo perfil e pela pessoa; o componente não
+                sabe esconder nada, e é bom que não saiba. */}
+            <Sino />
             <AppNav perfil={perfil} />
           </div>
         </div>

@@ -33,6 +33,18 @@ const GROUPS = [
       { href: "/areas", label: "Áreas" },
       { href: "/gestao-xpe", label: "Gestão XPE" }
     ]
+  },
+  {
+    // O único grupo que o time usa para ESCREVER. Ele fica por último porque é
+    // o menos frequente para quem administra, e primeiro no celular — a ordem
+    // do CSS inverte no viewport estreito, que é onde a pessoa do time está
+    // quando fotografa o cupom.
+    label: "O que eu mando",
+    links: [
+      { href: "/time", label: "Meus envios" },
+      { href: "/notificacoes", label: "Avisos" },
+      { href: "/financeiro/time", label: "Fila do time" }
+    ]
   }
 ];
 

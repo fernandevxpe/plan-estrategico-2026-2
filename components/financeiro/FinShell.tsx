@@ -30,6 +30,9 @@ const TABS = [
   // custa o time — e quem vai a uma costuma precisar da outra.
   { href: "/financeiro/pessoas", label: "Pessoas" },
   { href: "/financeiro/reembolsos", label: "Reembolsos" },
+  // Ao lado de Reembolsos pelo mesmo motivo: é a caixa de entrada do que o time
+  // manda, e reembolso é o que ele mais manda.
+  { href: "/financeiro/time", label: "Fila do time" },
   { href: "/financeiro/qualificar", label: "Qualificar" },
   { href: "/financeiro/revisao", label: "Revisão" },
   { href: "/financeiro/indicadores", label: "Indicadores" },

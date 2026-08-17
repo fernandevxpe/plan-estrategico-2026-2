@@ -22,6 +22,14 @@ import type { Contrato, Pendencia } from "./base";
  *                                                   território da frente de pagamentos
  *   ```
  *
+ * **Delta desta frente (categorização central, 16/08/2026):** +2 contratos
+ * (`getBuscaCategorizacao`, `getPlanoDeContas`) e +2 rotas de leitura
+ * (`categorizacao/busca`, `categorizacao/categorias`). Mais duas rotas de
+ * ESCRITA, que não passam por aqui: `reclassificar-lote` e `virar-regra`.
+ * O total acima não foi recontado de propósito — havia frentes com rota não
+ * commitada na árvore no momento desta medição, e recontar teria versionado o
+ * número delas junto com o meu. Some 2 e 2 quando a árvore estiver limpa.
+ *
  * As 32 vivem sob `app/api/financeiro/gerencial/**`. O prefixo não é organização:
  * `/api/financeiro` é o que `lib/auth/perfis.ts` marca como **só admin**, e uma
  * rota de leitura fora dele nasceria aberta ao perfil comum. Bloquear só a página

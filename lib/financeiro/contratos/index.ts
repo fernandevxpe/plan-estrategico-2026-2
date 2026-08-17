@@ -141,3 +141,29 @@ export {
   type MesApuracao,
   type Apuracao
 } from "./balanco";
+
+/**
+ * A central de categorização — a única régua que atravessa os TRÊS universos
+ * onde existe categoria. O indicador "categoria atribuída" mede só
+ * `fin_transaction`; 889 itens (R$ 313.559,52) de `fin_document` e
+ * `fin_card_transaction` não aparecem em indicador nenhum. Ver 0101.
+ */
+export {
+  getBuscaCategorizacao,
+  getPlanoDeContas,
+  sinalEsperadoDe,
+  UNIVERSOS,
+  ESTADOS,
+  PROCEDENCIAS,
+  MARCADORES_INDECISAO,
+  type ItemCategorizavel,
+  type FiltrosBusca,
+  // A rota HTTP precisa da lista branca de ordenação para recusar
+  // `?ordenarPor=` desconhecido com 400, pelo mesmo motivo de `receber`.
+  type CampoOrdenacaoBusca,
+  type BuscaCategorizacao,
+  type CategoriaPlano,
+  type Universo,
+  type EstadoCategorizacao,
+  type ProcedenciaFamilia
+} from "./categorizacao";

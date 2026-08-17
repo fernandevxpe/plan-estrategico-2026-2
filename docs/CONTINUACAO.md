@@ -936,3 +936,196 @@ A fila do resíduo do M12 (`fin_duplicate_residuo_v`) está **vazia**: nenhum do
 54 grupos ficou sem prova. Se um lançamento novo criar um caso que nenhum eixo
 separe, ele aparece ali com o motivo e o que destrava — nunca com um lado
 escolhido.
+
+---
+
+## 13. Central de categorização — a régua que atravessa os três universos (16/08/2026)
+
+Migration `0101_fin_categorizacao_central.sql`, **não aplicada** — validada em
+transação com `ROLLBACK`, junto de `scripts/test-categorizacao.mjs`. Nenhuma
+escrita no banco, nenhum `category_id` movido.
+
+### O buraco, medido
+
+A categorização estava em três tabelas e o indicador media uma:
+
+```
+fin_transaction ........ 13.881 linhas ·  492 sem categoria   ← o painel mede este
+fin_document ...........  3.418 linhas ·  389 sem categoria · R$ 259.432,76
+fin_card_transaction ...    795 linhas ·  514 sem categoria · R$ 161.125,80
+                                          ├── 500 categorizáveis    R$  54.126,76
+                                          └──  14 pagamento_fatura  R$ 106.999,04
+```
+
+Os 889 itens de R$ 313.559,52 dos dois últimos **não apareciam em indicador
+nenhum**. Não estavam errados — estavam fora da régua, que é o padrão da §8.
+
+`fin_categorizavel_v` alcança **18.094 itens** (13.881 + 3.418 + 795), com
+`(universo, id)` provado único e contagem idêntica à das três tabelas.
+
+**Os 14 `pagamento_fatura` não são despesa** e a busca os declara não
+classificáveis, com motivo: a fatura já está itemizada linha a linha no próprio
+subledger, e categorizar o pagamento contaria a mesma saída duas vezes. É a
+mesma leitura que a 0094 aplicou aos 9 pagamentos de fatura do Inter, do outro
+lado.
+
+### O estado, e por que "indeterminado" ganha de "em dúvida"
+
+```
+                 classificado   indeterminado   em dúvida
+lançamento             13.128             729          24
+documento               2.616             389         413
+item de cartão            281             514           0
+```
+
+Um item sem categoria SEMPRE tem item de fila pendente — é o H3, e ele está
+certo. Se "em dúvida" vencesse, os 729 lançamentos indecisos apareceriam como
+dúvida e a população que precisa de **evidência** sumiria dentro da que precisa
+só de **aceite**. Então `indeterminado` = não há categoria utilizável (nula,
+3.99 ou 5.99); `em_duvida` = há categoria de verdade e a fila ainda pergunta.
+
+**Item de cartão nunca fica "em dúvida", e isso é achado, não bug:**
+`fin_review_item_target_table_check` só aceita `fin_transaction` e
+`fin_document`. A fila de revisão não alcança o subledger do cartão.
+
+**424 itens estão indeterminados sem motivo declarado.** A view os nomeia
+`sem-motivo-declarado` em vez de deixar em branco — a restrição absoluta nº 5 é
+"indeterminado, COM MOTIVO", e um vazio silencioso é justamente o que a 0094
+teve de caçar à mão para achar os dois créditos do Le Parc.
+
+### Três recusas que eram aviso em prosa e viraram recusa do banco
+
+**1. 3.99 e 5.99 não se renomeiam, não se reagrupam, não se desativam.** O
+CÓDIGO delas é lido por três gatilhos (`fin_transaction_fila_indeciso`,
+`fin_transaction_revisao_sincroniza`, `fin_review_item_sincroniza`), três
+invariantes (H1, H2, H3) e quatro views. Desativá-las tiraria 237 itens
+(R$ 112.492,54) da fila sem classificar nenhum — a regressão da §5, de novo.
+
+**2. Categoria com linha viva não desativa; categoria com trilha não se apaga.**
+`fin_categoria_uso_v` conta os TRÊS universos, sempre. O M13 chamou
+`5.11 Frete e logística` de linha morta lendo só duas tabelas, e havia um item
+de cartão nela o tempo todo. Medido agora: `5.11` tem `n_vivo = 1`, todo ele em
+cartão, e a desativação é recusada com essa frase.
+
+**3. Campo travado nunca aponta para vazio — E2 por construção.** A 0098 travou
+2 linhas no nulo e a 0099 desfez à mão. A causa é estrutural e reincide:
+`fin_transaction_sinal_da_categoria` ANULA `category_id` quando o sinal não bate,
+e não sabe nada sobre `human_locked_fields`. Qualquer reclassificação com
+categoria de sinal incompatível reproduz o incidente. O gatilho
+`zz_*_trava_nao_vazia` remove a trava que sobrou apontando para nulo, no mesmo
+estilo de `fin_limpa_motivo_ao_resolver` (0044): a garantia não pode depender da
+disciplina de quem escrever o próximo script. **Provado nos dois sentidos** —
+antes, a trava sobrevivia no vazio; depois, ela sai junto com a categoria
+recusada.
+
+### A ordem que importa, provada nos dois sentidos
+
+O gatilho da 0094 lê `fin_review_item` pendente de motivo `baixa_confianca`
+**no BEFORE** do UPDATE. Medido em transação, no mesmo lançamento:
+
+```
+linha antes da fila → review_status = 'pendente'    ← a armadilha
+fila antes da linha → review_status = 'ok'
+```
+
+A rota resolve a fila **primeiro**, sempre. Exceção declarada: quando o destino
+é 3.99/5.99, o item de fila **não** é resolvido — marcar "a classificar" é
+declarar indecisão, não resolvê-la, e o H3 exige item pendente para todo
+indeciso.
+
+### A trava humana é escrita, e conferida relendo o banco
+
+Em 11/08 uma pessoa classificou 52 lançamentos; em 16/08 o importador herdou "o
+NADA" de um documento sem categoria e apagou as 52 (dúvida 40). A defesa é
+`human_locked_fields`, e por isso toda reclassificação daqui acrescenta
+`category_id` a ela — sem exceção, com `classified_by='humano'` e
+`classified_rule_id=NULL` (D6 exige o par completo).
+
+A rota **relê o banco depois do UPDATE** e devolve `travasEscritas`. Afirmar que
+travou sem conferir é exatamente como as 54 classificações foram perdidas.
+
+### O que estas rotas se recusam a fazer
+
+**Não aceitam filtro no lote.** `{"filtro": …}` é 422 com o motivo. Um lote por
+filtro seria `reclassificar.mjs --conta=inter` com outra roupa — bastaria
+filtrar `conta=inter, categoria=6.02` para mover as 205 linhas de Pró-labore
+para Salários. **A dúvida 0 continua aberta e nada dela foi executado.** O lote
+exige `ids` explícitos, teto de 1.000, `motivo` obrigatório e `aplicar: false`
+por padrão.
+
+**Não ativam regra.** `virar-regra` cria sempre `status='proposta'`, e não há
+parâmetro para mudar isso — `{"ativar": true}` é 422. A regra 40 nasceu ativa e
+acumulou 25 acertos com **zero** verdadeiros positivos. O alcance vem medido no
+acervo atual (por universo, com os conflitos nomeados e os travados que a regra
+não tocaria), nunca estimado para o futuro. O D1 garante que nada aponte para
+ela enquanto não for ativada à parte.
+
+**Não editam `kind`.** Ele decide o sinal exigido e a linha da DRE; trocá-lo numa
+categoria com uso vivo reclassificaria dinheiro sem passar por
+`fin_classification_event`. Natureza errada se resolve criando a certa e movendo
+os itens em lote, com trilha.
+
+**Não têm DELETE de categoria.** O verbo não existe, em vez de existir e ser
+negado.
+
+### Rotas
+
+```
+GET   /api/financeiro/gerencial/categorizacao/busca
+GET   /api/financeiro/gerencial/categorizacao/categorias
+POST  /api/financeiro/gerencial/categorizacao/categorias        (criar)
+PATCH /api/financeiro/gerencial/categorizacao/categorias        (editar/desativar)
+POST  /api/financeiro/gerencial/categorizacao/reclassificar-lote
+POST  /api/financeiro/gerencial/categorizacao/virar-regra
+```
+
+Todas sob `/api/financeiro`, que `lib/auth/perfis.ts` marca como só-admin.
+`ordenarPor` passa por lista branca; campo desconhecido é 400, e o desempate
+`(universo, id)` faz parte do contrato — sem chave estável, duas páginas
+seguidas repetem uma linha e omitem outra.
+
+### Estado medido depois
+
+```
+caixa .............. 6/6 contas fecham
+invariantes ........ 39 passam · 2 falham (D6 e F1, de outras frentes)
+E1 E2 H3 H4 D1 D6 .. medidos antes e depois das escritas de prova: nenhum piorou
+                     (D6 fica em 63 — a coorte B, dúvida 40, vermelha de propósito)
+âncora ............. soma por conta idêntica
+npm run test:categorizacao ... 11 provas, tudo em ROLLBACK
+```
+
+### O que ficou para o Fernando
+
+Nada novo — esta frente não criou dúvida. Ela dá endereço a três que já
+existiam: a **0** (o lote é a ferramenta para decidir as 205 linhas, item a
+item, com o efeito medido antes), a **40** (as 63 linhas da coorte B aparecem na
+busca com `procedencia = 'contrato'` e categoria nula) e a **56** (o plano de
+contas agora diz, categoria a categoria, por que cada ociosa não pode sair).
+
+### Uma armadilha que vale para toda frente que mexa em categoria
+
+**`UPDATE fin_transaction SET category_id = X` sem citar `classified_rule_id`
+no mesmo SET estoura em 9.793 linhas (R$ 4.599.435,44).** Diagnosticado pela
+frente da DRE (0102) e confirmado aqui, em transação:
+
+```
+SET category_id                            → viola fin_transaction_rule_version_paridade
+SET category_id, classified_rule_id = NULL → passa
+```
+
+O mecanismo: `fin_transaction_sinal_da_categoria` zera `classified_rule_id` de
+dentro do BEFORE, mas `zz_fin_transaction_rule_version` é
+`BEFORE UPDATE OF classified_rule_id, classified_rule_version_id` e **não
+dispara** — a versão fica órfã. A mensagem de erro fala de *versão de regra*,
+não de categoria, e por isso custa caro para diagnosticar. `npm run
+test:categorizacao` prova a armadilha e a defesa, nesta ordem.
+
+E o segundo lado da mesma moeda: **`fin_transaction_sinal_da_categoria` não
+recusa categoria de sinal errado — ele APAGA**, e devolve sucesso. Numa
+operação humana esse é o pior caso: a API responde "reclassificado" e o
+lançamento foi para a lacuna. Por isso o lote valida D2/D3/D4 **antes** do
+UPDATE e recusa com a lista dos incompatíveis, em vez de deixar o gatilho
+apagar em silêncio. Para documento isso é ainda mais importante: lá **não há**
+gatilho de sinal, então a categoria errada seria simplesmente gravada e o D4
+quebraria.

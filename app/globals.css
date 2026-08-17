@@ -11594,3 +11594,196 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   .sino-painel { width: calc(100vw - 24px); right: -8px; }
   .fila-time-decisao .time-botao { flex: 1; }
 }
+
+/* ---------------------------------------------------------------------------
+   AGENDA DIÁRIA DE OBRIGAÇÕES  (migration 0104)
+   ---------------------------------------------------------------------------
+   O princípio visual, e ele é um só: **o que não soma tem de parecer diferente
+   do que soma, sem parecer erro.** A hachura do vocabulário de certeza faz esse
+   trabalho — a linha suprimida continua legível, continua clicável, e ninguém
+   a confunde com um total.
+
+   O segundo princípio: **hoje é sempre localizável.** A célula de hoje tem
+   contorno próprio e a de foco tem outro, porque as duas coisas são diferentes
+   e a pessoa navega com o teclado — perder de vista onde ela está é o jeito
+   mais rápido de a agenda virar uma tabela.
+
+   O terceiro: **o passado não finge ter saldo.** Onde o saldo projetado não
+   existe, entra o realizado; onde nem lançamento houve, entra hachura com a
+   palavra, nunca R$ 0,00.
+   --------------------------------------------------------------------------- */
+
+.agenda { display: flex; flex-direction: column; gap: 14px; }
+
+/* ---- topo: as medidas e a navegação ---- */
+.agenda-medidas { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.agenda-controles {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; flex-wrap: wrap; margin-top: 4px;
+}
+.agenda-navegacao { display: flex; align-items: center; gap: 8px; }
+.agenda-periodo { font-size: 15px; min-width: 190px; text-align: center; }
+.agenda-hoje { font-weight: 600; }
+.agenda-hoje.ativo { background: var(--cert-firme-bg); color: var(--cert-firme); border-color: var(--cert-firme); }
+.agenda-visoes { display: flex; gap: 4px; }
+
+/* ---- busca ---- */
+.agenda-busca {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  padding: 10px 12px; background: var(--surface-2); border-radius: 9px;
+}
+.agenda-busca-texto { flex: 1 1 240px; min-width: 200px; }
+.agenda-busca-cat { width: 130px; }
+.agenda-busca-valor { width: 110px; }
+.agenda-lote { position: sticky; top: 8px; z-index: 5; }
+
+/* ---- calendário ---- */
+.agenda-cal-cabecalho {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); padding: 0 2px 6px;
+}
+.agenda-cal-grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.agenda-cel {
+  display: flex; flex-direction: column; gap: 3px; align-items: stretch;
+  min-height: 96px; padding: 7px 8px; text-align: left; font: inherit;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  cursor: pointer; transition: border-color .12s, transform .12s;
+}
+.agenda-cel:hover { border-color: var(--muted); transform: translateY(-1px); }
+.agenda-cel.vazia { background: transparent; border: none; cursor: default; min-height: 0; }
+/* Hoje e foco são coisas diferentes: uma é onde o mundo está, a outra é onde a
+   pessoa está. Marcá-las igual faz o teclado parecer quebrado. */
+.agenda-cel.hoje { border-color: var(--cert-firme); border-width: 2px; }
+.agenda-cel.foco { outline: 2px solid var(--accent, #2f6feb); outline-offset: 1px; }
+.agenda-cel.passado { background: var(--surface-2); }
+.agenda-cel.aperto { background: var(--cert-atrasado-bg); border-color: var(--cert-atrasado); }
+.agenda-cel.vencido { box-shadow: inset 3px 0 0 var(--cert-atrasado); }
+.agenda-cel-dia { font-size: 13px; font-weight: 600; display: flex; gap: 6px; align-items: baseline; }
+.agenda-cel-dia em {
+  font-style: normal; font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--cert-firme); font-weight: 700;
+}
+.agenda-cel-mov { display: flex; flex-direction: column; gap: 1px; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.agenda-cel-mov.vazio { color: var(--muted); }
+.agenda-cel-mov .entra, .agenda-dia-nums .entra, .agenda-td-valor .entra { color: var(--cert-firme); font-weight: 600; }
+.agenda-cel-mov .sai, .agenda-dia-nums .sai, .agenda-td-valor .sai { color: var(--cert-atrasado); font-weight: 600; }
+.agenda-cel-saldo {
+  margin-top: auto; font-size: 11px; font-variant-numeric: tabular-nums;
+  color: var(--muted); border-top: 1px dashed var(--line); padding-top: 3px;
+}
+.agenda-cel-saldo.negativo { color: var(--cert-atrasado); font-weight: 700; }
+.agenda-cel-saldo.realizado { color: var(--ink); }
+.agenda-cel-saldo.cert-hachura { font-style: italic; color: var(--cert-indet); padding: 3px 4px; border-radius: 3px; }
+.agenda-cel-itens { font-size: 10.5px; color: var(--muted); }
+
+/* ---- lista densa ---- */
+.agenda-lista { display: flex; flex-direction: column; gap: 8px; }
+.agenda-dia {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--card); overflow: hidden;
+}
+.agenda-dia.hoje { border-color: var(--cert-firme); border-width: 2px; }
+.agenda-dia.foco { outline: 2px solid var(--accent, #2f6feb); outline-offset: 1px; }
+.agenda-dia.passado { background: var(--surface-2); }
+.agenda-dia-cab {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  flex-wrap: wrap; padding: 9px 12px; border-bottom: 1px solid var(--line); cursor: pointer;
+}
+.agenda-dia-cab h3 { margin: 0; font-size: 14px; }
+.agenda-dia-cab h3 small { font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 12px; }
+.agenda-dia-nums {
+  display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap;
+  font-size: 12.5px; font-variant-numeric: tabular-nums;
+}
+.agenda-dia-nums .liquido { font-weight: 700; }
+.agenda-dia-saldo { color: var(--muted); }
+.agenda-dia-saldo.negativo { color: var(--cert-atrasado); font-weight: 700; }
+.agenda-dia-realizado { color: var(--muted); }
+.agenda-dia-realizado em { font-style: normal; }
+.agenda-dia-realizado .cert-hachura { padding: 1px 5px; border-radius: 3px; color: var(--cert-indet); }
+.agenda-dia-fora {
+  margin: 0; padding: 6px 12px; font-size: 12px;
+  background: var(--cert-indet-bg); color: var(--cert-indet);
+}
+.agenda-dia-vazio {
+  display: flex; gap: 12px; align-items: baseline; padding: 3px 12px;
+  font-size: 11.5px; color: var(--muted); border-left: 2px solid var(--line);
+}
+.agenda-dia-vazio.hoje { border-left-color: var(--cert-firme); color: var(--cert-firme); font-weight: 600; }
+.agenda-dia-vazio.foco { background: var(--surface-2); }
+.agenda-dia-vazio-nada { font-style: italic; }
+.agenda-dia-vazio-saldo { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* ---- a linha ---- */
+.agenda-tab { width: 100%; border-collapse: collapse; }
+.agenda-linha > td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 13px; }
+.agenda-linha.sel > td { background: var(--cert-provavel-bg); }
+/* O item cadastrado à mão é visualmente distinto do que veio de fonte —
+   pedido explícito, e a barra lateral diz isso sem ocupar coluna. */
+.agenda-linha.manual > td:first-child { box-shadow: inset 3px 0 0 var(--cert-indet); }
+.agenda-linha.vencido > td:first-child { box-shadow: inset 3px 0 0 var(--cert-atrasado); }
+.agenda-linha.nao-soma > td { opacity: .82; }
+.agenda-td-check { width: 30px; }
+.agenda-td-dir { width: 26px; }
+.agenda-dir { font-weight: 700; font-size: 15px; }
+.agenda-dir.entra { color: var(--cert-firme); }
+.agenda-dir.sai { color: var(--cert-atrasado); }
+.agenda-td-desc { min-width: 220px; }
+.agenda-desc-btn { font-weight: 600; text-align: left; }
+.agenda-sub { display: block; font-size: 11.5px; color: var(--muted); }
+.agenda-td-selo { white-space: nowrap; }
+.agenda-estado {
+  display: inline-block; margin-left: 6px; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--muted);
+}
+.agenda-td-valor { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+.agenda-indet { font-style: italic; color: var(--cert-indet); font-weight: 400; }
+.agenda-td-real { text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.agenda-realizado em { font-style: normal; margin-left: 5px; font-size: 11px; }
+.agenda-realizado em.atraso { color: var(--cert-atrasado); }
+.agenda-realizado em.adiantou { color: var(--cert-firme); }
+.agenda-nao-veio { color: var(--cert-atrasado); font-weight: 600; }
+.agenda-motivo > td {
+  padding: 2px 8px 6px 44px; font-size: 11.5px; font-style: italic;
+  color: var(--cert-indet); border-bottom: 1px solid var(--line);
+}
+.agenda-alerta > td {
+  padding: 2px 8px 6px 44px; font-size: 11.5px;
+  color: var(--cert-observado); border-bottom: 1px solid var(--line);
+}
+
+/* ---- gaveta de correção ---- */
+.agenda-gaveta { padding: 12px; background: var(--surface-2); border-radius: 8px; margin: 6px 0 10px; }
+.agenda-proveniencia {
+  display: grid; gap: 8px 20px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin: 0 0 12px;
+}
+.agenda-proveniencia dt { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.agenda-proveniencia dd { margin: 2px 0 0; font-size: 12.5px; word-break: break-word; }
+.agenda-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.agenda-form label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--muted); }
+.agenda-form label.largo { flex: 1 1 260px; }
+.agenda-form input {
+  min-height: 34px; padding: 6px 9px; border: 1px solid var(--line);
+  border-radius: 7px; font: inherit; font-size: 13px; background: var(--surface); color: var(--ink);
+}
+.agenda-form-msg { font-size: 12px; color: var(--muted); }
+.agenda-gaveta-nota { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
+.agenda-novo { margin: 4px 0; }
+
+.agenda-atalhos { font-size: 11.5px; color: var(--muted); margin: 4px 0 0; }
+.agenda-atalhos kbd, .agenda-hoje kbd, .agenda-lote kbd {
+  display: inline-block; padding: 1px 5px; border: 1px solid var(--line);
+  border-bottom-width: 2px; border-radius: 4px; background: var(--surface);
+  font-family: inherit; font-size: 10.5px; font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  /* O calendário de 7 colunas em telefone dá células de 45px — ilegível. Abaixo
+     de 900px a lista densa é a única visão que responde à pergunta, e o
+     calendário vira uma faixa rolável em vez de virar ilegível. */
+  .agenda-cal { overflow-x: auto; }
+  .agenda-cal-grade, .agenda-cal-cabecalho { min-width: 640px; }
+  .agenda-dia-nums { gap: 10px; font-size: 12px; }
+  .agenda-busca-texto { flex-basis: 100%; }
+}

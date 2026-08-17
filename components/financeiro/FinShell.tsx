@@ -21,6 +21,10 @@ const TABS = [
   { href: "/financeiro/painel", label: "Painel" },
   { href: "/financeiro", label: "Visão geral" },
   { href: "/financeiro/lancamentos", label: "Lançamentos" },
+  // Antes de Receitas e do Fluxo de propósito: a agenda é a pergunta diária
+  // ("o que vence hoje, o que venceu e não veio"), e as outras duas são a
+  // leitura agregada dela. Quem abre o financeiro de manhã abre esta.
+  { href: "/financeiro/agenda", label: "Agenda" },
   { href: "/financeiro/receitas", label: "Receitas" },
   { href: "/financeiro/fluxo", label: "Fluxo de caixa" },
   { href: "/financeiro/modelo", label: "Modelo de gestão" },

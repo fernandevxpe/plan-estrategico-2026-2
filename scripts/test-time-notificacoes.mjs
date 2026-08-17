@@ -64,10 +64,30 @@ try {
 
   // -------------------------------------------------------------------------
   console.log('\n=== 2. A MIGRATION 0105 EXECUTA POR INTEIRO ===');
-  const sql = await readFile(MIGRATION, 'utf8');
-  const t0 = Date.now();
-  await client.query(sql);
-  ok('0105 aplicada dentro da transação', `${Date.now() - t0} ms`);
+  // Depois que a 0105 é aplicada em produção, reexecutá-la aqui estoura em
+  // `relation "fin_person_acesso" already exists` — o teste passaria a falhar
+  // por ter sido bem-sucedido, que é o pior tipo de alarme falso.
+  //
+  // O padrão é o mesmo de test-contabil.mjs: quando o schema JÁ tem a
+  // migration, as provas correm contra o banco como está, que é inclusive o
+  // teste mais honesto. `--aplicar` força a reexecução, para validar a
+  // migration antes de aplicá-la.
+  const APLICAR = process.argv.includes('--aplicar');
+  const { rows: [{ aplicada }] } = await client.query(
+    `SELECT EXISTS (SELECT 1 FROM xpe_migrations
+                     WHERE id = '0105_fin_time_e_notificacoes.sql') AS aplicada`
+  );
+
+  if (aplicada && !APLICAR) {
+    console.log('     schema já tem a 0105; afirmando contra o banco como está');
+    console.log('     (use --aplicar para reexecutar a migration dentro da transação)');
+    ok('0105 registrada no ledger de migrations', 'aplicada em produção');
+  } else {
+    const sql = await readFile(MIGRATION, 'utf8');
+    const t0 = Date.now();
+    await client.query(sql);
+    ok('0105 aplicada dentro da transação', `${Date.now() - t0} ms`);
+  }
 
   // -------------------------------------------------------------------------
   console.log('\n=== 3. ÂNCORA DE DINHEIRO (depois) ===');
@@ -301,7 +321,28 @@ try {
   const persistiu = await client.query(
     `SELECT count(*)::int n FROM pg_class c JOIN pg_namespace ns ON ns.oid=c.relnamespace
       WHERE ns.nspname='public' AND c.relname IN ('fin_time_envio','fin_notificacao')`);
-  afirma(persistiu.rows[0].n === 0, 'nada persistiu: a 0105 continua NÃO aplicada');
+
+  // A afirmação muda de sentido conforme a 0105 já esteja aplicada.
+  //
+  // Antes de aplicar: as tabelas só existiam dentro da transação, então o
+  // ROLLBACK tem de deixar zero — é a prova de que o teste não sujou o banco.
+  //
+  // Depois de aplicar: elas existem de verdade e continuar existindo é o
+  // esperado. O que o ROLLBACK precisa provar aqui é outra coisa — que as
+  // LINHAS que o teste escreveu sumiram. Manter a asserção antiga faria o
+  // teste exigir que a migration nunca fosse para produção.
+  if (aplicada && !APLICAR) {
+    const linhas = await client.query(
+      `SELECT (SELECT count(*) FROM fin_time_envio)::int envios,
+              (SELECT count(*) FROM fin_notificacao)::int avisos`);
+    afirma(
+      Number(linhas.rows[0].envios) === 0 && Number(linhas.rows[0].avisos) === 0,
+      'nada persistiu: as linhas do teste sumiram no ROLLBACK',
+      `${linhas.rows[0].envios} envio(s) · ${linhas.rows[0].avisos} aviso(s) no banco`
+    );
+  } else {
+    afirma(persistiu.rows[0].n === 0, 'nada persistiu: a 0105 continua NÃO aplicada');
+  }
 } catch (erro) {
   await client.query('ROLLBACK').catch(() => {});
   console.error('\n✗ ERRO:', erro.message);

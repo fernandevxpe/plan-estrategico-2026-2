@@ -441,8 +441,28 @@ export type FiltroLancamentos = {
   limite?: number;
 };
 
+/**
+ * Lista vazia porque NÃO SE SABE, e não porque não há.
+ *
+ * `getLancamentos` devolvia `[]` nos dois casos — banco fora do ar e extrato
+ * realmente vazio — e a tela imprimia "0 lançamentos · R$ 0,00" como fato
+ * medido. Foi o que aconteceu quando produção subiu com o schema recusado: a
+ * tela afirmou zero sobre 13.882 lançamentos que estavam no banco.
+ *
+ * Zero é afirmação sobre o dinheiro; ausência é afirmação sobre o dado. A
+ * marca deixa a tela distinguir os dois sem mudar o tipo do retorno.
+ */
+export const INDISPONIVEL = Symbol.for("fin.indisponivel");
+export function ehIndisponivel(lista: unknown[]): boolean {
+  return Boolean((lista as { [INDISPONIVEL]?: boolean })[INDISPONIVEL]);
+}
+function marcaIndisponivel<T>(lista: T[]): T[] {
+  Object.defineProperty(lista, INDISPONIVEL, { value: true, enumerable: false });
+  return lista;
+}
+
 export async function getLancamentos(filtro: FiltroLancamentos = {}): Promise<Lancamento[]> {
-  if (!isFinanceConfigured()) return [];
+  if (!isFinanceConfigured()) return marcaIndisponivel([]);
 
   const where: string[] = ["e.slug = $1", "NOT t.is_split_parent"];
   const params: unknown[] = [ENTITY];
@@ -514,7 +534,7 @@ export async function getLancamentos(filtro: FiltroLancamentos = {}): Promise<La
     }));
   } catch (error) {
     console.error("[financeiro] lançamentos indisponíveis:", error);
-    return [];
+    return marcaIndisponivel([]);
   }
 }
 

@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { FinShell } from "@/components/financeiro/FinShell";
 import { FinLedgerTable } from "@/components/financeiro/FinLedgerTable";
-import { getFiltrosDisponiveis, getLancamentos } from "@/lib/financeiro/queries";
+import { ehIndisponivel, getFiltrosDisponiveis, getLancamentos } from "@/lib/financeiro/queries";
 
 export const metadata = {
   title: "Lançamentos — Financeiro XPE"
@@ -42,6 +42,7 @@ export default async function LancamentosPage({ searchParams }: Props) {
           inicialSemCategoria={filtros.semCategoria === "1"}
           inicialBusca={filtros.busca ?? ""}
           lancamentos={lancamentos}
+          indisponivel={ehIndisponivel(lancamentos)}
           contas={opcoes.contas}
           nucleos={opcoes.nucleos}
         />

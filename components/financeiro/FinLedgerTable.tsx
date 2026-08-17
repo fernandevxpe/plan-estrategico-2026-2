@@ -7,6 +7,8 @@ import { brlPrecise, dateLabel } from "@/lib/financeiro/format";
 
 type Props = {
   lancamentos: Lancamento[];
+  /** true quando a origem não respondeu — diferente de extrato vazio. */
+  indisponivel?: boolean;
   contas: { slug: string; name: string }[];
   nucleos: { slug: string; name: string }[];
   /** Vem de ?semCategoria=1 — o link do painel de qualificação. */
@@ -32,7 +34,14 @@ type Props = {
  *    estava capturando transferências, porque a razão social da empresa contém
  *    "MEDICAO".
  */
-export function FinLedgerTable({ lancamentos, contas, nucleos, inicialSemCategoria = false, inicialBusca = "" }: Props) {
+export function FinLedgerTable({
+  lancamentos,
+  contas,
+  nucleos,
+  inicialSemCategoria = false,
+  inicialBusca = "",
+  indisponivel = false
+}: Props) {
   const [busca, setBusca] = useState(inicialBusca);
   const [conta, setConta] = useState("");
   const [nucleo, setNucleo] = useState("");
@@ -107,11 +116,22 @@ export function FinLedgerTable({ lancamentos, contas, nucleos, inicialSemCategor
         </label>
       </div>
 
-      <p className="fin-filters-summary">
-        <strong>{filtrados.length.toLocaleString("pt-BR")}</strong> lançamentos · entradas{" "}
-        <strong className="fin-in">{brlPrecise(entradas)}</strong> · saídas{" "}
-        <strong className="fin-out">{brlPrecise(saidas)}</strong> · líquido <strong>{brlPrecise(total)}</strong>
-      </p>
+      {/* A soma só é afirmada quando houve o que somar. Com a origem fora do
+          ar, "0 lançamentos · R$ 0,00" seria uma afirmação sobre o dinheiro —
+          e o que se sabe é sobre o dado. Aconteceu de verdade: a tela disse
+          zero sobre 13.882 lançamentos que estavam no banco. */}
+      {indisponivel ? (
+        <p className="fin-filters-summary fin-indisponivel">
+          <strong>indeterminado</strong> — a origem dos lançamentos não respondeu.
+          Isto não significa extrato vazio; significa que não foi possível medir.
+        </p>
+      ) : (
+        <p className="fin-filters-summary">
+          <strong>{filtrados.length.toLocaleString("pt-BR")}</strong> lançamentos · entradas{" "}
+          <strong className="fin-in">{brlPrecise(entradas)}</strong> · saídas{" "}
+          <strong className="fin-out">{brlPrecise(saidas)}</strong> · líquido <strong>{brlPrecise(total)}</strong>
+        </p>
+      )}
 
       <div className="table-wrap">
         <table className="fin-table fin-ledger">

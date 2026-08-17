@@ -12366,3 +12366,16 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   .cf-tabela { min-width: 620px; }
   .cf-candidatos { grid-template-columns: 1fr; }
 }
+
+/* Resumo que não pôde ser medido — distinto do resumo que deu zero.
+   Usa o mesmo vocabulário do indeterminado das Medidas: hachura e a cor
+   roxa, para a pessoa reconhecer o estado sem precisar ler. */
+.fin-filters-summary.fin-indisponivel {
+  color: var(--cert-indet);
+  border-left: 3px solid var(--cert-indet);
+  padding-left: 10px;
+  background:
+    repeating-linear-gradient(135deg, transparent, transparent 5px,
+                              var(--cert-hatch) 5px, var(--cert-hatch) 6px),
+    var(--surface);
+}

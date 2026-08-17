@@ -754,28 +754,41 @@ bruto AS (
 ),
 
 -- ── A TRAVA: uma chave, um somador ─────────────────────────────────────────
--- Onde a mesma chave aparece em mais de uma procedencia, quem soma e a de
--- MENOR precedencia_nivel; empate desempata por procedencia ('item' antes de
--- 'documento' antes de 'projetado') e, em ultimo caso, pelo texto da
--- procedencia, para que a escolha seja deterministica e nao dependa da ordem
--- de leitura do planejador.
+-- Onde a mesma chave aparece em mais de uma procedencia, quem fica com ela e o
+-- ITEM, depois o DOCUMENTO, depois a PROJECAO — nessa ordem, e so dentro da
+-- mesma procedencia o `precedencia_nivel` desempata.
+--
+-- A ORDEM E POR PROCEDENCIA E NAO POR NIVEL, E ISSO IMPORTA. O item e a
+-- DECISAO HUMANA sobre aquele dinheiro: o valor que alguem conferiu, o dia que
+-- alguem corrigiu, o motivo de alguem ter dito que nao vai acontecer. Ordenar
+-- por nivel poria o documento (nivel 1) na frente de um item ainda em
+-- 'previsto' (nivel 2) — e o ajuste de dia ou de valor que o humano fez seria
+-- descartado em silencio em favor do valor de face do boleto. Pior ainda com
+-- o item 'ignorado' (nivel 9): ele perderia a chave para a propria projecao
+-- que veio calar, e a agenda escreveria "ja contado pela projecao" sobre uma
+-- linha que a pessoa acabou de marcar como "nao vai acontecer" — a mensagem
+-- exatamente ao contrario do que aconteceu, que e a licao do D6.
+--
+-- O ultimo criterio e o texto da procedencia, para que a escolha seja
+-- deterministica e nao dependa da ordem de leitura do planejador.
 travado AS (
   SELECT
     b.*,
-    row_number() OVER (
-      PARTITION BY b.entity_id, b.chave_dedupe
-      ORDER BY b.precedencia_nivel,
-               CASE b.procedencia WHEN 'item' THEN 0 WHEN 'documento' THEN 1 ELSE 2 END,
-               b.procedencia
-    ) AS posto,
+    row_number() OVER (PARTITION BY b.entity_id, b.chave_dedupe ORDER BY
+      CASE b.procedencia WHEN 'item' THEN 0 WHEN 'documento' THEN 1 ELSE 2 END,
+      b.precedencia_nivel, b.procedencia) AS posto,
     count(*) OVER (PARTITION BY b.entity_id, b.chave_dedupe) AS linhas_na_chave,
-    -- Quem venceu, para escrever o motivo da que perdeu.
-    first_value(b.procedencia) OVER (
-      PARTITION BY b.entity_id, b.chave_dedupe
-      ORDER BY b.precedencia_nivel,
-               CASE b.procedencia WHEN 'item' THEN 0 WHEN 'documento' THEN 1 ELSE 2 END,
-               b.procedencia
-    ) AS vencedor
+    -- Quem ficou com a chave, e se ELE soma. As duas coisas, porque "perdi a
+    -- chave" e "o dinheiro foi contado" nao sao a mesma afirmacao: quando o
+    -- vencedor tambem nao soma (item ignorado calando projecao ja suprimida),
+    -- dizer "ja contado" seria inventar uma soma que nao existe em lugar
+    -- nenhum. Nesse caso a linha perdedora mantem o proprio motivo.
+    first_value(b.procedencia) OVER (PARTITION BY b.entity_id, b.chave_dedupe ORDER BY
+      CASE b.procedencia WHEN 'item' THEN 0 WHEN 'documento' THEN 1 ELSE 2 END,
+      b.precedencia_nivel, b.procedencia) AS vencedor,
+    first_value(b.soma_bruta) OVER (PARTITION BY b.entity_id, b.chave_dedupe ORDER BY
+      CASE b.procedencia WHEN 'item' THEN 0 WHEN 'documento' THEN 1 ELSE 2 END,
+      b.precedencia_nivel, b.procedencia) AS vencedor_soma
   FROM bruto b
 )
 SELECT
@@ -841,9 +854,16 @@ SELECT
   -- a fonte disse que soma, E esta linha ganhou a chave.
   (t.soma_bruta AND t.posto = 1)                         AS entra_no_total,
   CASE
-    WHEN t.posto > 1
+    -- Perdeu a chave para uma linha que SOMA: o dinheiro esta contado, ali.
+    WHEN t.posto > 1 AND t.vencedor_soma
       THEN 'mesmo dinheiro ja contado pela procedencia "' || t.vencedor
            || '" (chave ' || t.chave_dedupe || ')'
+    -- Perdeu a chave para uma linha que TAMBEM nao soma. Nada foi contado, e
+    -- dizer que foi seria pior que nao dizer nada: cada linha mantem o proprio
+    -- motivo, e o da vencedora explica o dinheiro que sumiu do total.
+    WHEN t.posto > 1
+      THEN COALESCE(t.motivo_bruto || ' · ', '')
+           || 'a chave ficou com a procedencia "' || t.vencedor || '", que tambem nao soma'
     ELSE t.motivo_bruto
   END                                                    AS motivo_nao_soma,
   t.linhas_na_chave,

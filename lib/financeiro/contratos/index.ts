@@ -77,6 +77,32 @@ export {
   type MargemProjeto
 } from "./resultado";
 export { getPrevisao, getPrevisaoRecebimento, type Previsao, type DiaPrevisto, type CamadaPrevisao } from "./previsao";
+export {
+  getCustosDoMes,
+  type CustosDoMes,
+  type ItemCusto,
+  type CategoriaCusto,
+  type ConfrontoCusto,
+  type EstadoCusto,
+  type FiltrosCusto
+} from "./custos";
+// A agenda diária (0104): contas a pagar e a receber dia a dia, do passado ao
+// futuro. Consome o consolidado de custos da 0100 e não duplica o item de saída
+// dela; `fin_receita_prevista` é o espelho do lado da entrada.
+export {
+  getAgenda,
+  getAgendaDia,
+  getAgendaSeries,
+  getAgendaProva,
+  ORDENACOES_VALIDAS,
+  type AgendaPeriodo,
+  type LinhaAgenda,
+  type DiaAgenda,
+  type Serie,
+  type Prova,
+  type FiltroAgenda,
+  type Tempo
+} from "./agenda";
 export { getAuditoria, getPendencias, type EventoAuditoria, type PainelPendencias, type ChecagemIntegridade } from "./auditoria";
 export {
   getCaixaDeDecisoes,

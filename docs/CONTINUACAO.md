@@ -3,6 +3,178 @@
 Este documento existe para quem chega depois. Ele é auto-suficiente: se você só
 puder ler um arquivo antes de tocar em qualquer coisa, leia este.
 
+## Frente do teto do MEI · 17/08/2026 (migration 0107 — validada, NÃO aplicada)
+
+O Fernando declarou o fato que faltava, e ele é regra de negócio:
+
+> *"os meis, são alguns funcionários, nao temos clt, apenas alguns socios
+> recebem salario minimo os demais valores pagos são meis, e a propria xpe paga
+> o imposto dos meis"* · *"quero que mostre a janela quanto esta proximo do
+> teto, tem multas q pagam tbm"*
+
+**`0107_fin_mei_teto.sql` — validada em transação com ROLLBACK, 18 asserções,
+âncora de dinheiro idêntica antes e depois. NÃO aplicada.**
+
+### 1. O achado com prazo: o Igor cruza o teto em setembro
+
+```
+teto do MEI 2026 ........ R$  81.000,00   LC 123/2006 art. 18-A § 1º (red. LC 188/2021)
+Igor, recebido da XPE ... R$  76.751,35   94,8%  — faltam R$ 4.248,65
+ritmo mensal ............ R$   8.980,30   média dos 7 meses completos
+projeção do ano ......... R$ 107.763,65   133,0%  → acima dos 120%
+cruza em ................ setembro/2026
+```
+
+**A faixa é a notícia, não o excesso.** Art. 18-A § 7º, III: até 20% de excesso
+desenquadra em 1º/01 do ano SEGUINTE (alínea "a"); **acima de 20% desenquadra
+RETROATIVO a 1º/01 do próprio ano** (alínea "b"). R$ 81.000 × 1,20 = R$ 97.200,
+e a projeção passa disso em R$ 10.563,65. É a alínea "b": 2026 inteiro
+reapurado como ME. Ninguém mais está em risco — o segundo (Flavio) projeta 68,2%.
+
+**E a medida é PISO**: a base só enxerga o que a XPE pagou. Com 94,8% do teto
+vindo de um contratante só, não sobra espaço para nenhum outro cliente. Dúvida 60.
+
+### 2. O teto foi conferido na fonte, não na memória
+
+`curl` no texto consolidado do Planalto em 17/08/2026: o § 1º do art. 18-A na
+redação vigente (LC 188/2021) mantém os **R$ 81.000,00**. O PLP 108/2021, que
+elevaria para R$ 130.000, teve urgência aprovada na Câmara em 17/03/2026 e
+**não era lei** na data da consulta. O valor vive em `fin_tax_regime_param` com
+dispositivo, URL, `consultado_em` e vigência — **se virar lei, entra linha nova;
+a velha não se edita.** Uma asserção recusa fonte que não seja primária.
+
+### 3. As multas: R$ 19,11 no acervo inteiro — e isso é achado sobre a BASE
+
+A palavra "multa", "juros", "mora" ou "atraso" **não aparece em nenhuma** das
+13.882 descrições, e a categoria **9.11 "Juros e multas pagos" tem zero
+lançamentos**. Nesta base multa não é rótulo: é excedente embutido num valor.
+
+Foi assim que se achou a única que existe. Em 27/04/2026 saíram **R$ 105,16**
+para a Receita Federal. O DAS-MEI é R$ 86,05 ao centavo (5% × R$ 1.621,00 +
+R$ 5,00). O excedente de R$ 19,11 é **22,21% do principal** — maior que o teto
+de 20% da multa de mora (Lei 9.430/1996 art. 61 § 2º), o que **prova** que há
+juros, sem precisar saber a data de vencimento. Decomposto: R$ 17,21 de multa
++ R$ 1,90 de juros, e o teto de 20% só se atinge com 0,33%/dia × **61 dias** —
+atraso mínimo derivado da lei, não arbitrado.
+
+A contagem confirma por um caminho independente: **fevereiro teve 4 guias de
+R$ 86,05; todos os outros meses, 5.** A que faltou em fevereiro é a paga com
+acréscimo em 27/04.
+
+**O limite da medição está declarado**: só o DAS-MEI tem valor esperado
+derivável da lei. Multa embutida no DAS da empresa — cujo valor depende da
+receita declarada — é **indeterminada, não zero**.
+
+### 4. A 0092 estava contando esse pagamento como DAS da empresa
+
+`fin_das_reconciliacao_v` separava MEI de empresa por igualdade exata a R$ 86,05,
+então R$ 105,16 virou DAS da empresa e inflou a base implícita de mar/26 em
+R$ 826,63. A 0107 substitui a view **com a mesma lista de colunas** — duas
+medidas do mesmo dinheiro discordam exatamente no dia em que a diferença importa.
+
+O corte novo não é arbitrado: **entre 1,3× e 10× o principal não existe nenhum
+pagamento em 7.01 no acervo inteiro.** A asserção 10.4 prova o vão vazio e se
+recusa a commitar se ele deixar de estar.
+
+### 5. A contradição do anexo estava na JANELA, não no MEI
+
+A 0092 deixou um impasse: a leitura legal exclui o MEI do numerador e apontava
+Anexo V (23,42%), mas o DAS pago reproduz o Anexo III. **As duas coisas eram
+verdadeiras.** O errado era comparar 8 meses de folha com 12 de receita — os
+extratos de Inter e Nubank começam em 01/01/2026 (dúvida 4).
+
+```
+                       medido (8/12 de folha)   recomposto p/ 12 meses
+legal estrito (MEI fora) ..  23,42% → V             35,13% → III
+```
+
+**Anexo III se sustenta SEM contar o MEI.** E o DAS pago concorda: em mar, abr,
+mai e jun/26 o Anexo III reproduz a guia dentro de 4%; o Anexo V erra ~30% em
+**todos** os meses.
+
+```
+comp.    receita     RBT12    ef.III   ef.V    DAS calc.III   DAS pago    erro
+2026-03  209.632,35 1.087.014  12,72%  18,93%    26.667,95   27.707,20   +3,9%
+2026-04  170.290,61 1.236.005  13,12%  19,12%    22.336,20   22.469,81   +0,6%
+2026-05   92.414,19 1.340.204  13,34%  19,22%    12.328,70   12.500,60   +1,4%
+2026-08  126.307,13 1.525.594  13,66%  19,38%    17.258,43   (vence 20/09)
+```
+
+**Isso derruba o preço de R$ 87 a R$ 100 mil que a 0092 pendurou na dúvida 21.**
+A conta contábil do MEI continua em aberto — ela muda a leitura da DRE —, mas
+**não decide mais o anexo**.
+
+### 6. "A gente não trabalha sem nota" — medido, e a direção do erro é a prova
+
+Somando dez/25 a jun/26: base implícita no DAS pago **R$ 932.615,74** contra
+NFS-e do Asaas **R$ 877.874,63**. A base declarada é **MAIOR** que as notas em
+R$ 54.741,11. Se houvesse serviço sem nota, ela seria **menor**. O que existe é
+nota que este acervo não tem — a do portal da prefeitura (dúvida 50).
+
+Por contraparte: das **159** que pagaram receita em 2026, **119 têm NFS-e** aqui;
+as 40 sem nota somam R$ 119.370,22 (9,4%) e são quase todas condomínio — o mesmo
+perfil das notas de portal.
+
+**A afirmação se sustenta.** Cobertura fiscal desta base: ~94% por imposto pago,
+~91% por contraparte. O que falta é documento ausente do acervo, não receita sem
+nota.
+
+⚠️ **O que NÃO serve para medir isso:** `fin_fiscal_document.document_id` só
+existe a partir de jun/26 (0 links até maio, 74 de 79 em julho). Contar
+"cobrança com nota" pelo link mede a cobertura do LINK, não da nota, e daria
+18,4% — número falso. Não use.
+
+### 7. Os sócios no salário mínimo estão no extrato
+
+R$ 713,24/mês em 6.03 = **11% × 4 × R$ 1.621,00** ao centavo (Lei 10.666/2003
+art. 4º). E os R$ 667,92 de 19/01 = 11% × 4 × R$ 1.518,00, o mínimo de 2025
+(competência dez/25). Duas alíquotas, dois mínimos, quatro pessoas: a declaração
+do Fernando sobre os sócios se confirma sozinha.
+
+### O que a 0107 se recusou a fazer
+
+- **Não diz de quem é cada guia de R$ 86,05.** São 5 por mês para 12 MEIs; o
+  CNPJ está no código de barras. Dúvida 61.
+- **Não inventou faixa de alerta.** A lei declara 100% e 120% e mais nada;
+  `alerta_antecipado_pct` nasce NULL com motivo e uma asserção recusa quem
+  preencher. Dúvida 62.
+- **Não qualificou o vínculo.** `CPP_CONTRATANTE_DE_MEI` (20%, art. 18-B) entra
+  como `indeterminado = true`: a alíquota é certa, a **incidência** depende de
+  qual serviço cada MEI presta — e ninguém descreveu. Vale **R$ 52.841,33** em
+  2026. **É a dúvida mais cara desta frente: a 63.**
+
+### Onde ficou
+
+```
+migration ......... 0107, validada em transação, NÃO aplicada
+tela .............. /financeiro/mei  (aba "Teto do MEI", ao lado de Pessoas)
+rota .............. GET /api/financeiro/gerencial/mei?ano=   (dentro de /api/financeiro
+                    de propósito: é dado de folha, 404 para o perfil comum)
+views novas ....... fin_mei_teto_v · fin_das_mei_valor_v · fin_das_mei_pagamento_v
+                    fin_fator_r_veredito_v · fin_simples_aliquota_mes_v · fin_das_confronto_v
+tabela nova ....... fin_das_referencia (VAZIA — espera os DAS que o Fernando vai anexar)
+view substituída .. fin_das_reconciliacao_v (mesma lista de colunas)
+```
+
+**O lugar dos DAS de referência já existe.** `fin_das_referencia` tem CHECK que
+exige `total = principal + multa + juros`, hash obrigatório quando há arquivo, e
+`receita_bruta_declarada_cents` obrigatória quando a fonte é PGDAS — é esse
+campo que fecha as dúvidas 49 e 50 em um minuto. `fin_das_confronto_v` devolve
+zero linhas enquanto ela estiver vazia, que é a leitura certa.
+
+**Estado medido depois desta frente:** caixa **6/6 fecham** · invariantes
+**39/41** (D6 e F1, de outras frentes, iguais) · `test:perfil-guard` verde ·
+`build:app` exit 0.
+
+**Para aplicar:** `npm run db:backup` e então a 0107 sozinha. Ela não toca
+`fin_transaction`, `fin_document`, `fin_category` nem `fin_person` — cria
+parâmetros, uma tabela vazia e views, e estende o CHECK de `regime` em
+`fin_tax_regime_param` com `'mei'` (o vocabulário ganha um membro legítimo; o
+conjunto continua fechado). Enquanto não for aplicada, `/financeiro/mei` degrada
+dizendo *"a migration 0107 ainda não está aplicada neste ambiente"*.
+
+---
+
 ## Frente E1+E2 — o app do time e as notificações · 16/08/2026 (migration 0105)
 
 Os dois pedidos nominais que a auditoria (`ENTREGAVEL_CONSOLIDADO.md` §2.3)

@@ -33,8 +33,12 @@ vazio declarado.
 | **37** | **Os 149 valores de referência vieram de um arquivo que não temos** | R$ 2.105.576,09 de massa comparada | **aberta · bloqueia toda a frente do previsto** |
 | **38** | **Qual planilha substitui a "Fluxo de Caixa"** | as 91 linhas do modelo | **aberta · nenhuma das 12 abas serve** |
 | 39 | Comissão: 5% em 4 parcelas ou a escala por volume? | R$ 44.205,66/ano entre as duas regras | **aberta · a planilha declara as duas** |
-| **21** | **Em que conta ficam os MEIs** | **R$ 87 mil a R$ 100 mil/ano** | **aberta · precificada na 0092 — decide o anexo do Simples** |
-| **47** | **O CNAE da XP ENERGY não existe na base** | **R$ 87 mil a R$ 100 mil/ano** | **aberta · basta o cartão CNPJ** |
+| **60** | **O Igor cruza o teto do MEI em setembro, na faixa de excesso >20%** | **desenquadramento retroativo a 01/01/2026** | **ABERTA · PRAZO EM DIAS (0107)** |
+| **63** | **A XPE deve 20% de CPP sobre o que paga aos MEIs (art. 18-B)?** | **R$ 52.841,33 em 2026** | **aberta · falta o serviço de cada MEI (0107)** |
+| 21 | Em que conta ficam os MEIs | leitura da DRE | **aberta · o FATO foi respondido em 17/08; o anexo NÃO depende mais dela (0107)** |
+| 61 | De quem é cada guia de R$ 86,05 — 5 por mês, 12 MEIs | R$ 2.925,70/ano | **aberta · basta a lista de nomes (0107)** |
+| 62 | A partir de que % do teto o sistema avisa | governança | **aberta · nasce NULL com motivo (0107)** |
+| **47** | **O CNAE da XP ENERGY não existe na base** | **RAT, FPAS e o anexo por atividade** | **aberta · basta o cartão CNPJ; o preço de R$ 87–100 mil caiu com a 0107** |
 | 48 | A empresa paga o DAS-MEI dos seus MEIs | R$ 2.925,70 em 2026 | **aberta · fato medido, classificação pendente** |
 | 49 | Jun/26: nota sem DAS correspondente | R$ 22.644,22 de base (~R$ 3.032 de DAS) | **aberta · o PGDAS resolve** |
 | 50 | Notas emitidas fora do Asaas | R$ 55.567,69 em 7 competências | **aberta · medida por reversão do DAS** |
@@ -843,6 +847,50 @@ com R$ 298 num contrato de R$ 5.100. Os quatro entraram como `proposto`, não
 ---
 
 ## 21. Em que conta contábil ficam os MEIs — R$ 264.206,66 em 2026
+
+> ### ✅ O FATO ESTÁ RESPONDIDO — 17/08/2026, pelo Fernando
+>
+> *"os meis, são alguns funcionários, nao temos clt, apenas alguns socios
+> recebem salario minimo os demais valores pagos são meis, e a propria xpe paga
+> o imposto dos meis"*
+>
+> **Não há CLT.** Alguns sócios recebem salário mínimo como pró-labore; todo o
+> resto do time é pago como MEI; e a XPE paga o DAS de parte deles. Isso deixa
+> de ser hipótese e passa a ser regra de negócio.
+>
+> **O extrato confirma cada pedaço da frase, sem depender dela:**
+>
+> ```
+> R$ 86,05 x 34 lançamentos  =  5% x R$ 1.621,00 + R$ 5,00   o DAS-MEI de serviços
+> R$ 713,24 x mês            =  11% x 4 x R$ 1.621,00        4 sócios em 1 salário mínimo
+> R$ 667,92 em 19/01/2026    =  11% x 4 x R$ 1.518,00        os mesmos 4, mínimo de 2025
+> ```
+>
+> Duas alíquotas, dois salários mínimos, quatro pessoas — a aritmética fecha ao
+> centavo nos três casos (LC 123/2006 art. 18-A § 3º, IV e V; Lei 10.666/2003
+> art. 4º; Decretos 12.342/2024 e 12.797/2025).
+>
+> **E o preço da dúvida caiu.** A 0092 pendurou aqui R$ 87 mil a R$ 100 mil por
+> ano, porque o MEI no numerador do Fator R decidiria entre Anexo III e V. A
+> 0107 mostrou que **não decide**: o Fator R é razão entre 12 meses de folha e
+> 12 meses de receita, e a janela da 0092 tinha 8 meses de folha contra 12 de
+> receita (os extratos começam em 01/01/2026 — dúvida 4). Recomposta para 12
+> meses, a leitura legal **estrita** — MEI fora, como manda o § 25 — dá **35,13%**
+> contra um limiar de 28%. **Anexo III se sustenta sem contar o MEI.**
+>
+> ```
+>                      medido (8/12 de folha)   recomposto p/ 12 meses
+> legal estrito .....  23,42%  → V              35,13%  → III
+> ```
+>
+> E o DAS efetivamente pago concorda: em mar, abr, mai e jun/26 o Anexo III
+> reproduz a guia dentro de 4%, enquanto o Anexo V erra ~30% em todos os meses.
+>
+> **O que continua aberto é só a conta contábil** — 4.03, 6.09 nova, por pessoa,
+> ou manter em 6.01. A escolha mexe na leitura da DRE (quanto custa "o time"),
+> **não mexe mais no anexo do Simples.** Continua faltando a mesma informação de
+> sempre: **qual serviço cada um presta, descrito** — e agora ela vale mais por
+> outro motivo, que é a dúvida 63.
 
 Doze MEIs receberam R$ 264.206,66 este ano, e **R$ 255.936,66 disso está em
 6.01 Salários** — a conta de empregado, para quem não é empregado. Não foi
@@ -1995,6 +2043,149 @@ tamanho, e não depende de `amount_cents` (que é NULL em parte dos itens).
 Antes de responder, vale ler a dúvida 54: 1.026 dos itens têm alvo anterior a
 2026 e estão fora do escopo declarado. Uma régua de valor sobre a fila inteira
 notificaria sobre dinheiro que o próprio dono já disse não perseguir.
+
+---
+
+## 60. O Igor cruza o teto do MEI em setembro — e cai na faixa pior
+
+**Esta é a dúvida mais urgente da lista, e a única com prazo em dias.**
+
+Em 17/08/2026 o Igor recebeu **R$ 76.751,35** da XPE contra um teto de
+**R$ 81.000,00** (LC 123/2006 art. 18-A § 1º, redação da LC 188/2021). São
+**94,8%**. Faltam **R$ 4.248,65** — menos de meio mês do ritmo dele.
+
+```
+recebido da XPE ......... R$  76.751,35    94,8% do teto
+ritmo mensal ............ R$   8.980,30    média dos 7 meses completos
+projeção de fechamento .. R$ 107.763,65   133,0% do teto
+cruza o teto em ......... setembro/2026    (0,47 mês de ritmo)
+```
+
+**A faixa importa mais que o excesso.** O art. 18-A § 7º, III declara duas
+consequências muito diferentes:
+
+| excesso | dispositivo | efeito |
+|---|---|---|
+| até 20% (≤ R$ 97.200) | III, "a" | continua MEI até 31/12, desenquadra em **1º/01 do ano seguinte**; diferença recolhida **sem acréscimos** em parcela única (§ 10) |
+| acima de 20% (> R$ 97.200) | III, "b" | desenquadramento **RETROATIVO a 1º/01/2026** — o ano inteiro é reapurado como ME pelas regras gerais do Simples (§ 9º) |
+
+A projeção do Igor passa dos R$ 97.200 em **R$ 10.563,65**. Ele não cai na
+alínea "a", cai na **"b"**.
+
+**E a medida é piso.** Esta base só enxerga o que a XPE pagou. Se o Igor tem
+qualquer outro cliente, ele já estourou — com 94,8% do teto vindo de um
+contratante só, não sobra espaço para nenhum outro.
+
+A comunicação à RFB é obrigatória **até o último dia útil do mês seguinte ao do
+excesso** (§ 7º, III), e a falta dela leva a desenquadramento de ofício (§ 8º).
+
+**Ninguém mais está em risco:** o segundo colocado (Flavio) projeta 68,2% e
+cruzaria em 9,44 meses de ritmo, ou seja, não cruza em 2026.
+
+**Perguntas diretas:**
+1. O Igor tem outros clientes? Se sim, qual a receita bruta total dele em 2026?
+2. Há como **reduzir ou reprogramar** o que falta pagar a ele neste ano — ou o
+   caminho é o desenquadramento e a abertura de ME?
+3. Quem avisa o Igor? A consequência tributária é **dele**, não da XPE, e a
+   XPE é quem tem o dado.
+
+`fin_mei_teto_v` e `/financeiro/mei` mostram a janela dos 12, com o mês de
+cruzamento e o dispositivo ao lado de cada número. Leitura gerencial: depende de
+validação do contador.
+
+---
+
+## 61. De quem é cada guia de R$ 86,05 — 5 guias por mês para 12 MEIs
+
+A XPE paga **5 DAS-MEI por mês** (4 em fevereiro), e tem **12 MEIs**. Não paga a
+guia de todos, então, e a base **não sabe de quem são as cinco**: o CNPJ está no
+código de barras do boleto, e o ledger guarda apenas "Receita Federal" ou
+"DAS-SIMPLES NACIONAL".
+
+Isso importa por dois motivos que não são contábeis:
+
+1. **É o único indício de qual MEI a empresa trata como parte da casa.** Pagar
+   a guia de 5 e não de 12 é uma distinção que alguém fez.
+2. **Alimenta a dúvida 63.** Uma empresa que recolhe a guia do prestador é um
+   dos fatos que o art. 18-B § 2º pesa.
+
+**Pergunta direta:** quais 5 MEIs têm a guia paga pela XPE, e por quê esses?
+
+Basta a lista de nomes — o resto a base casa sozinha.
+
+---
+
+## 62. A partir de que % do teto o sistema avisa?
+
+A lei declara **dois** pontos sobre o teto do MEI: 100% e 120%. Nenhum outro.
+
+Um aviso que só dispara em 100% chega tarde: quando ele soar, o desenquadramento
+já é obrigação, não risco. Mas escolher 80% ou 90% aqui seria **inventar
+governança que ninguém combinou** — exatamente o erro que a dúvida 59 evitou no
+sino das notificações.
+
+`fin_mei_teto_v.alerta_antecipado_pct` nasce **NULL com motivo**, e uma asserção
+da 0107 se recusa a commitar se alguém preencher.
+
+**Opções:** *(a)* 80% do teto (~R$ 64.800), que dá ~2 meses de folga no ritmo
+médio · *(b)* um valor absoluto de folga restante (ex.: avisar quando faltarem
+R$ 15.000) · *(c)* um horizonte (avisar quando faltarem 2 meses de ritmo para
+cruzar) · *(d)* nenhum — o cruzamento projetado já é o aviso.
+
+A *(c)* é a que se comporta melhor com quem tem ritmo irregular, mas a escolha
+é do Fernando.
+
+---
+
+## 63. A XPE deve 20% de CPP sobre o que paga aos MEIs? — R$ 52.841,33 em 2026
+
+**É a dúvida mais cara desta frente, e ela é jurídica, não contábil.**
+
+O art. 18-B da LC 123/2006 diz, com todas as letras:
+
+> *"A empresa contratante de serviços executados por intermédio do MEI mantém,
+> em relação a esta contratação, a obrigatoriedade de recolhimento da
+> contribuição a que se refere o inciso III do caput e o § 1º do art. 22 da Lei
+> nº 8.212"* — e o § 1º restringe a hipótese aos serviços de **hidráulica,
+> ELETRICIDADE, pintura, alvenaria, carpintaria e manutenção ou reparo de
+> veículos**.
+
+Ou seja: **20% de CPP patronal**, pagos pela contratante, sobre esses serviços.
+
+**Por que isso pode alcançar a XPE:** ela emite **26,1% das notas no código
+municipal 14.01 — manutenção elétrica** (R$ 290.820,00, dúvida 51). "Eletricidade"
+é literalmente uma das seis hipóteses do § 1º. E o serviço é executado por
+alguém: a empresa não tem CLT.
+
+**O tamanho:** 20% sobre R$ 264.206,66 pagos a MEIs em 2026 = **R$ 52.841,33**.
+Se alcançar só a fração equivalente ao 14.01 (26,1%), são **R$ 13.791,59**.
+Nenhum dos dois está provisionado em lugar nenhum desta base.
+
+**E há um segundo parágrafo, que é o mais sério.** O art. 18-B § 2º:
+
+> *"O disposto no caput e no § 1º não se aplica quando presentes os elementos
+> da relação de emprego, ficando a contratante sujeita a todas as obrigações
+> dela decorrentes, inclusive trabalhistas, tributárias e previdenciárias."*
+
+A base **não qualifica isso e não deve tentar**. O que ela registra são fatos
+medidos, e eles estão todos nesta lista: não há CLT; 12 MEIs recebem mensalmente
+há 8 meses; a XPE paga a guia de 5 deles (dúvida 48); um deles tira 94,8% do
+teto anual de um contratante só (dúvida 60); e 8 pessoas recebem todo mês sem
+contrato declarado (dúvida 23). **Qualificar esse conjunto é trabalho de
+advogado trabalhista, não de plataforma.**
+
+`fin_tax_regime_param` grava a alíquota de 20% com `indeterminado = true` — a
+alíquota é certa, a **incidência** não é — e uma asserção da 0107 impede que
+alguém a marque como determinada sem que o serviço de cada MEI esteja descrito.
+
+**Perguntas diretas:**
+1. **Qual serviço cada um dos 12 MEIs presta**, descrito? (É a mesma informação
+   que a dúvida 21 pede há semanas, e agora ela vale R$ 52 mil, não uma linha de
+   DRE.)
+2. O contador já avalia o art. 18-B? Se sim, com que conclusão e desde quando?
+3. Existe contrato de prestação de serviço escrito com algum deles?
+
+---
 
 ---
 

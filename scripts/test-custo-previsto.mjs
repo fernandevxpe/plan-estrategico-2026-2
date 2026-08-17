@@ -444,6 +444,58 @@ try {
     `     categorias com gasto realizado e nenhuma previsao em 2026: ${lacuna[0].n} · ${brl(lacuna[0].cents)}`
   );
 
+  // ── 10. o SQL que a rota GET executa, com os filtros ─────────────────────
+  // A rota vive em TypeScript e não pode ser importada daqui; o que se prova é
+  // que a consulta dela roda contra este schema e responde ao filtro. Sem isto,
+  // "a rota existe" seria uma afirmação sobre um arquivo, não sobre o banco.
+  console.log('\n10. a consulta da rota GET /custos');
+  const consultaDaRota = `
+    SELECT v.*, c.code AS categoria_code, c.name AS categoria_nome, cp.name AS contraparte_nome
+      FROM fin_custo_previsto_consolidado_v v
+      JOIN fin_entity e ON e.id = v.entity_id AND e.slug = $1
+      LEFT JOIN fin_category c ON c.id = v.category_id
+      LEFT JOIN fin_counterparty cp ON cp.id = v.counterparty_id
+     WHERE v.competencia = $2::date
+       AND ($3::text   IS NULL OR c.code = $3)
+       AND ($4::text   IS NULL OR v.estado = $4)
+       AND ($5::bigint IS NULL OR v.counterparty_id = $5)
+       AND ($6::bigint IS NULL OR COALESCE(v.valor_cents, 0) >= $6)
+       AND ($7::bigint IS NULL OR COALESCE(v.valor_cents, 0) <= $7)
+       AND (NOT $8::boolean OR v.precedencia NOT IN ('confirmado','ignorado'))
+       AND NOT v.suprimido_por_item
+     ORDER BY v.entra_no_total DESC, COALESCE(v.valor_cents, 0) DESC, v.descricao`;
+
+  const semFiltro = await c.query(consultaDaRota, ['xpe', mes, null, null, null, null, null, false]);
+  checar('sem filtro, a rota devolve o mês inteiro', semFiltro.rows.length > 0, `${semFiltro.rows.length} linha(s)`);
+
+  const porCategoria = await c.query(consultaDaRota, ['xpe', mes, '7.01', null, null, null, null, false]);
+  checar(
+    'filtro por categoria corta',
+    porCategoria.rows.length > 0 && porCategoria.rows.every((r) => r.categoria_code === '7.01'),
+    `categoria=7.01 → ${porCategoria.rows.length} linha(s)`
+  );
+
+  const porFaixa = await c.query(consultaDaRota, ['xpe', mes, null, null, null, 500000, null, false]);
+  checar(
+    'filtro por faixa de valor corta',
+    porFaixa.rows.every((r) => Number(r.valor_cents ?? 0) >= 500000),
+    `min=R$ 5.000,00 → ${porFaixa.rows.length} linha(s)`
+  );
+
+  const soPendentes = await c.query(consultaDaRota, ['xpe', mes, null, null, null, null, null, true]);
+  checar(
+    'filtro pendentes exclui confirmado e ignorado',
+    soPendentes.rows.every((r) => !['confirmado', 'ignorado'].includes(r.precedencia)),
+    `${soPendentes.rows.length} linha(s) pendente(s)`
+  );
+
+  const naoDuplicaNaLista = new Set(semFiltro.rows.filter((r) => r.entra_no_total).map((r) => r.chave_dedupe));
+  checar(
+    'a lista que a rota devolve não repete dinheiro',
+    naoDuplicaNaLista.size === semFiltro.rows.filter((r) => r.entra_no_total).length,
+    `${naoDuplicaNaLista.size} chave(s) para ${semFiltro.rows.filter((r) => r.entra_no_total).length} linha(s) somável(is)`
+  );
+
   // ── panorama ─────────────────────────────────────────────────────────────
   const { rows: panorama } = await c.query(
     `SELECT to_char(competencia,'YYYY-MM') mes,

@@ -5,6 +5,7 @@ import { AppNav } from "@/components/layout/AppNav";
 import { CABECALHO_PERFIL, type Perfil } from "@/lib/auth/perfis";
 import { DataFreshness, type SyncState } from "@/components/layout/DataFreshness";
 import { Sino } from "@/components/notificacoes/Sino";
+import { Trilha } from "@/components/layout/Trilha";
 import { readProcessed } from "@/lib/data/processed-store";
 import { readFile } from "node:fs/promises";
 import { dataPath } from "@/lib/data/processed-store";
@@ -50,6 +51,11 @@ export async function AppShell({ children }: Props) {
             <AppNav perfil={perfil} />
           </div>
         </div>
+        {/* A segunda linha do cabeçalho: a trilha e, quando a seção tem
+            irmãs, as rotas dela. Fica DENTRO do `topbar` de propósito — ela
+            gruda no topo junto com o menu, e "onde estou" não deveria sumir ao
+            rolar uma tela de 3.000 lançamentos. */}
+        <Trilha />
       </header>
       <div className="shell" id="conteudo">
         {children}

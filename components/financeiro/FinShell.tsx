@@ -2,90 +2,141 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import { FINANCEIRO_GRUPOS, financeiroAtivo, rotaAtiva, type Rota } from "@/lib/nav/mapa";
 
 /**
- * Barra de abas do módulo financeiro.
+ * A barra lateral do módulo financeiro.
  *
- * Segue o padrão do `TABS` de components/gestao-xpe/GestaoXpeShell.tsx: um
- * vocabulário de navegação que o usuário já aprendeu em outra parte da
- * plataforma não precisa ser aprendido de novo aqui.
+ * O QUE ELA SUBSTITUI
  *
- * As abas não são as rotas do plano inteiro — só as que existem. Aba que leva a
- * tela vazia ensina o usuário a não clicar.
+ * Uma fila única de 23 abas, em ordem de chegada, quebrando em três linhas.
+ * Uma fila é uma boa navegação até ~7 itens; depois disso ela deixa de ser
+ * navegação e vira busca visual — o usuário lê a barra inteira toda vez, e o
+ * custo de achar uma tela passa a crescer com o número de telas que ele NÃO
+ * quer. Foi assim que `/financeiro/resultado` (a DRE) ficou de fora do menu
+ * sem ninguém notar: numa fila de 23, o 24º item não tem lugar óbvio.
+ *
+ * Seis grupos, e o da página aberta é o único expandido. Quem está em "Custos
+ * do mês" vê quatro itens de PAGAR e cinco rótulos de grupo — nove linhas em
+ * vez de vinte e três — sem perder o mapa do resto.
+ *
+ * `<details>`/`<summary>` em vez de estado próprio: recolher e expandir é
+ * comportamento nativo do HTML, com teclado e leitor de tela já resolvidos. O
+ * `open` inicial vem da rota; se o usuário abrir outro grupo à mão, ele fica
+ * aberto — a escolha explícita dele vence a nossa.
+ *
+ * NOMES
+ *
+ * Nenhum rótulo mora aqui. Todos vêm de `lib/nav/mapa.ts`, o mesmo arquivo que
+ * alimenta o menu de cima e a trilha, para que uma rota não possa ter dois
+ * nomes na mesma plataforma.
  */
-// Só entram abas cuja página EXISTE. Aba que leva a 404 ensina o usuário a não
-// clicar, e depois ele não clica na que funciona. "Importar" entra quando a
-// tela de upload de extrato estiver de pé.
-const TABS = [
-  // Painel primeiro: é a tela de abertura de quem decide.
-  { href: "/financeiro/painel", label: "Painel" },
-  { href: "/financeiro", label: "Visão geral" },
-  { href: "/financeiro/lancamentos", label: "Lançamentos" },
-  // Antes de Receitas e do Fluxo de propósito: a agenda é a pergunta diária
-  // ("o que vence hoje, o que venceu e não veio"), e as outras duas são a
-  // leitura agregada dela. Quem abre o financeiro de manhã abre esta.
-  { href: "/financeiro/agenda", label: "Agenda" },
-  { href: "/financeiro/receitas", label: "Receitas" },
-  // Logo depois de Receitas: é o outro lado da mesma pergunta do mês ("o que
-  // entra, o que sai") e antes do Fluxo, que é a leitura agregada das duas.
-  { href: "/financeiro/custos", label: "Custos do mês" },
-  // Logo depois de "Custos do mês" porque é a configuração DELE: a tela ao lado
-  // responde "quanto sai em setembro", esta responde "o que a empresa paga todo
-  // mês, e quanto". Quem descobre um custo errado no mês vem consertar aqui.
-  { href: "/financeiro/custos-fixos", label: "Custos fixos" },
-  { href: "/financeiro/fluxo", label: "Fluxo de caixa" },
-  { href: "/financeiro/modelo", label: "Modelo de gestão" },
-  { href: "/financeiro/planejamento", label: "Planejamento" },
-  { href: "/financeiro/contas", label: "Contas" },
-  // Ao lado de Reembolsos porque as duas respondem à mesma pergunta — quanto
-  // custa o time — e quem vai a uma costuma precisar da outra.
-  { href: "/financeiro/pessoas", label: "Pessoas" },
-  // Logo depois de Pessoas: é a mesma população vista pelo limite dela. Quem
-  // olha quanto o time custa precisa saber, na mesma sessão, que um prestador
-  // está a menos de meio mês de estourar o teto do próprio CNPJ — e essa
-  // consequência é dele, não da folha.
-  { href: "/financeiro/mei", label: "Teto do MEI" },
-  { href: "/financeiro/reembolsos", label: "Reembolsos" },
-  // Ao lado de Reembolsos pelo mesmo motivo: é a caixa de entrada do que o time
-  // manda, e reembolso é o que ele mais manda.
-  { href: "/financeiro/time", label: "Fila do time" },
-  { href: "/financeiro/qualificar", label: "Qualificar" },
-  // Ao lado de Qualificar e Revisão porque as três respondem à mesma pergunta
-  // — "onde isto entra?" — em graus diferentes de dúvida. A diferença é o
-  // alcance: Qualificar e Revisão só veem `fin_transaction` e `fin_document`;
-  // esta é a única que enxerga também o subledger do cartão, onde 500 itens
-  // (R$ 54.126,76) não aparecem em indicador nenhum.
-  { href: "/financeiro/categorizacao", label: "Categorização" },
-  { href: "/financeiro/revisao", label: "Revisão" },
-  { href: "/financeiro/indicadores", label: "Indicadores" },
-  { href: "/financeiro/regras", label: "Regras" },
-  { href: "/financeiro/importar", label: "Importar" }
-];
-
 export function FinShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [gavetaAberta, setGavetaAberta] = useState(false);
+  const atual = financeiroAtivo(pathname);
+  // `/financeiro` (a visão geral) não pertence a grupo nenhum. Deixar os seis
+  // fechados ali entregaria, na porta do módulo, seis rótulos e nenhuma tela —
+  // o primeiro grupo aberto dá um lugar por onde começar.
+  const grupoAberto = atual?.grupo.label ?? FINANCEIRO_GRUPOS[0]?.label;
+
+  // Navegou, fecha. Sem isto a gaveta continua por cima da tela que o usuário
+  // acabou de pedir, e ele tem de fechá-la para ver o que clicou.
+  useEffect(() => setGavetaAberta(false), [pathname]);
+
+  useEffect(() => {
+    if (!gavetaAberta) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setGavetaAberta(false);
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [gavetaAberta]);
 
   return (
-    <div className="fin-shell">
-      <nav className="fin-tabs" aria-label="Seções do financeiro">
-        {TABS.map((tab) => {
-          // Prefixo tem de terminar em fronteira de segmento. `startsWith` cru
-          // acendia DUAS abas em /financeiro/custos-fixos — "Custos do mês"
-          // (/financeiro/custos) e "Custos fixos" — porque uma é prefixo
-          // textual da outra. Duas abas ativas ao mesmo tempo tiram da barra a
-          // única coisa que ela promete: dizer onde você está.
-          const active =
-            tab.href === "/financeiro"
-              ? pathname === tab.href
-              : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
-          return (
-            <Link key={tab.href} href={tab.href} className={active ? "fin-tab active" : "fin-tab"}>
-              {tab.label}
-            </Link>
-          );
-        })}
+    <div className="fin-layout">
+      {/* Só existe em tela estreita (CSS). Em tela larga a barra está sempre
+          visível e um botão para abri-la seria um clique para nada. */}
+      <button
+        type="button"
+        className="fin-nav-abrir"
+        aria-expanded={gavetaAberta}
+        aria-controls="fin-nav"
+        onClick={() => setGavetaAberta(true)}
+      >
+        Seções do financeiro
+      </button>
+
+      {gavetaAberta ? (
+        <button
+          type="button"
+          className="fin-nav-fundo"
+          aria-label="Fechar as seções do financeiro"
+          onClick={() => setGavetaAberta(false)}
+        />
+      ) : null}
+
+      <nav
+        id="fin-nav"
+        className={gavetaAberta ? "fin-nav aberta" : "fin-nav"}
+        aria-label="Seções do financeiro"
+      >
+        {FINANCEIRO_GRUPOS.map((grupo) => (
+          <details key={grupo.label} className="fin-nav-grupo" open={grupoAberto === grupo.label}>
+            <summary>{grupo.label}</summary>
+            <div className="fin-nav-itens">
+              {grupo.rotas.map((rota) => (
+                <ItemDeRota key={rota.href} rota={rota} pathname={pathname} />
+              ))}
+            </div>
+          </details>
+        ))}
       </nav>
-      {children}
+
+      {/* `fin-shell` continua sendo a coluna de conteúdo: o espaçamento de 18px
+          entre os blocos das telas depende dela, e o app do time reusa a mesma
+          classe. Trocar o significado dela aqui quebraria `/time` sem aviso. */}
+      <div className="fin-shell">{children}</div>
     </div>
+  );
+}
+
+function ItemDeRota({ rota, pathname }: { rota: Rota; pathname: string }) {
+  const ativa = rotaAtiva(rota.href, pathname);
+  const filhoAtivo = rota.filhos?.some((f) => rotaAtiva(f.href, pathname)) ?? false;
+
+  return (
+    <>
+      <Link
+        href={rota.href}
+        className={ativa ? "fin-nav-item active" : "fin-nav-item"}
+        aria-current={ativa ? "page" : undefined}
+      >
+        {rota.label}
+      </Link>
+      {/* As telas irmãs só aparecem quando a conversa já é essa. Categorização,
+          Qualificar e Revisão são três telas para a mesma pergunta ("onde isto
+          entra?") e a fusão delas é etapa posterior; até lá, o menu mostra uma
+          porta e as outras duas ficam a um clique de quem está classificando. */}
+      {rota.filhos && (ativa || filhoAtivo) ? (
+        <div className="fin-nav-filhos">
+          {rota.filhos.map((filho) => {
+            const aberto = rotaAtiva(filho.href, pathname);
+            return (
+              <Link
+                key={filho.href}
+                href={filho.href}
+                className={aberto ? "fin-nav-item filho active" : "fin-nav-item filho"}
+                aria-current={aberto ? "page" : undefined}
+              >
+                {filho.label}
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
+    </>
   );
 }

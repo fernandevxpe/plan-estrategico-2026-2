@@ -4627,12 +4627,14 @@ tr:last-child td {
   flex-direction: column;
   gap: 4px;
   position: sticky;
-  top: 80px;
+  /* Acompanha a altura do cabeçalho, que ganhou a linha da trilha. Com 80px a
+     primeira área ficava por baixo da barra grudada. */
+  top: 118px;
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: white;
-  max-height: calc(100vh - 100px);
+  max-height: calc(100vh - 138px);
   overflow-y: auto;
 }
 
@@ -9805,16 +9807,46 @@ tr:last-child td {
   .ci-split { grid-template-columns: 1fr; }
 }
 
-/* Navegação agrupada por intenção de leitura */
-.nav { flex-wrap: wrap; gap: 14px; }
-.nav-group { display: grid; gap: 2px; }
-.nav-group-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); opacity: .7; padding-left: 11px; }
-.nav-group-links { display: flex; align-items: center; gap: 4px; }
-.nav-group + .nav-group { padding-left: 14px; border-left: 1px solid var(--line); }
+/* ---------------------------------------------------------------------------
+   Navegação — seis seções em cima, trilha embaixo
+   ===========================================================================
+   Hierarquia por tipografia e espaço, não por moldura: o menu antigo tinha
+   rótulo de grupo, divisória vertical entre grupos e pílula em cada link —
+   três marcações para dizer uma coisa só. Aqui o ativo se distingue por PESO e
+   por uma régua sob o texto; a cor de acento entra uma vez, na régua, e não
+   carrega sozinha a informação (quem não distingue a cor ainda lê o negrito).
+--------------------------------------------------------------------------- */
+.nav { flex-wrap: wrap; gap: 2px; }
+.nav a.nav-link { position: relative; padding: 8px 12px; border-radius: 8px; }
+.nav a.nav-link.active { color: var(--ink); }
+.nav a.nav-link.active::after {
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: 2px;
+  height: 2px; border-radius: 2px; background: var(--purple);
+}
+
+/* A segunda linha: onde estou, e o que mais existe por perto. */
+.subbar { border-top: 1px solid var(--line); background: rgba(246, 248, 249, 0.7); }
+.subbar-inner {
+  width: min(1440px, calc(100vw - 40px)); margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px; flex-wrap: wrap; min-height: 38px; padding: 5px 0;
+}
+
+.trilha-nav ol { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.trilha-nav li { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+/* O separador é conteúdo gerado: não deve ser lido nem copiado com o texto. */
+.trilha-nav li + li::before { content: "›"; color: var(--line); }
+.trilha-nav a { color: var(--muted); text-decoration: none; }
+.trilha-nav a:hover { color: var(--ink); text-decoration: underline; }
+.trilha-nav li:last-child span { color: var(--ink); font-weight: 600; }
+
+.subnav { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.subnav-link { padding: 5px 10px; border-radius: 7px; font-size: 12.5px; color: var(--muted); text-decoration: none; }
+.subnav-link:hover { color: var(--ink); background: var(--surface); }
+.subnav-link.active { color: var(--ink); font-weight: 600; }
 
 @media (max-width: 900px) {
-  .nav-group + .nav-group { padding-left: 0; border-left: 0; }
-  .nav-group-links { flex-wrap: wrap; }
+  .subbar-inner { justify-content: flex-start; gap: 8px; }
 }
 
 /* Diagnóstico executivo */
@@ -10210,6 +10242,81 @@ button.linkish {
 }
 
 .fin-shell { display: flex; flex-direction: column; gap: 18px; }
+
+/* --- A barra lateral do módulo, em seis grupos ---
+   Ela substitui a fila de 23 abas. Nenhum ícone: um ícone ao lado de "Regras"
+   não distingue nada que a palavra "Regras" já não diga, e vinte ícones que
+   não distinguem nada são vinte coisas a mais para o olho descartar. A cor de
+   acento aparece uma vez por tela, na régua do item aberto. */
+.fin-layout { display: grid; grid-template-columns: 212px minmax(0, 1fr); gap: 26px; align-items: start; }
+.fin-layout > .fin-shell { min-width: 0; }
+
+.fin-nav { position: sticky; top: 118px; display: grid; gap: 2px; align-content: start; }
+
+.fin-nav-grupo > summary {
+  list-style: none; cursor: pointer; padding: 7px 10px; border-radius: 8px;
+  font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted);
+}
+.fin-nav-grupo > summary::-webkit-details-marker { display: none; }
+.fin-nav-grupo > summary:hover { color: var(--ink); background: var(--surface-2); }
+.fin-nav-grupo > summary:focus-visible { outline: 2px solid var(--purple); outline-offset: 1px; }
+/* A seta é o único desenho da barra, e ela informa: diz se o grupo abre. */
+.fin-nav-grupo > summary::after { content: "+"; float: right; opacity: .5; font-weight: 400; }
+.fin-nav-grupo[open] > summary::after { content: "–"; }
+
+.fin-nav-itens { display: grid; gap: 1px; padding: 1px 0 8px; }
+
+.fin-nav-item {
+  position: relative; display: block; padding: 7px 10px; border-radius: 8px;
+  font-size: 13px; line-height: 1.35; color: var(--ink); opacity: .78; text-decoration: none;
+}
+.fin-nav-item:hover { opacity: 1; background: var(--surface-2); }
+/* Ativo por PESO primeiro e cor depois: quem não distingue o roxo ainda lê o
+   negrito e a régua. Estado que depende só de cor não é estado legível. */
+.fin-nav-item.active { opacity: 1; font-weight: 700; background: var(--surface-2); }
+.fin-nav-item.active::before {
+  content: ""; position: absolute; left: 0; top: 6px; bottom: 6px;
+  width: 2px; border-radius: 2px; background: var(--purple);
+}
+
+.fin-nav-filhos { display: grid; gap: 1px; margin: 1px 0 2px; }
+.fin-nav-item.filho { padding-left: 22px; font-size: 12.5px; opacity: .62; }
+.fin-nav-item.filho:hover, .fin-nav-item.filho.active { opacity: 1; }
+
+/* Em tela larga a barra está sempre à vista; o botão e o fundo não existem. */
+.fin-nav-abrir, .fin-nav-fundo { display: none; }
+
+@media (max-width: 900px) {
+  /* Tela estreita: a barra vira gaveta que desliza pela esquerda. Empilhá-la
+     acima do conteúdo devolveria a fila de 23 itens que esta frente veio
+     matar — só que na vertical, empurrando a tela para baixo da dobra. */
+  .fin-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+
+  .fin-nav-abrir {
+    display: inline-flex; align-items: center; gap: 8px; justify-self: start;
+    padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px;
+    background: var(--card); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .fin-nav-abrir::before { content: "≡"; font-size: 15px; line-height: 1; }
+
+  .fin-nav-fundo {
+    display: block; position: fixed; inset: 0; z-index: 30;
+    border: 0; padding: 0; background: rgba(23, 33, 38, .38); cursor: pointer;
+  }
+
+  .fin-nav {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 31;
+    width: min(280px, 84vw); padding: 18px 14px; overflow-y: auto;
+    background: var(--card); border-right: 1px solid var(--line); box-shadow: var(--shadow-strong);
+    transform: translateX(-101%); transition: transform .2s ease;
+  }
+  .fin-nav.aberta { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fin-nav { transition: none; }
+}
 
 .fin-tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
 .fin-tab {

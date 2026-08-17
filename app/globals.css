@@ -11284,3 +11284,75 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   display: inline-block; padding: 0 6px; margin-right: 4px; border-radius: 3px;
   background: var(--surface-2); border: 1px solid var(--line); font-size: 11px;
 }
+
+/* ---------------------------------------------------------------------------
+   VOCABULÁRIO DE CERTEZA — o que diferencia este módulo de um dashboard
+   ---------------------------------------------------------------------------
+   A base inteira foi construída sobre uma regra: uma medida pode ser nula,
+   nunca pode ser nula SEM MOTIVO. Estes tokens são a tradução visual disso.
+
+   O `indeterminado` recebe hachura, não cinza. Num design system comum o dado
+   ausente some; aqui ele é o produto. A hachura é o que o desenho técnico usa
+   para marcar o que não está definido: chama atenção sem parecer erro.
+
+   As camadas (firme/provável/observado/atrasado) vêm de fin_previsao_*_v e
+   NÃO se somam cegamente — a cor lembra disso em toda tela.
+   --------------------------------------------------------------------------- */
+:root {
+  --cert-firme: #1d6b4c;      --cert-firme-bg: #ddf0e7;
+  --cert-provavel: #2c5f9e;   --cert-provavel-bg: #e1ebf7;
+  --cert-observado: #8a6212;  --cert-observado-bg: #f6eedb;
+  --cert-atrasado: #a33a3a;   --cert-atrasado-bg: #f8e4e4;
+  --cert-indet: #6b4e8f;      --cert-indet-bg: #efe9f6;  --cert-hatch: #b9a6d4;
+}
+
+/* A hachura do indeterminado. Usada em cartão, célula e linha de tabela. */
+.cert-hachura {
+  background:
+    repeating-linear-gradient(135deg, transparent, transparent 5px,
+                              var(--cert-hatch) 5px, var(--cert-hatch) 6px),
+    var(--surface);
+}
+
+/* Selo de camada. O ::before em losango no indeterminado o distingue à
+   distância, sem depender de cor — daltônico também precisa ler a tela. */
+.cert-selo {
+  display: inline-flex; align-items: center; gap: 5px;
+  border-radius: 3px; padding: 2px 8px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.cert-selo::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.cert-selo[data-cert="firme"]     { background: var(--cert-firme-bg);     color: var(--cert-firme); }
+.cert-selo[data-cert="provavel"]  { background: var(--cert-provavel-bg);  color: var(--cert-provavel); }
+.cert-selo[data-cert="observado"] { background: var(--cert-observado-bg); color: var(--cert-observado); }
+.cert-selo[data-cert="atrasado"]  { background: var(--cert-atrasado-bg);  color: var(--cert-atrasado); }
+.cert-selo[data-cert="indeterminado"] { background: var(--cert-indet-bg); color: var(--cert-indet); }
+.cert-selo[data-cert="indeterminado"]::before { border-radius: 0; transform: rotate(45deg); }
+
+/* ---- Medida: o componente que nunca mostra número sozinho ---- */
+.medida {
+  background: var(--card); border: 1px solid var(--line); border-radius: 6px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 180px;
+}
+.medida-k { font-size: 12px; color: var(--muted); letter-spacing: .02em; }
+.medida-v {
+  font-size: 22px; font-weight: 600; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+.medida-sub { font-size: 12px; color: var(--muted); }
+.medida[data-estado="indeterminado"] { border-color: var(--cert-indet); }
+.medida[data-estado="indeterminado"] .medida-v {
+  color: var(--cert-indet); font-size: 15px; font-style: italic; font-weight: 500;
+}
+.medida[data-estado="indeterminado"] .medida-sub { color: var(--cert-indet); }
+
+/* Barra de cobertura: quanto da base aquele número representa. */
+.medida-cob { height: 3px; background: var(--surface-2); border-radius: 2px; overflow: hidden; margin-top: 3px; }
+.medida-cob > i { display: block; height: 100%; background: var(--cert-firme); }
+.medida-cob[data-parcial="1"] > i { background: var(--cert-observado); }
+
+/* ---- Linha de lacuna dentro de uma tabela ----
+   Fica INDENTADA sob o grupo a que pertenceria, nunca num rodapé que ninguém
+   lê. É assim que R$ 54 mil de cartão sem categoria param de ser invisíveis. */
+.linha-lacuna > td { color: var(--cert-indet); font-style: italic; }
+.linha-lacuna > td:first-child { padding-left: 26px; }

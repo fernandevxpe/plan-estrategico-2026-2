@@ -54,6 +54,31 @@ saldo/DRE/folha/margem/tributo, e nenhuma função exportada do time aceita
 `personId` (o escopo vem sempre da `Sessao`, então não existe assinatura onde
 caiba a pessoa errada).
 
+**A prova viva.** `next build` (exit 0) e `next start` com os dois pares de
+credencial, medido rota a rota:
+
+```
+                                    sem cred.   comum     admin
+/                                      401       200       200
+/time · /time/reembolso · /time/compra  —        200       200
+/notificacoes · /api/notificacoes       —        200       200
+/api/time/sessao                        —        200       200
+/financeiro · /financeiro/painel        —        404       200
+/financeiro/time                        —        404       200
+/api/financeiro/time                    —        404       200
+/api/financeiro/gerencial/dre           —        404       200
+/api/financeiro/reembolsos              —        404       200
+```
+
+**404, não 403** — o comportamento que `perfis.ts` promete, confirmado no fio.
+E com a 0105 ainda não aplicada, tudo degrada dizendo o que falta em vez de
+quebrar: `/time` renderiza *"o app do time ainda não está de pé neste ambiente"*,
+`/api/time/envios` devolve 503 com o motivo, e o sino diz *"o sino existe, a
+caixa ainda não"*.
+
+**Estado do resto, medido depois desta frente:** caixa 6/6 fecha · invariantes
+39/41 (D6 e F1, de outras frentes, iguais) · `build:app` exit 0.
+
 **Para aplicar:** `npm run db:backup` e então a 0105 sozinha — 0100–0104 são de
 outras frentes e não devem ser arrastadas (§6). Depois, `npm run notificar` faz
 dry-run e `npm run notificar:aplicar` grava; a etapa já está no `scheduler.mjs`,

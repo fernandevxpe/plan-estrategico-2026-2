@@ -699,10 +699,15 @@ Segundo o que me foi informado ao abrir esta tarefa, quatro frentes escrevem
 agora com as migrations **0100 (custos previstos)**, **0101 (categorização)**,
 **0102 (DRE drill)** e **0103 (identificação)**.
 
-> [medido, no momento em que escrevi] **nenhuma das quatro existe ainda em
-> `db/migrations`** — o maior número no diretório é `0099`. A árvore está limpa
-> exceto por um arquivo temporário não rastreado. Ou seja: as frentes estão em
-> voo e ainda não commitaram.
+> [medido, enquanto eu escrevia] **nenhuma das quatro existia em
+> `db/migrations`** — o maior número no diretório era `0099`, e a árvore estava
+> limpa exceto por um arquivo temporário. **Minutos depois, ao commitar este
+> documento, as quatro apareceram** como arquivos não rastreados —
+> `0100_fin_custo_previsto.sql`, `0101_fin_categorizacao_central.sql`,
+> `0102_fin_dre_drill.sql`, `0103_fin_identificacao.sql` — junto de
+> `lib/financeiro/contratos/categorizacao.ts`,
+> `app/api/financeiro/gerencial/categorizacao/` e dois testes novos. As frentes
+> estão entregando agora; nada disso entrou no meu commit.
 
 O mapeamento delas para este documento é direto, e é bom sinal — as quatro
 atacam exatamente os três pedidos de #73 mais a fila de identificação:

@@ -1869,6 +1869,55 @@ contas, é marcador.
 
 ---
 
+## 57. A decisão da dúvida 13 vale para antes de 2026? — 7.864 lançamentos
+
+**Isto não é uma pergunta nova de classificação. É uma pergunta de escopo sobre
+uma decisão que já foi tomada, aplicada e conferida.**
+
+A dúvida 13 perguntou quem é a contraparte de uma taxa do Asaas, você escolheu a
+opção (a) — Asaas IP S.A. — e o backfill rodou. Medido em 16/08/2026, o corte é
+exato e não admite outra leitura:
+
+| | taxas | com contraparte | sem contraparte |
+|---|---:|---:|---:|
+| 2026 | 1.565 | **1.565** | 0 |
+| pré-2026 | 7.245 | 0 | **7.245** |
+
+Mesma fonte, mesmos cinco `source_kind`, e as 8.810 estão em `4.05 Tarifas
+bancárias e de cobrança`. O que separou as duas populações **não foi evidência —
+foi o escopo de trabalho declarado**, que é 2026. Valor: **R$ 9.213,75**.
+
+Junto vem a população irmã, com evidência ainda mais forte: **619
+`PAYMENT_RECEIVED` anteriores a 2026, R$ 386.859,89**, e **619 de 619 têm linha
+em `fin_settlement`** apontando para o documento que liquidaram. 595 chegam a uma
+contraparte cadastrada por esse caminho (63 contrapartes distintas); os outros 24
+param num documento que também está sem contraparte. Isso é vínculo da fonte, não
+semelhança de nome.
+
+**Por que isso ficou invisível.** O indicador "contraparte identificada" mede
+2026 e marca 95,9%. Na base inteira ele é **38,6%**. Os dois números estão
+certos; a diferença de 8.290 lançamentos não aparece em régua nenhuma — o mesmo
+padrão dos 795 itens de cartão da §8 de `CONTINUACAO.md`.
+
+**O que NÃO está em jogo:** nenhum centavo, nenhuma categoria, nenhuma DRE. As
+7.245 já estão em 4.05 e continuam. Muda de quem o custo aparece pendurado num
+relatório de contraparte, e o quanto do acervo consegue ser auditado por
+contraparte.
+
+**Opções:** *(a)* estender a decisão da dúvida 13 a todo o acervo, incluindo as
+619 por `fin_settlement` — é mecânico e reversível · *(b)* estender só às 619,
+que têm vínculo exato da fonte, e deixar as taxas antigas como estão · *(c)*
+manter o escopo em 2026 e declarar o resto fora de escopo para sempre, com o
+indicador de base inteira publicado ao lado do de 2026 para que ninguém confunda
+os dois.
+
+Enquanto não houver resposta, os casos ficam em
+`fin_pendencia_identificacao_v` com `alcancavel_agora = true` e
+`bloqueado_por = 57` — alcançáveis porque a decisão técnica existe, bloqueados
+porque escopo é seu.
+
+---
+
 ---
 
 ## Resolvida — Ancora Imobiliária, R$ 300,00 classificada por precedente

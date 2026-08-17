@@ -199,13 +199,7 @@ CREATE TABLE fin_custo_previsto (
   confirmado_em   timestamptz,
   confirmacao_nota text,
   ignorado_motivo text,
-  -- RESTRICT e nao SET NULL, de proposito. Com SET NULL, apagar o lancamento
-  -- dispararia um UPDATE que o CHECK de 'realizado' recusaria de qualquer jeito
-  -- — a protecao existiria, mas com a mensagem errada ("aponta para lancamento
-  -- inexistente") sobre uma operacao que era um DELETE noutra tabela. RESTRICT
-  -- diz a verdade: um lancamento reivindicado por um custo previsto nao se
-  -- apaga sem antes desfazer a reivindicacao.
-  realizado_transaction_id bigint REFERENCES fin_transaction(id) ON DELETE RESTRICT,
+  realizado_transaction_id bigint REFERENCES fin_transaction(id) ON DELETE SET NULL,
   realizado_em    timestamptz,
 
   created_by  text NOT NULL DEFAULT 'sistema',

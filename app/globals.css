@@ -12379,3 +12379,94 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
                               var(--cert-hatch) 5px, var(--cert-hatch) 6px),
     var(--surface);
 }
+
+/* ===========================================================================
+   CAIXA E EMPRÉSTIMO  ·  /financeiro/caixa
+   ===========================================================================
+   Duas regras governam este bloco, e as duas vêm do que a tela tem de impedir:
+
+   1. SALDO E DÍVIDA NUNCA SE PARECEM. O passivo do Pronampe não pode ser lido
+      como mais uma linha de dinheiro disponível — ele nem entra no mesmo
+      grid de medidas, e quando aparece leva a cor de dívida (#c8553d), que
+      não é nenhuma das quatro cores de conta.
+
+   2. A SUPERFÍCIE É QUEM SEPARA. Fundos de gráfico não levam borda em volta
+      das marcas: o respiro de 2px entre faixas empilhadas e o anel de 2px nos
+      pontos são feitos com a cor do card (#fff). Borda em volta de marca é
+      tinta com peso de dado que não é dado.
+   =========================================================================== */
+
+.fin-caixa { display: grid; gap: 18px; }
+
+.fin-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 18px 20px; box-shadow: var(--shadow); display: grid; gap: 14px;
+}
+.fin-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.fin-card-head h2 { margin: 0; font-size: 16px; font-weight: 650; color: var(--ink); letter-spacing: -.01em; }
+.fin-card-head .fin-card-hint { margin: 0; max-width: 62ch; }
+
+.medida-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+
+.fin-table-wrap { overflow-x: auto; }
+.fin-table-wrap .fin-table { min-width: 640px; }
+
+.fin-link-btn {
+  border: 0; background: none; padding: 0; font: inherit; font-size: 12.5px;
+  color: var(--cert-firme, #6d28d9); cursor: pointer; text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* --- Pequenos múltiplos: uma conta por painel, cada um no seu eixo ---
+   Eixo comum foi recusado: o Asaas gira R$ 78 mil e o Inter R$ 1,5 mil, e uma
+   escala só achataria o segundo até virar uma linha reta. */
+.fin-multiplos { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.fin-multiplo { margin: 0; border: 1px solid var(--line); border-radius: 10px; padding: 12px 12px 4px; background: var(--card); }
+.fin-multiplo figcaption { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.fin-multiplo-k { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+.fin-multiplo-k > i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.fin-multiplo figcaption strong { font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* Conta sem extrato: hachurada e com o motivo, nunca uma linha desenhada em
+   zero. Uma série achatada no eixo afirma "não houve movimento"; o que se
+   sabe é "não houve DADO". */
+.fin-conta-vazia {
+  border: 1px dashed var(--cert-indet); border-radius: 10px; padding: 12px 14px;
+  display: grid; gap: 6px; margin-top: 4px;
+}
+.fin-conta-vazia strong { font-size: 13.5px; color: var(--ink); }
+.fin-conta-vazia p { margin: 0; font-size: 12.5px; color: var(--cert-indet); line-height: 1.5; max-width: 70ch; }
+
+/* --- Memória de cálculo: o número nunca aparece sozinho --- */
+.fin-memoria { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 10px; }
+.fin-memoria h3 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+.fin-memoria > p { margin: 0; font-size: 13.5px; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.6; }
+.fin-memoria dl { margin: 0; display: grid; gap: 10px; }
+.fin-memoria dl > div { display: grid; grid-template-columns: minmax(120px, 160px) 1fr; gap: 12px; align-items: start; }
+.fin-memoria dt { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.fin-memoria dd { margin: 0; font-size: 13px; color: var(--ink); line-height: 1.55; max-width: 78ch; }
+
+/* --- Premissas: autorização datada, com o que a derruba --- */
+.fin-premissas { display: grid; gap: 12px; }
+.fin-premissas article {
+  border-left: 3px solid var(--cert-observado); background: var(--cert-observado-bg);
+  border-radius: 0 8px 8px 0; padding: 12px 16px; display: grid; gap: 6px;
+}
+.fin-premissas h3 { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.5; }
+.fin-premissas p { margin: 0; font-size: 12.5px; color: var(--ink); line-height: 1.55; max-width: 82ch; }
+.fin-premissa-meta { color: var(--muted) !important; font-size: 11.5px !important; }
+
+/* --- Tooltip: fundo opaco, porque valor sobre gráfico translúcido não lê --- */
+.fin-tooltip {
+  background: var(--card); border: 1px solid var(--line); border-radius: 9px;
+  padding: 10px 12px; box-shadow: 0 8px 24px rgba(11, 11, 11, .12); font-size: 12.5px;
+  display: grid; gap: 5px; min-width: 190px;
+}
+.fin-tooltip > strong { font-size: 12.5px; color: var(--ink); }
+.fin-tooltip-linha { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; color: var(--muted); }
+.fin-tooltip-linha > i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.fin-tooltip-linha > span:only-of-type { grid-column: 1 / 3; }
+.fin-tooltip-linha b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+.fin-tooltip-total { display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding-top: 5px; margin-top: 2px; }
+.fin-tooltip-total b { font-variant-numeric: tabular-nums; }
+.fin-tooltip-nota { margin: 2px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; max-width: 30ch; }

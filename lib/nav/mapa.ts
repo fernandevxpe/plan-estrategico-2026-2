@@ -83,6 +83,12 @@ export const FINANCEIRO_GRUPOS: Grupo[] = [
     rotas: [
       // Primeiro porque é a tela de abertura de quem decide.
       { href: "/financeiro/painel", label: "Painel" },
+      // A conta BANCÁRIA, que é o outro sentido da palavra — e por isso ela
+      // não virou aba de `/financeiro/contas`: lá "conta" é obrigação, aqui é
+      // banco. O empréstimo mora junto porque é a mesma pergunta ("quanto eu
+      // tenho, quanto eu devo") e porque manter o passivo longe do saldo, mas
+      // na mesma tela, é o que impede alguém de somar os dois.
+      { href: "/financeiro/caixa", label: "Saldo e empréstimo" },
       // "Contas a pagar e receber", não "Contas": num módulo financeiro
       // "Contas" é lido como conta bancária, e esta tela é o contas a pagar.
       { href: "/financeiro/contas", label: "Contas a pagar e receber" },

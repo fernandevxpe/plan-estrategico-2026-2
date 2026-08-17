@@ -126,6 +126,30 @@
 --   R$ 0,00.
 
 -- ==========================================================================
+-- 0. DINHEIRO EM PORTUGUÊS, SEM DEPENDER DA LOCALE DO SERVIDOR
+-- ==========================================================================
+--
+-- `to_char(x, 'FM999G999G990D00')` parece a forma certa e não é: G e D leem
+-- `lc_numeric`, que neste servidor é C. A memória de cálculo saía escrita
+-- "R$ 150,000.00" — número americano numa tela em português, e num campo cuja
+-- razão de existir é ser lido por gente.
+--
+-- ',' e '.' literais no template NÃO dependem de locale. Formata-se com eles e
+-- trocam-se os papéis. O resultado é o mesmo em qualquer servidor.
+
+CREATE OR REPLACE FUNCTION fin_brl(cents bigint)
+RETURNS text LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE WHEN cents IS NULL THEN NULL ELSE
+    'R$ ' || replace(replace(replace(
+      to_char(cents / 100.0, 'FM999,999,999,990.00'),
+      ',', '#'), '.', ','), '#', '.')
+  END
+$$;
+
+COMMENT ON FUNCTION fin_brl(bigint) IS
+  'Formata centavos em real com separadores pt-BR, independente de lc_numeric.';
+
+-- ==========================================================================
 -- 1. O CONTRATO
 -- ==========================================================================
 
@@ -711,12 +735,12 @@ SELECT
   || 'prestacao nao foi paga, incidem multa de 2% e juros de mora de 1% a.m. '
   || '(Clausula Nona) e a divida real e MAIOR. Nunca menor.'
                                       AS ressalva,
-  'saldo(0) = R$ ' || to_char(emp.principal_cents / 100.0, 'FM999G999G990D00')
+  'saldo(0) = ' || fin_brl(emp.principal_cents)
   || ' -> ' || emp.carencia_meses || ' meses de carencia capitalizando a '
   || 'Selic x spread -> ' || (u.periodo - emp.carencia_meses)
   || ' de ' || emp.prestacoes || ' prestacoes ja vencidas -> saldo em '
-  || to_char(u.vencimento_em, 'DD/MM/YYYY') || ' = R$ '
-  || to_char(u.saldo_devedor_cents / 100.0, 'FM999G999G990D00')
+  || to_char(u.vencimento_em, 'DD/MM/YYYY') || ' = '
+  || fin_brl(u.saldo_devedor_cents)
                                       AS memoria
 FROM fin_emprestimo emp
 LEFT JOIN ultima  u ON u.emprestimo_id = emp.id
@@ -978,8 +1002,8 @@ BEGIN
     INTO v_n, v_a FROM fin_emprestimo_transferencia_v;
   IF v_n <> 5 OR v_a <> 2540000 THEN
     RAISE EXCEPTION
-      '0110: as transferencias para a Caixa mudaram de % / R$ 25.400,00 para % / R$ %',
-      5, v_n, to_char(v_a / 100.0, 'FM999G999G990D00');
+      '0110: as transferencias para a Caixa mudaram de % / R$ 25.400,00 para % / %',
+      5, v_n, fin_brl(v_a);
   END IF;
 
   -- 10.9 E todas continuam sendo do Inter. O Fernando citou tres contas; o
@@ -1093,13 +1117,13 @@ BEGIN
   END IF;
 
   RAISE NOTICE
-    '0110 validada: saldo devedor em % = R$ % (piso) · % de % prestacoes vencidas · '
-    'transferido R$ % em % lancamento(s) · lacuna na janela coberta R$ %',
+    '0110 validada: saldo devedor em % = % (piso) · % de % prestacoes vencidas · '
+    'transferido % em % lancamento(s) · lacuna na janela coberta %',
     (SELECT to_char(ultima_parcela_em, 'DD/MM/YYYY') FROM fin_emprestimo_saldo_v LIMIT 1),
-    (SELECT to_char(saldo_devedor_cents / 100.0, 'FM999G999G990D00') FROM fin_emprestimo_saldo_v LIMIT 1),
+    (SELECT fin_brl(saldo_devedor_cents) FROM fin_emprestimo_saldo_v LIMIT 1),
     (SELECT ultima_parcela_vencida FROM fin_emprestimo_saldo_v LIMIT 1),
     (SELECT prestacoes FROM fin_emprestimo_saldo_v LIMIT 1),
-    (SELECT to_char(transferido_cents / 100.0, 'FM999G999G990D00') FROM fin_emprestimo_saldo_v LIMIT 1),
+    (SELECT fin_brl(transferido_cents) FROM fin_emprestimo_saldo_v LIMIT 1),
     (SELECT transferencias FROM fin_emprestimo_saldo_v LIMIT 1),
-    (SELECT to_char(lacuna_na_cobertura_cents / 100.0, 'FM999G999G990D00') FROM fin_emprestimo_saldo_v LIMIT 1);
+    (SELECT fin_brl(lacuna_na_cobertura_cents) FROM fin_emprestimo_saldo_v LIMIT 1);
 END $$;

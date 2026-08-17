@@ -8,7 +8,7 @@ export const metadata = { title: "Regras — Financeiro XPE" };
 export const dynamic = "force-dynamic";
 
 export default async function RegrasPage() {
-  const [regras, opcoes] = await Promise.all([
+  const [regrasResultado, opcoes] = await Promise.all([
     query<{
       id: number; slug: string; name: string; priority: number; match_scope: string;
       conditions: never; actions: never; confidence: number; source: string; status: string;
@@ -19,9 +19,14 @@ export default async function RegrasPage() {
          FROM fin_rule r JOIN fin_entity e ON e.id = r.entity_id
         WHERE e.slug = 'xpe' AND r.status = 'ativa'
         ORDER BY r.priority, r.id`
-    ).catch(() => []),
+    // O `.catch(() => [])` de antes engolia a falha e a tela imprimia
+    // "Regras ativas (0)" — afirmando que não existe regra, quando o que
+    // houve foi o banco não responder. Agora a diferença viaja até a tela.
+    ).then((r) => ({ ok: true as const, r })).catch(() => ({ ok: false as const, r: [] })),
     getOpcoesClassificacao()
   ]);
+  const regras = regrasResultado.r;
+  const regrasIndisponiveis = !regrasResultado.ok;
 
   return (
     <AppShell>
@@ -40,6 +45,7 @@ export default async function RegrasPage() {
             source: r.source, status: r.status, hitsCount: r.hits_count,
             lastHitAt: r.last_hit_at ? r.last_hit_at.toISOString() : null
           }))}
+          indisponivel={regrasIndisponiveis}
           categorias={opcoes.categorias}
           nucleos={opcoes.nucleos}
         />

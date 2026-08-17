@@ -465,8 +465,21 @@ function Itens({
       {/* -------------------------------------------------------------- */}
       <section className="card fin-cat-lacuna">
         <div className="card-title">
-          <h2>{totalForaDoPainel.toLocaleString("pt-BR")} itens fora de todo indicador</h2>
-          <span>medido agora, nos três universos</span>
+          {/* "medido agora" só pode ser dito depois de medir. Enquanto a
+              consulta não volta, `foraDaRegua` é lista vazia e a soma dá zero —
+              e zero aqui afirmaria que não há nada fora da régua, quando há 889
+              itens. Auditoria de 17/08 pegou a tela dizendo isso em produção. */}
+          {carregando && foraDaRegua.length === 0 ? (
+            <>
+              <h2 className="fin-indisponivel">medindo os três universos…</h2>
+              <span>ainda não é zero — é que ainda não se sabe</span>
+            </>
+          ) : (
+            <>
+              <h2>{totalForaDoPainel.toLocaleString("pt-BR")} itens fora de todo indicador</h2>
+              <span>medido agora, nos três universos</span>
+            </>
+          )}
         </div>
         <p className="fin-card-hint">
           O painel mede <code>fin_transaction</code> — e está certo, é o que o nome dele diz. Estes não são

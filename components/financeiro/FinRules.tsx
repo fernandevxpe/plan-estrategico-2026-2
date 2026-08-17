@@ -30,6 +30,8 @@ type Preview = {
 
 type Props = {
   regras: Regra[];
+  /** true quando a consulta falhou — lista vazia por não saber, não por não haver. */
+  indisponivel?: boolean;
   categorias: { code: string; name: string }[];
   nucleos: { slug: string; name: string }[];
 };
@@ -46,7 +48,7 @@ type Props = {
  * "art " pegou lançamentos da Art Foods e da CHICO BART. As duas teriam sido
  * óbvias num preview. Por isso salvar sem simular é impossível aqui.
  */
-export function FinRules({ regras, categorias, nucleos }: Props) {
+export function FinRules({ regras, categorias, nucleos, indisponivel = false }: Props) {
   const router = useRouter();
   const [pendente, startTransition] = useTransition();
   const [nome, setNome] = useState("");
@@ -252,7 +254,15 @@ export function FinRules({ regras, categorias, nucleos }: Props) {
       </section>
 
       <section className="card">
-        <h2 className="card-title">Regras ativas ({regras.length})</h2>
+        <h2 className="card-title">
+          {indisponivel ? (
+            <span className="fin-indisponivel">
+              Regras ativas — indeterminado: a origem não respondeu
+            </span>
+          ) : (
+            <>Regras ativas ({regras.length})</>
+          )}
+        </h2>
         <p className="fin-card-hint">
           Em ordem de execução. A primeira que casa vence — por isso "comissionamento de vendas" precisa estar antes
           de "laudo" e de "comissão", que compartilham radical mas significam coisas opostas.

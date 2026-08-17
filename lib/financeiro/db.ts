@@ -75,6 +75,18 @@ export function financePool(): pg.Pool {
       max: 5,
       connectionTimeoutMillis: 10_000,
       idleTimeoutMillis: 30_000,
+      // Teto por consulta. Sem ele, uma consulta lenta segura a conexão até o
+      // fim e, com um pool de 5, bastam cinco delas para TODAS as rotas
+      // começarem a devolver "timeout exceeded when trying to connect".
+      //
+      // Foi o que aconteceu em 17/08/2026: a agenda leva ~12 s, e o efeito
+      // colateral não ficou nela — o /financeiro inteiro passou a responder
+      // 500. Um alarme que aparece longe da causa é o mais caro de diagnosticar.
+      //
+      // 20 s é acima do pior caso conhecido (a agenda) e bem abaixo do ponto em
+      // que o usuário desiste. Consulta que passar disso é defeito, e falhar
+      // rápido nomeando a consulta é melhor que degradar a aplicação toda.
+      statement_timeout: 20_000,
       // O Railway serve Postgres com certificado próprio; o cliente confia na
       // rede privada. Mesmo tratamento de scripts/lib/artifact-db.mjs.
       ssl: { rejectUnauthorized: false },

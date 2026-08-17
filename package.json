@@ -59,6 +59,8 @@
     "import:reembolsos": "node scripts/import-reembolsos.mjs",
     "arquivar:nubank-pdf": "node scripts/arquivar-nubank-pdf.mjs",
     "alarme": "node scripts/alarme-divergencias.mjs",
+    "test:custo-fixo": "node scripts/test-custo-fixo-catalogo.mjs",
+    "catalogo": "node scripts/test-custo-fixo-catalogo.mjs --catalogo",
     "build": "npm run sync && npm run analyze && npm run analyze:commercial-intel && npm run build:crm-snapshot && npm run build:audits && npm run export:context",
     "start:next": "next start",
     "sync:all": "node scripts/scheduler.mjs --once",

@@ -3,6 +3,118 @@
 Este documento existe para quem chega depois. Ele é auto-suficiente: se você só
 puder ler um arquivo antes de tocar em qualquer coisa, leia este.
 
+## ⚠ Frente do catálogo de custo fixo · 17/08/2026 (migration 0108 — APLICADA POR ENGANO)
+
+**Leia o parágrafo de aviso antes de rodar `db:migrate`.**
+
+### O acidente de coordenação, e o que fazer com ele
+
+A 0108 estava sendo escrita quando **outro processo desta mesma árvore rodou o
+runner de migrations e a aplicou**, numa versão intermediária:
+
+```
+xpe_migrations · 0108_fin_custo_fixo_catalogo.sql
+applied_at  2026-08-17 11:27:15      applied_by  web
+```
+
+É o §6 acontecendo em mais uma direção: numa árvore com N frentes, qualquer
+comando que varre `db/migrations/` carrega o trabalho inacabado das outras.
+
+**Duas consequências, e a segunda trava gente:**
+
+1. O banco ficou com as views de uma versão intermediária. Duas correções
+   entraram no arquivo depois das 11:27 e não estão no banco: o valor sugerido
+   do custo de volume (a Claro sugere R$ 204,72 — o mês em que caíram duas
+   faturas — em vez dos R$ 99,90 que ela custa) e o filtro de parcelamento
+   aberto (soma R$ 1.402,72/mês em vez de R$ 976,95, contando três planos já
+   quitados).
+2. **`npm run db:migrate` está travado para TODAS as frentes.** O runner recusa
+   arquivo que mudou depois de aplicado — e está certo. Enquanto o checksum
+   registrado não bater com o do arquivo, nenhuma migration nova entra.
+
+**A saída, com dry-run:** `node scripts/reparo-0108-checksum.mjs` mostra o que
+muda; `--aplicar` grava. Ele aplica a 0108 SOZINHA (a 0108 é idempotente por
+construção — §6b dela derruba e recria as próprias views), corrige o checksum e
+**aborta se a soma por conta ou o ledger mudarem em um centavo**. Medido em
+dry-run: nenhuma contagem muda, o ledger não se move, a âncora das 6 contas é
+idêntica. O que muda é definição de view e uma linha de metadados.
+
+Desfazer em vez de completar foi considerado e recusado: a semeadura já
+sobrescreveu as colunas de evidência das 11 recorrentes que a v1 criara, e não
+há backup delas. Desfazer restauraria o schema e perderia dado.
+
+### O que a 0108 é
+
+O catálogo do que a empresa paga todo mês, em `/financeiro/custos-fixos`. Ela
+**não cria um quarto modelo de custo** — governa `fin_recurring`, que já era o
+catálogo, e acrescenta a evidência, o critério declarado e o histórico.
+
+```
+59 grupos detectados ......... R$ 140.917,86/mês   (12 meses fechados)
+  já projetado pela folha .... R$  87.800,39
+  já projetado pelo DAS ...... R$  12.930,85
+  de terceiros ............... R$  40.186,62       ← é aqui que a decisão existe
+  sem valor (indeterminado) ..   5 grupos
+parcelado, que ACABA ......... R$     976,95/mês   6 planos, até 04/2027
+reembolso (dentro da folha) .. R$   5.810,71/mês   estimado, NÃO soma
+ligado ....................... R$       0,00       ninguém decidiu ainda
+```
+
+**Nada nasce ligado**, e isso é desenho: 59 decisões continuam sendo do dono.
+`status='proposto'` mantém tudo fora do saldo, e o CHECK
+`fin_recurring_conflito_nao_ativa` impede ligar o que colide com outra camada.
+
+**O critério do valor foi medido, não escolhido** (§2 da migration). Backtest
+cego, só meses-alvo com o número típico de pagamentos:
+
+```
+família                              critério          APE mediana
+estável (dispersão 0) .............. moda .............. 0,00%
+varia, 1 pgto/mês, dispersão < 0,20  último comparável .. 3,84%   (média: 29,10%)
+varia, vários pgtos/mês ............ mediana de 3 ...... 14,15%
+varia, 1 pgto/mês, dispersão ≥ 0,20  INDETERMINADO       todos acima de 47%
+```
+
+A correção que mudou o vencedor veio de um caso real: o mês em que a Claro
+cobrou **duas** faturas não é o mês em que o preço dobrou. O critério passou a
+ser o último mês **comparável**.
+
+### O achado que é dívida de outra frente
+
+**A trava da 0079 que impede recorrente 6.x de disputar com a folha casa
+`fin_person.counterparty_id` — UMA contraparte por pessoa.** Seis pessoas da
+folha têm uma segunda em `fin_person_counterparty`, o CNPJ de MEI, e é por ela
+que o dinheiro sai:
+
+```
+Igor  cp 371 e 395   ·  Flavio cp 372 e 393  ·  Cleber cp 380 e 396
+Diogo cp 373 e 391   ·  Igor A cp 381 e 394  ·  Evera  cp 374 e 398
+                                          R$ 26.806,96/mês
+```
+
+Uma recorrente criada sobre a contraparte de MEI passa **inteira** pela trava da
+0079. A 0108 fecha o buraco na porta de entrada (carimba `conflito_camada`
+resolvendo por `fin_person_counterparty`), mas **não reescreve a trava da 0079**
+— isso é da frente da previsão, pelo mesmo motivo que a 0100 recusou mexer na
+composição de saída.
+
+### Provas
+
+`npm run test:custo-fixo` aplica a 0108 em transação, escreve de verdade
+(liga, reajusta, desliga), prova 4 recusas do banco e dá ROLLBACK: **46
+afirmações, 0 falhas**, âncora por conta idêntica, e o consolidado da 0100
+fechando ao centavo com a projeção somável. `npm run catalogo` imprime o
+catálogo inteiro.
+
+Estado medido depois desta frente: caixa **6/6 fecha** · invariantes **39/41**
+(D6 e F1, de outras frentes, iguais).
+
+`npm run build:app` **não passa**, e a causa não é desta frente:
+`scripts/sincronizar-fontes.mjs` (frente das fontes, 0109, não commitada)
+importa `'..'` e o Turbopack não resolve. `npx tsc --noEmit` está limpo.
+
+---
+
 ## Frente do teto do MEI · 17/08/2026 (migration 0107 — validada, NÃO aplicada)
 
 O Fernando declarou o fato que faltava, e ele é regra de negócio:

@@ -476,12 +476,29 @@ export function FinCustos({ mesInicial, opcoes }: { mesInicial: string | null; o
 
       {dados ? (
         <>
+          {/* A ressalva vem ANTES dos números, e não depois.
+              Quando ela ficava abaixo da grade, a pessoa já tinha lido o total
+              e formado opinião — a explicação chegava para corrigir uma
+              impressão em vez de evitá-la. É a mesma regra do docstring de
+              `Ressalva`, e a tela da agenda já a seguia. */}
+          {ressalvas.map((frase) => (
+            <Ressalva key={frase}>{frase}</Ressalva>
+          ))}
+
           <div className="medida-grade fin-custo-medidas">
-            <Medida
-              rotulo="Custo previsto do mês"
-              valorCents={dados.totalCents}
-              detalhe={`${dados.itens.filter((i) => i.entraNoTotal).length} linhas somam · uma por dinheiro`}
-            />
+            {dados.totalIndeterminado ? (
+              <Medida
+                rotulo="Custo previsto do mês"
+                valorCents={null}
+                motivo={dados.motivoTotal ?? "sem previsão para esta competência"}
+              />
+            ) : (
+              <Medida
+                rotulo="Custo previsto do mês"
+                valorCents={dados.totalCents}
+                detalhe={`${dados.itens.filter((i) => i.entraNoTotal).length} linhas somam · uma por dinheiro`}
+              />
+            )}
             <Medida
               rotulo="Confirmado"
               valorCents={dados.confirmadoCents}
@@ -532,10 +549,6 @@ export function FinCustos({ mesInicial, opcoes }: { mesInicial: string | null; o
               />
             ) : null}
           </div>
-
-          {ressalvas.map((frase) => (
-            <Ressalva key={frase}>{frase}</Ressalva>
-          ))}
 
           {comAlerta.length || documentosSemContraparte.length ? (
             <BlocoSobreposicao itens={comAlerta} semContraparte={documentosSemContraparte} />

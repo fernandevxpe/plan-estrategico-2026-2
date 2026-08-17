@@ -99,6 +99,11 @@ export type CustosDoMes = {
   porCategoria: CategoriaCusto[];
   confronto: ConfrontoCusto[];
   totalCents: number;
+  /** true quando não há nada a somar E a competência já começou: a resposta é
+      indeterminado, não zero. A tela precisa hachurar em vez de mostrar R$ 0,00. */
+  totalIndeterminado: boolean;
+  /** Por que o total é indeterminado. Nulo quando o total é conhecido. */
+  motivoTotal: string | null;
   confirmadoCents: number;
   aConfirmarCents: number;
   foraDaSomaCents: number;
@@ -125,6 +130,8 @@ const VAZIO = (competencia: string): CustosDoMes => ({
   porCategoria: [],
   confronto: [],
   totalCents: 0,
+  totalIndeterminado: false,
+  motivoTotal: null,
   confirmadoCents: 0,
   aConfirmarCents: 0,
   foraDaSomaCents: 0,
@@ -224,6 +231,24 @@ export async function getCustosDoMes(filtros: FiltrosCusto): Promise<Contrato<Cu
 
     const somam = lista.filter((i) => i.entraNoTotal);
     const totalCents = somam.reduce((s, i) => s + (i.valorCents ?? 0), 0);
+
+    // O mês que já começou não tem previsão completa, e R$ 0,00 mentiria sobre
+    // isso. A projeção nasce no dia de hoje: em 17/08 a competência de agosto
+    // tem 6 itens e NENHUM soma, porque tudo o que ela previa já passou ou já
+    // virou lançamento. Devolver zero afirma "não há custo previsto em agosto",
+    // quando a verdade é "o horizonte começa hoje e metade do mês ficou para
+    // trás".
+    //
+    // Zero é afirmação sobre o dinheiro; ausência é afirmação sobre o dado. A
+    // regra vale aqui como vale no resto da base.
+    const mesCorrente = new Date().toISOString().slice(0, 7);
+    const mesJaComecou = filtros.competencia <= mesCorrente;
+    const totalIndeterminado = somam.length === 0 && mesJaComecou;
+    const motivoTotal = totalIndeterminado
+      ? filtros.competencia === mesCorrente
+        ? "o horizonte da previsão começa hoje — o que agosto previa já passou ou já virou lançamento"
+        : "competência encerrada: a previsão não projeta para trás; o que aconteceu está no realizado"
+      : null;
     const confirmadoCents = somam
       .filter((i) => i.precedencia === "confirmado")
       .reduce((s, i) => s + (i.valorCents ?? 0), 0);
@@ -265,6 +290,8 @@ export async function getCustosDoMes(filtros: FiltrosCusto): Promise<Contrato<Cu
           leitura: (f.leitura as string) ?? null
         })),
         totalCents,
+        totalIndeterminado,
+        motivoTotal,
         confirmadoCents,
         aConfirmarCents: totalCents - confirmadoCents,
         foraDaSomaCents: lista.filter((i) => !i.entraNoTotal).reduce((s, i) => s + (i.valorCents ?? 0), 0),

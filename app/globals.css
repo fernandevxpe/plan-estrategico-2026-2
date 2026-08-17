@@ -11787,3 +11787,365 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   .agenda-dia-nums { gap: 10px; font-size: 12px; }
   .agenda-busca-texto { flex-basis: 100%; }
 }
+
+/* ===========================================================================
+   PREVISÃO DE CUSTOS DO MÊS
+   ===========================================================================
+   Duas coisas governam este bloco, e as duas vêm do que a tela precisa provar:
+
+   1. O QUE NÃO SOMA CONTINUA VISÍVEL. Uma linha suprimida ou fora da soma não
+      pode sumir nem parecer erro: ela fica esmaecida, com o motivo em prosa
+      logo abaixo da descrição. Esconder faria o total parecer vindo do nada;
+      pintar de vermelho faria decisão declarada parecer defeito.
+
+   2. NENHUM VOCABULÁRIO VISUAL NOVO. Certeza (firme/provável/observado/
+      indeterminado) usa os tokens --cert-* já definidos acima; a hachura roxa
+      do indeterminado é a mesma. O que nasce aqui é só o arranjo — acordeão de
+      categoria, barra de participação, o destaque da sobreposição.
+   =========================================================================== */
+
+.fin-custo-topo {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 14px;
+}
+.fin-custo-mes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fin-custo-mes strong { font-size: 15px; min-width: 150px; text-align: center; }
+
+.fin-custo-recado {
+  padding: 11px 14px; border-radius: 9px; font-size: 13px; margin-bottom: 12px;
+  background: var(--cert-firme-bg); color: var(--cert-firme);
+}
+.fin-custo-medidas { margin-bottom: 14px; }
+
+/* ---- O alerta de sobreposição ----
+   Vermelho e no topo porque ele é a única coisa desta tela que pode estar
+   contando o mesmo dinheiro duas vezes. Ele NÃO suprime nada — pede
+   conferência humana —, então tem a cor do atrasado e não a do erro. */
+.fin-custo-alerta {
+  border: 1px solid var(--cert-atrasado); border-left-width: 4px;
+  border-radius: 0 10px 10px 0; background: var(--cert-atrasado-bg);
+  padding: 16px 18px; margin: 14px 0; display: grid; gap: 10px;
+}
+.fin-custo-alerta h2 {
+  margin: 0; font-size: 15px; color: var(--cert-atrasado);
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px;
+}
+.fin-custo-alerta h2 em {
+  font-style: normal; font-size: 13px; font-weight: 600;
+  padding: 2px 9px; border-radius: 999px; background: var(--cert-atrasado); color: #fff;
+}
+.fin-custo-alerta > p { margin: 0; font-size: 13px; color: var(--ink); line-height: 1.55; }
+.fin-custo-alerta-par {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; display: grid; gap: 6px;
+}
+.fin-custo-alerta-par > strong { font-size: 13.5px; }
+.fin-custo-alerta-par ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.fin-custo-alerta-par li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px;
+}
+.fin-custo-alerta-valor { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+.fin-custo-alerta-excedente { font-size: 12px; color: var(--cert-atrasado); font-weight: 600; }
+.fin-custo-alerta-escape { margin: 0; font-size: 12.5px; color: var(--ink); line-height: 1.55; }
+
+/* ---- Os dois lotes ---- */
+.fin-custo-lote { display: grid; gap: 10px; margin: 14px 0; }
+.fin-custo-lote-acao {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--surface);
+}
+.fin-custo-lote-acao .fin-card-hint { flex: 1 1 320px; margin: 0; }
+
+/* ---- A categoria, como acordeão ---- */
+.fin-custo-grupo { padding: 0; margin-bottom: 12px; overflow: hidden; }
+.fin-custo-grupo-cab {
+  width: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 16px; background: none; border: 0; font: inherit; color: inherit;
+  cursor: pointer; text-align: left;
+}
+.fin-custo-grupo-cab:hover { background: var(--surface-2); }
+.fin-custo-grupo-nome { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; font-size: 14px; }
+.fin-custo-seta { color: var(--muted); font-size: 11px; width: 12px; }
+.fin-custo-grupo-n { font-size: 12px; color: var(--muted); }
+.fin-custo-grupo-num {
+  display: flex; align-items: center; gap: 12px; font-variant-numeric: tabular-nums; font-size: 14px;
+}
+.fin-custo-grupo-fora { font-size: 11.5px; color: var(--cert-indet); font-style: italic; }
+
+/* Participação no mês. Largura mínima de 2% para a fatia pequena não sumir —
+   uma barra invisível ensina que a categoria não existe. */
+.fin-custo-part {
+  position: relative; display: inline-flex; align-items: center; gap: 7px;
+  width: 120px; height: 6px; background: var(--surface-2); border-radius: 3px;
+}
+.fin-custo-part > i { display: block; height: 100%; border-radius: 3px; background: var(--cert-provavel); }
+.fin-custo-part > em {
+  position: absolute; left: calc(100% + 8px); font-style: normal; font-size: 11.5px; color: var(--muted);
+}
+.fin-custo-motivo {
+  margin: 0; padding: 0 16px 12px; font-size: 12px; color: var(--cert-indet); font-style: italic;
+}
+.fin-custo-grupo-acoes {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  padding: 0 16px 12px; border-bottom: 1px solid var(--line);
+}
+.fin-custo-grupo-acoes .fin-card-hint { flex: 1 1 300px; margin: 0; }
+
+/* ---- A linha ---- */
+.fin-custo-tabela td { vertical-align: top; }
+.fin-custo-tabela .fin-desc { display: block; }
+/* Esmaecida, nunca escondida: ela existe, só não entra na soma. */
+.fin-custo-nao-soma > td { opacity: .72; }
+.fin-custo-origem {
+  display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px;
+}
+.fin-custo-origem code {
+  margin-left: 7px; font-size: 10.5px; padding: 1px 5px; border-radius: 4px;
+  background: var(--surface-2); color: var(--muted);
+}
+/* A regra do dia em prosa. "folha: dia 2 da competência" é conferível;
+   "2026-09-02" não é — e um dia sem regra é um dia que ninguém corrige. */
+.fin-custo-regra {
+  display: block; font-size: 11.5px; color: var(--ink); margin-top: 3px;
+  border-left: 2px solid var(--cert-provavel); padding-left: 8px; opacity: .85;
+}
+.fin-custo-alerta-linha {
+  display: block; font-size: 11.5px; color: var(--cert-atrasado); font-weight: 600; margin-top: 3px;
+}
+.fin-custo-motivo-linha {
+  display: block; font-size: 11.5px; color: var(--cert-indet); font-style: italic; margin-top: 3px;
+}
+.fin-custo-delta {
+  display: block; font-size: 11.5px; color: var(--cert-observado); font-weight: 600; margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.fin-custo-assinatura { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; }
+.fin-custo-outro-mes { display: block; font-size: 10.5px; color: var(--cert-observado); }
+.fin-custo-acoes { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---- Confirmar, ignorar e editar, em linha ---- */
+.fin-custo-conf {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;
+  padding: 12px 4px; background: var(--surface-2); border-radius: 8px;
+}
+.fin-custo-conf .fin-field { flex: 0 1 220px; }
+.fin-custo-conf .fin-field-wide { flex: 1 1 320px; }
+.fin-custo-conf .fin-form-acoes { display: flex; gap: 8px; align-items: center; }
+.fin-custo-conf-nota { flex: 1 1 100%; margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.fin-custo-conf .fin-alert { flex: 1 1 100%; }
+
+/* ---- Confronto ---- */
+.fin-custo-confronto { padding: 0; margin-top: 18px; }
+.fin-custo-confronto .fin-table { margin: 0 16px 8px; width: calc(100% - 32px); }
+.fin-custo-confronto .fin-card-hint { padding: 0 16px 14px; }
+.fin-custo-leitura { font-size: 11.5px; color: var(--muted); max-width: 320px; }
+
+@media (max-width: 860px) {
+  /* A tabela de custos tem 7 colunas e a descrição carrega quatro linhas de
+     prosa; abaixo de 860px ela vira rolagem horizontal em vez de virar
+     ilegível — o mesmo tratamento do calendário da agenda. */
+  .fin-custo-grupo, .fin-custo-confronto { overflow-x: auto; }
+  .fin-custo-tabela { min-width: 720px; }
+  .fin-custo-part { width: 70px; }
+  .fin-custo-part > em { display: none; }
+}
+
+/* ===========================================================================
+   CENTRAL DE CATEGORIZAÇÃO
+   ===========================================================================
+   Três decisões governam este bloco, e as três vêm do que a tela precisa
+   provar — nenhuma é estética:
+
+   1. O UNIVERSO É A PRIMEIRA COISA QUE SE LÊ NA LINHA. Lançamento, documento
+      e item de cartão têm consequências diferentes, e a etiqueta colorida
+      existe para que ninguém decida com a régua errada. As cores saem dos
+      tokens já existentes (--cert-*), não de uma paleta nova.
+
+   2. NENHUM VOCABULÁRIO VISUAL NOVO. O selo de certeza é o `.cert-selo` de
+      Certeza.tsx; o indeterminado tem a mesma hachura roxa (`.cert-hachura`)
+      que o resto do módulo. O que nasce aqui é só o arranjo: a tabela densa,
+      o painel de prévia e a gaveta do "por quê?".
+
+   3. O QUE VAI MUDAR APARECE ANTES DE MUDAR. O painel de lote é um card
+      inteiro, não um popover — dry-run de 300 linhas não cabe num tooltip, e
+      a pessoa precisa poder ler a prévia com calma antes de gravar.
+   =========================================================================== */
+
+.fin-cat { display: grid; gap: 16px; }
+
+/* ---- Abas internas: itens × plano de contas ---- */
+.fin-cat-abas { display: flex; gap: 8px; flex-wrap: wrap; }
+.fin-cat-aba {
+  padding: 8px 15px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--muted);
+  font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+}
+.fin-cat-aba:hover { border-color: var(--purple); color: var(--ink); }
+.fin-cat-aba.ativa { background: var(--purple); border-color: var(--purple); color: #fff; }
+.fin-cat-aba.ativa .fin-tag { background: rgba(255, 255, 255, .22); color: #fff; }
+
+/* ---- A lacuna: o número que justifica a tela ----
+   Fica no topo e é clicável. Um número que a pessoa não pode abrir vira
+   relatório; aqui cada medida leva ao filtro que a torna trabalhável. */
+.fin-cat-lacuna-medidas {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px; margin-top: 12px;
+}
+.fin-cat-lacuna-item { display: grid; gap: 6px; align-content: start; }
+.fin-cat-lacuna-botao {
+  padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--purple);
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; text-align: left;
+}
+.fin-cat-lacuna-botao:hover { border-color: var(--purple); background: #f6f2ff; }
+
+/* ---- Filtros ---- */
+.fin-cat-filtros {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px;
+}
+.fin-cat-busca { flex: 1 1 320px; }
+.fin-cat-filtros .fin-field { min-width: 150px; }
+.fin-cat-filtros .fin-field > span:first-child {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600;
+}
+
+.fin-cat-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 12px; }
+.fin-cat-chip {
+  padding: 5px 11px; border: 1px dashed var(--line); border-radius: 999px;
+  background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer;
+}
+.fin-cat-chip:hover { border-style: solid; border-color: var(--purple); color: var(--purple); }
+.fin-cat-chip.ativo {
+  border-style: solid; border-color: var(--purple); background: #f6f2ff; color: var(--purple); font-weight: 600;
+}
+
+.fin-cat-resumo {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 14px 0;
+}
+.fin-cat-ressalvas { display: grid; gap: 8px; margin-top: 10px; }
+
+/* ---- A tabela densa ---- */
+.fin-cat-wrap { overflow-x: auto; }
+.fin-cat-tabela { min-width: 1080px; }
+.fin-cat-tabela td { vertical-align: top; }
+.fin-cat-linha.marcada { background: #f6f2ff; }
+.fin-cat-tabela td[data-dir="entrada"] { color: var(--fin-in); }
+.fin-cat-tabela td[data-dir="saida"] { color: var(--fin-out); }
+
+/* A etiqueta do universo. Três cores dos tokens de certeza, porque o que ela
+   comunica é justamente quanta consequência aquela linha carrega. */
+.fin-cat-uni {
+  display: inline-block; padding: 2px 8px; border-radius: 5px;
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  white-space: nowrap;
+}
+.fin-cat-uni[data-uni="lancamento"]  { background: var(--cert-firme-bg);    color: var(--cert-firme); }
+.fin-cat-uni[data-uni="documento"]   { background: var(--cert-provavel-bg); color: var(--cert-provavel); }
+.fin-cat-uni[data-uni="item_cartao"] { background: var(--cert-observado-bg); color: var(--cert-observado); }
+
+.fin-cat-contraparte {
+  display: block; margin-top: 2px; padding: 0; border: 0; background: none;
+  color: var(--purple); font: inherit; font-size: 12px; text-align: left;
+  text-decoration: underline dotted; cursor: pointer;
+}
+
+/* Sem categoria não é uma célula vazia: é uma afirmação sobre o dado. */
+.fin-cat-sem-categoria {
+  display: inline-block; padding: 2px 8px; border-radius: 5px;
+  border: 1px dashed var(--cert-indet); color: var(--cert-indet);
+  font-size: 11.5px; font-style: italic;
+}
+
+.fin-cat-porque {
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+  padding: 2px; border: 0; background: none; font: inherit; cursor: pointer; text-align: left;
+}
+.fin-cat-porque:hover { outline: 1px dashed var(--line); outline-offset: 2px; border-radius: 5px; }
+.fin-cat-trava {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--cert-firme); border: 1px solid var(--cert-firme); border-radius: 4px; padding: 1px 5px;
+}
+
+/* ---- A gaveta do "por quê?" ---- */
+.fin-cat-detalhe-linha > td { background: var(--surface-2); padding: 0; }
+.fin-cat-detalhe { padding: 14px 18px; }
+.fin-cat-detalhe dl {
+  margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 22px;
+}
+.fin-cat-detalhe dl > div { display: grid; gap: 3px; align-content: start; }
+.fin-cat-detalhe dt {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700;
+}
+.fin-cat-detalhe dd { margin: 0; font-size: 13px; display: grid; gap: 3px; }
+.fin-cat-detalhe-veto { border-left: 3px solid var(--cert-atrasado); padding-left: 12px; }
+.fin-cat-evidencia {
+  display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px;
+  overflow-wrap: anywhere;
+}
+.fin-cat-vazio { color: var(--cert-indet); font-style: italic; }
+.fin-cat-motivo { padding: 4px 8px; border-radius: 5px; color: var(--cert-indet); }
+
+.fin-cat-paginacao {
+  display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px;
+  font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+
+/* ---- Painel de lote ---- */
+.fin-cat-painel { border: 1px solid var(--purple); }
+.fin-cat-painel-ok { border-color: var(--cert-firme); }
+.fin-cat-grade {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 12px 0;
+}
+.fin-cat-form-acoes { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+
+.fin-cat-previa {
+  border: 1px solid var(--line); border-left: 3px solid var(--cert-provavel);
+  border-radius: 0 10px 10px 0; padding: 14px 16px; margin-top: 12px; background: var(--surface);
+}
+.fin-cat-previa h3, .fin-cat-previa h4 { margin: 0 0 10px; font-size: 14px; }
+
+.fin-cat-lista-prova { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.6; color: var(--ink); }
+
+.fin-cat-nota { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin: 8px 0 0; }
+/* A trava da dúvida 0 não é rodapé: é a razão de um botão não existir. */
+.fin-cat-trava-nota {
+  border-left: 3px solid var(--cert-indet); padding-left: 12px; margin-top: 14px; color: var(--cert-indet);
+}
+
+.fin-cat-regra {
+  border-top: 1px solid var(--line); margin-top: 16px; padding-top: 14px; display: grid; gap: 8px;
+}
+.fin-cat-regra h3, .fin-cat-regra h4 { margin: 0; font-size: 14px; }
+
+/* ---- Plano de contas ---- */
+.fin-cat-plano { display: grid; gap: 14px; }
+.fin-cat-plano-topo { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.fin-cat-recado {
+  margin: 0; padding: 10px 13px; border-radius: 9px; font-size: 13px;
+  background: var(--cert-firme-bg); color: var(--cert-firme);
+}
+.fin-cat-form {
+  border: 1px solid var(--purple); border-radius: 12px; padding: 16px 18px; background: var(--surface);
+}
+/* O caso do IOF: um achado com nome, valor e dúvida — não um placeholder. */
+.fin-cat-caso {
+  display: grid; gap: 8px; justify-items: start;
+  border-left: 3px solid var(--cert-indet); background: var(--cert-indet-bg);
+  border-radius: 0 9px 9px 0; padding: 12px 15px; font-size: 13px; line-height: 1.55;
+}
+.fin-cat-caso strong { font-size: 13.5px; }
+
+.fin-cat-tabela-plano { min-width: 980px; }
+.fin-cat-tabela-plano tr[data-inativa="sim"] { opacity: .55; }
+.fin-cat-code { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.fin-cat-acoes-cel { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: 320px; }
+.fin-cat-bloqueio { flex-basis: 100%; font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+.fin-cat-edit-par { display: grid; gap: 6px; min-width: 220px; }
+
+@media (max-width: 900px) {
+  /* Tabela de 8 colunas em telefone vira ilegível: ela rola na horizontal em
+     vez de encolher. O painel de lote perde o sticky para não cobrir a lista. */
+  .fin-cat-painel .fin-bulk-bar { position: static; }
+  .fin-cat-detalhe dl { grid-template-columns: 1fr; }
+}

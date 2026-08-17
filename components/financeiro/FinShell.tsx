@@ -26,6 +26,9 @@ const TABS = [
   // leitura agregada dela. Quem abre o financeiro de manhã abre esta.
   { href: "/financeiro/agenda", label: "Agenda" },
   { href: "/financeiro/receitas", label: "Receitas" },
+  // Logo depois de Receitas: é o outro lado da mesma pergunta do mês ("o que
+  // entra, o que sai") e antes do Fluxo, que é a leitura agregada das duas.
+  { href: "/financeiro/custos", label: "Custos do mês" },
   { href: "/financeiro/fluxo", label: "Fluxo de caixa" },
   { href: "/financeiro/modelo", label: "Modelo de gestão" },
   { href: "/financeiro/planejamento", label: "Planejamento" },
@@ -38,6 +41,12 @@ const TABS = [
   // manda, e reembolso é o que ele mais manda.
   { href: "/financeiro/time", label: "Fila do time" },
   { href: "/financeiro/qualificar", label: "Qualificar" },
+  // Ao lado de Qualificar e Revisão porque as três respondem à mesma pergunta
+  // — "onde isto entra?" — em graus diferentes de dúvida. A diferença é o
+  // alcance: Qualificar e Revisão só veem `fin_transaction` e `fin_document`;
+  // esta é a única que enxerga também o subledger do cartão, onde 500 itens
+  // (R$ 54.126,76) não aparecem em indicador nenhum.
+  { href: "/financeiro/categorizacao", label: "Categorização" },
   { href: "/financeiro/revisao", label: "Revisão" },
   { href: "/financeiro/indicadores", label: "Indicadores" },
   { href: "/financeiro/regras", label: "Regras" },

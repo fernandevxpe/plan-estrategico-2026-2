@@ -1,0 +1,208 @@
+/* ===========================================================================
+   A TELA DE RESULTADO — a DRE que se abre até o lançamento
+   ===========================================================================
+   POR QUE ESTE ARQUIVO EXISTE, EM VEZ DE UM BLOCO EM `app/globals.css`
+
+   `globals.css` estava com alterações não commitadas de OUTRA frente enquanto
+   esta tela era escrita. `git commit -- <caminhos>` grava o conteúdo do
+   diretório de trabalho dos caminhos listados, então incluir `globals.css` no
+   commit desta frente levaria o trabalho alheio junto — que é exatamente o
+   acidente descrito na §6 de `docs/CONTINUACAO.md`, e que já aconteceu duas
+   vezes nesta árvore.
+
+   O App Router importa CSS de qualquer componente, então o estilo desta tela
+   mora ao lado dela. Todos os seletores começam com `.res-`; os tokens
+   (`--cert-*`, `--surface`, `--line`, `--ink`, `--muted`) continuam vindo do
+   VOCABULÁRIO DE CERTEZA de `globals.css`, para não existirem dois vocabulários
+   para a mesma ideia.
+   =========================================================================== */
+
+.res { display: grid; gap: 16px; }
+
+/* ---- A regra de ouro: "o feito é sempre o caixa" -------------------------
+   Fica no topo, antes de qualquer número, porque é a condição de validade de
+   todos eles. Quando ela não fecha, a tela grita. */
+.res-ouro {
+  border: 1px solid var(--cert-firme);
+  border-left: 4px solid var(--cert-firme);
+  background: var(--cert-firme-bg);
+  border-radius: 0 10px 10px 0;
+  padding: 14px 18px;
+  display: grid;
+  gap: 8px;
+}
+.res-ouro-quebrada {
+  border-color: var(--cert-atrasado);
+  border-left-color: var(--cert-atrasado);
+  background: var(--cert-atrasado-bg);
+}
+.res-ouro-indet { border: 1px dashed var(--cert-indet); border-radius: 10px; padding: 14px 18px; display: grid; gap: 6px; }
+.res-ouro-titulo { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+.res-ouro-conta {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px;
+  font-size: 14px; font-variant-numeric: tabular-nums;
+}
+.res-ouro-conta b { font-size: 16px; }
+.res-ouro-op { color: var(--muted); font-weight: 600; }
+.res-ouro-res { margin-left: auto; }
+.res-ouro-sub { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ---- Controles: o toggle que muda o significado da tela inteira ---------- */
+.res-controles { display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch; }
+.res-visao { display: flex; gap: 8px; }
+.res-toggle {
+  display: grid; gap: 2px; text-align: left; padding: 10px 16px; min-width: 190px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  font: inherit; color: var(--ink); cursor: pointer;
+}
+.res-toggle:hover { border-color: var(--cert-provavel); }
+.res-toggle.ativo { border-color: var(--cert-provavel); background: var(--cert-provavel-bg); }
+.res-toggle strong { font-size: 14px; }
+.res-toggle span { font-size: 11px; color: var(--muted); }
+.res-toggle.ativo span { color: var(--cert-provavel); }
+
+.res-mes { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.res-mes select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: inherit; }
+
+/* ---- A âncora do total: a prova de que expandir não muda nada ------------ */
+.res-ancora {
+  margin-left: auto; display: grid; gap: 2px; align-content: center;
+  padding: 10px 16px; border: 1px solid var(--cert-firme); border-radius: 10px;
+  background: var(--cert-firme-bg); min-width: 260px;
+}
+.res-ancora-ruim { border-color: var(--cert-atrasado); background: var(--cert-atrasado-bg); }
+.res-ancora-k { font-size: 11px; color: var(--muted); }
+.res-ancora-v { font-size: 20px; font-variant-numeric: tabular-nums; }
+.res-ancora-sub { font-size: 11px; color: var(--muted); }
+.res-ancora-ruim .res-ancora-sub { color: var(--cert-atrasado); font-weight: 600; }
+
+.res-ressalvas { display: grid; gap: 8px; }
+.res-erro { color: var(--cert-atrasado); font-size: 13px; margin: 6px 0 0; }
+.res-ok { color: var(--cert-firme); font-size: 13px; margin: 6px 0 0; }
+
+/* ---- A tabela ------------------------------------------------------------ */
+.res-dre td, .res-dre th { vertical-align: top; }
+
+.res-secao > td { padding-top: 18px; border-bottom: 1px solid var(--line); }
+.res-secao strong { display: block; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+.res-secao em { display: block; font-size: 12px; color: var(--muted); font-style: normal; margin-top: 2px; }
+
+.res-ressalva-linha > td { padding: 6px 0 10px; border: 0; }
+
+.res-celula { display: flex; align-items: flex-start; gap: 8px; }
+.res-caret {
+  flex: none; width: 20px; height: 20px; display: grid; place-items: center;
+  border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 11px; padding: 0;
+}
+.res-caret:hover { color: var(--ink); }
+.res-caret-vazio { cursor: default; }
+.res-check { flex: none; margin-top: 3px; }
+.res-rotulo { line-height: 1.4; }
+.res-rotulo-forte { font-weight: 600; }
+
+.res-linha:hover { background: var(--surface-2); }
+.res-selecionado { background: var(--cert-provavel-bg); }
+.res-linha-vazia .res-rotulo { color: var(--muted); }
+.res-vazio { display: block; font-size: 11px; color: var(--cert-indet); font-style: italic; }
+
+.res-n1 > td { border-top: 1px solid var(--line); }
+.res-n2 .res-rotulo, .res-n3 .res-rotulo, .res-n4 .res-rotulo { font-size: 13px; }
+.res-n4 .res-rotulo { color: var(--muted); }
+
+.res-subtotal > td { background: var(--surface-2); border-top: 1px solid var(--line); }
+.res-formula { display: block; font-size: 11px; color: var(--muted); font-style: normal; }
+
+.res-confere { display: block; font-size: 11px; color: var(--cert-firme); font-style: normal; margin: 3px 0 0 28px; }
+.res-diverge {
+  display: block; font-size: 12px; color: var(--cert-atrasado); font-weight: 600;
+  font-style: normal; margin: 3px 0 0 28px;
+}
+
+.res-destino { display: block; font-size: 11px; color: var(--cert-provavel); font-style: normal; margin: 3px 0 0 28px; }
+.res-destino-indet { color: var(--cert-indet); }
+
+/* A lacuna é hachurada como toda medida indeterminada desta base: ela não é
+   erro, é o produto — dinheiro que existe e ainda não tem linha. */
+.res-lacuna > td:first-child {
+  background:
+    repeating-linear-gradient(135deg, transparent, transparent 5px,
+                              var(--cert-hatch) 5px, var(--cert-hatch) 6px),
+    transparent;
+}
+.res-tag {
+  font-size: 11px; padding: 2px 7px; border-radius: 3px;
+  background: var(--cert-observado-bg); color: var(--cert-observado);
+}
+
+/* ---- Mover: a barra que aparece com a seleção ---------------------------- */
+.res-mover {
+  position: sticky; bottom: 0; z-index: 5;
+  border: 1px solid var(--cert-provavel); border-radius: 12px;
+  background: var(--surface); padding: 16px; display: grid; gap: 12px;
+  box-shadow: 0 -6px 24px rgb(0 0 0 / 12%);
+}
+.res-mover > header { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
+.res-mover > header div { display: grid; gap: 2px; }
+.res-mover > header span { font-size: 12px; color: var(--muted); max-width: 70ch; }
+
+.res-mover-linha { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.res-mover-linha label, .res-ajuste-campos label, .res-confirmar label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.res-mover-linha select { min-width: 420px; }
+.res-mover-nota { margin: 0; font-size: 12px; color: var(--muted); }
+
+.res-mover select, .res-mover input, .res-mover textarea,
+.res-ajuste select, .res-ajuste input, .res-ajuste textarea {
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); font: inherit; color: var(--ink);
+}
+.res-mover em, .res-ajuste em { font-size: 11px; color: var(--muted); font-style: normal; }
+
+.res-btn, .res-btn-sec {
+  padding: 9px 16px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--cert-provavel); background: var(--cert-provavel-bg); color: var(--cert-provavel);
+}
+.res-btn-sec { border-color: var(--line); background: var(--surface); color: var(--muted); font-weight: 500; }
+.res-btn-forte { border-color: var(--cert-firme); background: var(--cert-firme); color: #fff; }
+.res-btn:disabled, .res-btn-sec:disabled { opacity: .45; cursor: not-allowed; }
+
+.res-dry { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
+.res-dry h4 { margin: 0; font-size: 13px; }
+.res-dry-nota { margin: 0; font-size: 12px; color: var(--muted); }
+.res-recusa { border-left: 3px solid var(--cert-atrasado); background: var(--cert-atrasado-bg); padding: 10px 14px; border-radius: 0 6px 6px 0; }
+.res-recusa ul { margin: 6px 0 0; padding-left: 18px; font-size: 12px; }
+.res-aviso-travado {
+  margin: 0; font-size: 12px; padding: 10px 14px; border-radius: 0 6px 6px 0;
+  border-left: 3px solid var(--cert-observado); background: var(--cert-observado-bg); color: var(--cert-observado);
+}
+.res-confirmar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.res-confirmar textarea { min-width: 420px; }
+
+.res-veredito { padding: 12px 16px; border-radius: 8px; font-size: 13px; }
+.res-veredito.ok { background: var(--cert-firme-bg); color: var(--cert-firme); }
+.res-veredito.ruim { background: var(--cert-atrasado-bg); color: var(--cert-atrasado); }
+.res-veredito ul { margin: 8px 0 0; padding-left: 18px; }
+
+/* ---- Ajuste declarado: visualmente separado do extrato -------------------
+   A hachura roxa é a mesma do `indeterminado`. Não porque ajuste seja erro,
+   mas porque é a mesma classe de coisa: uma afirmação que a base não sustenta
+   sozinha. Inventar uma cor nova ensinaria dois vocabulários para a mesma ideia. */
+.res-ajuste { border: 2px dashed var(--cert-indet); }
+.res-ajuste .card-title { color: var(--cert-indet); }
+.res-ajuste-travas { display: grid; gap: 8px; font-size: 13px; }
+.res-ajuste-travas p { margin: 0; }
+.res-ajuste-travas ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.res-ajuste-medida { font-size: 12px; color: var(--muted); }
+.res-ajuste-total { max-width: 560px; }
+.res-ajuste-revogado > td { opacity: .55; text-decoration: line-through; }
+.res-ajuste-revogado em { text-decoration: none; font-style: italic; }
+.res-ajuste-form { display: grid; gap: 12px; justify-items: start; }
+.res-ajuste-campos { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; width: 100%; }
+.res-ajuste-motivo { flex: 1 1 380px; }
+.res-ajuste-motivo textarea { width: 100%; }
+.res-ajuste-acoes { display: flex; gap: 10px; align-items: center; flex-basis: 100%; }
+.res-prova { padding: 12px 16px; border-radius: 8px; background: var(--cert-firme-bg); flex-basis: 100%; }
+
+@media (max-width: 900px) {
+  .res-ancora { margin-left: 0; }
+  .res-mover-linha select, .res-confirmar textarea { min-width: 0; width: 100%; }
+}

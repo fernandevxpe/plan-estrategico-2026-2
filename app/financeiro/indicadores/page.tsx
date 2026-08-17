@@ -1,7 +1,9 @@
+import Link from "next/link";
+
 import { AppShell } from "@/components/layout/AppShell";
 import { FinShell } from "@/components/financeiro/FinShell";
-import { FinDre } from "@/components/financeiro/FinDre";
 import { FinIndicadores } from "@/components/financeiro/FinIndicadores";
+import { FinTributosPremissa } from "@/components/financeiro/FinTributosPremissa";
 import { getDre } from "@/lib/financeiro/dre";
 import { getIndicadores } from "@/lib/financeiro/indicadores";
 
@@ -33,13 +35,27 @@ export default async function IndicadoresPage({
       <div className="page-header">
         <h1>Indicadores</h1>
         <p>
-          A DRE por competência e os indicadores de gestão que saem dela. Somente leitura, direto do banco: nada aqui é
-          digitado à mão. Enquanto só o Asaas estiver importado, a receita é real e a despesa é quase nula — a tela diz
-          isso em toda linha onde a diferença importa.
+          Os indicadores de gestão e a estimativa do DAS. Somente leitura, direto do banco: nada aqui é digitado à mão.
         </p>
       </div>
       <FinShell>
-        <FinDre dados={dre} />
+        {/* A DRE saiu daqui de propósito. Havia duas nesta plataforma e elas
+            divergiam por construção — esta somava fin_document (100% "a
+            receber"), aquela é derivada do ledger e fecha com o caixa a
+            resíduo R$ 0,00. Duas telas chamadas "DRE" com números diferentes
+            fazem a pergunta "de onde veio este número?" ter duas respostas. */}
+        <section className="card">
+          <h2 className="card-title">A DRE mora em Resultado</h2>
+          <p className="fin-card-hint">
+            Ela saiu desta página. A que ficou é a de <Link href="/financeiro/resultado">/financeiro/resultado</Link>:
+            derivada do ledger, expansível até o lançamento, e com a regra de ouro à vista —{" "}
+            <b>abertura + DRE de caixa = saldo</b>, resíduo R$ 0,00. A que existia aqui somava{" "}
+            <code>fin_document</code>, que é 100% “a receber”, e por isso mostrava despesa quase nula e chamava o
+            próprio lucro de teto. Manter as duas seria manter duas respostas para a mesma pergunta.
+          </p>
+        </section>
+
+        {dre.disponivel ? <FinTributosPremissa dados={dre.tributos} /> : null}
         <FinIndicadores dados={indicadores} semDespesa={dre.cobertura.semDespesa} />
       </FinShell>
     </AppShell>

@@ -241,12 +241,19 @@ export async function getCustosDoMes(filtros: FiltrosCusto): Promise<Contrato<Cu
     //
     // Zero é afirmação sobre o dinheiro; ausência é afirmação sobre o dado. A
     // regra vale aqui como vale no resto da base.
+    // `filtros.competencia` chega como "2026-08-01" (a rota normaliza para o
+    // primeiro dia), e o mês corrente como "2026-08". Comparar as duas strings
+    // direto dá FALSO para o próprio mês: "2026-08-01" é mais longa e ordena
+    // DEPOIS de "2026-08". Foi assim que a correção nasceu inerte — a tela
+    // continuou mostrando R$ 0,00 em agosto mesmo com o código no ar.
+    // Cortar as duas em 7 caracteres é o que torna a comparação honesta.
     const mesCorrente = new Date().toISOString().slice(0, 7);
-    const mesJaComecou = filtros.competencia <= mesCorrente;
+    const mesDoFiltro = filtros.competencia.slice(0, 7);
+    const mesJaComecou = mesDoFiltro <= mesCorrente;
     const totalIndeterminado = somam.length === 0 && mesJaComecou;
     const motivoTotal = totalIndeterminado
-      ? filtros.competencia === mesCorrente
-        ? "o horizonte da previsão começa hoje — o que agosto previa já passou ou já virou lançamento"
+      ? mesDoFiltro === mesCorrente
+        ? "o horizonte da previsão começa hoje — o que este mês previa já passou ou já virou lançamento"
         : "competência encerrada: a previsão não projeta para trás; o que aconteceu está no realizado"
       : null;
     const confirmadoCents = somam

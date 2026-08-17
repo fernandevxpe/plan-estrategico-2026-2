@@ -137,20 +137,47 @@ async function graphOptional(path, params = {}) {
 
 async function fetchAll(path, params = {}) {
   const rows = [];
-  const visited = new Set();
-  let pages = 0;
-  let payload = await graph(path, { ...params, limit: params.limit ?? 100 });
+  // "Please reduce the amount of data you're asking for" não é erro de cota nem
+  // falha transitória — é a Meta dizendo que a PÁGINA é grande demais. Repetir
+  // a mesma requisição, que é o que o retry de `graph` faz, dá o mesmo erro
+  // para sempre.
+  //
+  // Aconteceu de verdade em 17/08/2026, na coleta de anúncios: o campo
+  // `creative{...}` traz um objeto aninhado por anúncio, e a conta cresceu o
+  // bastante para 100 por página estourar. O sync morria antes de gravar
+  // qualquer arquivo, e o acervo ficou cinco dias parado sem ninguém saber.
+  //
+  // A saída é reduzir a página e recomeçar. Recomeçar, não continuar: o cursor
+  // da página que falhou não vale mais com outro `limit`.
+  const PEDE_MENOS = /reduce the amount of data/i;
+  let limite = params.limit ?? 100;
+
   for (;;) {
-    pages += 1;
-    rows.push(...(payload.data ?? []));
-    if (!payload.paging?.next) break;
-    const cursor = payload.paging?.cursors?.after ?? payload.paging.next;
-    if (visited.has(cursor)) throw new Error(`Paginação repetida da Meta em ${path}`);
-    if (pages >= 250) throw new Error(`Limite seguro de paginação atingido em ${path}`);
-    visited.add(cursor);
-    payload = await graph(payload.paging.next);
+    const visited = new Set();
+    let pages = 0;
+    rows.length = 0;
+    try {
+      let payload = await graph(path, { ...params, limit: limite });
+      for (;;) {
+        pages += 1;
+        rows.push(...(payload.data ?? []));
+        if (!payload.paging?.next) break;
+        const cursor = payload.paging?.cursors?.after ?? payload.paging.next;
+        if (visited.has(cursor)) throw new Error(`Paginação repetida da Meta em ${path}`);
+        if (pages >= 250) throw new Error(`Limite seguro de paginação atingido em ${path}`);
+        visited.add(cursor);
+        payload = await graph(payload.paging.next);
+      }
+      if (limite !== (params.limit ?? 100)) {
+        console.log(`  · ${path}: coletado com limit=${limite} (a Meta recusou o tamanho original)`);
+      }
+      return rows;
+    } catch (erro) {
+      if (!PEDE_MENOS.test(erro.message) || limite <= 5) throw erro;
+      limite = Math.max(5, Math.floor(limite / 4));
+      console.log(`  · ${path}: a Meta pediu menos dados, refazendo com limit=${limite}`);
+    }
   }
-  return rows;
 }
 
 const insightFields = [

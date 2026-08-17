@@ -36,6 +36,11 @@ const TABS = [
   // Ao lado de Reembolsos porque as duas respondem à mesma pergunta — quanto
   // custa o time — e quem vai a uma costuma precisar da outra.
   { href: "/financeiro/pessoas", label: "Pessoas" },
+  // Logo depois de Pessoas: é a mesma população vista pelo limite dela. Quem
+  // olha quanto o time custa precisa saber, na mesma sessão, que um prestador
+  // está a menos de meio mês de estourar o teto do próprio CNPJ — e essa
+  // consequência é dele, não da folha.
+  { href: "/financeiro/mei", label: "Teto do MEI" },
   { href: "/financeiro/reembolsos", label: "Reembolsos" },
   // Ao lado de Reembolsos pelo mesmo motivo: é a caixa de entrada do que o time
   // manda, e reembolso é o que ele mais manda.

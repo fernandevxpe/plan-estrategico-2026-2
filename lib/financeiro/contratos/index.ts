@@ -193,3 +193,21 @@ export {
   type EstadoCategorizacao,
   type ProcedenciaFamilia
 } from "./categorizacao";
+
+/**
+ * A janela do teto de cada MEI, as multas medidas e o veredito sobre o anexo.
+ *
+ * Fica fora de `tributos/apuracao` de propósito: aquele contrato responde
+ * quanto a EMPRESA deve, este responde quanto de espaço sobra no teto de cada
+ * PRESTADOR. Outro contribuinte, outro limite, outra lei — e foi exatamente
+ * misturá-los que produziu a carga fantasma de 9,17% que a 0092 desfez. Ver 0107.
+ */
+export {
+  getPanoramaMei,
+  type PanoramaMei,
+  type JanelaMei,
+  type FaixaTeto,
+  type MultaMedida,
+  type VeredictoAnexo,
+  type AliquotaMes
+} from "./mei";

@@ -29,6 +29,10 @@ const TABS = [
   // Logo depois de Receitas: é o outro lado da mesma pergunta do mês ("o que
   // entra, o que sai") e antes do Fluxo, que é a leitura agregada das duas.
   { href: "/financeiro/custos", label: "Custos do mês" },
+  // Logo depois de "Custos do mês" porque é a configuração DELE: a tela ao lado
+  // responde "quanto sai em setembro", esta responde "o que a empresa paga todo
+  // mês, e quanto". Quem descobre um custo errado no mês vem consertar aqui.
+  { href: "/financeiro/custos-fixos", label: "Custos fixos" },
   { href: "/financeiro/fluxo", label: "Fluxo de caixa" },
   { href: "/financeiro/modelo", label: "Modelo de gestão" },
   { href: "/financeiro/planejamento", label: "Planejamento" },
@@ -65,7 +69,15 @@ export function FinShell({ children }: { children: React.ReactNode }) {
     <div className="fin-shell">
       <nav className="fin-tabs" aria-label="Seções do financeiro">
         {TABS.map((tab) => {
-          const active = tab.href === "/financeiro" ? pathname === tab.href : pathname.startsWith(tab.href);
+          // Prefixo tem de terminar em fronteira de segmento. `startsWith` cru
+          // acendia DUAS abas em /financeiro/custos-fixos — "Custos do mês"
+          // (/financeiro/custos) e "Custos fixos" — porque uma é prefixo
+          // textual da outra. Duas abas ativas ao mesmo tempo tiram da barra a
+          // única coisa que ela promete: dizer onde você está.
+          const active =
+            tab.href === "/financeiro"
+              ? pathname === tab.href
+              : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
           return (
             <Link key={tab.href} href={tab.href} className={active ? "fin-tab active" : "fin-tab"}>
               {tab.label}

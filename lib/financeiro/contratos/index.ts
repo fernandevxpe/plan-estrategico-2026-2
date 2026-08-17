@@ -211,3 +211,33 @@ export {
   type VeredictoAnexo,
   type AliquotaMes
 } from "./mei";
+
+/**
+ * O catálogo do que a empresa paga todo mês — a CONFIGURAÇÃO que alimenta a
+ * previsão de custo, não uma segunda previsão.
+ *
+ * Fica ao lado de `custos` de propósito e responde outra pergunta: aquele
+ * contrato diz "quanto sai em setembro", este diz "o que a empresa paga todo
+ * mês, quanto, e quem decidiu isso". A fonte é `fin_recurring` governada pela
+ * 0108 — não um terceiro modelo de item de custo, que seria a quarta resposta
+ * para a mesma pergunta nesta base.
+ *
+ * Os DOIS totais dele não podem ser somados: `totalLigadoCents` é decisão
+ * (previsão que entra no saldo) e `totalDetectadoCents` é medida do passado.
+ * Ver 0108 §1.
+ */
+export {
+  getCatalogoCustoFixo,
+  type CatalogoCustoFixo,
+  type LinhaCatalogo,
+  type CategoriaCatalogo,
+  type ParcelamentoAberto,
+  type Vencimento,
+  type ResumoCatalogo,
+  type FiltrosCatalogo,
+  type StatusCatalogo,
+  type CriterioValor,
+  type NaturezaCusto,
+  type SituacaoDeteccao,
+  type ProcedenciaCatalogo
+} from "./custo-fixo";

@@ -12149,3 +12149,113 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   .fin-cat-painel .fin-bulk-bar { position: static; }
   .fin-cat-detalhe dl { grid-template-columns: 1fr; }
 }
+
+/* ===========================================================================
+   CATÁLOGO DE CUSTOS FIXOS — /financeiro/custos-fixos
+   ===========================================================================
+   Prefixo `cf-` e não `fin-` de propósito. `fin-cat`, `fin-delta` e
+   `fin-parcelado` já existem em outras telas com outro significado, e reusar o
+   nome faria uma correção de layout numa tela mexer em outra sem aviso.
+
+   A hachura de indeterminado é a de `.cert-hachura` — roxa, nunca cinza. Cinza
+   é a cor de "desativado"; roxa é a cor de "ainda não se sabe", e as duas coisas
+   não podem parecer a mesma na tela onde alguém decide quanto pagar.
+   =========================================================================== */
+.cf-raiz { display: flex; flex-direction: column; gap: 22px; }
+.cf-vazio { color: var(--muted); font-size: 13px; padding: 24px 0; }
+
+.cf-medidas { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+
+.cf-filtros { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.cf-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); cursor: pointer; }
+.cf-nota { font-size: 12px; color: var(--muted); }
+.cf-sub { display: block; font-size: 11.5px; color: var(--muted); }
+.cf-sep { color: var(--line); }
+.cf-alerta { display: inline-block; font-size: 11.5px; color: var(--amber); margin-left: 6px; }
+
+.cf-btn, .cf-btn-ghost {
+  font: inherit; font-size: 12.5px; padding: 5px 12px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+}
+.cf-btn { border-color: var(--purple); color: var(--purple); font-weight: 600; }
+.cf-btn:hover:not(:disabled) { background: var(--cert-indet-bg); }
+.cf-btn-ghost:hover:not(:disabled) { border-color: var(--purple); }
+.cf-btn:disabled, .cf-btn-ghost:disabled { opacity: .45; cursor: not-allowed; }
+
+.cf-link {
+  font: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  color: var(--ink); text-align: left; border-bottom: 1px dotted var(--line);
+}
+.cf-link:hover { color: var(--purple); border-bottom-color: var(--purple); }
+
+/* ── grupo por categoria ─────────────────────────────────────────────────── */
+.cf-grupo { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.cf-grupo-cab {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--line); flex-wrap: wrap;
+}
+.cf-grupo-cab h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.cf-grupo-code { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: 6px; }
+.cf-grupo-num { display: flex; gap: 8px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* ── tabela ──────────────────────────────────────────────────────────────── */
+.cf-tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cf-tabela th {
+  text-align: left; font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--line);
+}
+.cf-tabela td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.cf-tabela tr:last-child td { border-bottom: 0; }
+.cf-valor { font-variant-numeric: tabular-nums; font-weight: 600; }
+.cf-delta { display: block; font-size: 11.5px; color: var(--amber); font-variant-numeric: tabular-nums; }
+.cf-indeterminado { font-size: 12px; color: var(--cert-indet); padding: 2px 6px; border-radius: 4px; }
+.cf-evidencia { line-height: 1.7; }
+
+/* A linha que colide com outra camada continua VISÍVEL, só apagada: escondê-la
+   faria o total de terceiros parecer o custo inteiro da empresa. */
+.cf-conflito { background: repeating-linear-gradient(135deg, transparent 0 6px, var(--surface-2) 6px 7px); }
+.cf-conflito .cf-valor { font-weight: 400; color: var(--muted); }
+
+.cf-badge {
+  display: inline-block; font-size: 11.5px; padding: 2px 8px; border-radius: 999px;
+  background: var(--surface-2); color: var(--muted);
+}
+.cf-badge-ok { background: var(--cert-firme-bg); color: var(--cert-firme); font-weight: 600; }
+.cf-badge-off { background: var(--cert-atrasado-bg); color: var(--cert-atrasado); }
+.cf-badge-bloqueado { background: var(--cert-indet-bg); color: var(--cert-indet); }
+
+/* ── detalhe da linha ────────────────────────────────────────────────────── */
+.cf-detalhe td { background: var(--surface-2); padding: 16px; }
+.cf-detalhe-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+.cf-detalhe-grade h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.cf-detalhe-grade p { margin: 0 0 8px; font-size: 12.5px; color: var(--ink); line-height: 1.5; }
+.cf-candidatos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px 12px; margin: 0; }
+.cf-candidatos > div { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.cf-candidatos dt { color: var(--muted); }
+.cf-candidatos dd { margin: 0; font-variant-numeric: tabular-nums; }
+.cf-lista { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--ink); line-height: 1.6; }
+.cf-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.cf-form input {
+  font: inherit; font-size: 12.5px; padding: 5px 9px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--surface); color: var(--ink); min-width: 120px; flex: 1;
+}
+.cf-form input:focus { outline: 2px solid var(--purple); outline-offset: -1px; }
+
+/* ── painéis próprios ────────────────────────────────────────────────────── */
+.cf-vencimentos, .cf-parcelado, .cf-ressalvas {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 16px;
+}
+.cf-vencimentos { border-left: 3px solid var(--cert-atrasado); }
+.cf-vencimentos h3, .cf-parcelado h3, .cf-ressalvas h3 {
+  margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--ink);
+}
+.cf-parcelado h3 em { font-style: italic; }
+.cf-ressalvas ul { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+
+@media (max-width: 760px) {
+  /* Tabela de 6 colunas em telefone fica ilegível: rola na horizontal em vez
+     de encolher, que é o padrão do resto do módulo. */
+  .cf-grupo, .cf-vencimentos, .cf-parcelado { overflow-x: auto; }
+  .cf-tabela { min-width: 620px; }
+  .cf-candidatos { grid-template-columns: 1fr; }
+}

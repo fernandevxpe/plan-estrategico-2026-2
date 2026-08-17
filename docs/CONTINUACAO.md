@@ -1129,3 +1129,29 @@ UPDATE e recusa com a lista dos incompatíveis, em vez de deixar o gatilho
 apagar em silêncio. Para documento isso é ainda mais importante: lá **não há**
 gatilho de sinal, então a categoria errada seria simplesmente gravada e o D4
 quebraria.
+
+### O acidente da §6 aconteceu de novo, e desta vez do lado de quem perdeu
+
+O conteúdo desta frente está **inteiro** no commit `a242022`, que é da frente da
+DRE. Os 13 caminhos foram conferidos um a um contra o `HEAD` e batem byte a
+byte. Nada se perdeu — o que sumiu foi a mensagem de commit que explicava o
+raciocínio, exatamente como em `7ef4821`/`8256805` (§6), e é por isso que este
+parágrafo existe.
+
+**Como aconteceu, para a próxima pessoa não repetir.** Eu segui a regra pela
+metade: usei `git add` com caminhos nominais e `git commit -- <caminhos>` — mas
+o `git commit` **falhou** (arquivo de mensagem inexistente) e deixou tudo
+*staged*. A frente da DRE commitou nessa janela de segundos e levou os meus
+caminhos junto. Ironia registrada: a mensagem do `a242022` explica que ela
+deixou `index.ts` e `package.json` de fora justamente para não levar trabalho
+alheio.
+
+**A regra que faltava, e que a §6 já dizia:** *não deixe nada staged por mais
+que um passo entre `add` e `commit`*. Caminho nominal no `add` não protege — ele
+evita que você pegue o lixo alheio, não que o alheio pegue o seu. Com N frentes
+na mesma árvore, `add` e `commit` têm de ser **uma invocação só**, e um `commit`
+que falha tem de ser seguido de `git reset` imediato.
+
+Um efeito colateral bom: `lib/financeiro/contratos/index.ts` entrou no `a242022`
+com o bloco desta frente e **sem** o bloco da frente de custos, que continua não
+commitado na árvore, como estava. Ninguém perdeu nada.

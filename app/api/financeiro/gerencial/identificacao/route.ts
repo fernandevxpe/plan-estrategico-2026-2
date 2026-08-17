@@ -108,6 +108,19 @@ export const GET = rotaDeLeitura(async (sp) => {
       casos: inventario.casos,
       grupos,
       excluidos,
+      // Pendência sem destino vira relatório morto (é o que `Pendencia.telaDeDecisao`
+      // já dizia em contratos/base.ts). Aqui o destino é por CAMINHO, e dois deles
+      // ficam FORA desta frente de propósito: reclassificar em massa é da frente de
+      // categorização, e dois motores de reclassificação divergem — no dia em que
+      // divergirem, a DRE passa a ter duas versões.
+      ondeSeResolve: {
+        cadastrar_contraparte: "POST /api/financeiro/gerencial/identificacao/contraparte",
+        vincular_pessoa: "POST /api/financeiro/gerencial/identificacao/vinculo",
+        classificar: "POST /api/financeiro/gerencial/categorizacao/reclassificar-lote",
+        decisao_humana: "docs/DUVIDAS_FINANCEIRO.md — ver bloqueadoPor; depois POST .../identificacao/resolucao",
+        pedir_extrato: "fora do sistema: o extrato não existe neste ledger. Fechar com POST .../identificacao/resolucao quando a resposta for definitiva",
+        sem_fonte: "POST /api/financeiro/gerencial/identificacao/resolucao com decisao=sem_fonte"
+      },
       ressalvas: [
         "totalValorCents e valorCents ORDENAM, não totalizam: o mesmo lançamento aparece em até três " +
           "tipos de pendência e a coluna mistura estoque (perna sem extrato) com fluxo. Somar o inventário " +
@@ -117,7 +130,12 @@ export const GET = rotaDeLeitura(async (sp) => {
         "bloqueadoPor é o número da dúvida em docs/DUVIDAS_FINANCEIRO.md. Um caso pode ter dúvida e ser " +
           "alcançável (a dúvida 57 é de escopo, e a decisão técnica já existe).",
         "excluidos lista o que a varredura deixou de fora DE PROPÓSITO, com o motivo. Se o seu recount por " +
-          "fora não bate com este inventário, a diferença está ali."
+          "fora não bate com este inventário, a diferença está ali.",
+        "Esta frente INVENTARIA; ela não reclassifica em massa. Os casos com caminho 'classificar' vão para " +
+          "POST /api/financeiro/gerencial/categorizacao/reclassificar-lote (ver ondeSeResolve). Nenhuma rota " +
+          "daqui escreve em fin_transaction, nem por cascata — o que protege esta frente dos dois defeitos que " +
+          "a frente da DRE mediu: UPDATE de category_id sem classified_rule_id explícito estoura em 9.793 " +
+          "linhas, e categoria de sinal errado não é recusada, é apagada em silêncio."
       ]
     },
     { status: 200, headers: { "Cache-Control": "no-store" } }

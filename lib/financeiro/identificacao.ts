@@ -30,6 +30,36 @@ import { query, transaction } from "./db";
  *    existente e devolve `criada: false`. A A4 exige documento único em
  *    `fin_counterparty`, e o caminho que a viola é sempre o mesmo: um cadastro
  *    "novo" com um documento que já estava lá.
+ *
+ * 4. NÃO ESCREVE EM `fin_transaction`, NEM POR CASCATA — e isso é fronteira,
+ *    não omissão. Ver abaixo.
+ *
+ * A FRONTEIRA COM A FRENTE DE CATEGORIZAÇÃO (0101)
+ *
+ * Esta frente INVENTARIA e aponta o caminho; quem RECLASSIFICA em massa é
+ * `POST /api/financeiro/gerencial/categorizacao/reclassificar-lote`. Um caso com
+ * `caminho_de_correcao = 'classificar'` deve ser levado para lá, e não resolvido
+ * por um motor novo aqui — dois motores de reclassificação divergem, e o dia em
+ * que divergirem será um dia em que a DRE tem duas versões.
+ *
+ * A separação também protege desta frente dois defeitos que a frente da DRE
+ * (0102) mediu em `fin_transaction`:
+ *
+ *   - `UPDATE ... SET category_id = X` sem `classified_rule_id = NULL` explícito
+ *     no MESMO SET estoura em 9.793 linhas (R$ 4.599.435,44): o gatilho
+ *     `fin_transaction_categoria_sinal` zera o ponteiro num BEFORE, mas
+ *     `zz_fin_transaction_rule_version` só dispara com essas colunas no SET, a
+ *     versão fica órfã e o CHECK da 0088 recusa — com uma mensagem que fala de
+ *     regra quando o problema é de categoria.
+ *   - Categoria de sinal errado NÃO é recusada: o gatilho faz
+ *     `NEW.category_id := NULL` e devolve sucesso. Quem confiar na recusa
+ *     acredita ter classificado e apagou.
+ *
+ * Nenhuma função deste módulo faz UPDATE em `fin_transaction`, e
+ * `scripts/test-identificacao.mjs` prova isso por impressão digital das colunas
+ * de classificação antes e depois das três escritas. A prova existe porque o
+ * risco não é o código de hoje: é alguém acrescentar amanhã "e já aponta a
+ * contraparte nos lançamentos" ao cadastro e cair nos dois casos sem perceber.
  */
 
 // ---------------------------------------------------------------------------
@@ -383,6 +413,26 @@ export type VinculoDePessoa = {
  *
  * `status` nasce `confirmado` porque quem chama esta rota está confirmando; a
  * evidência guarda quem foi e por quê.
+ *
+ * O EFEITO A JUSANTE QUE ESTA ESCRITA TEM — e onde ele PARA
+ *
+ * `fin_person_counterparty` tem um AFTER INSERT que chama
+ * `fin_person_refresh_counterparty()`, e essa função faz UPDATE em
+ * `fin_person.counterparty_id`. A corrente para aí: ela não toca
+ * `fin_transaction`, e nenhum lançamento existente é reclassificado por este
+ * vínculo.
+ *
+ * Mas o efeito não é nulo, e quem chamar precisa saber qual é. O gatilho
+ * `fin_transaction_categoria_pessoa` (BEFORE INSERT OR UPDATE OF
+ * `counterparty_id`) lê `fin_person.default_category_id` pela contraparte. Ou
+ * seja: ligar uma das 12 pessoas que TÊM categoria padrão a uma contraparte
+ * muda como um lançamento FUTURO apontado àquela contraparte será classificado
+ * — ele nasceria com `classified_by = 'fato_estrutural'` e a categoria da
+ * pessoa, se for débito e ainda não tiver categoria.
+ *
+ * Isso é o comportamento desejado (a pessoa cadastrada define a natureza do
+ * pagamento; a descrição do extrato não), e é a razão de o vínculo exigir
+ * `motivo` escrito: ele não descreve só o passado, ele configura o futuro.
  */
 export async function vincularPessoaContraparte(v: VinculoDePessoa): Promise<{
   vinculoId: number;

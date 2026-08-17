@@ -290,6 +290,75 @@ try {
   prova('desfazer a resolução devolve o caso ao inventário', Number(voltou.n) === 1);
 
   // =========================================================================
+  // 6b. AS ESCRITAS NÃO ALCANÇAM fin_transaction — NEM POR CASCATA
+  //
+  // A frente da DRE (0102) provou dois defeitos que valem para qualquer código
+  // que reclassifique: um UPDATE de category_id sem `classified_rule_id = NULL`
+  // explícito no mesmo SET estoura em 9.793 linhas, e categoria de sinal errado
+  // não é recusada — é APAGADA em silêncio pelo gatilho
+  // `fin_transaction_categoria_sinal`, que devolve sucesso.
+  //
+  // Esta frente não escreve em fin_transaction, e o risco real não é o que o
+  // código faz hoje: é alguém acrescentar amanhã "e já aponta a contraparte nos
+  // lançamentos" ao cadastro, e cair nos dois casos sem perceber. Por isso a
+  // prova é uma impressão digital das colunas de classificação antes e depois
+  // das três escritas — se uma cascata aparecer, ela muda o hash.
+  //
+  // O caminho por onde a cascata VIRIA está mapeado: fin_person_counterparty
+  // tem AFTER INSERT que chama fin_person_refresh_counterparty(), e essa função
+  // só faz UPDATE em fin_person.counterparty_id. É onde a corrente para hoje.
+  // =========================================================================
+  console.log('\n6b. Nenhuma escrita desta frente alcança fin_transaction');
+
+  const digital = async () => {
+    const { rows: [d] } = await c.query(
+      `SELECT count(*) n, coalesce(sum(amount_cents),0) soma,
+              md5(string_agg(id || ':' || coalesce(category_id::text,'-')
+                  || ':' || coalesce(classified_rule_id::text,'-')
+                  || ':' || coalesce(classified_by,'-')
+                  || ':' || coalesce(counterparty_id::text,'-')
+                  || ':' || coalesce(nucleo,'-'), '|' ORDER BY id)) hash
+         FROM fin_transaction`
+    );
+    return `${d.n}/${d.soma}/${d.hash}`;
+  };
+
+  const antesEscrita = await digital();
+
+  // As MESMAS instruções que lib/financeiro/identificacao.ts emite.
+  const { rows: [entXpe] } = await c.query(`SELECT id FROM fin_entity WHERE slug='xpe'`);
+  const { rows: [novaCp] } = await c.query(
+    `INSERT INTO fin_counterparty (entity_id, kind, name, normalized_name, document_type, document_number, is_active)
+     VALUES ($1,'fornecedor','TESTE IDENTIFICACAO LTDA', upper(btrim('TESTE IDENTIFICACAO LTDA')),'cnpj','06913480000168', true)
+     RETURNING id`,
+    [entXpe.id]
+  );
+  prova('cadastro de contraparte executado', Boolean(novaCp.id));
+
+  const { rows: [pes] } = await c.query(
+    `SELECT id, entity_id FROM fin_person WHERE default_category_id IS NOT NULL LIMIT 1`
+  );
+  await c.query(
+    `INSERT INTO fin_person_counterparty
+       (entity_id, person_id, counterparty_id, is_primary, confidence, method, status, evidence, confirmed_by, confirmed_at)
+     VALUES ($1,$2,$3,false,1.0,'humano','confirmado',$4,'teste:identificacao', now())`,
+    [pes.entity_id, pes.id, novaCp.id, JSON.stringify({ origem: 'teste' })]
+  );
+  prova('vínculo pessoa ↔ contraparte executado (dispara fin_person_refresh_counterparty)', true,
+    'a pessoa escolhida TEM default_category_id — é o caso que mais chega perto do gatilho');
+
+  const depoisEscrita = await digital();
+  prova('fin_transaction intacta: contagem, soma e classificação idênticas',
+    antesEscrita === depoisEscrita,
+    'category_id, classified_rule_id, classified_by, counterparty_id e nucleo conferidos linha a linha');
+
+  const { rows: [alcance] } = await c.query(
+    `SELECT count(*) n FROM fin_transaction WHERE counterparty_id = $1`, [novaCp.id]
+  );
+  prova('a contraparte recém-criada não foi apontada por lançamento nenhum', Number(alcance.n) === 0,
+    'cadastrar é cadastrar; apontar lançamento é reclassificar, e é da frente 0101');
+
+  // =========================================================================
   // 7. AGRUPAMENTO POR CAUSA COMUM
   // =========================================================================
   console.log('\n7. Tamanho do problema × tamanho do trabalho');

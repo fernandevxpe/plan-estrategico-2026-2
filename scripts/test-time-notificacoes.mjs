@@ -52,6 +52,18 @@ const client = await pool.connect();
 try {
   await client.query('BEGIN');
 
+  // Linha de base ANTES de qualquer escrita do teste.
+  //
+  // A asserção final compara contra isto, e não contra zero. Assim que o
+  // agendador começou a rodar de verdade, `fin_notificacao` passou a ter
+  // linhas legítimas — e um teste que exige tabela vazia falharia por o
+  // produto estar funcionando. É o mesmo erro que a reexecução da migration
+  // já cometeu aqui: reprovar por sucesso.
+  const baseAntes = (await client.query(
+    `SELECT (SELECT count(*) FROM fin_time_envio)::int envios,
+            (SELECT count(*) FROM fin_notificacao)::int avisos`
+  ).catch(() => ({ rows: [{ envios: 0, avisos: 0 }] }))).rows[0];
+
   // -------------------------------------------------------------------------
   console.log('\n=== 1. ÂNCORA DE DINHEIRO (antes) ===');
   const antes = await client.query(
@@ -335,10 +347,13 @@ try {
     const linhas = await client.query(
       `SELECT (SELECT count(*) FROM fin_time_envio)::int envios,
               (SELECT count(*) FROM fin_notificacao)::int avisos`);
+    const depois = linhas.rows[0];
     afirma(
-      Number(linhas.rows[0].envios) === 0 && Number(linhas.rows[0].avisos) === 0,
-      'nada persistiu: as linhas do teste sumiram no ROLLBACK',
-      `${linhas.rows[0].envios} envio(s) · ${linhas.rows[0].avisos} aviso(s) no banco`
+      Number(depois.envios) === Number(baseAntes.envios) &&
+        Number(depois.avisos) === Number(baseAntes.avisos),
+      'nada persistiu: o banco voltou exatamente ao que era antes do teste',
+      `envios ${baseAntes.envios}→${depois.envios} · avisos ${baseAntes.avisos}→${depois.avisos}` +
+        (Number(baseAntes.avisos) > 0 ? ' (avisos reais, criados pelo agendador)' : '')
     );
   } else {
     afirma(persistiu.rows[0].n === 0, 'nada persistiu: a 0105 continua NÃO aplicada');

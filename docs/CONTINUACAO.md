@@ -3,6 +3,65 @@
 Este documento existe para quem chega depois. Ele é auto-suficiente: se você só
 puder ler um arquivo antes de tocar em qualquer coisa, leia este.
 
+## Frente E1+E2 — o app do time e as notificações · 16/08/2026 (migration 0105)
+
+Os dois pedidos nominais que a auditoria (`ENTREGAVEL_CONSOLIDADO.md` §2.3)
+achou esquecidos:
+
+> *"aplicativo web para o time cadastrar reembolsos, custos, enviar notas,
+> pedidos de compra e enviar por exemplo link de coisas pra comprar"* · *"vai
+> ter que ter telas, notificações"*
+
+**Migration `0105_fin_time_e_notificacoes.sql` — validada, NÃO aplicada.**
+`npm run test:time` executa o arquivo inteiro em transação, prova 10 recusas do
+banco, roda o caminho feliz, confere a idempotência do sync e dá ROLLBACK. Âncora
+de dinheiro idêntica antes e depois; a própria migration se recusa a commitar se
+mudar.
+
+```
+o que existia                        o que a 0105 abre
+fin_purchase_request .... 0 linhas   + link (tabela), quantidade, source=app_time
+193 itens de reembolso ... 0 anexos  + fin_anexo_blob (gzip+sha256, padrão xpe_artifacts)
+fin_document ...... 100% "receber"   + fin_time_envio kind='nota_entrada'
+nenhuma tabela de aviso              + fin_notificacao + fato_v + sync() idempotente
+```
+
+**Endereço: `/time`** — a palavra é do dono. `/api/time` é prefixo IRMÃO de
+`/api/financeiro`, não exceção dentro dele: abrir exceção numa regra de negação
+é o começo do fim dela. A decisão sobre envio alheio mora em
+`/api/financeiro/time`, que nasce 404 para o perfil comum por estar onde está.
+
+**A descoberta que mudou o desenho:** o Basic Auth tem **um par de credencial
+para o time inteiro**. Ele autentica "alguém do time", nunca "quem". Então a
+identidade é **declarada**, fica congelada em cada envio
+(`identidade_prova='declarada'`), aparece como selo hachurado para quem decide, e
+`fin_person_acesso` (PIN) nasce vazia como `fin_approval_rule`. Dúvida **58**.
+
+**A régua que não foi inventada:** "item de fila acima de que valor notifica?"
+fica NULL com motivo, e o gerador emite UM agregado ("1.555 itens, R$ 395.818,29,
+nenhum notificado individualmente") em vez de escolher um corte. Dúvida **59**.
+As três declaradas entraram semeadas: extrato D+1, NFe 10 dias, orçamento 95.
+
+**Sem canal externo, de propósito.** E-mail foi avaliado e recusado: toda
+notificação de gestão carrega valor em jogo, e mandar isso para fora do produto é
+decisão do Fernando, não minha. O modelo já suporta — falta a autorização, não o
+código.
+
+**Provas:** `npm run test:perfil-guard` varre 125 rotas e afirma três coisas —
+nenhuma rota fora do prefixo lê módulo financeiro (2 exceções declaradas com
+motivo), os 10 arquivos da superfície do time não mencionam nenhuma tabela de
+saldo/DRE/folha/margem/tributo, e nenhuma função exportada do time aceita
+`personId` (o escopo vem sempre da `Sessao`, então não existe assinatura onde
+caiba a pessoa errada).
+
+**Para aplicar:** `npm run db:backup` e então a 0105 sozinha — 0100–0104 são de
+outras frentes e não devem ser arrastadas (§6). Depois, `npm run notificar` faz
+dry-run e `npm run notificar:aplicar` grava; a etapa já está no `scheduler.mjs`,
+por último entre as financeiras, porque um aviso gerado antes do sync fala do
+estado de ontem.
+
+---
+
 ## Checkpoint — saúde da fila e das regras · 16/08/2026 (migration 0094)
 
 Frente dos três monitores fora da meta: M4, M13 e M14. **Nenhum centavo mudou de

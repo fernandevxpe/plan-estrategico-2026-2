@@ -15,7 +15,7 @@ import { brl } from "@/components/financeiro/Certeza";
  * **1. O contador conta o que EXIGE AÇÃO, não o que existe.** Um sino que
  * mostra 1.500 é um sino desligado: o número deixa de significar qualquer coisa
  * e a pessoa aprende a não olhar. Por isso a fila de decisão inteira aparece
- * como UM aviso agregado (a régua de valor não foi declarada — dúvida 58), e
+ * como UM aviso agregado (a régua de valor não foi declarada — dúvida 59), e
  * não como 1.555.
  *
  * **2. Valor só aparece para quem pode ver valor.** O corte é feito no

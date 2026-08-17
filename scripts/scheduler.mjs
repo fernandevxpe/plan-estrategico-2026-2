@@ -144,6 +144,24 @@ const STEPS = [
     args: ['--aplicar'],
     required: false
   },
+  // As notificações vêm por ÚLTIMO entre as etapas financeiras, e a ordem é o
+  // ponto: elas descrevem o estado do dia, e rodadas antes do sync avisariam
+  // sobre o estado de ontem — inclusive "fonte desatualizada" para uma fonte
+  // que a etapa seguinte ia atualizar. Um sino que acusa o que já foi
+  // resolvido ensina a ser ignorado no primeiro dia.
+  //
+  // Idempotente: a chave de deduplicação faz a segunda execução do mesmo dia
+  // incrementar o contador, não criar aviso novo. E ela também RESOLVE sozinha
+  // o que sumiu do mundo — é aqui que a caixa devolve ao estado de agora.
+  //
+  // `required: false` como o resto do financeiro, e por um motivo extra: até a
+  // 0105 ser aplicada o script sai limpo dizendo que não há o que fazer.
+  {
+    name: 'notificações',
+    script: 'scripts/notificar.mjs',
+    args: ['--aplicar'],
+    required: false
+  },
   // O backup vem DEPOIS das importações, para o artefato do dia já conter o que
   // entrou hoje. Antes, ele salvaria o estado de ontem e chamaria de hoje.
   { name: 'backup do financeiro', script: 'scripts/db-backup.mjs', required: false },

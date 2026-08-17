@@ -41,7 +41,7 @@
 --    todo envio carrega o que valia no momento. `fin_person_acesso` NASCE
 --    VAZIA, igual a fin_approval_rule: semear PIN seria inventar credencial
 --    que ninguém combinou. Enquanto vazia, tudo é 'declarada' e a tela diz
---    isso em voz alta. Virou a dúvida 57.
+--    isso em voz alta. Virou a dúvida 58.
 --
 -- 3. ENVIO DO TIME NÃO É LANÇAMENTO. Nada aqui toca fin_transaction, saldo de
 --    conta ou fin_document. O envio é PEDIDO; virar dinheiro exige uma decisão
@@ -70,7 +70,7 @@
 --    entram semeadas. A régua de "item de fila acima de que valor?" NÃO foi
 --    declarada: fica NULL, com motivo, e o gerador emite UM aviso agregado
 --    ("1.555 itens, R$ X em jogo, nenhum notificado individualmente porque não
---    há régua") em vez de escolher um corte. Dúvida 58.
+--    há régua") em vez de escolher um corte. Dúvida 59.
 --
 -- ---------------------------------------------------------------------------
 -- O QUE ESTA MIGRATION NÃO FAZ
@@ -430,8 +430,8 @@ INSERT INTO fin_notificacao_regra (slug, descricao, valor, unidade, motivo_ausen
    NULL, 'centavos',
    'não declarado — escolher um corte aqui inventaria governança que ninguém combinou, '
    'o mesmo motivo pelo qual fin_approval_rule nasceu vazia. Enquanto NULL, o gerador '
-   'emite um aviso AGREGADO da fila em vez de escolher um limiar. Dúvida 58.',
-   'em aberto (dúvida 58)')
+   'emite um aviso AGREGADO da fila em vez de escolher um limiar. Dúvida 59.',
+   'em aberto (dúvida 59)')
 ON CONFLICT (slug) DO NOTHING;
 
 CREATE TABLE fin_notificacao (
@@ -598,7 +598,7 @@ fila_item AS (
 ),
 
 -- (b) A fila sem régua — UM aviso agregado, porque escolher um corte aqui seria
---     inventar a governança que a dúvida 58 pergunta.
+--     inventar a governança que a dúvida 59 pergunta.
 fila_sem_regua AS (
   SELECT
     'fila_decisao_sem_regua'::text, 'perfil'::text, NULL::bigint, 'admin'::text, 'gestao'::text,
@@ -608,7 +608,7 @@ fila_sem_regua AS (
     'fila_decisao_sem_regua' AS dedupe_key,
     'Fila de decisão sem régua de valor' AS titulo,
     count(*) || ' itens aguardam decisão. Nenhum foi notificado individualmente porque '
-      || '"a partir de que valor avisar?" não está definido (fin_notificacao_regra.fila_decisao_valor_cents, dúvida 58).' AS corpo,
+      || '"a partir de que valor avisar?" não está definido (fin_notificacao_regra.fila_decisao_valor_cents, dúvida 59).' AS corpo,
     '/financeiro/revisao'::text,
     sum(r.amount_cents)::bigint,
     CASE WHEN sum(r.amount_cents) IS NULL THEN 'nenhum item da fila declara valor' END,

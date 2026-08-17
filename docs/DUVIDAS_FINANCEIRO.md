@@ -1918,6 +1918,86 @@ porque escopo é seu.
 
 ---
 
+## 58. A credencial do time é UMA só — quem enviou o reembolso é quem diz que é?
+
+**Em jogo:** a confiabilidade de cada envio do app do time, e a régua com que
+quem aprova lê o que está na fila. Hoje, R$ 42.320,34 em 193 itens de reembolso
+já existentes e tudo que entrar daqui para frente.
+
+**O fato.** O Basic Auth desta plataforma tem **dois pares** de credencial:
+`DASHBOARD_ADMIN_*` e `DASHBOARD_AUTH_*`. O segundo é o do time inteiro. Ele
+autentica *"alguém do time"* — nunca *"quem"*. Isso nunca importou porque o
+time só lia telas; com o app de envio (migration 0105) ele passa a escrever, e
+passa a importar.
+
+**O que foi construído, e por quê.** O app pede que a pessoa **declare** quem é,
+e guarda essa declaração numa sessão em banco (`fin_time_sessao`, token opaco,
+só o hash persistido). A declaração é escopo suficiente para separar as caixas —
+cada um vê só o que enviou —, mas **não é prova de identidade**, e o produto diz
+isso em voz alta: `fin_time_sessao.prova = 'declarada'` fica congelado em cada
+envio, aparece como selo hachurado ao lado do nome na fila de quem decide, e a
+tela de identificação explica o motivo em uma frase.
+
+`fin_person_acesso` (PIN por pessoa) existe e **nasce vazia**, pela mesma razão
+que `fin_approval_rule` nasceu vazia na dúvida 27: semear credencial que ninguém
+combinou é inventar governança. Se uma pessoa ganhar PIN, a tela passa a exigi-lo
+e o envio grava `prova = 'pin'` — sem deploy.
+
+**Opções:**
+
+*(a)* **Manter declarada.** Zero atrito, e a honestidade fica no selo. Adequado
+enquanto o time é pequeno e todo mundo se conhece. O risco real não é fraude
+elaborada: é alguém escolher o nome errado na pressa e o reembolso cair na conta
+de outra pessoa.
+
+*(b)* **Cadastrar PIN para quem manda dinheiro.** O admin define um PIN por
+pessoa; a tela passa a exigir. Custa uma conversa por pessoa e resolve o erro
+honesto do item (a). Não resolve compartilhamento de PIN — nada resolve, sem
+credencial individual de verdade.
+
+*(c)* **Credencial individual no Basic Auth** (um par por pessoa). É a única que
+torna a identidade *provada*. Custa administração de credencial no Railway e
+muda `middleware.ts`, que hoje compara contra exatamente dois pares.
+
+**Enquanto não houver resposta:** tudo entra com `identidade_prova='declarada'`,
+o selo aparece para quem decide, e nenhum número é inventado. A opção (b) é
+alcançável hoje, sem código novo — falta só o Fernando dizer quem tem PIN.
+
+---
+
+## 59. A partir de que valor um item de fila vira notificação?
+
+**Em jogo:** 1.555 itens pendentes, R$ 395.818,29 medidos em `fin_review_item`.
+
+**O fato.** As notificações (0105) sabem avisar "item entrou na fila de decisão
+acima de um valor". O valor não foi declarado. E ele não pode ser chutado: um
+corte baixo demais transforma o sino num contador de quatro dígitos — que é um
+sino desligado, porque a pessoa aprende a não olhar em uma semana; um corte alto
+demais faz o aviso nunca disparar e a régua existir só no papel.
+
+**O que foi feito.** `fin_notificacao_regra.fila_decisao_valor_cents` nasce
+**NULL, com motivo escrito na própria linha**, e o gerador emite **um** aviso
+agregado no lugar: *"1.555 itens aguardam decisão; nenhum foi notificado
+individualmente porque não há régua"*. Isso mantém o fato visível sem escolher
+por ele. As outras três réguas do módulo foram declaradas e entraram semeadas
+(extrato D+1, NFe 10 dias, orçamento 95 dias).
+
+**Opções, com o efeito medido de cada uma sobre a fila de hoje:**
+
+*(a)* **R$ 1.000** — notificaria a faixa alta da fila, o que na população atual
+é uma minoria dos itens e a maioria do dinheiro.
+*(b)* **R$ 5.000** — só o que muda a DRE do mês de forma perceptível.
+*(c)* **Nenhuma régua de valor; notificar por IDADE** — "está parado há mais de
+N dias". Alinha melhor com o problema real da fila, que é envelhecimento e não
+tamanho, e não depende de `amount_cents` (que é NULL em parte dos itens).
+*(d)* **Manter o agregado.** Um aviso, sempre atualizado, sem item a item.
+
+Antes de responder, vale ler a dúvida 54: 1.026 dos itens têm alvo anterior a
+2026 e estão fora do escopo declarado. Uma régua de valor sobre a fila inteira
+notificaria sobre dinheiro que o próprio dono já disse não perseguir.
+
+---
+
 ---
 
 ## Resolvida — Ancora Imobiliária, R$ 300,00 classificada por precedente

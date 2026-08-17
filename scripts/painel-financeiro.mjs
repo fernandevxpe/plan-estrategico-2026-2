@@ -47,13 +47,17 @@ try {
             a.opening_balance_cents,
             a.opening_balance_date,
             a.current_balance_cents,
+            sd.saldo_declarado_cents,
+            sd.declarado_em,
             a.opening_balance_cents + COALESCE(SUM(t.amount_cents), 0) AS calculado,
             max(t.posted_on) AS ultimo_lancamento,
             count(t.id) AS lancamentos
        FROM fin_account a
+       LEFT JOIN fin_conta_saldo_v sd ON sd.id = a.id
        LEFT JOIN fin_transaction t ON t.account_id = a.id
             AND (a.opening_balance_date IS NULL OR t.posted_on >= a.opening_balance_date)
-      GROUP BY a.id, a.slug, a.opening_balance_cents, a.opening_balance_date, a.current_balance_cents
+      GROUP BY a.id, a.slug, a.opening_balance_cents, a.opening_balance_date, a.current_balance_cents,
+               sd.saldo_declarado_cents, sd.declarado_em
       ORDER BY a.id`
   );
 
@@ -63,9 +67,21 @@ try {
     const diasParado = c.ultimo_lancamento
       ? Math.floor((hoje - new Date(c.ultimo_lancamento)) / 86_400_000)
       : null;
-    return { ...c, fecha, diasParado };
+    // Conta sem lançamento nenhum não "deixa de fechar" — ela não tem como ser
+    // conferida. Reconstruir saldo exige extrato, e o que existe ali é um saldo
+    // que uma pessoa leu no app do banco e declarou.
+    //
+    // A distinção não é sutil: divergência é defeito e se resolve com trabalho;
+    // ausência de extrato é lacuna de dado e só se resolve com o extrato. Somar
+    // as duas na mesma contagem já produziu os dois erros opostos — antes, as
+    // contas zeradas "fechavam" trivialmente e inflavam o 6/6; depois de ganhar
+    // saldo declarado, passaram a acusar defeito onde não há.
+    const conferivel = c.ultimo_lancamento !== null;
+    return { ...c, fecha, diasParado, conferivel };
   });
-  const fecham = contasAvaliadas.filter((c) => c.fecha).length;
+  const conferiveis = contasAvaliadas.filter((c) => c.conferivel);
+  const contasSemExtrato = contasAvaliadas.filter((c) => !c.conferivel);
+  const fecham = conferiveis.filter((c) => c.fecha).length;
 
   // -------------------------------------------------------------------------
   // Indicadores de organização do ledger
@@ -156,7 +172,7 @@ try {
   if (JSON_OUT) {
     console.log(JSON.stringify({
       medido_em: hoje.toISOString(),
-      caixa: { fecham, total: contasAvaliadas.length,
+      caixa: { fecham, total: conferiveis.length, semCobertura: contasSemExtrato.length,
                contas: contasAvaliadas.map((c) => ({ slug: c.slug, fecha: c.fecha, dias_parado: c.diasParado })) },
       indicadores: indicadores.map((i) => ({ nome: i.nome, ok: i.ok, total: i.total, pct: Number(i.pct.toFixed(1)) })),
       transferencia: {
@@ -164,22 +180,37 @@ try {
         acionavel: Number(ind.transito_acionavel),
         sem_cobertura_declarada: Number(ind.sem_cobertura)
       },
-      pronto: fecham === contasAvaliadas.length && abaixoDaMeta.length === 0
+      pronto: fecham === conferiveis.length && abaixoDaMeta.length === 0
     }, null, 2));
     process.exit(0);
   }
 
   console.log('\n══ REGRA ZERO — o caixa fecha? ══\n');
   for (const c of contasAvaliadas) {
-    const marca = c.fecha ? '✓' : '✗';
-    const dias = c.diasParado === null ? 'sem lançamento'
+    // Conta sem extrato: mostra o saldo DECLARADO, não o reconstruído. Imprimir
+    // R$ 0,00 ali seria repetir o erro que os saldos declarados vieram desfazer
+    // — e o Δ, que mede divergência, não significa nada onde não há o que
+    // divergir.
+    const marca = !c.conferivel ? '·' : c.fecha ? '✓' : '✗';
+    const dias = c.diasParado === null
+      ? (c.saldo_declarado_cents != null
+          ? `sem extrato · declarado em ${String(c.declarado_em).slice(0, 10)}`
+          : 'sem extrato e sem saldo declarado')
       : c.diasParado === 0 ? 'hoje'
       : `há ${c.diasParado} dia(s)`;
-    const delta = c.fecha ? '' : `  Δ ${brl(Number(c.calculado) - Number(c.current_balance_cents ?? 0))}`;
-    console.log(`  ${marca} ${c.slug.padEnd(18)} ${brl(c.calculado).padStart(14)}   último: ${dias}${delta}`);
+    // Sem extrato, o número que existe é o declarado — nunca o reconstruído,
+    // que ali é zero por ausência de dado e não por ausência de dinheiro.
+    const valor = c.conferivel ? c.calculado : (c.saldo_declarado_cents ?? 0);
+    const delta = !c.conferivel || c.fecha
+      ? ''
+      : `  Δ ${brl(Number(c.calculado) - Number(c.current_balance_cents ?? 0))}`;
+    console.log(`  ${marca} ${c.slug.padEnd(18)} ${brl(valor).padStart(14)}   último: ${dias}${delta}`);
   }
-  console.log(`\n  ${fecham}/${contasAvaliadas.length} contas fecham`);
-  if (fecham < contasAvaliadas.length) {
+  console.log(`\n  ${fecham}/${conferiveis.length} contas conferíveis fecham` +
+    (contasSemExtrato.length
+      ? ` · ${contasSemExtrato.length} sem extrato, saldo declarado (não confere por reconstrução)`
+      : ''));
+  if (fecham < conferiveis.length) {
     console.log('  ⚠ enquanto uma conta não fecha, os indicadores abaixo não valem nada');
   }
 
@@ -202,10 +233,10 @@ try {
   }
 
   console.log('\n══ VEREDITO ══\n');
-  if (fecham === contasAvaliadas.length && abaixoDaMeta.length === 0) {
+  if (fecham === conferiveis.length && abaixoDaMeta.length === 0) {
     console.log('  Base pronta: caixa fecha em todas as contas e nenhum indicador abaixo de 90%.');
   } else {
-    if (fecham < contasAvaliadas.length) {
+    if (fecham < conferiveis.length) {
       console.log(`  Caixa: ${contasAvaliadas.length - fecham} conta(s) não fecham — resolver antes de tudo.`);
     }
     if (abaixoDaMeta.length) {

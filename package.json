@@ -40,6 +40,7 @@
     "test:regra-saude": "node scripts/test-regra-saude.mjs",
     "test:transferencias-lacunas": "node scripts/test-transferencias-lacunas.mjs",
     "test:fila-lifecycle": "node scripts/test-fila-casos-lifecycle.mjs",
+    "test:identificacao": "node scripts/test-identificacao.mjs",
     "test:modelo-referencia": "node scripts/test-modelo-referencia.mjs",
     "test:contabil": "node scripts/test-contabil.mjs",
     "parear": "node scripts/parear-transferencias.mjs",

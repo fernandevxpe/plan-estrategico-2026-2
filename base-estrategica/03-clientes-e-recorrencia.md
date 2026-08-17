@@ -1,14 +1,14 @@
 # Clientes e recorrência
 
-Gerado em: 10/08/2026, 23:43:19
+Gerado em: 17/08/2026, 00:04:54
 
 ## Recorrência
 
-- Contas com mais de um fechamento (CNPJ): **32**
-- Contas repetidas (organização): **51**
-- Receita de repetição: **R$ 1.066.057**
-- Confiança CNPJ: **32** contas · R$ 569.946 (high)
-- Por nome de organização: **19** contas · R$ 496.111 (medium)
+- Contas com mais de um fechamento (CNPJ): **33**
+- Contas repetidas (organização): **52**
+- Receita de repetição: **R$ 1.069.971**
+- Confiança CNPJ: **33** contas · R$ 575.446 (high)
+- Por nome de organização: **19** contas · R$ 494.525 (medium)
 
 ## Origem da receita (novo vs repetido)
 
@@ -20,8 +20,8 @@ Gerado em: 10/08/2026, 23:43:19
 | 2026-04 | R$ 155.600 | R$ 91.900 | R$ 63.700 | 59,1% | 40,9% |
 | 2026-05 | R$ 130.800 | R$ 119.800 | R$ 11.000 | 91,6% | 8,4% |
 | 2026-06 | R$ 333.210 | R$ 92.450 | R$ 240.760 | 27,7% | 72,3% |
-| 2026-07 | R$ 312.686 | R$ 135.200 | R$ 177.486 | 43,2% | 56,8% |
-| 2026-08 | R$ 38.400 | R$ 23.000 | R$ 15.400 | 59,9% | 40,1% |
+| 2026-07 | R$ 311.100 | R$ 135.200 | R$ 175.900 | 43,5% | 56,5% |
+| 2026-08 | R$ 83.400 | R$ 62.500 | R$ 20.900 | 74,9% | 25,1% |
 
 ## Top 30 clientes por receita (organizações com fechamento)
 
@@ -40,8 +40,8 @@ Gerado em: 10/08/2026, 23:43:19
 | Empresarial Praia Guarapari | - | 4 | R$ 40.550 | R$ 33.550 | 2026-02 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | Edf Samsara | 10395888000162 | 3 | R$ 37.500 | R$ 32.500 | 2025-09 | 2026-01 | LDC - Laudo de disponibilidade de carga, OBRA, PIE - Projeto infra.  Eletrocalha e Emergência |
 | Enseada do Mar | 14006221000181 | 3 | R$ 35.000 | R$ 27.500 | 2025-02 | 2026-04 | PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA |
-| Edf Lajedo | - | 3 | R$ 30.440 | R$ 26.440 | 2026-01 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | Edifício Fernando Perez | 69904753000128 | 3 | R$ 28.996 | R$ 24.996 | 2026-03 | 2026-07 | LIE - Laudo de Instalações Elétricas, PROJETOS, OBRA |
+| Edf Lajedo | - | 3 | R$ 28.854 | R$ 24.854 | 2026-01 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | Edf Rio Siriji | 00942145000101 | 2 | R$ 31.000 | R$ 24.000 | 2025-12 | 2026-06 | LIE - Laudo de Instalações Elétricas, OBRA |
 | Edf FICUS | 41089830000114 | 3 | R$ 33.750 | R$ 23.250 | 2025-08 | 2026-06 | LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, PROJETOS, OBRA |
 | Edf Terra Brasilis | 04239390000108 | 4 | R$ 37.100 | R$ 20.100 | 2025-08 | 2026-03 | LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, ICV - Inspeção de carregador veicular |
@@ -60,10 +60,10 @@ Gerado em: 10/08/2026, 23:43:19
 
 ## Organizações no CRM
 
-- Total cadastradas: **1677**
-- Com pelo menos 1 fechamento: **169**
-- Com repetição (2+ fechamentos): **50**
-- Com negócios abertos agora: **644**
+- Total cadastradas: **1682**
+- Com pelo menos 1 fechamento: **172**
+- Com repetição (2+ fechamentos): **51**
+- Com negócios abertos agora: **639**
 
 ### Top 20 organizações com pipeline aberto
 
@@ -73,11 +73,11 @@ Gerado em: 10/08/2026, 23:43:19
 | Cond Casa da Montanha | 3 | 1 | 0 |
 | Edf Terra Brasilis | 3 | 4 | 0 |
 | ERS | 2 | 0 | 0 |
+| EDMUNDO DE LACERDA | 2 | 0 | 0 |
 | Edf Vila Verde | 2 | 0 | 0 |
 | Edf Quebra Mar | 2 | 1 | 0 |
 | Verano ADM | 2 | 2 | 0 |
 | Edf Isaac Salazar | 2 | 0 | 0 |
-| Edf Boa Viagem | 2 | 1 | 0 |
 | Edf Morada dos Agapanthus | 2 | 1 | 0 |
 | Edf Maria Regina | 2 | 1 | 1 |
 | Edf Reserva do Poço | 2 | 3 | 0 |

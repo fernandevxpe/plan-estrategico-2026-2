@@ -1,6 +1,6 @@
 # Investigação e alertas
 
-Gerado em: 10/08/2026, 23:43:19
+Gerado em: 17/08/2026, 00:04:54
 
 ## Alertas de performance
 
@@ -31,7 +31,7 @@ Gerado em: 10/08/2026, 23:43:19
 - Melhor mês de receita: **Jun/26** (R$ 333.210)
 - Melhor conversão dos novos negócios: **Jun/25** (40,9%)
 - Melhor mês de novos negócios: **Fev/25** (110 criados)
-- Recordes em 2026: **23** eventos
+- Recordes em 2026: **24** eventos
 
 ## Análise: tempo para fechar (2026)
 
@@ -43,8 +43,8 @@ Gerado em: 10/08/2026, 23:43:19
 | 2026-04 | 15 | 60 | 52 | R$ 155.600 |
 | 2026-05 | 14 | 84 | 40 | R$ 130.800 |
 | 2026-06 | 23 | 49 | 29 | R$ 319.290 |
-| 2026-07 | 27 | 52 | 44 | R$ 301.300 |
-| 2026-08 | 6 | 26 | 14 | R$ 38.400 |
+| 2026-07 | 27 | 52 | 44 | R$ 299.714 |
+| 2026-08 | 10 | 38 | 23 | R$ 83.400 |
 
 ## Padrões de mix em picos
 
@@ -54,7 +54,7 @@ Gerado em: 10/08/2026, 23:43:19
 
 ## Alertas de qualidade de dados
 
-- **Cobertura de CNPJ parcial** (high): 270/1677 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
-- **Negócios ganhos sem etiqueta comercial explícita** (medium): 3/238 ganhos usam fallback de serviço/funil como tipo principal.
-- **Negócios com múltiplas etiquetas** (medium): 45 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
-- **Base aberta contém negócios antigos** (high): 175 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.
+- **Cobertura de CNPJ parcial** (high): 276/1682 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
+- **Negócios ganhos sem etiqueta comercial explícita** (medium): 3/242 ganhos usam fallback de serviço/funil como tipo principal.
+- **Negócios com múltiplas etiquetas** (medium): 47 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
+- **Base aberta contém negócios antigos** (high): 181 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.

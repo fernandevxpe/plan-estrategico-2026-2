@@ -1,30 +1,30 @@
 # Analise comercial e projetos - XPE Consultoria
 
-Gerado em: 10/08/2026, 23:43:19
+Gerado em: 17/08/2026, 00:04:54
 
 ## Resumo executivo
 
-- Negocios analisados no Pipedrive: 1108 em 2025-2026.
-- Negocios ganhos no periodo: 238, somando R$ 2.461.856.
-- Ticket medio geral dos negocios ganhos: R$ 10.344.
-- Tarefas/projetos encontrados no ClickUp: 1694; candidatos de producao ligados a projetos/operacao: 1331.
-- 2026-08 deve ser lido como parcial, pois a base foi extraida em 10/08/2026.
+- Negocios analisados no Pipedrive: 1113 em 2025-2026.
+- Negocios ganhos no periodo: 242, somando R$ 2.505.270.
+- Ticket medio geral dos negocios ganhos: R$ 10.352.
+- Tarefas/projetos encontrados no ClickUp: 1827; candidatos de producao ligados a projetos/operacao: 1420.
+- 2026-08 deve ser lido como parcial, pois a base foi extraida em 17/08/2026.
 - O Pipedrive nao trouxe produtos por negocio; a classificacao inicial de servico usa principalmente funil/etapa e, quando necessario, termos explicitos no titulo.
 - Para tipos de negocio, a fonte principal agora e a etiqueta comercial do Pipedrive: LIE, LDC, LCC, PIE, OBRA, PROJETOS, LSPDA, CDM, ICV e instalacao de carregador.
-- Cobertura de CNPJ nas organizacoes: 270/1677; nos ganhos analisados: 132/238.
+- Cobertura de CNPJ nas organizacoes: 276/1682; nos ganhos analisados: 136/242.
 - Arquivos tabulares gerados em `data/processed/*.csv` para revisao e uso em planilhas.
 
 ## Funil comercial mensal
 
 | Mes | Novos negocios | Valor criado | Ganhos no mes | Receita ganha | Perdidos no mes | Conversao novos neg. | Base aberta fim do mes | Valor em aberto |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2026-01 | 59 | R$ 823.738 | 14 | R$ 180.132 | 20 | +28,8% | 520 | R$ 2.413.994 |
-| 2026-02 | 59 | R$ 478.290 | 15 | R$ 198.165 | 17 | +32,2% | 547 | R$ 2.556.389 |
-| 2026-03 | 83 | R$ 438.000 | 19 | R$ 222.450 | 29 | +13,3% | 582 | R$ 2.553.639 |
-| 2026-04 | 74 | R$ 841.250 | 15 | R$ 155.600 | 25 | +20,3% | 616 | R$ 3.064.989 |
-| 2026-05 | 91 | R$ 1.006.005 | 14 | R$ 130.800 | 22 | +22% | 671 | R$ 3.740.994 |
-| 2026-06 | 92 | R$ 1.146.260 | 25 | R$ 333.210 | 37 | +16,3% | 702 | R$ 4.133.464 |
-| 2026-07 | 67 | R$ 594.192 | 29 | R$ 312.686 | 72 | +20,9% | 667 | R$ 3.462.945 |
+| 2026-01 | 59 | R$ 823.738 | 14 | R$ 180.132 | 20 | +28,8% | 519 | R$ 2.413.390 |
+| 2026-02 | 59 | R$ 476.704 | 15 | R$ 198.165 | 17 | +32,2% | 546 | R$ 2.554.198 |
+| 2026-03 | 83 | R$ 466.000 | 19 | R$ 222.450 | 29 | +13,3% | 581 | R$ 2.579.448 |
+| 2026-04 | 74 | R$ 841.250 | 15 | R$ 155.600 | 25 | +20,3% | 615 | R$ 3.090.798 |
+| 2026-05 | 90 | R$ 958.705 | 14 | R$ 130.800 | 21 | +24,4% | 670 | R$ 3.732.503 |
+| 2026-06 | 91 | R$ 1.151.760 | 25 | R$ 333.210 | 36 | +16,5% | 701 | R$ 4.130.473 |
+| 2026-07 | 67 | R$ 588.792 | 29 | R$ 311.100 | 72 | +23,9% | 666 | R$ 3.456.141 |
 
 ## 2026 mes a mes
 
@@ -34,17 +34,17 @@ Gerado em: 10/08/2026, 23:43:19
 | 2026-02 | 59 | 15 | R$ 198.165 | R$ 13.211 | +10% |
 | 2026-03 | 83 | 19 | R$ 222.450 | R$ 11.708 | +12,3% |
 | 2026-04 | 74 | 15 | R$ 155.600 | R$ 10.373 | -30,1% |
-| 2026-05 | 91 | 14 | R$ 130.800 | R$ 9.343 | -15,9% |
-| 2026-06 | 92 | 25 | R$ 333.210 | R$ 13.328 | +154,7% |
-| 2026-07 | 67 | 29 | R$ 312.686 | R$ 10.782 | -6,2% |
-| 2026-08 | 29 | 6 | R$ 38.400 | R$ 6.400 | -87,7% |
+| 2026-05 | 90 | 14 | R$ 130.800 | R$ 9.343 | -15,9% |
+| 2026-06 | 91 | 25 | R$ 333.210 | R$ 13.328 | +154,7% |
+| 2026-07 | 67 | 29 | R$ 311.100 | R$ 10.728 | -6,6% |
+| 2026-08 | 37 | 10 | R$ 83.400 | R$ 8.340 | -73,2% |
 
 ## Leitura de crescimento em 2026
 
-- De janeiro a maio, foram criados 525 novos negocios, media de 75 por mes.
+- De janeiro a maio, foram criados 523 novos negocios, media de 74,7 por mes.
 - No mesmo periodo, foram fechados 131 negocios, media de 18,7 por mes.
-- Receita ganha de janeiro a maio: R$ 1.533.043, media mensal de R$ 219.006.
-- No mesmo recorte de janeiro a maio, 2025 somou R$ 353.000; 2026 esta +334,3% acima.
+- Receita ganha de janeiro a maio: R$ 1.531.456, media mensal de R$ 218.779.
+- No mesmo recorte de janeiro a maio, 2025 somou R$ 353.000; 2026 esta +333,8% acima.
 - O segundo semestre de 2025 somou R$ 537.413, com 59 fechamentos.
 - A receita caiu por tres meses completos seguidos depois do pico de fevereiro: marco, abril e maio. Junho ainda e parcial.
 
@@ -56,16 +56,16 @@ Gerado em: 10/08/2026, 23:43:19
 | Fev | R$ 37.500 | R$ 198.165 | +428,4% | 110 | 59 | 3 | 15 | +10% |
 | Mar | R$ 10.500 | R$ 222.450 | +2.018,6% | 13 | 83 | 1 | 19 | +12,3% |
 | Abr | R$ 75.800 | R$ 155.600 | +105,3% | 28 | 74 | 6 | 15 | -30,1% |
-| Mai | R$ 64.160 | R$ 130.800 | +103,9% | 28 | 91 | 7 | 14 | -15,9% |
-| Jun | R$ 77.000 | R$ 333.210 | +332,7% | 22 | 92 | 12 | 25 | +154,7% |
+| Mai | R$ 64.160 | R$ 130.800 | +103,9% | 28 | 90 | 7 | 14 | -15,9% |
+| Jun | R$ 77.000 | R$ 333.210 | +332,7% | 22 | 91 | 12 | 25 | +154,7% |
 
 ## Projecao 2026.2 com base historica
 
 | Cenario | Premissa | Receita projetada jul-dez | Projetos fechados estimados |
 | --- | --- | ---: | ---: |
-| Conservador | 85% do ritmo medio real de 2026-01 a 2026-07 | R$ 930.776 | 80 |
-| Ritmo atual | Media mensal real de 2026-01 a 2026-07 aplicada aos 5 meses restantes | R$ 1.095.031 | 94 |
-| Realista recomendado | Ritmo atual com aceleracao sazonal moderada derivada de 2025 | R$ 1.259.285 | 108 |
+| Conservador | 85% do ritmo medio real de 2026-01 a 2026-07 | R$ 929.813 | 80 |
+| Ritmo atual | Media mensal real de 2026-01 a 2026-07 aplicada aos 5 meses restantes | R$ 1.093.897 | 94 |
+| Realista recomendado | Ritmo atual com aceleracao sazonal moderada derivada de 2025 | R$ 1.257.982 | 108 |
 
 > Recomendacao: usar o cenario "Realista recomendado" como forecast de planejamento, mantendo o potencial sazonal como teto agressivo e nao como compromisso operacional.
 
@@ -73,11 +73,11 @@ Gerado em: 10/08/2026, 23:43:19
 
 | Mes | Receita 2025 base | Projecao ponderada 2026 | Fechamentos estimados |
 | --- | ---: | ---: | ---: |
-| 2026-08 | R$ 105.200 | R$ 246.508 | 26 |
-| 2026-09 | R$ 82.314 | R$ 192.881 | 20 |
-| 2026-10 | R$ 112.150 | R$ 262.794 | 18 |
-| 2026-11 | R$ 99.460 | R$ 233.058 | 24 |
-| 2026-12 | R$ 138.289 | R$ 324.044 | 20 |
+| 2026-08 | R$ 105.200 | R$ 246.253 | 26 |
+| 2026-09 | R$ 82.314 | R$ 192.681 | 20 |
+| 2026-10 | R$ 112.150 | R$ 262.522 | 18 |
+| 2026-11 | R$ 99.460 | R$ 232.817 | 24 |
+| 2026-12 | R$ 138.289 | R$ 323.709 | 20 |
 
 ## Tipos de negocios fechados por mes
 
@@ -121,7 +121,7 @@ Gerado em: 10/08/2026, 23:43:19
 | 2026-06 | LGR - Laudo de Gerenciamento de Risco | 2 | R$ 9.000 | R$ 4.500 | n/a | n/a |
 | 2026-06 | LCC - Laudo Carregador Coletivo | 2 | R$ 8.300 | R$ 4.150 | +27,7% | n/a |
 | 2026-06 | PIE - Projeto infra.  Eletrocalha e Emergência | 1 | R$ 4.600 | R$ 4.600 | -63,2% | n/a |
-| 2026-07 | OBRA | 9 | R$ 151.600 | R$ 16.844 | -16,1% | +1.338,3% |
+| 2026-07 | OBRA | 9 | R$ 150.014 | R$ 16.668 | -17% | +1.323,3% |
 | 2026-07 | LIE - Laudo de Instalações Elétricas | 8 | R$ 65.300 | R$ 8.163 | +67% | +744,4% |
 | 2026-07 | LDC - Laudo de disponibilidade de carga | 6 | R$ 52.400 | R$ 8.733 | -1,7% | +26,2% |
 | 2026-07 | PROJETOS | 5 | R$ 28.386 | R$ 5.677 | +136,5% | +530,8% |
@@ -130,9 +130,9 @@ Gerado em: 10/08/2026, 23:43:19
 
 ## Pos-venda e recorrencia
 
-- Contas com mais de um fechamento no mesmo CNPJ: 32.
-- Contas com mais de um fechamento por organizacao normalizada: 51.
-- Receita de repeticao por organizacao no periodo: R$ 1.066.057.
+- Contas com mais de um fechamento no mesmo CNPJ: 33.
+- Contas com mais de um fechamento por organizacao normalizada: 52.
+- Receita de repeticao por organizacao no periodo: R$ 1.069.971.
 
 | Conta/CNPJ | Cliente | Fechamentos | Receita total | Receita repetida | Primeiro ganho | Ultimo ganho | Tipos |
 | --- | --- | ---: | ---: | ---: | --- | --- | --- |
@@ -149,8 +149,8 @@ Gerado em: 10/08/2026, 23:43:19
 | org:praia guarapari | Empresarial Praia Guarapari | 4 | R$ 40.550 | R$ 33.550 | 2026-02 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | 10395888000162 | Edf Samsara | 3 | R$ 37.500 | R$ 32.500 | 2025-09 | 2026-01 | LDC - Laudo de disponibilidade de carga, OBRA, PIE - Projeto infra.  Eletrocalha e Emergência |
 | 14006221000181 | Enseada do Mar | 3 | R$ 35.000 | R$ 27.500 | 2025-02 | 2026-04 | PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA |
-| org:lajedo | Edf Lajedo | 3 | R$ 30.440 | R$ 26.440 | 2026-01 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | 69904753000128 | Edifício Fernando Perez | 3 | R$ 28.996 | R$ 24.996 | 2026-03 | 2026-07 | LIE - Laudo de Instalações Elétricas, PROJETOS, OBRA |
+| org:lajedo | Edf Lajedo | 3 | R$ 28.854 | R$ 24.854 | 2026-01 | 2026-07 | LIE - Laudo de Instalações Elétricas, OBRA, PROJETOS |
 | 00942145000101 | Edf Rio Siriji | 2 | R$ 31.000 | R$ 24.000 | 2025-12 | 2026-06 | LIE - Laudo de Instalações Elétricas, OBRA |
 | 41089830000114 | Edf FICUS | 3 | R$ 33.750 | R$ 23.250 | 2025-08 | 2026-06 | LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, PROJETOS, OBRA |
 | 04239390000108 | Edf Terra Brasilis | 4 | R$ 37.100 | R$ 20.100 | 2025-08 | 2026-03 | LDC - Laudo de disponibilidade de carga, PIE - Projeto infra.  Eletrocalha e Emergência, OBRA, ICV - Inspeção de carregador veicular |
@@ -161,8 +161,8 @@ Gerado em: 10/08/2026, 23:43:19
 
 | Servico | Projetos ganhos | Receita | Ticket medio | Primeiro fechamento | Ultimo fechamento |
 | --- | ---: | ---: | ---: | --- | --- |
-| Laudos e consultoria condominial | 198 | R$ 1.664.361 | R$ 8.406 | 2025-01 | 2026-08 |
-| Obras eletricas | 40 | R$ 797.495 | R$ 19.937 | 2025-04 | 2026-08 |
+| Laudos e consultoria condominial | 202 | R$ 1.709.361 | R$ 8.462 | 2025-01 | 2026-08 |
+| Obras eletricas | 40 | R$ 795.909 | R$ 19.898 | 2025-04 | 2026-08 |
 
 ## Servicos que apareceram em 2026
 
@@ -279,7 +279,7 @@ Gerado em: 10/08/2026, 23:43:19
 | 2026-06 | Edf. Cap d'Antibes | Edf. Cap d'Antibes | Obras eletricas | R$ 4.500 |
 | 2026-06 | Edf Varanda do Parque | Edf Varanda do Parque | Laudos e consultoria condominial | R$ 7.920 |
 | 2026-07 | Edf Maria Tereza negócio | Edf Maria Tereza | Laudos e consultoria condominial | R$ 8.000 |
-| 2026-07 | Edf Lajedo negócio | Edf Lajedo | Obras eletricas | R$ 20.440 |
+| 2026-07 | Edf Lajedo negócio | Edf Lajedo | Obras eletricas | R$ 18.854 |
 | 2026-07 | Edf Joana D'Arc negócio | Edf Joana D'Arc | Laudos e consultoria condominial | R$ 6.000 |
 | 2026-07 | Edf. Queen Mary | Edf. Queen Mary | Laudos e consultoria condominial | R$ 6.000 |
 | 2026-07 | Condominio do Edificio Maria Ines | Condominio do Edificio Maria Ines | Laudos e consultoria condominial | R$ 7.000 |
@@ -308,14 +308,18 @@ Gerado em: 10/08/2026, 23:43:19
 | 2026-07 | Empresarial Praia de Guarapari | Empresarial Praia de Guarapari | Obras eletricas | R$ 3.750 |
 | 2026-07 | Edf Lajedo | Edf Lajedo | Laudos e consultoria condominial | R$ 6.000 |
 | 2026-08 | Ed. Ana Paula | Ed. Ana Paula | Laudos e consultoria condominial | R$ 5.000 |
+| 2026-08 | Edf Maria Flavia | Edf Maria Flavia | Laudos e consultoria condominial | R$ 15.000 |
+| 2026-08 | Edf Boa Viagem | Edf Boa Viagem | Laudos e consultoria condominial | R$ 5.500 |
+| 2026-08 | Edf Luar dos Corais | Edf Luar dos Corais | Laudos e consultoria condominial | R$ 9.000 |
 | 2026-08 | Maria Tereza Coelho | Maria Tereza Coelho | Laudos e consultoria condominial | R$ 6.500 |
 | 2026-08 | Edf Vasco da Gama | Edf Vasco da Gama | Laudos e consultoria condominial | R$ 11.500 |
+| 2026-08 | Edf Maria Juliana | Edf Maria Juliana | Laudos e consultoria condominial | R$ 15.500 |
 | 2026-08 | EMPRESARIAL. CASA FORTE | EMPRESARIAL. CASA FORTE | Obras eletricas | R$ 7.900 |
 | 2026-08 | EMPRESARIAL. CASA FORTE | EMPRESARIAL. CASA FORTE | Obras eletricas | R$ 1.500 |
 | 2026-08 | Condomínio Carmen Costa | Condomínio Carmen Costa | Laudos e consultoria condominial | R$ 6.000 |
 
 ## Pontos de atencao para cruzamento Pipedrive x ClickUp
 
-- Ha 121 negocio(s) ganhos sem correspondencia simples por nome em tarefas candidatas de producao do ClickUp.
+- Ha 122 negocio(s) ganhos sem correspondencia simples por nome em tarefas candidatas de producao do ClickUp.
 - Listas de teste/dev/copia foram excluidas da contagem de projetos candidatos do ClickUp.
 - Para granularidade fina de servicos, o ideal e padronizar um campo obrigatorio no Pipedrive ou preencher produtos por negocio; hoje o CRM separa com confianca principalmente "Laudos e consultoria condominial" vs "Obras eletricas".

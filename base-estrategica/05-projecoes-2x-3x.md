@@ -1,6 +1,6 @@
 # Projeções operacionais 2x e 3x
 
-Gerado em: 10/08/2026, 23:43:19
+Gerado em: 17/08/2026, 00:04:54
 
 Compare os dois cenários de crescimento usados no dashboard.
 
@@ -8,8 +8,8 @@ Compare os dois cenários de crescimento usados no dashboard.
 > R$ 1M no H1 · 2× H2/2025 · superar R$ 2M no ano
 Executar cenário Realista com H1 ajustado para R$ 1M, 2 comerciais e 5 projetistas — recorrência contabilizada à parte.
 - Meta H1: **R$ 1.000.000**
-- Meta H2: **R$ 1.259.285**
-- Meta ano: **R$ 2.259.285**
+- Meta H2: **R$ 1.257.982**
+- Meta ano: **R$ 2.257.982**
 - Recorrência e novas fontes de receita serão acompanhadas à parte — não entram nesta meta de contratos fechados.
 ## Capacidade
 - Comercial: 2 → 3 recomendado
@@ -22,11 +22,11 @@ Executar cenário Realista com H1 ajustado para R$ 1M, 2 comerciais e 5 projetis
 ## Metas mês a mês (jul–dez/2026)
 | Mês | Receita | Fechamentos | Ticket | Novos neg. | Conv. | Tráfego | Fech./comercial |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Ago | R$ 246.508 | 21,1 | R$ 11.703 | 96 | 22% | R$ 2.500 | 10,5 |
-| Set | R$ 192.881 | 16,5 | R$ 11.703 | 75 | 22% | R$ 2.500 | 8,2 |
-| Out | R$ 262.794 | 22,5 | R$ 11.703 | 102 | 22% | R$ 2.500 | 11,2 |
-| Nov | R$ 233.058 | 19,9 | R$ 11.703 | 91 | 22% | R$ 2.500 | 10 |
-| Dez | R$ 324.044 | 27,7 | R$ 11.703 | 126 | 22% | R$ 2.500 | 13,8 |
+| Ago | R$ 246.253 | 21,1 | R$ 11.691 | 93 | 22,8% | R$ 2.500 | 10,5 |
+| Set | R$ 192.681 | 16,5 | R$ 11.691 | 72 | 22,8% | R$ 2.500 | 8,2 |
+| Out | R$ 262.522 | 22,5 | R$ 11.691 | 99 | 22,8% | R$ 2.500 | 11,2 |
+| Nov | R$ 232.817 | 19,9 | R$ 11.691 | 87 | 22,8% | R$ 2.500 | 10 |
+| Dez | R$ 323.709 | 27,7 | R$ 11.691 | 122 | 22,8% | R$ 2.500 | 13,8 |
 
 ---
 
@@ -43,13 +43,13 @@ Escala proporcional ao cenário Realista histórico (sazonalidade 2025 + mix rea
 - Com 5 projetistas e automação, 5,7 projetos/pessoa/mês é absorvível (histórico com 3: 6,2/pessoa).
 ## Tráfego
 - H1: R$ 16.000
-- Anual: R$ 35.855
+- Anual: R$ 35.875
 - CPA médio: R$ 140
 ## Metas mês a mês (jul–dez/2026)
 | Mês | Receita | Fechamentos | Ticket | Novos neg. | Conv. | Tráfego | Fech./comercial |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Ago | R$ 391.505 | 33,5 | R$ 11.703 | 152 | 22% | R$ 3.971 | 16,7 |
-| Set | R$ 306.334 | 26,2 | R$ 11.703 | 119 | 22% | R$ 3.971 | 13,1 |
-| Out | R$ 417.370 | 35,7 | R$ 11.703 | 162 | 22% | R$ 3.971 | 17,8 |
-| Nov | R$ 370.143 | 31,6 | R$ 11.703 | 144 | 22% | R$ 3.971 | 15,8 |
-| Dez | R$ 514.648 | 44 | R$ 11.703 | 200 | 22% | R$ 3.971 | 22 |
+| Ago | R$ 391.505 | 33,5 | R$ 11.691 | 147 | 22,8% | R$ 3.975 | 16,7 |
+| Set | R$ 306.334 | 26,2 | R$ 11.691 | 115 | 22,8% | R$ 3.975 | 13,1 |
+| Out | R$ 417.370 | 35,7 | R$ 11.691 | 157 | 22,8% | R$ 3.975 | 17,9 |
+| Nov | R$ 370.143 | 31,7 | R$ 11.691 | 139 | 22,8% | R$ 3.975 | 15,8 |
+| Dez | R$ 514.648 | 44 | R$ 11.691 | 193 | 22,8% | R$ 3.975 | 22 |

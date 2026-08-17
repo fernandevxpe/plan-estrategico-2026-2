@@ -901,6 +901,23 @@ para testar.
 O `migrate.mjs` usa `lock_timeout = 10s`. Espere e repita — um laço de 6
 tentativas com 25s entre elas resolveu todas as vezes.
 
+**O deploy do Railway empacota o DIRETÓRIO DE TRABALHO, não o commit.** Esta é
+a mais cara das lições de convivência, e só apareceu em 17/08/2026. Ao implantar
+com `mcp__railway__deploy`, o que sobe é a árvore como está — **incluindo arquivo
+não commitado de agente que ainda trabalha**. Naquele deploy foi junto uma
+migration (`0108`) numa versão intermediária; o boot da produção roda
+`runMigrationsOrDegrade()` e **aplicou-a**, com `applied_by='web'`.
+
+O estrago tem dois lados. O banco ficou com views de uma versão que ninguém
+reviu — uma sugeria R$ 204,72 para uma conta que custa R$ 99,90, porque o mês
+de referência tinha duas faturas. E o repositório divergiu do banco, o que
+**trava `npm run db:migrate` para todas as frentes**, já que o runner recusa
+arquivo alterado depois de aplicado — e está certo em recusar.
+
+Antes de qualquer deploy: `git status --short` tem de estar **limpo**. Se houver
+frente trabalhando, ou se espera, ou se implanta de uma cópia limpa do commit.
+Nunca da árvore viva.
+
 **Um `git add -A` de um agente versiona os temporários dos outros.** Aconteceu
 duas vezes (`.valida-sql-tmp.mjs`, `probe-comissao.tmp.mjs`). Prefira `git add`
 com caminhos explícitos.

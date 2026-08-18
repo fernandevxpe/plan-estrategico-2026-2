@@ -11,6 +11,9 @@
 //   5. o corpo do aviso da fila nao expoe nome de coluna
 //   6. duas execucoes simultaneas do botao nao coexistem (indice unico parcial)
 //   7. o gerador continua idempotente: rodar sync duas vezes nao cria aviso novo
+//   8. o plano das etapas existe ANTES da primeira rodar — e por isso o
+//      percentual tem denominador; etapa que nunca rodou fica registrada, e o
+//      banco recusa status 'erro' sem motivo
 //
 // Por que ele existe: a frente anterior entregou codigo INERTE porque comparava
 // '2026-08-01' com '2026-08' em texto e a condicao nunca era verdadeira. Codigo
@@ -487,6 +490,101 @@ try {
   assert(relido.status === 'parcial' && relido.fechou === true, 'a execucao parcial nao fechou direito');
   assert(relido.erro_da_etapa === triste.erro, 'o erro da etapa nao sobreviveu ao banco');
   passo('a trilha guarda inicio, fim, resultado por etapa e o erro — relido do banco');
+
+  // -------------------------------------------------------------------------
+  // O PLANO INTEIRO, gravado ANTES da primeira etapa rodar.
+  //
+  // Este e o denominador do percentual. Enquanto a trilha so ganhava a etapa no
+  // instante em que ela comecava, "2 etapas gravadas" tanto podia ser 2 de 2
+  // quanto 2 de 6 — e um percentual sem denominador e uma barra decorativa.
+  //
+  // O plano vem de `etapasDoEscopo`, do proprio trabalhador. Escrever a lista
+  // aqui provaria o teste, nao o codigo, e ela divergiria no primeiro mes.
+  console.log('\n== 7b. o plano, o progresso e o que nao rodou ===========');
+  const previstas = trabalhador.etapasDoEscopo('todas');
+  const plano = previstas.map((e, i) => ({
+    ordem: i + 1, etapa: e.nome, script: e.script, fonte: e.fonte, estado: 'pendente'
+  }));
+
+  const execP = await um(
+    `INSERT INTO fin_fonte_sync_execucao (entity_id, escopo, status, ator)
+     VALUES ($1, 'todas', 'rodando', 'teste') RETURNING id`,
+    [entidade.id]
+  );
+  await client.query(`UPDATE fin_fonte_sync_execucao SET etapas = $2::jsonb WHERE id = $1`,
+    [execP.id, JSON.stringify(plano)]);
+
+  const contarEtapas = (id) => um(
+    `SELECT jsonb_array_length(etapas) previstas,
+            (SELECT count(*) FROM jsonb_array_elements(etapas) x WHERE x->>'estado' = 'ok')       ok,
+            (SELECT count(*) FROM jsonb_array_elements(etapas) x WHERE x->>'estado' = 'erro')     falhas,
+            (SELECT count(*) FROM jsonb_array_elements(etapas) x WHERE x->>'estado' = 'pendente') pendentes,
+            (SELECT string_agg(x->>'ordem', ',' ORDER BY (x->>'ordem')::int)
+               FROM jsonb_array_elements(etapas) x) ordens
+       FROM fin_fonte_sync_execucao WHERE id = $1`, [id]);
+
+  const zero = await contarEtapas(execP.id);
+  console.log(`  plano gravado: ${zero.previstas} etapa(s), ordens ${zero.ordens}` +
+    ` · pendentes ${zero.pendentes} · concluidas ${Number(zero.ok) + Number(zero.falhas)}`);
+  assert(Number(zero.previstas) === previstas.length,
+    `o plano gravado tem ${zero.previstas} etapa(s) e o escopo prevê ${previstas.length}`);
+  assert(Number(zero.pendentes) === previstas.length,
+    'ha etapa que ja nasce concluida — o denominador comecaria menor que o plano');
+  assert(zero.ordens === previstas.map((_, i) => i + 1).join(','),
+    `a ordem do plano nao e 1..N: ${zero.ordens}`);
+  passo('o denominador do percentual existe antes da primeira etapa rodar');
+
+  // Meio do caminho: duas concluidas. O percentual anda por CONTAGEM, e e por
+  // isso que ele nao pode chegar a 100% com a sync encalhada.
+  const meio = plano.map((e, i) =>
+    i < 2 ? { ...e, estado: 'ok', ms: 1000 * (i + 1) } : i === 2 ? { ...e, estado: 'rodando' } : e);
+  await client.query(`UPDATE fin_fonte_sync_execucao SET etapas = $2::jsonb WHERE id = $1`,
+    [execP.id, JSON.stringify(meio)]);
+  const noMeio = await contarEtapas(execP.id);
+  const concluidas = Number(noMeio.ok) + Number(noMeio.falhas);
+  console.log(`  no meio: ${concluidas} de ${noMeio.previstas} concluida(s)` +
+    ` · ${Math.round((concluidas / Number(noMeio.previstas)) * 100)}% · etapa 3 de ${noMeio.previstas}`);
+  assert(concluidas === 2 && Number(noMeio.pendentes) === previstas.length - 3,
+    'a contagem do meio do caminho nao bate com o que foi gravado');
+  passo('o progresso e derivado de quantas etapas terminaram, nao de tempo decorrido');
+
+  // O caso que a versao anterior nao sabia representar: a execucao morre no
+  // meio. As etapas que nunca rodaram continuam `pendente` no banco, e o
+  // desfecho tem de NOMEA-LAS — dizer so "parcial" faria parecer que o plano
+  // era o que rodou.
+  const interrompido = meio.map((e) =>
+    e.estado === 'rodando' ? { ...e, estado: 'erro', ms: 900, erro: 'connect ETIMEDOUT api.exemplo' } : e);
+  const naoRodaram = interrompido.filter((e) => e.estado === 'pendente').map((e) => e.etapa);
+  const motivo = `${interrompido[2].etapa}: ${interrompido[2].erro}`
+    + (naoRodaram.length ? ` · não chegaram a rodar: ${naoRodaram.join(', ')}` : '');
+  await client.query(
+    `UPDATE fin_fonte_sync_execucao
+        SET status = 'parcial', terminada_em = now(), etapas = $2::jsonb, erro = $3
+      WHERE id = $1`,
+    [execP.id, JSON.stringify(interrompido), motivo]);
+  const morto = await um(
+    `SELECT status, erro, (SELECT count(*) FROM jsonb_array_elements(etapas) x
+                            WHERE x->>'estado' = 'pendente') pendentes
+       FROM fin_fonte_sync_execucao WHERE id = $1`, [execP.id]);
+  console.log(`  interrompida: status=${morto.status} · ${morto.pendentes} etapa(s) nunca rodaram`);
+  console.log(`    motivo: ${morto.erro}`);
+  assert(Number(morto.pendentes) === previstas.length - 3,
+    'as etapas que nao rodaram sumiram da trilha — o denominador encolheria depois do fato');
+  assert(naoRodaram.every((n) => morto.erro.includes(n)),
+    'o motivo nao nomeia as etapas que ficaram para tras');
+  passo('etapa que nunca rodou fica registrada, e o desfecho a nomeia');
+
+  // O banco recusa vermelho sem frase. Esta e a garantia estrutural de que
+  // "erro ao sincronizar" nao volta: nao ha como gravar 'erro' sem motivo.
+  const vermelhoMudo = await recusa(
+    `UPDATE fin_fonte_sync_execucao SET status = 'erro', erro = NULL WHERE id = $1`,
+    [execP.id],
+    "status 'erro' sem motivo"
+  );
+  console.log(`  o banco recusou: ${vermelhoMudo.message.split('\n')[0]}`);
+  assert(/fin_fonte_sync_erro_com_motivo/.test(vermelhoMudo.message),
+    `a recusa veio de outra restricao: ${vermelhoMudo.message}`);
+  passo("o CHECK recusa 'erro' sem motivo: falha muda sempre foi recusada pelo banco, nao pela tela");
 
   // -------------------------------------------------------------------------
   console.log('\n== 8. ancora de dinheiro ================================');

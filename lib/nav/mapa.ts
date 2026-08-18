@@ -219,6 +219,14 @@ export const SECOES: Secao[] = [
     ]
   },
   {
+    // Lê o erp-obras em agregado (migration 0121/0122) — quanto foi
+    // contratado, recebido, guardado na reserva, gasto. A execução da obra
+    // em si (cronograma, checklist) fica só no erp-obras, de propósito.
+    label: "Obras",
+    href: "/obras",
+    rotas: [{ href: "/obras", label: "Obras" }]
+  },
+  {
     label: "Gestão",
     href: "/gestao-xpe",
     rotas: [

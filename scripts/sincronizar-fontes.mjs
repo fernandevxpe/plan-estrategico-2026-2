@@ -136,6 +136,16 @@ const RUIDO = [
   /^\s*\^+\s*$/,                 // o acento circunflexo do apontador
   /^\s*throw /,                  // a linha do throw interno
   /^node:internal/,              // caminho interno do runtime
+  // Pontuação estrutural do objeto que o Node despeja quando o erro tem
+  // propriedades — `}`, `{`, `[`, `]`, com ou sem vírgula. Medido: um crash real
+  // de `import-asaas.mjs` terminava em `}` e a tela dizia, como motivo da
+  // falha, exatamente **"}"**. É a mesma família do rodapé de versão: a última
+  // linha do stderr quase nunca é a frase que explica.
+  /^[{}[\]]+,?$/,
+  // As propriedades do dump (`length: 928`, `severity: 'ERROR'`, `hint:
+  // undefined`) descrevem o erro sem dizer o que aconteceu. `detail:` fica de
+  // fora desta lista de propósito: é a única que carrega conteúdo.
+  /^(length|severity|code|hint|position|internalPosition|internalQuery|where|schema|table|column|dataType|constraint|file|line|routine|errno|syscall|path|stack|name):/,
   /^\s*$/
 ];
 
@@ -151,22 +161,33 @@ const RUIDO = [
  *
  *   1. `✗ mensagem` — a convenção desta casa. Todo script daqui reporta assim,
  *      e essa linha foi escrita por um humano para ser lida por outro.
- *   2. `Error: ...` / `TypeError: ...` — a exceção do runtime.
+ *   2. `Error: ...` / `TypeError: ...` / `error: ...` — a exceção do runtime.
+ *      O `error:` minúsculo entra porque é assim que o driver do Postgres
+ *      imprime, e foi o que faltou num caso real: um `import-asaas.mjs` que
+ *      estourou em `violates check constraint "fin_transaction_reversal_group_completo"`
+ *      não casava com o padrão maiúsculo, caía no passo 3 e devolvia a última
+ *      linha do dump — que era `}`.
  *   3. a última linha que não seja ruído.
+ *
+ * A frase escolhida é TRUNCADA em 400 caracteres. Uma linha de `detail:` do
+ * Postgres traz a linha inteira que falhou e enche a tela com dados que não
+ * ajudam a decidir nada; a saída completa continua guardada em `saida`.
  */
-function mensagemDeErro(stderr, stdout) {
+export function mensagemDeErro(stderr, stdout) {
   const linhas = `${stderr}\n${stdout}`
     .split('\n')
     .map((l) => l.trim())
     .filter((l) => l && !RUIDO.some((r) => r.test(l)));
 
+  const corte = (s) => (s.length > 400 ? `${s.slice(0, 397)}…` : s);
+
   const daCasa = linhas.filter((l) => l.startsWith('✗'));
-  if (daCasa.length) return daCasa[daCasa.length - 1].replace(/^✗\s*/, '');
+  if (daCasa.length) return corte(daCasa[daCasa.length - 1].replace(/^✗\s*/, ''));
 
-  const excecao = linhas.find((l) => /^[A-Za-z]*Error[:\s]/.test(l));
-  if (excecao) return excecao;
+  const excecao = linhas.find((l) => /^[A-Za-z]*error[:\s]/i.test(l));
+  if (excecao) return corte(excecao);
 
-  return linhas.length ? linhas[linhas.length - 1] : null;
+  return linhas.length ? corte(linhas[linhas.length - 1]) : null;
 }
 
 /**

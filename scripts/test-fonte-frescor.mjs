@@ -459,6 +459,39 @@ try {
     `a mensagem no formato da casa nao foi extraida: "${daCasa.erro}"`);
   passo('a convencao `✗ mensagem` dos scripts da casa vence o ruido do runtime');
 
+  // O crash que o botao de fato encontrou em 18/08, medido contra o banco real:
+  // `import-asaas.mjs` estourou numa CHECK constraint e o Node despejou o objeto
+  // de erro do driver. A ultima linha nao-ruido era `}` — e a tela mostrou,
+  // como MOTIVO da falha, exatamente "}". Mesma familia do rodape de versao: a
+  // ultima linha do stderr quase nunca e a frase que explica.
+  const dumpDoPg = [
+    `error: new row for relation "fin_transaction" violates check constraint "fin_transaction_reversal_group_completo"`,
+    '    at /x/node_modules/pg-pool/index.js:45:11',
+    '    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)',
+    '/x/scripts/import-asaas.mjs:469:3 {',
+    '  length: 928,',
+    "  severity: 'ERROR',",
+    "  code: '23514',",
+    "  detail: 'Failing row contains (992, 1, 1, 2026-05-11, ...).',",
+    '  hint: undefined,',
+    "  schema: 'public',",
+    "  table: 'fin_transaction',",
+    "  constraint: 'fin_transaction_reversal_group_completo',",
+    "  routine: 'ExecConstraints'",
+    '}',
+    '',
+    'Node.js v22.18.0'
+  ].join('\n');
+  const doPg = trabalhador.mensagemDeErro(dumpDoPg, '');
+  console.log(`    motivo extraido do dump do Postgres: ${doPg}`);
+  assert(doPg !== '}', 'o motivo da falha voltou a ser a chave de fechamento do objeto despejado');
+  assert(/violates check constraint/.test(doPg) && /fin_transaction_reversal_group_completo/.test(doPg),
+    `o motivo nao nomeia a restricao violada: "${doPg}"`);
+  // A saida completa continua guardada; o que se corta e a FRASE.
+  assert(trabalhador.mensagemDeErro('x'.repeat(900), '').length <= 400,
+    'a frase da falha nao foi truncada — uma linha de `detail:` do Postgres enche a tela');
+  passo('o motivo de um crash com objeto de erro nomeia a restricao, nao a chave `}`');
+
   // A trilha completa de uma execucao, como o trabalhador a escreve. Aqui ela
   // roda sob a transacao do teste (o processo filho tem conexao propria e nao
   // enxergaria a linha nao commitada), entao o que se prova e a SEMANTICA da

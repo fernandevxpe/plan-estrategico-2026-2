@@ -130,6 +130,15 @@ export async function dispararSync(args: { escopo: string; ator: string }): Prom
     );
     if (!entidade.rows.length) throw new RecusaSync(503, "a entidade 'xpe' não existe neste banco");
 
+    // O SAVEPOINT existe porque o INSERT abaixo FALHA no caminho normal do
+    // segundo clique — e no Postgres um erro aborta a transação inteira: todo
+    // comando seguinte responde 25P02 ("current transaction is aborted").
+    //
+    // Sem ele o 409 nunca chegava a ser montado. Medido contra o banco real,
+    // com uma sync viva: o segundo POST devolvia **500**, não 409, e a tela
+    // ficava sem o id da execução que ela deveria passar a acompanhar. A trava
+    // do banco funcionava; o que estava quebrado era a tradução dela.
+    await client.query(`SAVEPOINT tenta_inserir`);
     try {
       const { rows } = await client.query<{ id: string }>(
         `INSERT INTO fin_fonte_sync_execucao (entity_id, escopo, status, ator)
@@ -137,8 +146,12 @@ export async function dispararSync(args: { escopo: string; ator: string }): Prom
          RETURNING id`,
         [entidade.rows[0].id, escopo, args.ator]
       );
+      await client.query(`RELEASE SAVEPOINT tenta_inserir`);
       return Number(rows[0].id);
     } catch (erro) {
+      // Devolve a transação ao estado de antes do INSERT: daqui para baixo ela
+      // volta a aceitar comandos, que é o que a consulta da execução viva pede.
+      await client.query(`ROLLBACK TO SAVEPOINT tenta_inserir`);
       // 23505 = violação do índice único parcial. É o caminho ESPERADO do
       // segundo clique, não um defeito: traduzir para 409 com o id da execução
       // viva deixa a tela acompanhar aquela em vez de insistir.

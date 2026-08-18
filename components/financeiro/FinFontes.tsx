@@ -3,13 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Ressalva, SeloCamada, type Camada } from "@/components/financeiro/Certeza";
+import {
+  BarraProgresso,
+  ListaEtapas,
+  duracao,
+  textoDaReferencia,
+  textoDoProgresso,
+  useDecorrido,
+  useMontado
+} from "@/components/financeiro/SyncProgresso";
 import type { Contrato } from "@/lib/financeiro/contratos/base";
 import type {
   EstadoFonte,
-  EtapaExecucao,
   ExecucaoSync,
   LinhaFonte,
-  PainelFontes
+  PainelFontes,
+  ReferenciaSync
 } from "@/lib/financeiro/contratos/fontes";
 
 /**
@@ -91,39 +100,27 @@ function atrasoTexto(f: LinhaFonte): React.ReactNode {
   );
 }
 
-function Etapa({ e }: { e: EtapaExecucao }) {
-  const cor = e.estado === "ok" ? "var(--green)" : e.estado === "erro" ? "var(--fin-out)" : "var(--muted)";
-  return (
-    <li style={{ marginBottom: 6 }}>
-      <span style={{ color: cor, fontWeight: 600 }}>
-        {e.estado === "ok" ? "✓" : e.estado === "erro" ? "✗" : "…"}
-      </span>{" "}
-      {e.etapa}
-      {e.ms !== undefined ? <span className="fin-desc-sub">{Math.round(e.ms / 1000)}s</span> : null}
-      {/* O QUE falhou e POR QUÊ. Sem isto o botão falha em silêncio, que é pior
-          que não ter botão. */}
-      {e.erro ? (
-        <div
-          style={{
-            marginTop: 4,
-            padding: "6px 9px",
-            background: "#fdf1ee",
-            borderLeft: "3px solid var(--fin-out)",
-            borderRadius: "0 4px 4px 0",
-            fontSize: 12.5,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word"
-          }}
-        >
-          {e.erro}
-        </div>
-      ) : null}
-    </li>
-  );
-}
-
-function Execucao({ x }: { x: ExecucaoSync }) {
+/**
+ * Uma execução, com o progresso.
+ *
+ * `ao vivo` só é passado para a execução corrente: o cronômetro tem de contar
+ * numa e só numa, senão o histórico "conta" junto e mostra durações que crescem
+ * sozinhas para execuções encerradas há dias.
+ */
+function Execucao({
+  x,
+  referencia,
+  aoVivo = false
+}: {
+  x: ExecucaoSync;
+  referencia?: ReferenciaSync | null;
+  aoVivo?: boolean;
+}) {
   const rodando = x.status === "rodando";
+  const montado = useMontado();
+  const decorridoVivo = useDecorrido(aoVivo ? x : null);
+  const decorrido = aoVivo && montado ? decorridoVivo : x.progresso.decorridoMs;
+
   return (
     <div className="fin-card" style={{ padding: 14, marginBottom: 12 }}>
       <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
@@ -140,12 +137,20 @@ function Execucao({ x }: { x: ExecucaoSync }) {
         </span>
       </div>
 
+      {/* Percentual E "etapa N de M" lado a lado: o segundo é o que explica o
+          primeiro. O percentual conta ETAPAS CONCLUÍDAS — se ele andasse por
+          relógio, encalhar no Asaas ainda o levaria a 100%. */}
+      <div className="sync-painel-linha" style={{ marginTop: 10 }}>
+        <strong>{textoDoProgresso(x)}</strong>
+        <span className="fin-desc-sub" style={{ margin: 0 }}>
+          {duracao(decorrido)}
+          {rodando && referencia ? ` de ~${duracao(referencia.duracaoMs)}` : ""}
+        </span>
+      </div>
+      <BarraProgresso x={x} />
+
       {x.etapas.length ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: "10px 0 0" }}>
-          {x.etapas.map((e, i) => (
-            <Etapa key={`${e.etapa}-${i}`} e={e} />
-          ))}
-        </ul>
+        <ListaEtapas etapas={x.etapas} />
       ) : (
         <p className="fin-card-hint">
           {rodando ? "começando…" : "esta execução não registrou etapa nenhuma."}
@@ -228,6 +233,8 @@ export function FinFontes({ contrato }: { contrato: Contrato<PainelFontes> }) {
       const corpo = await r.json();
 
       if (r.status === 202) {
+        // Otimista, com `planoPresumido`: a tela diz "iniciando…" em vez de 0%
+        // de um denominador que o trabalhador ainda não gravou.
         setExecucao({
           id: corpo.execucaoId,
           escopo: corpo.escopo,
@@ -236,7 +243,20 @@ export function FinFontes({ contrato }: { contrato: Contrato<PainelFontes> }) {
           iniciadaEm: new Date().toISOString(),
           terminadaEm: null,
           etapas: [],
-          erro: null
+          erro: null,
+          progresso: {
+            previstas: corpo.etapas ?? 0,
+            concluidas: 0,
+            ok: 0,
+            falhas: 0,
+            pendentes: corpo.etapas ?? 0,
+            pct: 0,
+            etapaAtual: null,
+            nomeEtapaAtual: null,
+            etapaAtualMs: null,
+            decorridoMs: 0,
+            planoPresumido: true
+          }
         });
         return;
       }
@@ -304,16 +324,24 @@ export function FinFontes({ contrato }: { contrato: Contrato<PainelFontes> }) {
               : "nenhuma fonte é alcançada por este botão neste ambiente"
           }
         >
-          {rodando ? "sincronizando…" : "Atualizar todas as fontes automáticas"}
+          {rodando
+            ? `sincronizando… ${textoDoProgresso(execucao)}`
+            : "Atualizar todas as fontes automáticas"}
         </button>
         <span className="fin-desc-sub">
           alcança {dado.fontesAtualizaveis.join(", ") || "nenhuma"} — as demais dizem por que não, na
-          linha delas
+          linha delas · {textoDaReferencia(dado.referencia)}
         </span>
       </div>
 
       {recusa ? <Ressalva>{recusa}</Ressalva> : null}
-      {execucao ? <Execucao x={execucao} /> : null}
+      {execucao ? (
+        <Execucao
+          x={execucao}
+          referencia={dado.referencia}
+          aoVivo={execucao.status === "rodando"}
+        />
+      ) : null}
 
       <table className="fin-tabela-simples">
         <thead>

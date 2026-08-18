@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 
 import { AppNav } from "@/components/layout/AppNav";
+import { AtualizarFontes } from "@/components/layout/AtualizarFontes";
 import { CABECALHO_PERFIL, type Perfil } from "@/lib/auth/perfis";
 import { DataFreshness, type SyncState } from "@/components/layout/DataFreshness";
 import { Sino } from "@/components/notificacoes/Sino";
@@ -42,6 +43,18 @@ export async function AppShell({ children }: Props) {
           </Link>
           <div className="topbar-right">
             <DataFreshness syncedAt={snapshot.syncedAt} syncState={syncState} />
+            {/* O botão fica AO LADO do carimbo de idade porque foi ali que ele
+                foi pedido — "ao lado do local onde informa a ultima
+                atualização... assim se usuario mover algo das contas, pode
+                apertar para atualizar as bases de dados". Quem acabou de mexer
+                no banco está em qualquer tela, não em /financeiro/fontes.
+
+                Só para admin: `/api/financeiro/*` devolve 404 (não 403) ao
+                perfil comum, e um botão que sempre responde 404 é um alarme que
+                não age. O componente busca o próprio estado no cliente, ao
+                montar, para não pendurar consulta de banco na renderização de
+                toda página do site. */}
+            {perfil === "admin" ? <AtualizarFontes /> : null}
             {/* O sino vive na moldura, não numa tela: um aviso que só aparece
                 em /notificacoes depende de alguém ir lá por hábito, que é
                 exatamente o problema que ele existe para resolver. O conteúdo é

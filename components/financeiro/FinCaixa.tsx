@@ -14,8 +14,10 @@ import {
   YAxis
 } from "recharts";
 
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { ChartWithLegend, useLegendToggle, type LegendSeries } from "@/components/charts/useLegendToggle";
 import { Medida, Ressalva, SeloCamada, brl } from "@/components/financeiro/Certeza";
+import { Nota } from "@/components/ui/Nota";
 import { brlCompact, brlPrecise, monthKeyLabel, shortDateLabel } from "@/lib/financeiro/format";
 import type {
   CaixaDado,
@@ -590,43 +592,45 @@ function GraficoEmpilhado({ serie, contas }: { serie: PontoSerie[]; contas: Cont
           ainda não tinha extrato não desenha faixa — ausência não é zero.
         </p>
       </header>
-      <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
-        <ResponsiveContainer width="100%" height={320}>
-          <AreaChart data={pontos} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
-            <CartesianGrid stroke={GRID} vertical={false} />
-            <XAxis
-              dataKey="mes"
-              tick={{ fontSize: 11, fill: EIXO }}
-              axisLine={false}
-              tickLine={false}
-              minTickGap={24}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: EIXO }}
-              axisLine={false}
-              tickLine={false}
-              width={72}
-              tickFormatter={(v: number) => brlCompact(v * 100)}
-            />
-            <Tooltip content={<TooltipCaixa contas={contas} empilhado />} />
-            {visiveis.map((s) => (
-              <Area
-                key={s}
-                type="monotone"
-                dataKey={s}
-                stackId="caixa"
-                stroke={corDe(s)}
-                strokeWidth={2}
-                // O respiro de 2px entre faixas é feito pela superfície.
-                fill={corDe(s)}
-                fillOpacity={0.16}
-                connectNulls={false}
-                activeDot={{ r: 4, strokeWidth: 2, stroke: SUPERFICIE }}
+      <ChartFrame titulo="Saldo por conta, empilhado">
+        <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+          <ResponsiveContainer width="100%" height={320}>
+            <AreaChart data={pontos} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+              <CartesianGrid stroke={GRID} vertical={false} />
+              <XAxis
+                dataKey="mes"
+                tick={{ fontSize: 11, fill: EIXO }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={24}
               />
-            ))}
-          </AreaChart>
-        </ResponsiveContainer>
-      </ChartWithLegend>
+              <YAxis
+                tick={{ fontSize: 11, fill: EIXO }}
+                axisLine={false}
+                tickLine={false}
+                width={72}
+                tickFormatter={(v: number) => brlCompact(v * 100)}
+              />
+              <Tooltip content={<TooltipCaixa contas={contas} empilhado />} />
+              {visiveis.map((s) => (
+                <Area
+                  key={s}
+                  type="monotone"
+                  dataKey={s}
+                  stackId="caixa"
+                  stroke={corDe(s)}
+                  strokeWidth={2}
+                  // O respiro de 2px entre faixas é feito pela superfície.
+                  fill={corDe(s)}
+                  fillOpacity={0.16}
+                  connectNulls={false}
+                  activeDot={{ r: 4, strokeWidth: 2, stroke: SUPERFICIE }}
+                />
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartWithLegend>
+      </ChartFrame>
     </section>
   );
 }
@@ -791,8 +795,8 @@ function PainelEmprestimo({ dado }: { dado: CaixaDado }) {
         </div>
 
         <div className="fin-memoria">
-          <h3>Memória de cálculo</h3>
           <p>{e.memoria}</p>
+          <Nota rotulo="Memória de cálculo — prazo, taxa, Selic, e a prova de que o spread é spread">
           <dl>
             <div>
               <dt>Prazo</dt>
@@ -830,6 +834,7 @@ function PainelEmprestimo({ dado }: { dado: CaixaDado }) {
               <dd>{e.ressalva}</dd>
             </div>
           </dl>
+          </Nota>
         </div>
       </section>
 
@@ -861,35 +866,37 @@ function GraficoDivida({ confronto }: { confronto: CaixaDado["confronto"] }) {
           cenário, calculado com a última Selic observada. Ela sobe ou desce com a Selic real.
         </p>
       </header>
-      <ResponsiveContainer width="100%" height={260}>
-        <AreaChart data={pontos} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
-          <CartesianGrid stroke={GRID} vertical={false} />
-          <XAxis
-            dataKey="mes"
-            tick={{ fontSize: 11, fill: EIXO }}
-            axisLine={false}
-            tickLine={false}
-            minTickGap={24}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: EIXO }}
-            axisLine={false}
-            tickLine={false}
-            width={72}
-            tickFormatter={(v: number) => brlCompact(v * 100)}
-          />
-          <Tooltip content={<TooltipDivida />} />
-          <Area
-            type="monotone"
-            dataKey="saldo"
-            stroke={COR_DIVIDA}
-            strokeWidth={2}
-            fill={COR_DIVIDA}
-            fillOpacity={0.1}
-            activeDot={{ r: 4, strokeWidth: 2, stroke: SUPERFICIE }}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+      <ChartFrame titulo="Saldo devedor do Pronampe">
+        <ResponsiveContainer width="100%" height={260}>
+          <AreaChart data={pontos} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+            <CartesianGrid stroke={GRID} vertical={false} />
+            <XAxis
+              dataKey="mes"
+              tick={{ fontSize: 11, fill: EIXO }}
+              axisLine={false}
+              tickLine={false}
+              minTickGap={24}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: EIXO }}
+              axisLine={false}
+              tickLine={false}
+              width={72}
+              tickFormatter={(v: number) => brlCompact(v * 100)}
+            />
+            <Tooltip content={<TooltipDivida />} />
+            <Area
+              type="monotone"
+              dataKey="saldo"
+              stroke={COR_DIVIDA}
+              strokeWidth={2}
+              fill={COR_DIVIDA}
+              fillOpacity={0.1}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: SUPERFICIE }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartFrame>
     </section>
   );
 }
@@ -931,51 +938,53 @@ function GraficoConfronto({ confronto }: { confronto: CaixaDado["confronto"] }) 
           entre as duas linhas é o que a Selic fez.
         </p>
       </header>
-      <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
-        <ResponsiveContainer width="100%" height={300}>
-          <ComposedChart data={pontos} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
-            <CartesianGrid stroke={GRID} vertical={false} />
-            <XAxis
-              dataKey="mes"
-              tick={{ fontSize: 11, fill: EIXO }}
-              axisLine={false}
-              tickLine={false}
-              minTickGap={16}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: EIXO }}
-              axisLine={false}
-              tickLine={false}
-              width={72}
-              tickFormatter={(v: number) => brlCompact(v * 100)}
-            />
-            <Tooltip content={<TooltipConfronto />} />
-            {!isHidden("observado") && (
-              <Bar dataKey="observado" fill="#21a67a" maxBarSize={22} radius={[4, 4, 0, 0]} />
-            )}
-            {!isHidden("modelo") && (
-              <Line
-                type="monotone"
-                dataKey="modelo"
-                stroke="#6d28d9"
-                strokeWidth={2}
-                dot={{ r: 4, strokeWidth: 2, stroke: SUPERFICIE, fill: "#6d28d9" }}
-                activeDot={{ r: 5, strokeWidth: 2, stroke: SUPERFICIE }}
+      <ChartFrame titulo="Contrato × transferência">
+        <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={pontos} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+              <CartesianGrid stroke={GRID} vertical={false} />
+              <XAxis
+                dataKey="mes"
+                tick={{ fontSize: 11, fill: EIXO }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={16}
               />
-            )}
-            {!isHidden("contrato") && (
-              <Line
-                type="monotone"
-                dataKey="contrato"
-                stroke="#b67818"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 2, stroke: SUPERFICIE }}
+              <YAxis
+                tick={{ fontSize: 11, fill: EIXO }}
+                axisLine={false}
+                tickLine={false}
+                width={72}
+                tickFormatter={(v: number) => brlCompact(v * 100)}
               />
-            )}
-          </ComposedChart>
-        </ResponsiveContainer>
-      </ChartWithLegend>
+              <Tooltip content={<TooltipConfronto />} />
+              {!isHidden("observado") && (
+                <Bar dataKey="observado" fill="#21a67a" maxBarSize={22} radius={[4, 4, 0, 0]} />
+              )}
+              {!isHidden("modelo") && (
+                <Line
+                  type="monotone"
+                  dataKey="modelo"
+                  stroke="#6d28d9"
+                  strokeWidth={2}
+                  dot={{ r: 4, strokeWidth: 2, stroke: SUPERFICIE, fill: "#6d28d9" }}
+                  activeDot={{ r: 5, strokeWidth: 2, stroke: SUPERFICIE }}
+                />
+              )}
+              {!isHidden("contrato") && (
+                <Line
+                  type="monotone"
+                  dataKey="contrato"
+                  stroke="#b67818"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 2, stroke: SUPERFICIE }}
+                />
+              )}
+            </ComposedChart>
+          </ResponsiveContainer>
+        </ChartWithLegend>
+      </ChartFrame>
     </section>
   );
 }

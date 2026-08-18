@@ -13,6 +13,7 @@ import {
   YAxis
 } from "recharts";
 import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { Clock3, GitBranch, Layers3, PieChart, Users } from "lucide-react";
 import type { Analysis } from "@/lib/analysis/types";
 import {
@@ -155,7 +156,9 @@ export function DeepAnalysisSection({ analysis }: Props) {
             </div>
           </div>
           <div className="chart-box">
-            <TimeToCloseChart data={timeChart} />
+            <ChartFrame titulo="Tempo até fechar">
+              <TimeToCloseChart data={timeChart} />
+            </ChartFrame>
           </div>
         </div>
 
@@ -182,7 +185,9 @@ export function DeepAnalysisSection({ analysis }: Props) {
             </div>
           </div>
           <div className="chart-box">
-            <RevenueOriginChart data={originChart} />
+            <ChartFrame titulo="Origem do faturamento — novos x recorrentes">
+              <RevenueOriginChart data={originChart} />
+            </ChartFrame>
           </div>
         </div>
       </section>

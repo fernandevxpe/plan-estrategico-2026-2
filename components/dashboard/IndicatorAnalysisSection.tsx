@@ -18,6 +18,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { ChartFrame } from "@/components/charts/ChartFrame";
 
 type Props = {
   analysis: Analysis;
@@ -75,19 +76,21 @@ export function IndicatorAnalysisSection({ analysis }: Props) {
             <TrendingUp size={18} />
           </div>
           <div className="chart-box">
-            {yoyChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={yoyChartData} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
-                  <CartesianGrid stroke="#dce5e8" vertical={false} />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                  <YAxis tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} width={48} />
-                  <Tooltip formatter={(v) => formatGrowth(Number(v))} />
-                  <Bar dataKey="changePct" name="YoY receita" fill="#21a67a" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="metric-note">Sem dados YoY disponíveis.</p>
-            )}
+            <ChartFrame titulo="Melhorias YoY de receita">
+              {yoyChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={yoyChartData} margin={{ top: 12, right: 18, left: 4, bottom: 0 }}>
+                    <CartesianGrid stroke="#dce5e8" vertical={false} />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                    <YAxis tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} width={48} />
+                    <Tooltip formatter={(v) => formatGrowth(Number(v))} />
+                    <Bar dataKey="changePct" name="YoY receita" fill="#21a67a" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="metric-note">Sem dados YoY disponíveis.</p>
+              )}
+            </ChartFrame>
           </div>
         </div>
 

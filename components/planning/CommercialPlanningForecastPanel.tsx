@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import type { CommercialFunnelScope, CommercialPlanningByScope } from "@/lib/analysis/types";
 import { brl, number } from "@/lib/analysis/format";
 
@@ -62,23 +63,27 @@ export function CommercialPlanningForecastPanel({ data }: { data: CommercialPlan
       <section>
         <h4>Valor mensal (R$)</h4>
         <div className="chart-box commercial-forecast-chart">
+          <ChartFrame titulo="Meta, realizado e forecast — valor mensal">
           <ChartWithLegend series={revenueSeries} hidden={revenueLegend.hidden} onToggle={revenueLegend.toggle}>
             <ResponsiveContainer width="100%" height="100%"><ComposedChart data={rows} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
               <CartesianGrid stroke="#dce5e8" vertical={false} /><XAxis dataKey="label" tickLine={false} axisLine={false} /><YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tickLine={false} axisLine={false} width={48} /><Tooltip content={<CurrencyTooltip />} />
               <Bar dataKey="targetRevenue" name="Meta" fill="#9fb2bd" radius={[4, 4, 0, 0]} hide={revenueLegend.isHidden("targetRevenue")} /><Bar dataKey="actualRevenue" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={revenueLegend.isHidden("actualRevenue")} /><Line dataKey="forecastRevenue" name="Forecast final" type="monotone" stroke="#21a67a" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 3 }} connectNulls={false} hide={revenueLegend.isHidden("forecastRevenue")} />
             </ComposedChart></ResponsiveContainer>
           </ChartWithLegend>
+          </ChartFrame>
         </div>
       </section>
       <section>
         <h4>Fechamentos mensais</h4>
         <div className="chart-box commercial-forecast-chart">
+          <ChartFrame titulo="Meta, realizado e forecast — fechamentos mensais">
           <ChartWithLegend series={countSeries} hidden={countLegend.hidden} onToggle={countLegend.toggle}>
             <ResponsiveContainer width="100%" height="100%"><ComposedChart data={rows} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
               <CartesianGrid stroke="#dce5e8" vertical={false} /><XAxis dataKey="label" tickLine={false} axisLine={false} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} width={36} /><Tooltip content={<CountTooltip />} />
               <Bar dataKey="targetWonDeals" name="Meta equivalente" fill="#9fb2bd" radius={[4, 4, 0, 0]} hide={countLegend.isHidden("targetWonDeals")} /><Bar dataKey="actualWonDeals" name="Realizado" fill="#6d28d9" radius={[4, 4, 0, 0]} hide={countLegend.isHidden("actualWonDeals")} /><Line dataKey="forecastWonDeals" name="Forecast final" type="monotone" stroke="#21a67a" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 3 }} connectNulls={false} hide={countLegend.isHidden("forecastWonDeals")} />
             </ComposedChart></ResponsiveContainer>
           </ChartWithLegend>
+          </ChartFrame>
         </div>
       </section>
     </div>

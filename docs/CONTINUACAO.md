@@ -3,6 +3,191 @@
 Este documento existe para quem chega depois. Ele é auto-suficiente: se você só
 puder ler um arquivo antes de tocar em qualquer coisa, leia este.
 
+## Frente do botão de atualizar no cabeçalho · 18/08/2026 (SEM migration nova)
+
+O pedido:
+
+> *"Quero tbm na interface ao lado do local onde informa a ultima atualização
+> quero que tenha um botão de atualizar que mostra tempo de atualizaçao e
+> percentual atualizado (assim se usuario mover algo das contas, pode apertar
+> para atualizar as bases de dados)"*
+
+**Nenhuma coluna nova. A `0115_fin_sync_progresso.sql` reservada NÃO foi usada**
+— o `etapas jsonb` da 0109 já comportava tudo, e a 0115 acabou sendo de outra
+frente (caixinhas). O que faltava não era schema.
+
+### O que faltava era o denominador
+
+A 0109 já gravava etapa a etapa, mas só acrescentava a linha no instante em que
+a etapa **começava**. Isso responde *"o que já rodou"* e não responde *"quanto
+falta"*: com 2 etapas gravadas, ninguém sabe se são 2 de 2 ou 2 de 6.
+
+O trabalhador agora grava as N etapas em `pendente` **antes de rodar a
+primeira**. O percentual é `concluídas / previstas`, uma contagem de fatos.
+
+**A barra por relógio foi recusada, e o motivo importa:** dividir o decorrido
+pela duração da última execução produz uma barra suave que continua andando com
+a sync encalhada e chega a 100% com o Asaas parado. É o defeito de alarme que a
+0109 veio consertar, na direção otimista. O percentual anda aos saltos, e andar
+aos saltos é honesto — "etapa 3 de 6" fica ao lado, que é a frase que se lê. A
+duração da última execução bem-sucedida aparece como **referência separada** e
+nunca entra no percentual.
+
+Efeito colateral que vale por si: **etapa que nunca rodou fica `pendente` no
+banco** quando a execução morre no meio, e o desfecho a nomeia. Antes, o plano
+encolhia depois do fato e uma sync que parou na metade se apresentava como plano
+cumprido.
+
+### O botão: no cabeçalho, e só para admin
+
+`components/layout/AtualizarFontes.tsx`, colado no `DataFreshness`. A cláusula
+que decide o lugar é *"se usuario mover algo das contas"*: quem acabou de mexer
+no banco está em qualquer tela, não em `/financeiro/fontes`.
+
+```
+parado     ↻ Atualizar                      title: alcance + referência
+rodando    ↻ 33% · 1m12s   (desabilitado)   painel: etapa 3 de 6, barra, as 6 etapas
+terminou   ↻ Atualizar     (aro verde/vermelho/âmbar conforme a última)
+```
+
+- **Só admin.** `/api/financeiro/*` devolve **404** (não 403) ao perfil comum, e
+  um botão que sempre responde 404 é o alarme que não age. `AppShell` nem monta.
+  Medido: `curl` do perfil comum na home traz **zero** ocorrências de
+  `sync-botao`.
+- **O estado vem de endpoint próprio e barato** (`GET .../sincronizar` sem
+  `execucao`): duas leituras por `fin_fonte_sync_recentes_idx`, sem tocar
+  `fin_fonte_frescor_v`. Pendurar aquela view na renderização de toda página é o
+  caminho conhecido para esgotar o pool de 5 conexões.
+- **O cronômetro é do servidor, ancorado no cliente.** `decorridoMs` vem
+  calculado lá; o cliente soma só o tempo local desde que aquele valor chegou.
+  Contar a partir de `iniciadaEm` no navegador mostraria "3m" no primeiro
+  segundo sempre que os relógios estivessem fora de fase.
+- **Ao terminar, `router.refresh()`.** Os números das telas são renderizados no
+  servidor; uma sync que corrige o dado e deixa a tela com o valor de antes é a
+  mesma mentira do aviso que não some depois de resolvido.
+- **O rótulo diz o que ele NÃO faz.** Ele não atualiza o instantâneo de CRM
+  (Pipedrive/Meta/Chatwoot) que o carimbo ao lado mede. Deixar implícito
+  produziria a decepção previsível de esperar quatro minutos e ver "Dados de há
+  2 dias" intacto do lado.
+
+### Duas coisas estavam escritas, revisadas e INERTES — e só o fio mostrou
+
+Mesma família do `"2026-08-01"` vs `"2026-08"`.
+
+**1. O 409 nunca chegava a ser montado.** A 0109 provou a trava no banco (o
+índice único parcial recusa o segundo `rodando`). Ninguém mediu a **tradução**
+dela: no Postgres um erro aborta a transação inteira, e a consulta seguinte — a
+que busca o id da execução viva — respondia `25P02`. O segundo clique recebia
+**500**, não 409, e a tela ficava sem o id que deveria passar a acompanhar. Um
+`SAVEPOINT` em volta do INSERT resolve.
+
+**2. O motivo da falha era `}`.** Contra o banco real, `import-asaas.mjs`
+estourou numa CHECK constraint e o Node despejou o objeto de erro do driver.
+`mensagemDeErro` filtrava o rodapé de versão e a pilha, mas não a **pontuação do
+dump** — e a última linha não-ruído era a chave de fechamento.
+
+```
+antes:   }
+depois:  error: new row for relation "fin_transaction" violates check
+         constraint "fin_transaction_reversal_group_completo"
+```
+
+Duas causas: `{}[]` e as propriedades do dump (`length:`, `severity:`,
+`code:`, `constraint:`…) não eram ruído — `detail:` fica de fora de propósito,
+é a única com conteúdo e é o que sobra quando o teto de 4000 caracteres corta a
+cabeça da saída; e o padrão da exceção era `/^[A-Za-z]*Error[:\s]/`, enquanto o
+driver do Postgres imprime `error:` **minúsculo**.
+
+### ⚠ A armadilha que custou um invariante — leia antes de rodar o botão
+
+**Rodar o trabalhador de uma árvore com `data/raw/` velho ROLA O SALDO PARA
+TRÁS, em silêncio.** `import-inter.mjs` grava `fin_account.current_balance_cents`
+a partir de `data/raw/inter-extrato.json` (decisão deliberada da 0036: *"o saldo
+vem da API, não da soma dos lançamentos"*), e **não confere se o arquivo é mais
+novo que o último snapshot**.
+
+Medido: a sync de teste rodou de uma cópia cujo `inter-extrato.json` era de
+16/08 (saldo R$ 1.576,59). Ela reescreveu a coluna por cima do valor de 18/08
+(R$ 483,86) e **G1 caiu** — 39/41 virou 38/41, com R$ 1.092,73 de divergência de
+saldo. Nenhum lançamento mudou: 13.912 antes e 13.912 depois.
+
+O reparo foi pelo caminho normal, não à mão: `node scripts/import-inter.mjs` do
+**diretório do projeto**, onde o arquivo bruto é o corrente. Voltou a
+`current_balance_cents = reconstruído = R$ 454,52`, variância 0, e **39/41**.
+
+Isto vale para produção: **o deploy do Railway empacota o diretório de
+trabalho**, então uma árvore com `data/raw/` velho entrega o mesmo efeito no
+boot. Dúvida a registrar: `import-inter.mjs` deveria recusar arquivo bruto mais
+velho que o último `fin_balance_snapshot`? A frente do saldo decide.
+
+### Provas
+
+`npm run test:fonte-frescor` — **25 provas** (eram 19), tudo em ROLLBACK, âncora
+de dinheiro idêntica:
+
+```
+plano gravado ....... 6 etapa(s), ordens 1..6 · pendentes 6 · concluidas 0
+no meio ............. 2 de 6 · 33% · etapa 3 de 6
+interrompida ........ parcial · 3 etapas nunca rodaram, e o motivo as NOMEIA
+CHECK ............... o banco recusa status 'erro' sem motivo
+motivo do dump ...... nomeia a restrição, não a chave `}`
+alarme .............. 0 avisos · e a prova 8 continua exigindo que ele dispare
+                      quando a tolerância cai a 0
+```
+
+O botão contra o banco real, `next start` com os dois pares de credencial (a
+sync rodou de uma cópia SEM as credenciais de Asaas/Inter — daí as falhas, que é
+o que prova o caminho triste com mensagem de verdade):
+
+```
+sem credencial  /                                              401
+comum           /api/financeiro/gerencial/fontes               404
+comum           /api/financeiro/gerencial/fontes/sincronizar   404
+comum           home: ocorrências de `sync-botao`              0
+admin           /financeiro/fontes                             200
+admin           GET  ...sincronizar (estado do botão)          200
+admin           GET  ...?execucao=abc                          400
+admin           GET  ...?execucao=999999                       404
+admin           POST {"fonte":"import_csv"}                    422
+admin           POST {"fonte":123}                             400
+admin           POST {"fonte":"todas"}                         202  execucaoId 12
+admin           POST de novo, com uma viva                     409  + id da viva
+```
+
+O progresso, lido do GET a cada 8 s enquanto ela rodava:
+
+```
+12:36:20  rodando   17%  etapa 2 de 6  concl=1 pend=4 falhas=1   38s  importação do Asaas
+12:37:59  rodando   50%  etapa 4 de 6  concl=3 pend=2 falhas=3  136s  importação do Inter
+12:42:12  rodando   67%  etapa 5 de 6  concl=4 pend=1 falhas=3  390s  lifecycle da fila
+12:42:21  rodando   83%  etapa 6 de 6  concl=5 pend=0 falhas=4  398s  notificações
+12:43:10  parcial  100%       — de 6  concl=6 pend=0 falhas=4  446s
+
+  1 erro  sync Asaas                    0s   ASAAS_API_KEY ausente em .env.local
+  2 erro  importação do Asaas         132s   (o `}`, antes da correção)
+  3 erro  sync Inter                    0s   certificado não configurado
+  4 ok    importação do Inter         252s
+  5 erro  lifecycle da fila financeira   4s  migration 0090 ainda não aplicada
+  6 ok    notificações                 53s
+```
+
+**Estado medido depois desta frente:** invariantes **39/41** (D6 e F1, os
+conhecidos) · caixa **4/4 conferíveis fecham**, divergência R$ 0,00 · fontes
+fora da tolerância **0** · avisos de fonte **0** · `npx tsc --noEmit` limpo ·
+`next build` exit 0.
+
+### Dois achados que NÃO são desta frente e ficam registrados
+
+1. **`import-asaas.mjs` está falhando contra o banco real** em
+   `fin_transaction_reversal_group_completo`. O botão não causou; passou a
+   mostrar.
+2. **`fin-review-lifecycle.mjs` recusa rodar**: *"migration 0090 ainda não
+   aplicada"*. A 0090 falha na própria pré-condição desde a 0094 (§ do
+   checkpoint). Enquanto isso, toda sync termina em `parcial`, mesmo com Asaas e
+   Inter perfeitos.
+
+---
+
 ## Frente das caixinhas do Nubank · 18/08/2026 (migration 0115 — validada, NÃO aplicada)
 
 O pedido, olhando a tela:

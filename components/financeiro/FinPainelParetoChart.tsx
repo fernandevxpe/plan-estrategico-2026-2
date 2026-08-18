@@ -2,6 +2,7 @@
 
 import { Bar, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { ChartWithLegend, useLegendToggle, type LegendSeries } from "@/components/charts/useLegendToggle";
 import { chartTheme } from "@/lib/chart-theme";
 import { brlCompact, brlPrecise, pct } from "@/lib/financeiro/format";
@@ -44,8 +45,9 @@ export function FinPainelParetoChart({ dados }: Props) {
   if (!pontos.length) return <p className="fin-card-hint">Sem cliente identificado no período.</p>;
 
   return (
-    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
-      <ResponsiveContainer width="100%" height={260}>
+    <ChartFrame titulo="Concentração de clientes (Pareto)">
+      <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+        <ResponsiveContainer width="100%" height={260}>
         <ComposedChart data={pontos} margin={{ top: 10, right: 8, bottom: 0, left: 4 }}>
           <XAxis
             dataKey="posicao"
@@ -108,8 +110,9 @@ export function FinPainelParetoChart({ dados }: Props) {
               dot={{ r: 2.5, fill: chartTheme.ink }}
             />
           ) : null}
-        </ComposedChart>
-      </ResponsiveContainer>
-    </ChartWithLegend>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </ChartWithLegend>
+    </ChartFrame>
   );
 }

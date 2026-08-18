@@ -2,6 +2,7 @@
 
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { chartTheme } from "@/lib/chart-theme";
 import { brlCents, brlPrecise } from "@/lib/financeiro/format";
 import type { FaixaAging } from "@/lib/financeiro/painel";
@@ -39,37 +40,39 @@ export function FinPainelAgingChart({ dados }: Props) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={230}>
-      <BarChart data={pontos} margin={{ top: 24, right: 8, bottom: 0, left: 4 }}>
-        <XAxis
-          dataKey="faixa"
-          tick={{ fontSize: 11.5, fill: "#64727a" }}
-          axisLine={{ stroke: "#dce5e8" }}
-          tickLine={false}
-        />
-        <YAxis hide />
-        <Tooltip
-          formatter={(valor: number, _nome: string, item: { payload?: { n?: number; recuperacao?: number } }) => [
-            `${brlPrecise(valor * 100)} · ${item.payload?.n ?? 0} cobranças · recuperação esperada ${brlCents(
-              Math.round((item.payload?.recuperacao ?? 0) * 100)
-            )}`,
-            "Em aberto"
-          ]}
-          labelStyle={{ color: "#172126", fontWeight: 600 }}
-          contentStyle={{ borderRadius: 10, border: "1px solid #dce5e8", fontSize: 13 }}
-        />
-        <Bar dataKey="aberto" name="Em aberto" radius={[4, 4, 0, 0]} maxBarSize={68}>
-          {pontos.map((ponto) => (
-            <Cell key={ponto.faixa} fill={ponto.critica ? chartTheme.amber : chartTheme.slate} />
-          ))}
-          <LabelList
-            dataKey="aberto"
-            position="top"
-            formatter={(valor: number) => brlCents(Math.round(valor * 100))}
-            style={{ fontSize: 12, fill: "#17333a", fontWeight: 600 }}
+    <ChartFrame titulo="Aging do vencido">
+      <ResponsiveContainer width="100%" height={230}>
+        <BarChart data={pontos} margin={{ top: 24, right: 8, bottom: 0, left: 4 }}>
+          <XAxis
+            dataKey="faixa"
+            tick={{ fontSize: 11.5, fill: "#64727a" }}
+            axisLine={{ stroke: "#dce5e8" }}
+            tickLine={false}
           />
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+          <YAxis hide />
+          <Tooltip
+            formatter={(valor: number, _nome: string, item: { payload?: { n?: number; recuperacao?: number } }) => [
+              `${brlPrecise(valor * 100)} · ${item.payload?.n ?? 0} cobranças · recuperação esperada ${brlCents(
+                Math.round((item.payload?.recuperacao ?? 0) * 100)
+              )}`,
+              "Em aberto"
+            ]}
+            labelStyle={{ color: "#172126", fontWeight: 600 }}
+            contentStyle={{ borderRadius: 10, border: "1px solid #dce5e8", fontSize: 13 }}
+          />
+          <Bar dataKey="aberto" name="Em aberto" radius={[4, 4, 0, 0]} maxBarSize={68}>
+            {pontos.map((ponto) => (
+              <Cell key={ponto.faixa} fill={ponto.critica ? chartTheme.amber : chartTheme.slate} />
+            ))}
+            <LabelList
+              dataKey="aberto"
+              position="top"
+              formatter={(valor: number) => brlCents(Math.round(valor * 100))}
+              style={{ fontSize: 12, fill: "#17333a", fontWeight: 600 }}
+            />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartFrame>
   );
 }

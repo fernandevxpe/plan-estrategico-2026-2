@@ -96,8 +96,12 @@ export const AREA_DEFINITIONS: AreaDefinition[] = [
   {
     id: "obras",
     oculta: true,
-    name: "Obras",
-    shortName: "Obras",
+    // "Operação de obras", não "Obras": a guia financeira em /obras (o
+    // agregado de contratado/recebido/reserva/gasto, lido do erp-obras) já
+    // ocupa esse nome no menu principal. Os dois respondiam por "Obras" com
+    // propósitos diferentes — achado na auditoria de navegação.
+    name: "Operação de obras",
+    shortName: "Operação de obras",
     description: "Obras elétricas, execução em campo e ticket alto.",
     parentId: null,
     status: "executando",

@@ -34,10 +34,15 @@ type Props = {
   catalog: GestaoCatalog;
 };
 
+// "Referência", não "Metas": já existe uma rota de topo /metas (plano de
+// ação, pilares de crescimento) — nome igual, dado diferente. Esta aba é o
+// valor de referência de cada indicador TOC, não a meta de crescimento da
+// empresa. Achado na auditoria de navegação: os dois "Metas" confundiam
+// quem ouvisse o nome sem saber qual dos dois lugares abrir.
 const TABS: { id: TabId; label: string }[] = [
   { id: "monitor", label: "Monitor" },
   { id: "lancar", label: "Lançar" },
-  { id: "referencia", label: "Metas" },
+  { id: "referencia", label: "Referência" },
   { id: "historico", label: "Histórico" }
 ];
 

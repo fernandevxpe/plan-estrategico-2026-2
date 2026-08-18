@@ -152,16 +152,23 @@ export const FINANCEIRO_GRUPOS: Grupo[] = [
       { href: "/financeiro/lancamentos", label: "Lançamentos" },
       { href: "/financeiro/extratos", label: "Extratos" },
       {
-        href: "/financeiro/categorizacao",
-        label: "Categorização",
-        // As outras duas telas de classificar. Elas continuam existindo e
-        // alcançáveis; só deixam de disputar espaço no menu de todo dia.
+        // Revisão é a porta de fato: é a única das três que o painel "O que
+        // falta qualificar" da home linka (medido — Categorização e
+        // Qualificar só se alcançam navegando na barra). A fusão das três
+        // segue pendente (comentário no tipo `Rota` acima), mas enquanto elas
+        // existirem separadas, quem chega primeiro deve ser quem o fluxo real
+        // usa primeiro — não a ordem alfabética.
+        href: "/financeiro/revisao",
+        label: "Revisão",
         filhos: [
           { href: "/financeiro/qualificar", label: "Qualificar" },
-          { href: "/financeiro/revisao", label: "Revisão" }
+          { href: "/financeiro/categorizacao", label: "Categorização" },
+          // Motor que alimenta as três — a configuração de quem decide,
+          // não outra fila de trabalho. Morava solta como irmã; aqui fica
+          // clara a relação de dependência.
+          { href: "/financeiro/regras", label: "Regras" }
         ]
       },
-      { href: "/financeiro/regras", label: "Regras" },
       // Ao lado de Importar: as duas respondem "de onde vem o dado". Importar é
       // o caminho manual; Fontes é o mapa de todos os caminhos, com o botão
       // para os que andam sozinhos.
@@ -232,7 +239,19 @@ export const SECOES: Secao[] = [
     href: "/gestao-xpe",
     rotas: [
       { href: "/gestao-xpe", label: "Gestão XPE" },
-      { href: "/areas", label: "Áreas" },
+      // Era "Áreas" → /areas, o hub que lista Funil 360°, Marketing,
+      // Pré-vendas e Vendas — as mesmas quatro que "Mkt e Vendas" já expõe
+      // no menu de cima, alcançáveis pelos dois caminhos com vizinhos
+      // diferentes em cada um. Consultoria é o único conteúdo exclusivo do
+      // hub; aponta direto pra ele em vez de repetir os outros quatro.
+      // /areas/consultoria (o pai) não tem dashboard próprio — só Projetos e
+      // Laudos têm — por isso Projetos vira a porta e Laudos entra como
+      // filho, em vez de mandar para uma página vazia. Achado na auditoria.
+      {
+        href: "/areas/consultoria-projetos",
+        label: "Consultoria",
+        filhos: [{ href: "/areas/consultoria-laudos", label: "Laudos" }]
+      },
       { href: "/auditorias", label: "Auditorias" },
       { href: "/investigacao", label: "Investigação" }
     ]

@@ -13,6 +13,7 @@ import {
   YAxis
 } from "recharts";
 
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { ChartWithLegend, useLegendToggle, type LegendSeries } from "@/components/charts/useLegendToggle";
 import { chartTheme } from "@/lib/chart-theme";
 import { brlCompact, brlPrecise, monthKeyLabel } from "@/lib/financeiro/format";
@@ -57,8 +58,9 @@ export function FinForecastChart({ meses, metaReservasCents }: Props) {
   }
 
   return (
-    <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
-      <ResponsiveContainer width="100%" height={280}>
+    <ChartFrame titulo="Fluxo de caixa projetado">
+      <ChartWithLegend series={series} hidden={hidden} onToggle={toggle}>
+        <ResponsiveContainer width="100%" height={280}>
         <ComposedChart data={pontos} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#dce5e8" vertical={false} />
           <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "#64727a" }} axisLine={false} tickLine={false} />
@@ -93,8 +95,9 @@ export function FinForecastChart({ meses, metaReservasCents }: Props) {
               dot={false}
             />
           ) : null}
-        </ComposedChart>
-      </ResponsiveContainer>
-    </ChartWithLegend>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </ChartWithLegend>
+    </ChartFrame>
   );
 }

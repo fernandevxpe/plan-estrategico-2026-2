@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { brlCompact, brlPrecise } from "@/lib/financeiro/format";
 
 /**
@@ -135,27 +136,29 @@ export function FinCartaoHistorico({ pontos, recorte, caixaIndisponivel }: Props
           <span style={{ fontSize: 12.5, color: "var(--muted)" }}> · {recorte} · não é caixa</span>
         </figcaption>
         <Legenda />
-        <ResponsiveContainer width="100%" height={190}>
-          <BarChart data={dados} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} barCategoryGap="22%">
-            <CartesianGrid stroke={GRADE} vertical={false} />
-            <XAxis
-              dataKey="mes"
-              tick={{ fontSize: 11, fill: TINTA_FRACA }}
-              axisLine={{ stroke: "#dce5e8" }}
-              tickLine={false}
-            />
-            {eixoY}
-            <Tooltip content={<Dica />} cursor={{ fill: "rgba(23,51,58,.05)" }} />
-            {/* 2px de respiro entre os dois segmentos: o empilhado só é legível
-                quando a fronteira entre as partes é visível. */}
-            <Bar dataKey="itemizado" stackId="c" fill={COR_ITEM} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="naoItemizado" stackId="c" fill="url(#cartao-hachura)" radius={[4, 4, 0, 0]}>
-              {dados.map((p, i) => (
-                <Cell key={i} stroke={COR_NAO_ITEM} strokeWidth={p.naoItemizado > 0 ? 1 : 0} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <ChartFrame titulo="Cartão — competência">
+          <ResponsiveContainer width="100%" height={190}>
+            <BarChart data={dados} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} barCategoryGap="22%">
+              <CartesianGrid stroke={GRADE} vertical={false} />
+              <XAxis
+                dataKey="mes"
+                tick={{ fontSize: 11, fill: TINTA_FRACA }}
+                axisLine={{ stroke: "#dce5e8" }}
+                tickLine={false}
+              />
+              {eixoY}
+              <Tooltip content={<Dica />} cursor={{ fill: "rgba(23,51,58,.05)" }} />
+              {/* 2px de respiro entre os dois segmentos: o empilhado só é legível
+                  quando a fronteira entre as partes é visível. */}
+              <Bar dataKey="itemizado" stackId="c" fill={COR_ITEM} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="naoItemizado" stackId="c" fill="url(#cartao-hachura)" radius={[4, 4, 0, 0]}>
+                {dados.map((p, i) => (
+                  <Cell key={i} stroke={COR_NAO_ITEM} strokeWidth={p.naoItemizado > 0 ? 1 : 0} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartFrame>
       </figure>
 
       <figure style={{ margin: 0 }}>
@@ -183,20 +186,22 @@ export function FinCartaoHistorico({ pontos, recorte, caixaIndisponivel }: Props
             </p>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={150}>
-            <BarChart data={dados} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} barCategoryGap="22%">
-              <CartesianGrid stroke={GRADE} vertical={false} />
-              <XAxis
-                dataKey="mes"
-                tick={{ fontSize: 11, fill: TINTA_FRACA }}
-                axisLine={{ stroke: "#dce5e8" }}
-                tickLine={false}
-              />
-              {eixoY}
-              <Tooltip content={<Dica />} cursor={{ fill: "rgba(23,51,58,.05)" }} />
-              <Bar dataKey="caixa" fill={COR_CAIXA} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <ChartFrame titulo="Cartão — caixa">
+            <ResponsiveContainer width="100%" height={150}>
+              <BarChart data={dados} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} barCategoryGap="22%">
+                <CartesianGrid stroke={GRADE} vertical={false} />
+                <XAxis
+                  dataKey="mes"
+                  tick={{ fontSize: 11, fill: TINTA_FRACA }}
+                  axisLine={{ stroke: "#dce5e8" }}
+                  tickLine={false}
+                />
+                {eixoY}
+                <Tooltip content={<Dica />} cursor={{ fill: "rgba(23,51,58,.05)" }} />
+                <Bar dataKey="caixa" fill={COR_CAIXA} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartFrame>
         )}
       </figure>
     </div>

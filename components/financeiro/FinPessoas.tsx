@@ -5,6 +5,8 @@ import { Fragment, useMemo, useState } from "react";
 import type { CustoPessoas, Pactuado, Pessoa } from "@/lib/financeiro/pessoas";
 import { brlCents, brlPrecise, monthKeyLabel, pct } from "@/lib/financeiro/format";
 
+import { Nota } from "@/components/ui/Nota";
+
 import { FinLigacaoPropostaAcoes, FinPessoaCadastro, FinPessoaEditor } from "./FinPessoaEditor";
 import { FinPessoasMatriz } from "./FinPessoasMatriz";
 
@@ -806,14 +808,16 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
           </table>
         </div>
 
-        <p className="fin-card-hint">
-          {mesesComPactuadoNoPeriodo.length
-            ? `As duas últimas colunas de dinheiro cobrem só ${mesesComPactuadoNoPeriodo.map(monthKeyLabel).join(", ")} — os meses em que a planilha de comissionamento existe. O total ao lado cobre ${mesesNoPeriodo.length} ${mesesNoPeriodo.length === 1 ? "mês" : "meses"}: são recortes diferentes de propósito, e por isso a comparação entre eles não fecha. "Acima do fixo" negativo significa que a pessoa recebeu MENOS que o combinado no mês.`
-            : "Nenhum mês deste recorte tem fixo contratado na planilha de comissionamento, então as colunas de pactuado vêm vazias."}{" "}
-          {pactuadosSemLancamento.length
-            ? `O rodapé soma apenas quem teve lançamento. ${pactuadosSemLancamento.map((p) => p.nome).join(", ")} ${pactuadosSemLancamento.length === 1 ? "tem fixo contratado e não aparece" : "têm fixo contratado e não aparecem"} em nenhuma linha: ${brlPrecise(fixoSemLancamentoCents)} por mês de compromisso que esta tabela não mostra porque o dinheiro não foi visto saindo.`
-            : "Todo mundo com fixo contratado na planilha tem ao menos um lançamento neste recorte."}
-        </p>
+        <Nota rotulo="Por que as colunas de pactuado às vezes não fecham com o total">
+          <p>
+            {mesesComPactuadoNoPeriodo.length
+              ? `As duas últimas colunas de dinheiro cobrem só ${mesesComPactuadoNoPeriodo.map(monthKeyLabel).join(", ")} — os meses em que a planilha de comissionamento existe. O total ao lado cobre ${mesesNoPeriodo.length} ${mesesNoPeriodo.length === 1 ? "mês" : "meses"}: são recortes diferentes de propósito, e por isso a comparação entre eles não fecha. "Acima do fixo" negativo significa que a pessoa recebeu MENOS que o combinado no mês.`
+              : "Nenhum mês deste recorte tem fixo contratado na planilha de comissionamento, então as colunas de pactuado vêm vazias."}{" "}
+            {pactuadosSemLancamento.length
+              ? `O rodapé soma apenas quem teve lançamento. ${pactuadosSemLancamento.map((p) => p.nome).join(", ")} ${pactuadosSemLancamento.length === 1 ? "tem fixo contratado e não aparece" : "têm fixo contratado e não aparecem"} em nenhuma linha: ${brlPrecise(fixoSemLancamentoCents)} por mês de compromisso que esta tabela não mostra porque o dinheiro não foi visto saindo.`
+              : "Todo mundo com fixo contratado na planilha tem ao menos um lançamento neste recorte."}
+          </p>
+        </Nota>
       </section>
 
       <FinPessoasMatriz

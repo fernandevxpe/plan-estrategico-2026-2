@@ -150,6 +150,7 @@ export const FINANCEIRO_GRUPOS: Grupo[] = [
     label: "Dados",
     rotas: [
       { href: "/financeiro/lancamentos", label: "Lançamentos" },
+      { href: "/financeiro/extratos", label: "Extratos" },
       {
         href: "/financeiro/categorizacao",
         label: "Categorização",

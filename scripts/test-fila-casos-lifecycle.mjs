@@ -18,7 +18,13 @@ import {
 loadEnv();
 registerFinanceTypeParsers();
 
-const migrationUrl = new URL('../db/migrations/0090_fin_fila_casos_lifecycle.sql', import.meta.url);
+// A 0090 foi reprovada e vive em reprovadas/ desde então — o teste continua
+// instalando-a numa transação isolada com ROLLBACK só para provar a lógica;
+// não afirma que ela está (ou deveria estar) aplicada em produção.
+const migrationUrl = new URL(
+  '../db/migrations/reprovadas/0090_fin_fila_casos_lifecycle.sql',
+  import.meta.url
+);
 const schedulerUrl = new URL('./scheduler.mjs', import.meta.url);
 const packageUrl = new URL('../package.json', import.meta.url);
 const migrationSql = await readFile(migrationUrl, 'utf8');

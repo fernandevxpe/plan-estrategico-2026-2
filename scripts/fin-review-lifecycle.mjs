@@ -48,7 +48,28 @@ export async function executeReviewLifecycle(
         SELECT to_regprocedure('fin_review_lifecycle_apply(text)') IS NOT NULL AS value
       `);
       if (!installed.value) {
-        throw new Error('migration 0090 ainda não aplicada; rode npm run db:migrate');
+        // A 0090 foi reprovada de propósito (vide docs/CONTINUACAO.md e o
+        // commit 190b99e): o gatilho de herança de núcleo recusa a própria
+        // proposta dela em 16 de 16 candidatos, e suas pré-condições fixam
+        // números absolutos que mudam a cada sync. Corrigi-la é trabalho à
+        // parte — não é algo que este script deva forçar nem esconder.
+        //
+        // Antes, isto lançava e o processo pai (o botão de atualizar e o
+        // agendador noturno) contava a etapa como ERRO — todo run do
+        // consolidador falhava, sempre, por uma condição conhecida e
+        // deliberada. Um "erro" que dispara 100% das vezes não é sinal de
+        // nada: é ruído que ensina a ignorar o alarme de verdade.
+        //
+        // `skipped: true` é o relato honesto: nada rodou, por decisão
+        // pendente, não por falha. `ROLLBACK` porque nada foi tentado.
+        await client.query('ROLLBACK');
+        return {
+          actor: normalizedActor,
+          dry_run: dryRun,
+          attempts: attempt,
+          skipped: true,
+          motivo: 'migration 0090 reprovada e não aplicada — consolidação pendente de decisão, não é falha da sincronização'
+        };
       }
 
       const { rows: [before] } = await client.query(snapshotSql());

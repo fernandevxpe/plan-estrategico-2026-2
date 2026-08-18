@@ -60,7 +60,11 @@ const mesCurto = (mes: string | null) => {
 const dataCurta = (d: string | null) => (d ? d.slice(8, 10) + "/" + d.slice(5, 7) + "/" + d.slice(0, 4) : "—");
 
 export function FinCartoes({ dado, ressalvas }: Props) {
-  const [recorte, setRecorte] = useState<string>("");
+  // Dois eixos de recorte, e eles não são o mesmo. A LINHA é a unidade da
+  // fatura; o SUBCARTÃO é a unidade do gasto. Escolher um zera o outro porque
+  // "final 7626 dentro do Inter" é uma pergunta sem resposta.
+  const [linhaSlug, setLinhaSlug] = useState<string>("");
+  const [cardId, setCardId] = useState<number | null>(null);
 
   // As três medidas de abertura. Nenhum `total` — de propósito: não existe um
   // número que junte competência e caixa, e oferecer um campo chamado "total"
@@ -76,10 +80,49 @@ export function FinCartoes({ dado, ressalvas }: Props) {
   const linhas = dado.arvore.filter((n) => n.nivel === "linha");
   const emissores = dado.arvore.filter((n) => n.nivel === "emissor");
 
-  const historico = useMemo(() => montarHistorico(dado, recorte), [dado, recorte]);
-  const rotuloRecorte = recorte
-    ? linhas.find((l) => l.linhaSlug === recorte)?.rotulo ?? recorte
-    : "todos os emissores";
+  // Os subcartões que de fato gastaram, com quanto — a ordem é por valor, não
+  // alfabética: quem olha quer achar o plástico que pesa, não o que vem antes
+  // no alfabeto.
+  const subcartoes = useMemo(() => {
+    const m = new Map<number, { cardId: number; last4: string; titular: string | null; cents: number; linhaSlug: string }>();
+    for (const c of dado.competencia) {
+      if (c.faixa !== "item" || c.cardId === null) continue;
+      if (linhaSlug && c.linhaSlug !== linhaSlug) continue;
+      const atual = m.get(c.cardId) ?? {
+        cardId: c.cardId,
+        last4: c.last4 ?? "—",
+        titular: c.titular,
+        cents: 0,
+        linhaSlug: c.linhaSlug
+      };
+      atual.cents += c.valorCents;
+      m.set(c.cardId, atual);
+    }
+    return [...m.values()].sort((a, b) => b.cents - a.cents);
+  }, [dado.competencia, linhaSlug]);
+
+  const historico = useMemo(
+    () => montarHistorico(dado, linhaSlug, cardId),
+    [dado, linhaSlug, cardId]
+  );
+
+  const subEscolhido = cardId === null ? null : subcartoes.find((s) => s.cardId === cardId);
+  const rotuloRecorte = subEscolhido
+    ? `final ${subEscolhido.last4}`
+    : linhaSlug
+      ? linhas.find((l) => l.linhaSlug === linhaSlug)?.rotulo ?? linhaSlug
+      : "todos os emissores";
+
+  // O pagamento da fatura é da LINHA, não do plástico: o emissor cobra uma
+  // fatura só e o débito sai uma vez. Ao descer para o subcartão o caixa deixa
+  // de ter resposta, e barras zeradas ali afirmariam que aquele final nunca
+  // custou nada.
+  const caixaIndisponivel = subEscolhido
+    ? `O caixa não desce ao subcartão. O emissor cobra UMA fatura por linha de crédito e o débito ` +
+      `sai uma vez da conta corrente — não existe "quanto o final ${subEscolhido.last4} pagou". ` +
+      `Ratear a fatura entre os finais pelo que cada um gastou seria inventar um pagamento que ` +
+      `nunca aconteceu. O gasto dele está no painel acima, por competência.`
+    : null;
 
   return (
     <>
@@ -216,27 +259,62 @@ export function FinCartoes({ dado, ressalvas }: Props) {
       <section className="fin-card">
         <div className="fin-card-head">
           <h2>Histórico</h2>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className={recorte === "" ? "fin-chip ativo" : "fin-chip"}
-              onClick={() => setRecorte("")}
-            >
-              tudo
-            </button>
-            {linhas.map((l) => (
+          <div style={{ display: "grid", gap: 6, justifyItems: "end" }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               <button
-                key={l.chave}
                 type="button"
-                className={recorte === l.linhaSlug ? "fin-chip ativo" : "fin-chip"}
-                onClick={() => setRecorte(l.linhaSlug ?? "")}
+                className={linhaSlug === "" && cardId === null ? "fin-chip ativo" : "fin-chip"}
+                onClick={() => {
+                  setLinhaSlug("");
+                  setCardId(null);
+                }}
               >
-                {l.rotulo}
+                tudo
               </button>
-            ))}
+              {linhas.map((l) => (
+                <button
+                  key={l.chave}
+                  type="button"
+                  className={linhaSlug === l.linhaSlug && cardId === null ? "fin-chip ativo" : "fin-chip"}
+                  onClick={() => {
+                    setLinhaSlug(l.linhaSlug ?? "");
+                    setCardId(null);
+                  }}
+                >
+                  {l.rotulo}
+                </button>
+              ))}
+            </div>
+            {subcartoes.length ? (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <span style={{ fontSize: 11.5, color: "var(--muted)", alignSelf: "center" }}>subcartão</span>
+                {subcartoes.map((s) => (
+                  <button
+                    key={s.cardId}
+                    type="button"
+                    className={cardId === s.cardId ? "fin-chip ativo" : "fin-chip"}
+                    title={
+                      s.titular
+                        ? `titular ${s.titular}`
+                        : "a fonte não diz de quem é este plástico — nenhum titular foi deduzido"
+                    }
+                    onClick={() => {
+                      setCardId(cardId === s.cardId ? null : s.cardId);
+                      setLinhaSlug(s.linhaSlug);
+                    }}
+                  >
+                    {s.last4} · {brl(s.cents)}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
-        <FinCartaoHistorico pontos={historico} recorte={rotuloRecorte} />
+        <FinCartaoHistorico
+          pontos={historico}
+          recorte={rotuloRecorte}
+          caixaIndisponivel={caixaIndisponivel}
+        />
       </section>
 
       {/* =================================================================
@@ -652,8 +730,33 @@ function Planos({ planos }: { planos: CartaoDetalhe["planos"] }) {
  * valor vindo de `fin_card_account.slug`. Casar por rótulo seria um segundo
  * critério de identidade, e o primeiro rótulo com acento diferente o quebraria.
  */
-function montarHistorico(dado: CartaoDetalhe, linhaSlug: string): PontoHistorico[] {
+function montarHistorico(
+  dado: CartaoDetalhe,
+  linhaSlug: string,
+  cardId: number | null
+): PontoHistorico[] {
   const porMes = new Map<string, PontoHistorico>();
+
+  // COM SUBCARTÃO a série vem de `competencia`, que é o único lugar com grão de
+  // plástico. `prova` para na linha de crédito — e não é omissão dela: fatura e
+  // pagamento não têm final de cartão, e inventar um seria ratear.
+  if (cardId !== null) {
+    for (const c of dado.competencia) {
+      if (c.faixa !== "item" || c.cardId !== cardId) continue;
+      const atual = porMes.get(c.mes) ?? {
+        mes: c.mes,
+        itemizadoCents: 0,
+        naoItemizadoCents: 0,
+        caixaCents: 0,
+        itens: 0,
+        pagamentos: 0
+      };
+      atual.itemizadoCents += c.valorCents;
+      atual.itens += c.itens;
+      porMes.set(c.mes, atual);
+    }
+    return [...porMes.values()].sort((a, b) => a.mes.localeCompare(b.mes));
+  }
 
   for (const p of dado.prova) {
     if (linhaSlug && p.linhaSlug !== linhaSlug) continue;

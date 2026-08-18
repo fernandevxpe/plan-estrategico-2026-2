@@ -61,6 +61,15 @@ type Props = {
   pontos: PontoHistorico[];
   /** O que está sendo olhado agora — vai no título, para o gráfico nunca ser anônimo. */
   recorte: string;
+  /**
+   * Por que o painel de caixa não existe neste recorte.
+   *
+   * O caso real: o pagamento da fatura é da LINHA de crédito, não do plástico.
+   * Ao descer para um subcartão, o caixa deixa de ter resposta — e desenhar
+   * barras zeradas ali afirmaria que aquele final nunca custou nada. Um painel
+   * hachurado com o motivo é a única leitura honesta.
+   */
+  caixaIndisponivel?: string | null;
 };
 
 const rotuloMes = (mes: string) => {
@@ -68,7 +77,7 @@ const rotuloMes = (mes: string) => {
   return `${m}/${ano.slice(2)}`;
 };
 
-export function FinCartaoHistorico({ pontos, recorte }: Props) {
+export function FinCartaoHistorico({ pontos, recorte, caixaIndisponivel }: Props) {
   const { dados, teto } = useMemo(() => {
     const d = pontos.map((p) => ({
       mes: rotuloMes(p.mes),
@@ -88,10 +97,10 @@ export function FinCartaoHistorico({ pontos, recorte }: Props) {
     const maximo = Math.max(
       0,
       ...d.map((p) => p.itemizado + p.naoItemizado),
-      ...d.map((p) => p.caixa)
+      ...(caixaIndisponivel ? [0] : d.map((p) => p.caixa))
     );
     return { dados: d, teto: Math.ceil((maximo * 1.08) / 1000) * 1000 };
-  }, [pontos]);
+  }, [pontos, caixaIndisponivel]);
 
   if (!dados.length) {
     return <p className="fin-card-hint">Sem movimento de cartão em {recorte}.</p>;
@@ -152,22 +161,43 @@ export function FinCartaoHistorico({ pontos, recorte }: Props) {
       <figure style={{ margin: 0 }}>
         <figcaption style={{ marginBottom: 6 }}>
           <strong style={{ fontSize: 13.5 }}>Caixa — o que saiu da conta corrente</strong>
-          <span style={{ fontSize: 12.5, color: "var(--muted)" }}> · pagamento de fatura · mesma escala acima</span>
+          <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
+            {caixaIndisponivel ? " · indeterminado neste recorte" : " · pagamento de fatura · mesma escala acima"}
+          </span>
         </figcaption>
-        <ResponsiveContainer width="100%" height={150}>
-          <BarChart data={dados} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} barCategoryGap="22%">
-            <CartesianGrid stroke={GRADE} vertical={false} />
-            <XAxis
-              dataKey="mes"
-              tick={{ fontSize: 11, fill: TINTA_FRACA }}
-              axisLine={{ stroke: "#dce5e8" }}
-              tickLine={false}
-            />
-            {eixoY}
-            <Tooltip content={<Dica />} cursor={{ fill: "rgba(23,51,58,.05)" }} />
-            <Bar dataKey="caixa" fill={COR_CAIXA} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        {caixaIndisponivel ? (
+          <div
+            className="cert-hachura"
+            style={{
+              height: 150,
+              borderRadius: 6,
+              border: `1px solid ${COR_NAO_ITEM}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 24px"
+            }}
+          >
+            <p style={{ margin: 0, maxWidth: "56ch", fontSize: 13, color: "var(--cert-indet)", textAlign: "center" }}>
+              {caixaIndisponivel}
+            </p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={150}>
+            <BarChart data={dados} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} barCategoryGap="22%">
+              <CartesianGrid stroke={GRADE} vertical={false} />
+              <XAxis
+                dataKey="mes"
+                tick={{ fontSize: 11, fill: TINTA_FRACA }}
+                axisLine={{ stroke: "#dce5e8" }}
+                tickLine={false}
+              />
+              {eixoY}
+              <Tooltip content={<Dica />} cursor={{ fill: "rgba(23,51,58,.05)" }} />
+              <Bar dataKey="caixa" fill={COR_CAIXA} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </figure>
     </div>
   );

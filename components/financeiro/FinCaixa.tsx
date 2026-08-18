@@ -119,6 +119,8 @@ export function FinCaixa({ dado, ressalvas }: Props) {
 function PainelContas({ dado }: { dado: CaixaDado }) {
   const comSaldo = dado.contas.filter((c) => c.saldoCents !== null);
   const semSaldo = dado.contas.filter((c) => c.saldoCents === null);
+  const comExtrato = comSaldo.filter((c) => c.saldoOrigem === "reconstruido");
+  const comDeclarado = comSaldo.filter((c) => c.saldoOrigem === "declarado");
 
   return (
     <>
@@ -127,7 +129,9 @@ function PainelContas({ dado }: { dado: CaixaDado }) {
         <header className="fin-card-head">
           <h2>Hoje</h2>
           <p className="fin-card-hint">
-            {comSaldo.length} conta(s) com extrato · {semSaldo.length} sem
+            {comExtrato.length} conta(s) com extrato
+            {comDeclarado.length ? ` · ${comDeclarado.length} com saldo declarado` : ""} ·{" "}
+            {semSaldo.length} indeterminada(s)
           </p>
         </header>
         <div className="medida-grid">
@@ -135,10 +139,12 @@ function PainelContas({ dado }: { dado: CaixaDado }) {
             rotulo="Total disponível"
             valorCents={dado.totalDisponivelCents}
             cobertura={dado.contas.length ? comSaldo.length / dado.contas.length : 0}
-            detalhe={`soma de ${comSaldo.length} conta(s) com extrato`}
+            detalhe={`soma de ${comExtrato.length} conta(s) com extrato${
+              comDeclarado.length ? ` + ${comDeclarado.length} com saldo declarado` : ""
+            }`}
             vies={
               semSaldo.length
-                ? `${semSaldo.length} conta(s) sem extrato ficam de fora — o total é PISO`
+                ? `${semSaldo.length} conta(s) indeterminada(s) ficam de fora — o total é PISO`
                 : undefined
             }
           />
@@ -147,20 +153,27 @@ function PainelContas({ dado }: { dado: CaixaDado }) {
               key={c.slug}
               rotulo={c.nome}
               valorCents={c.saldoCents as number}
-              detalhe={`${c.lancamentos.toLocaleString("pt-BR")} lançamentos · extrato até ${
-                shortDateLabel(c.ultimoMovimento) ?? "—"
-              }`}
+              detalhe={
+                c.saldoOrigem === "declarado"
+                  ? `saldo declarado por ${c.saldoDeclaradoPor ?? "—"} em ${
+                      shortDateLabel(c.saldoDeclaradoEm) ?? "—"
+                    } — sem extrato para reconstruir`
+                  : `${c.lancamentos.toLocaleString("pt-BR")} lançamentos · extrato até ${
+                      shortDateLabel(c.ultimoMovimento) ?? "—"
+                    }`
+              }
             />
           ))}
           {semSaldo.map((c) => (
             <Medida key={c.slug} rotulo={c.nome} valorCents={null} motivo={c.motivoSemSaldo ?? "sem extrato"} />
           ))}
         </div>
-        {semSaldo.some((c) => c.passivoSaldoDevedorCents !== null) && (
+        {dado.contas.some((c) => c.passivoSaldoDevedorCents !== null) && (
           <p className="fin-card-hint" style={{ marginTop: 12 }}>
-            A conta do empréstimo não tem saldo porque não tem extrato — mas tem dívida. O saldo
-            devedor aparece na aba <strong>Empréstimo Pronampe</strong> e{" "}
-            <strong>não está somado</strong> no total acima: é passivo, não dinheiro disponível.
+            A conta do empréstimo não tem extrato — o saldo que aparece nela, quando aparece, é
+            declarado, não reconstruído. O saldo devedor do Pronampe aparece na aba{" "}
+            <strong>Empréstimo Pronampe</strong> e <strong>não está somado</strong> no total
+            acima: é passivo, não dinheiro disponível.
           </p>
         )}
       </section>
@@ -649,8 +662,12 @@ function GraficosIndividuais({ serie, contas }: { serie: PontoSerie[]; contas: C
         .map((c) => (
           <div key={c.slug} className="cert-hachura fin-conta-vazia">
             <strong>{c.nome}</strong>
-            <SeloCamada camada="indeterminado" />
-            <p>{c.motivoSemSaldo}</p>
+            <SeloCamada camada="indeterminado" texto={c.saldoOrigem === "declarado" ? "sem série mensal" : undefined} />
+            <p>
+              {c.saldoOrigem === "declarado"
+                ? `Saldo declarado (${brlPrecise(c.saldoCents ?? 0)}), mas sem extrato — não há lançamentos para desenhar um gráfico mensal.`
+                : c.motivoSemSaldo}
+            </p>
           </div>
         ))}
     </section>

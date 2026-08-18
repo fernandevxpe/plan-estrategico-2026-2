@@ -37,10 +37,15 @@ export type ContaCaixa = {
   nome: string;
   instituicao: string;
   tipo: string;
-  /** Nulo quando a conta não tem extrato. NUNCA zero por ausência. */
+  /** Nulo quando a conta não tem extrato nem saldo declarado. NUNCA zero por ausência. */
   saldoCents: number | null;
   motivoSemSaldo: string | null;
   temCobertura: boolean;
+  /** 'reconstruido' (extrato) | 'declarado' (pessoa conferiu) | null (indeterminado). */
+  saldoOrigem: string | null;
+  saldoDeclaradoEm: string | null;
+  saldoDeclaradoPor: string | null;
+  saldoDeclaradoFonte: string | null;
   lancamentos: number;
   primeiroMovimento: string | null;
   ultimoMovimento: string | null;
@@ -421,24 +426,37 @@ export async function getCaixa(): Promise<Contrato<CaixaDado>> {
       ? `SELECT c.account_id, c.slug, c.name, c.institution, c.kind, c.saldo_cents,
                 c.motivo_sem_saldo, c.tem_cobertura, c.lancamentos,
                 c.primeiro_movimento, c.ultimo_movimento, c.last_statement_at,
-                c.passivo_saldo_devedor_cents, c.passivo_ccb, c.passivo_memoria
+                c.passivo_saldo_devedor_cents, c.passivo_ccb, c.passivo_memoria,
+                c.saldo_origem, c.saldo_declarado_em, c.saldo_declarado_por, c.saldo_declarado_fonte
            FROM fin_caixa_conta_v c ORDER BY c.slug`
       : `SELECT a.id AS account_id, a.slug, a.name, a.institution, a.kind,
                 CASE WHEN mv.lancamentos > 0
-                     THEN (a.opening_balance_cents + mv.soma)::bigint END AS saldo_cents,
+                     THEN (a.opening_balance_cents + mv.soma)::bigint
+                     WHEN decl.saldo_cents IS NOT NULL THEN decl.saldo_cents END AS saldo_cents,
                 CASE WHEN mv.lancamentos > 0 THEN NULL
+                     WHEN decl.saldo_cents IS NOT NULL THEN NULL
                      ELSE 'sem extrato: nenhuma fonte deste acervo alimenta esta conta. '
                           || 'Ausência de dado não é saldo zero.' END AS motivo_sem_saldo,
                 (mv.lancamentos > 0) AS tem_cobertura, mv.lancamentos,
                 mv.primeiro_movimento, mv.ultimo_movimento, a.last_statement_at,
                 NULL::bigint AS passivo_saldo_devedor_cents,
-                NULL::text AS passivo_ccb, NULL::text AS passivo_memoria
+                NULL::text AS passivo_ccb, NULL::text AS passivo_memoria,
+                CASE WHEN mv.lancamentos > 0 THEN 'reconstruido'
+                     WHEN decl.saldo_cents IS NOT NULL THEN 'declarado' END AS saldo_origem,
+                decl.declarado_em AS saldo_declarado_em,
+                decl.declarado_por AS saldo_declarado_por,
+                decl.fonte AS saldo_declarado_fonte
            FROM fin_account a
            LEFT JOIN LATERAL (
              SELECT count(*) lancamentos, COALESCE(sum(t.amount_cents),0) soma,
                     min(t.posted_on) primeiro_movimento, max(t.posted_on) ultimo_movimento
                FROM fin_transaction t
               WHERE t.account_id = a.id AND NOT t.is_split_parent) mv ON true
+           LEFT JOIN LATERAL (
+             SELECT s.saldo_cents, s.declarado_em, s.declarado_por, s.fonte
+               FROM fin_saldo_declarado s
+              WHERE s.account_id = a.id
+              ORDER BY s.declarado_em DESC LIMIT 1) decl ON true
           WHERE a.is_active ORDER BY a.slug`;
 
     const contasRes = await query<Record<string, unknown>>(contasSql);
@@ -451,6 +469,10 @@ export async function getCaixa(): Promise<Contrato<CaixaDado>> {
       saldoCents: numOuNulo(r.saldo_cents),
       motivoSemSaldo: (r.motivo_sem_saldo as string) ?? null,
       temCobertura: Boolean(r.tem_cobertura),
+      saldoOrigem: (r.saldo_origem as string) ?? null,
+      saldoDeclaradoEm: dia(r.saldo_declarado_em),
+      saldoDeclaradoPor: (r.saldo_declarado_por as string) ?? null,
+      saldoDeclaradoFonte: (r.saldo_declarado_fonte as string) ?? null,
       lancamentos: num(r.lancamentos),
       primeiroMovimento: dia(r.primeiro_movimento),
       ultimoMovimento: dia(r.ultimo_movimento),

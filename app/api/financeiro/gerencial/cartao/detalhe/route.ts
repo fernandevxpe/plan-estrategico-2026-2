@@ -50,6 +50,7 @@ export const GET = rotaDeLeitura(async (sp) => {
 
   if (pai) {
     const filhos = await getFilhosDoCartao(pai);
+    if (!filhos.disponivel) return responderContrato(filhos);
     return responderContrato(
       comRessalvas(
         filhos,
@@ -70,6 +71,18 @@ export const GET = rotaDeLeitura(async (sp) => {
   }
 
   const contrato = await getCartaoDetalhe();
+
+  // INDISPONÍVEL NÃO GANHA RESSALVA MEDIDA, E ISTO FOI UM DEFEITO REAL AQUI.
+  //
+  // As frases abaixo são derivadas do dado. Sobre o VAZIO elas viravam
+  // afirmações falsas sobre dinheiro — a resposta 503 dizia, literalmente,
+  // "competência R$ 0,00 e caixa R$ 0,00 são medidas diferentes; somá-las daria
+  // R$ 0,00 — mais do que tudo que os emissores já cobraram". Zero é uma
+  // afirmação sobre o dinheiro; aqui não havia dinheiro nenhum medido, havia
+  // uma view faltando. A única ressalva legítima nesse estado é a que o próprio
+  // contrato já traz: qual view falta.
+  if (!contrato.disponivel) return responderContrato(contrato);
+
   const d = contrato.dado;
 
   const competencia = d.competencia

@@ -62,7 +62,12 @@
     --muted: #a79fc0;
     --line: #2c2740;
     --green: #2be7a4;
-    --purple: #b34bff;
+    /* #9a1de0, não #b34bff: o roxo mais claro tinha só 3,91:1 de contraste
+       com texto branco (WCAG exige 4,5:1) — todo botão primário do app
+       ficava ilegível no tema escuro. Achado numa auditoria de contraste
+       feita à mão depois da revisão de Fase 3 não ter testado isto
+       especificamente. 5,79:1 com o mesmo roxo vívido. */
+    --purple: #9a1de0;
     --purple-deep: #9020f0;
     --blue: #b34bff;
     --amber: #e0a53f;
@@ -71,7 +76,7 @@
     --shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
     --shadow-strong: 0 22px 60px rgba(0, 0, 0, 0.65);
 
-    --neon-purple: #c94dff;
+    --neon-purple: #a80fe8; /* idem — #c94dff dava 3,51:1 com branco */
     --neon-green: #2dffc0;
     --neon-pink: #ff5cc0;
     --neon-purple-ink: #d9a3ff;
@@ -93,7 +98,7 @@
   --muted: #a79fc0;
   --line: #2c2740;
   --green: #2be7a4;
-  --purple: #b34bff;
+  --purple: #9a1de0;
   --purple-deep: #9020f0;
   --blue: #b34bff;
   --amber: #e0a53f;
@@ -102,7 +107,7 @@
   --shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
   --shadow-strong: 0 22px 60px rgba(0, 0, 0, 0.65);
 
-  --neon-purple: #c94dff;
+  --neon-purple: #a80fe8;
   --neon-green: #2dffc0;
   --neon-pink: #ff5cc0;
   --neon-purple-ink: #d9a3ff;

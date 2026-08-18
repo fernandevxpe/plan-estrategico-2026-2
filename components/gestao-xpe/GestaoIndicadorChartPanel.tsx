@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import { LineChart as LineChartIcon, X } from "lucide-react";
 import type { GestaoCatalog, GestaoPeriodo } from "@/lib/gestao-xpe/catalog-types";
@@ -449,6 +450,7 @@ export function GestaoIndicadorChartPanel({
                       </ChartWithLegend>
                     </div>
                   ) : (
+                    <ChartFrame titulo="Indicadores — série histórica">
                     <ChartWithLegend
                       series={viewedSeries.length > 1 ? legendSeries : []}
                       hidden={hidden}
@@ -491,6 +493,7 @@ export function GestaoIndicadorChartPanel({
                         </LineChart>
                       </ResponsiveContainer>
                     </ChartWithLegend>
+                    </ChartFrame>
                   )}
                 </div>
               </div>

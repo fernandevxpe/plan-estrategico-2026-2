@@ -520,6 +520,7 @@ export function CommercialIntelPage({
               <span>Barras: receita ganha · linha: meta do Pipedrive</span>
             </header>
             <div className="ci-chart">
+              <ChartFrame titulo="Fechamentos e receita mês a mês">
               <ChartWithLegend
                 series={revenueSeries}
                 hidden={revenueLegend.hidden}
@@ -565,6 +566,7 @@ export function CommercialIntelPage({
                   </ComposedChart>
                 </ResponsiveContainer>
               </ChartWithLegend>
+              </ChartFrame>
             </div>
           </article>
         </section>
@@ -594,6 +596,7 @@ export function CommercialIntelPage({
               <span>Win rate na linha</span>
             </header>
             <div className="ci-chart">
+              <ChartFrame titulo="Ganhos x perdas por mês">
               <ChartWithLegend
                 series={winLossSeries}
                 hidden={winLossLegend.hidden}
@@ -630,6 +633,7 @@ export function CommercialIntelPage({
                   </ComposedChart>
                 </ResponsiveContainer>
               </ChartWithLegend>
+              </ChartFrame>
             </div>
           </article>
         </section>
@@ -643,6 +647,7 @@ export function CommercialIntelPage({
               <span>Atividades do tipo Reunião concluídas no Pipedrive</span>
             </header>
             <div className="ci-chart">
+              <ChartFrame titulo="Reuniões por semana x meta">
               <ChartWithLegend
                 series={meetingsSeries}
                 hidden={meetingsLegend.hidden}
@@ -672,6 +677,7 @@ export function CommercialIntelPage({
                   </ComposedChart>
                 </ResponsiveContainer>
               </ChartWithLegend>
+              </ChartFrame>
             </div>
           </article>
 

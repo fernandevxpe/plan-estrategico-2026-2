@@ -12932,9 +12932,12 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
    `ResponsiveContainer height="100%"` não acha altura nenhuma pra resolver —
    o gráfico simplesmente some. `:not(.chart-frame-tela-cheia)` deixa a regra
    de tela cheia (100vh) mandar sozinha quando o usuário abre o gráfico. */
-.chart-box > .chart-frame:not(.chart-frame-tela-cheia) { height: 100%; }
-.chart-box > .chart-frame .chart-frame-viewport { flex: 1 1 0%; min-height: 0; }
-.chart-box > .chart-frame .chart-frame-conteudo { height: 100%; }
+.chart-box > .chart-frame:not(.chart-frame-tela-cheia),
+.ci-chart > .chart-frame:not(.chart-frame-tela-cheia) { height: 100%; }
+.chart-box > .chart-frame .chart-frame-viewport,
+.ci-chart > .chart-frame .chart-frame-viewport { flex: 1 1 0%; min-height: 0; }
+.chart-box > .chart-frame .chart-frame-conteudo,
+.ci-chart > .chart-frame .chart-frame-conteudo { height: 100%; }
 @media (prefers-reduced-motion: reduce) {
   .chart-frame-conteudo { transition: none; }
   .theme-toggle { transition: box-shadow .18s ease, color .18s ease; }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { Nota } from "@/components/ui/Nota";
 import { brlPrecise } from "@/lib/financeiro/format";
 import type { CelulaModelo, LinhaModelo, ResumoModelo } from "@/lib/financeiro/modelo";
 
@@ -339,20 +340,21 @@ export function FinModelo({ dados }: { dados: ResumoModelo }) {
         </table>
       </div>
 
-      <p className="fin-card-hint">
-        Regime de caixa, por data de pagamento — é o mesmo regime da aba "Fluxo de Caixa" da planilha, para que os
-        dois sejam comparáveis. Transferência entre contas próprias fica de fora dos dois lados. Linhas marcadas{" "}
-        <em>aproximado</em> somam categorias que podem conter mais coisas do que o nome da linha diz;{" "}
-        <em>sem fonte</em> significa que o extrato bancário não tem como alimentá-las — depreciação e fatura de
-        cartão são os casos maiores.
-        {dados.atualizadoEm ? (
-          <>
-            {" "}
-            Referência da planilha importada em{" "}
-            {new Date(dados.atualizadoEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}.
-          </>
-        ) : null}
-      </p>
+      <Nota rotulo="Regime, aproximações, e o que não tem fonte">
+        <p>
+          Regime de caixa, por data de pagamento — é o mesmo regime da aba "Fluxo de Caixa" da planilha, para que os
+          dois sejam comparáveis. Transferência entre contas próprias fica de fora dos dois lados. Linhas marcadas{" "}
+          <em>aproximado</em> somam categorias que podem conter mais coisas do que o nome da linha diz;{" "}
+          <em>sem fonte</em> significa que o extrato bancário não tem como alimentá-las — depreciação e fatura de
+          cartão são os casos maiores.
+        </p>
+      </Nota>
+      {dados.atualizadoEm ? (
+        <p className="fin-card-hint">
+          Referência da planilha importada em{" "}
+          {new Date(dados.atualizadoEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}.
+        </p>
+      ) : null}
     </div>
   );
 }

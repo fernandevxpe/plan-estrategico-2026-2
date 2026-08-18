@@ -1,4 +1,4 @@
-// Prova da 0114 — o detalhe das caixinhas, em transação com ROLLBACK.
+// Prova da 0115 — o detalhe das caixinhas, em transação com ROLLBACK.
 //
 // ===========================================================================
 // O QUE ESTE TESTE PRECISA PROVAR, E POR QUÊ
@@ -12,7 +12,7 @@
 //   2. nenhuma linha oferece nome de caixinha, e toda linha carrega o motivo.
 //
 // Roda o arquivo inteiro da migration numa transação, mede, e dá ROLLBACK. A
-// âncora de dinheiro por conta é fotografada antes e depois — se a 0114
+// âncora de dinheiro por conta é fotografada antes e depois — se a 0115
 // mover um centavo de qualquer conta, o teste falha.
 //
 // SOMENTE LEITURA no banco (tudo desfeito). Nenhuma API externa é chamada.
@@ -52,7 +52,7 @@ const afirma = (condicao, texto, detalhe = '') => {
 
 const pool = financePool();
 const c = await pool.connect();
-c.on('notice', (n) => console.log(`  · ${String(n.message).replace(/^\[0114\] /, '')}`));
+c.on('notice', (n) => console.log(`  · ${String(n.message).replace(/^\[0115\] /, '')}`));
 
 try {
   await c.query('BEGIN');
@@ -62,8 +62,8 @@ try {
                        FROM fin_transaction GROUP BY account_id ORDER BY account_id`;
   const antes = await c.query(ancoraSql);
 
-  console.log('\nAPLICANDO 0114 na transação');
-  const sql = await readFile(join(RAIZ, 'db/migrations/0114_fin_caixinha_detalhe.sql'), 'utf8');
+  console.log('\nAPLICANDO 0115 na transação');
+  const sql = await readFile(join(RAIZ, 'db/migrations/0115_fin_caixinha_detalhe.sql'), 'utf8');
   await c.query(sql);
 
   const depois = await c.query(ancoraSql);

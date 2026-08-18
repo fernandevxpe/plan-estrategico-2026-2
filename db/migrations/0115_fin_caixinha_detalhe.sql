@@ -270,11 +270,11 @@ BEGIN
     FROM fin_caixinha_ancora_v WHERE account_slug = 'nubank-caixinhas';
 
   IF v_delta IS NULL THEN
-    RAISE EXCEPTION '[0114] fin_caixinha_ancora_v não devolveu nubank-caixinhas';
+    RAISE EXCEPTION '[0115] fin_caixinha_ancora_v não devolveu nubank-caixinhas';
   END IF;
   IF v_delta <> 0 THEN
     RAISE EXCEPTION
-      '[0114] a soma das posições (%) não bate com o saldo da conta (%): delta %. '
+      '[0115] a soma das posições (%) não bate com o saldo da conta (%): delta %. '
       'A tela expansível existe para provar essa igualdade — sem ela, não há o que expandir.',
       v_soma, v_saldo, v_delta;
   END IF;
@@ -284,7 +284,7 @@ BEGIN
   -- signifique alguma coisa.
   IF EXISTS (SELECT 1 FROM fin_caixinha_posicao_v
               WHERE balance_cents <> gross_cents - taxes_cents) THEN
-    RAISE EXCEPTION '[0114] existe posição com balance <> gross − taxes';
+    RAISE EXCEPTION '[0115] existe posição com balance <> gross − taxes';
   END IF;
 
   -- 5.3 Nenhuma linha pode oferecer nome sem evidência. `caixinha_nome` é NULL
@@ -293,26 +293,26 @@ BEGIN
   IF EXISTS (SELECT 1 FROM fin_caixinha_posicao_v
               WHERE caixinha_nome IS NOT NULL OR caixinha_nome_motivo IS NULL) THEN
     RAISE EXCEPTION
-      '[0114] caixinha_nome preenchido, ou motivo ausente. Nome de caixinha só '
+      '[0115] caixinha_nome preenchido, ou motivo ausente. Nome de caixinha só '
       'entra com a fonte que o entrega — inferir por valor ou data é o rótulo inventado.';
   END IF;
 
-  RAISE NOTICE '[0114] âncora: conta % = soma das posições % (delta 0), % ativas',
+  RAISE NOTICE '[0115] âncora: conta % = soma das posições % (delta 0), % ativas',
     v_saldo, v_soma, v_ativas;
 
   -- 5.4 MEDIÇÕES declaradas, não invariantes.
   SELECT count(DISTINCT name) INTO v_nomes FROM fin_investment WHERE provider = 'polp';
   IF v_nomes <= 1 THEN
-    RAISE NOTICE '[0114] a fonte entrega % nome(s) distinto(s) para todas as posições: '
+    RAISE NOTICE '[0115] a fonte entrega % nome(s) distinto(s) para todas as posições: '
       'o nível "caixinha nomeada" continua indeterminado (dúvida 67).', v_nomes;
   ELSE
-    RAISE NOTICE '[0114] a fonte passou a entregar % nomes distintos. REVISITE a dúvida 67: '
+    RAISE NOTICE '[0115] a fonte passou a entregar % nomes distintos. REVISITE a dúvida 67: '
       'talvez o nível da caixinha tenha virado dado.', v_nomes;
   END IF;
 
   SELECT posicoes_divergentes, divergencia_cents INTO v_ativas, v_div
     FROM fin_caixinha_ancora_v WHERE account_slug = 'nubank-caixinhas';
-  RAISE NOTICE '[0114] % posição(ões) com histórico de movimento incompleto, somando % centavos. '
+  RAISE NOTICE '[0115] % posição(ões) com histórico de movimento incompleto, somando % centavos. '
     'Isso NÃO afeta o saldo (que vem da posição, não do fluxo) e a tela mostra caso a caso.',
     v_ativas, v_div;
 END $$;

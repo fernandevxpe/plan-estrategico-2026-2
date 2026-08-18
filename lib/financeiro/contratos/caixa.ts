@@ -169,7 +169,7 @@ export type Emprestimo = {
  *
  * `caixinhaNome` é sempre nulo e `caixinhaNomeMotivo` diz por quê. Não é
  * descuido: o Polp entrega a camada de investimento (o lote que lastreia o
- * dinheiro), não o nome que aparece no app do Nubank. Ver a 0114 para a
+ * dinheiro), não o nome que aparece no app do Nubank. Ver a 0115 para a
  * medição campo a campo.
  */
 export type CaixinhaPosicao = {
@@ -294,7 +294,7 @@ async function temEmprestimo(): Promise<boolean> {
 /**
  * O detalhe das caixinhas, dois níveis.
  *
- * Depende da 0114. Enquanto ela não estiver aplicada o detalhe volta com
+ * Depende da 0115. Enquanto ela não estiver aplicada o detalhe volta com
  * `indisponivelMotivo` preenchido e a tela DEGRADA DIZENDO O QUE FALTA — uma
  * lista vazia seria indistinguível de "a conta não tem posições", que é
  * exatamente a mentira que este módulo existe para não contar.
@@ -312,7 +312,7 @@ async function getCaixinhas(): Promise<CaixinhaDetalhe> {
     return {
       ...CAIXINHAS_VAZIO,
       indisponivelMotivo:
-        "a migration 0114 ainda não está aplicada neste ambiente: o detalhe por posição " +
+        "a migration 0115 ainda não está aplicada neste ambiente: o detalhe por posição " +
         "não pode ser lido. O total da conta acima é real e independe dela."
     };
   }
@@ -380,7 +380,7 @@ async function getCaixinhas(): Promise<CaixinhaDetalhe> {
       saldoCents: num(r.balance_cents),
       rendimentoLiquidoCents: num(r.rendimento_liquido_cents),
       lidoEm: dia(r.quoted_on),
-      // O banco garante NULL (asserção 5.3 da 0114). O `as null` não afrouxa
+      // O banco garante NULL (asserção 5.3 da 0115). O `as null` não afrouxa
       // nada: se algum dia vier texto, a asserção derruba a migration antes.
       caixinhaNome: null,
       caixinhaNomeMotivo: String(r.caixinha_nome_motivo ?? ""),

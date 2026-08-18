@@ -3,7 +3,7 @@
 Este documento existe para quem chega depois. Ele é auto-suficiente: se você só
 puder ler um arquivo antes de tocar em qualquer coisa, leia este.
 
-## Frente das caixinhas do Nubank · 18/08/2026 (migration 0114 — validada, NÃO aplicada)
+## Frente das caixinhas do Nubank · 18/08/2026 (migration 0115 — validada, NÃO aplicada)
 
 O pedido, olhando a tela:
 
@@ -69,7 +69,7 @@ com quatro opções e a pergunta que decide entre elas.
 
 `fin_investment` (0043) já guardava emissor, emissão, carência, vencimento,
 indexador, taxa, principal, bruto, imposto, saldo e o dia da leitura. **O
-detalhe já estava no banco e só não chegava à tela.** Por isso a 0114 é só
+detalhe já estava no banco e só não chegava à tela.** Por isso a 0115 é só
 views — criar tabela duplicaria o dinheiro em dois lugares, que é exatamente o
 que a 0043 se preocupou em não fazer.
 
@@ -109,25 +109,40 @@ ROLLBACK, âncora de dinheiro idêntica nas 4 contas. `--catalogo` imprime a
 "não deve bater": a divergência tem de continuar visível, e o fluxo líquido
 tem de continuar diferente do saldo — se batesse, alguém somaria os dois.
 
-`/financeiro/caixa` medido no fio com a 0114 **não** aplicada: **HTTP 200**, e
-a seção nova degrada dizendo *"a migration 0114 ainda não está aplicada neste
+`/financeiro/caixa` medido no fio com a 0115 **não** aplicada: **HTTP 200**, e
+a seção nova degrada dizendo *"a migration 0115 ainda não está aplicada neste
 ambiente"* em vez de mostrar lista vazia — que seria indistinguível de "a conta
 não tem posições". `npx tsc --noEmit` limpo · `npm run build:app` compila ·
 caixa **4/4 conferíveis fecham** · invariantes **39/41** (D6 e F1, iguais).
 
-### ⚠ A migration reservada era a 0113, e ela já estava ocupada
+### ⚠ O número da migration colidiu DUAS vezes — leia antes de reservar a próxima
 
-A frente recebeu **`0113_fin_caixinha_detalhe.sql`** como número reservado. Ao
-chegar, `db/migrations/0113_fin_caixa_polp.sql` **já existia na árvore, não
-commitado**, da frente da Caixa/Polp — junto com `scripts/lib/polp.mjs`,
-`sync-polp-caixa.mjs` e `conectar-polp-caixa.mjs`. Escrever por cima teria
-apagado o trabalho dela em silêncio.
+A frente recebeu **`0113_fin_caixinha_detalhe.sql`** como número reservado.
 
-Entregue como **0114**. É o §6 outra vez: **numa árvore com N frentes, número
-reservado por prompt não é número livre no disco — confira `ls db/migrations/`
-antes de escrever, inclusive o que não está commitado.**
+**Colisão 1, no disco.** Ao chegar, `db/migrations/0113_fin_caixa_polp.sql` **já
+existia na árvore, não commitado**, da frente da Caixa/Polp — junto com
+`scripts/lib/polp.mjs`, `sync-polp-caixa.mjs` e `conectar-polp-caixa.mjs`.
+Escrever por cima teria apagado o trabalho dela em silêncio. Segui para a 0114.
 
-**Para aplicar:** `npm run db:backup` e então a 0114 **sozinha**. Ela não toca
+**Colisão 2, no tempo.** A 0114 estava livre quando escolhi e livre quando
+commitei (`7dddc71`). Duas horas depois a frente do cartão commitou
+`0114_fin_cartao_detalhe.sql` (`7e13139`) — **dois arquivos 0114 no mesmo
+diretório**. O runner ordena por nome de arquivo inteiro e registra por nome,
+então os dois aplicariam, em ordem alfabética, sem reclamar. Não quebra;
+apenas destrói a premissa de que o número identifica a migration.
+
+**Resolvido movendo a MINHA para `0115_fin_caixinha_detalhe.sql`**, não a
+deles: a do cartão ainda tinha alterações não commitadas por cima, e mover
+migration de outra frente já apagou trabalho alheio uma vez (§6). Renomear é
+seguro aqui **porque nenhuma das duas está aplicada** — renomear migration já
+aplicada gera drift de checksum e derruba o `/financeiro` inteiro no boot.
+
+**A lição, e ela é nova:** verificar `ls db/migrations/` na chegada **não
+basta**. Numa árvore com N frentes o número pode ser tomado *depois* de você
+escolher e *antes* de você terminar. Confira de novo imediatamente antes do
+commit, e de novo antes de aplicar.
+
+**Para aplicar:** `npm run db:backup` e então a 0115 **sozinha**. Ela não toca
 `fin_transaction`, não cria tabela e não escreve um centavo — só três views e
 um `UPDATE` numa frase de `fin_fonte_catalogo`. As asserções conferem a âncora
 e recusam a migration se alguém preencher `caixinha_nome` sem a fonte que o

@@ -2369,7 +2369,7 @@ da lista.
 
 *(a)* **Pedir ao Nubank/Polp.** Se o Polp expuser um endpoint de *pockets* ou se
 o Nubank passar a mandar o apelido no Open Finance, o nível vira dado sozinho —
-a asserção 5.4 da 0114 já avisa por NOTICE quando `name` passar a ter mais de um
+a asserção 5.4 da 0115 já avisa por NOTICE quando `name` passar a ter mais de um
 valor distinto. Custo zero de modelagem, prazo fora do nosso controle.
 
 *(b)* **O Fernando nomeia, e o nome fica no nosso lado.** Uma tabela

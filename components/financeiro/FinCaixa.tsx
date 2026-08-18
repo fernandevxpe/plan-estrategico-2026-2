@@ -184,7 +184,7 @@ function PainelContas({ dado }: { dado: CaixaDado }) {
  * ---------------------------------------------------------------------------
  * "Caixinha" com nome ("Reserva", "Impostos") é agrupamento do APLICATIVO do
  * Nubank. O Open Finance transmite a camada de baixo: o lote de CDB da NU
- * FINANCEIRA que lastreia o dinheiro. Medido campo a campo na 0114 — `name`
+ * FINANCEIRA que lastreia o dinheiro. Medido campo a campo na 0115 — `name`
  * tem UM valor distinto em 66 posições e todos os campos de identidade são
  * nulos.
  *

@@ -247,17 +247,49 @@ try {
   for (const a of alarmando) {
     console.log(`  ${a.fonte} · ${a.conta}: ${a.atraso_util} util > tolerancia ${a.tolerancia_util}`);
   }
+  // Quantas fontes a regua apertada alcanca DEPENDE DO DIA, e fixar "2" aqui
+  // amarrava a prova ao acervo de 17/08. Em 18/08 o Inter recebeu dado do
+  // proprio dia, o atraso dele virou 0 e `0 > 0` e falso: a prova quebrou por
+  // uma razao que nada tem a ver com o que ela afirma. O numero esperado passa
+  // a vir da propria view.
+  //
+  // O que NAO pode acontecer e a prova esvaziar em silencio: zero fonte
+  // alarmando faria o `assert` do aviso passar sem exercitar nada, e passar por
+  // vacuo nao e estar certo. Por isso o caso vazio falha, e falha explicando.
+  assert(alarmando.length > 0,
+    'a prova ficou VAZIA: com tolerancia 0 nenhuma fonte alarma, entao ela nao exercita mais o ' +
+    'alarme. Toda fonte automatica esta com dado do proprio dia — aperte a regua de outro jeito ' +
+    '(recuar ultimo_dado_em de uma fonte dentro deste savepoint) antes de confiar neste passo.');
+
   const avisoForcado = await um(
     `SELECT titulo, corpo, contexto FROM fin_notificacao_fato_v WHERE kind = 'fonte_desatualizada'`
   );
-  assert(avisoForcado, 'com duas fontes fora da tolerancia o aviso NAO apareceu — o alarme esta inerte');
+  assert(avisoForcado,
+    `com ${alarmando.length} fonte(s) fora da tolerancia o aviso NAO apareceu — o alarme esta inerte`);
   console.log(`  ${avisoForcado.titulo}`);
   console.log(`  ${avisoForcado.corpo}`);
-  assert(/^2 fontes/.test(avisoForcado.titulo),
-    `o titulo agregado nao contou as duas fontes: "${avisoForcado.titulo}"`);
-  assert(avisoForcado.contexto.contagem === 2, 'o contexto do aviso nao lista as duas fontes');
+  const esperado = alarmando.length;
+  // Com UMA fonte o aviso nomeia a fonte no titulo; com duas ou mais ele conta.
+  // As duas formas sao da 0109 e ambas dizem QUAIS — a diferenca e so onde.
+  if (esperado === 1) {
+    assert(avisoForcado.titulo.includes(alarmando[0].conta),
+      `com uma fonte so, o titulo tinha de nomea-la: "${avisoForcado.titulo}"`);
+  } else {
+    assert(new RegExp(`^${esperado} fonte`).test(avisoForcado.titulo),
+      `o titulo agregado nao contou as ${esperado} fontes que a view acusa: "${avisoForcado.titulo}"`);
+  }
+  assert(avisoForcado.contexto.contagem === esperado,
+    `o contexto do aviso diz ${avisoForcado.contexto.contagem} e a view acusa ${esperado}`);
+  // E cada uma delas tem de estar nomeada no corpo: um agregado que conta certo
+  // e nao diz QUAIS repete a cobranca sem acao que esta frente veio consertar.
+  for (const a of alarmando) {
+    assert(avisoForcado.corpo.includes(a.conta),
+      `o corpo do aviso nao nomeia a conta "${a.conta}", que a view acusa`);
+  }
   await client.query('ROLLBACK TO SAVEPOINT prova_dispara');
-  passo('com fonte de verdade fora da regua o aviso aparece, agregado e com as duas dentro');
+  passo(esperado === 1
+    ? 'com fonte de verdade fora da regua o aviso aparece, e nomeia a fonte'
+    : `com fonte de verdade fora da regua o aviso aparece, agregado e com as ${esperado} dentro`);
 
   const voltouAoNormal = await um(
     `SELECT count(*)::int n FROM fin_notificacao_fato_v WHERE kind = 'fonte_desatualizada'`

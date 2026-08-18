@@ -12470,3 +12470,172 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .fin-tooltip-total { display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding-top: 5px; margin-top: 2px; }
 .fin-tooltip-total b { font-variant-numeric: tabular-nums; }
 .fin-tooltip-nota { margin: 2px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; max-width: 30ch; }
+
+/* ===========================================================================
+   Botão de atualizar as fontes, no cabeçalho, ao lado do carimbo de idade
+   ---------------------------------------------------------------------------
+   Ele mora dentro de `.topbar-right`, colado no `.freshness`, porque foi ali
+   que foi pedido: "ao lado do local onde informa a ultima atualização". O
+   desenho é deliberadamente do mesmo tamanho e peso do carimbo — ele é uma ação
+   sobre aquele dado, não um segundo elemento disputando atenção.
+   =========================================================================== */
+.sync-botao { display: inline-flex; align-items: stretch; position: relative; }
+.sync-botao-acao {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: 999px 0 0 999px;
+  border: 1px solid var(--line); border-right: none; background: var(--surface);
+  font-family: inherit; font-size: 11px; font-weight: 600; color: var(--muted);
+  cursor: pointer; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.sync-botao-acao:hover:not(:disabled) { color: var(--ink); border-color: var(--purple); }
+.sync-botao-acao:disabled { cursor: default; opacity: .75; }
+/* Como terminou a última vez, sem precisar abrir nada. */
+.sync-botao-acao.is-erro { border-color: color-mix(in srgb, var(--red) 50%, var(--line)); color: var(--red); }
+.sync-botao-acao.is-parcial { border-color: color-mix(in srgb, var(--amber) 45%, var(--line)); color: var(--amber); }
+.sync-botao.is-rodando .sync-botao-acao { color: var(--purple); border-color: color-mix(in srgb, var(--purple) 45%, var(--line)); }
+.sync-botao-detalhe {
+  padding: 5px 8px; border-radius: 0 999px 999px 0;
+  border: 1px solid var(--line); background: var(--surface);
+  font-family: inherit; font-size: 10px; color: var(--muted); cursor: pointer; line-height: 1;
+}
+.sync-botao-detalhe:hover { color: var(--ink); }
+.sync-icone { display: inline-block; font-size: 12px; line-height: 1; }
+.sync-icone.gira { animation: sync-gira 1.4s linear infinite; }
+@keyframes sync-gira { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .sync-icone.gira { animation: none; } }
+
+.sync-painel {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 60;
+  width: min(380px, calc(100vw - 32px));
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 10px 32px rgba(11, 11, 11, .14);
+  padding: 12px 14px; display: grid; gap: 8px; text-align: left; white-space: normal;
+}
+.sync-painel-titulo {
+  margin: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink);
+}
+.sync-painel-titulo a { font-size: 11.5px; font-weight: 500; color: var(--purple); text-decoration: underline; text-underline-offset: 2px; }
+.sync-painel-nota { margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.sync-painel-nota.is-alerta { color: var(--amber); }
+.sync-painel-linha {
+  display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
+  font-size: 12.5px; color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.sync-painel-desfecho { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+.sync-painel-desfecho.is-ok { color: var(--green); }
+.sync-painel-desfecho.is-erro { color: var(--red); }
+.sync-painel-desfecho.is-parcial { color: var(--amber); }
+/* 'perdida' NÃO é vermelho: ela declara desconhecimento, não falha. */
+.sync-painel-desfecho.is-duvida { color: var(--muted); font-style: italic; }
+
+.sync-barra { height: 5px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.sync-barra > span { display: block; height: 100%; border-radius: 999px; transition: width .3s ease; }
+@media (prefers-reduced-motion: reduce) { .sync-barra > span { transition: none; } }
+
+.sync-etapas { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 3px; }
+.sync-etapa {
+  display: grid; grid-template-columns: 14px 1fr auto; gap: 6px; align-items: baseline;
+  font-size: 11.5px; color: var(--ink);
+}
+/* Pendente apagada, nunca ausente: é ela que dá o denominador do percentual. */
+.sync-etapa.is-pendente { opacity: .45; }
+.sync-etapa-marca { font-weight: 700; text-align: center; }
+.sync-etapa-nome { line-height: 1.45; }
+.sync-etapa-fonte { color: var(--muted); font-size: 10.5px; margin-left: 6px; }
+.sync-etapa-tempo { color: var(--muted); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.sync-etapa-erro {
+  grid-column: 2 / -1; margin-top: 3px; padding: 5px 8px;
+  background: color-mix(in srgb, var(--red) 7%, var(--surface));
+  border-left: 3px solid var(--red); border-radius: 0 4px 4px 0;
+  font-size: 11.5px; line-height: 1.45; color: var(--ink);
+  white-space: pre-wrap; word-break: break-word;
+}
+.sync-etapa-saida {
+  margin: 5px 0 0; padding: 0; font-size: 10.5px; color: var(--muted);
+  max-height: 140px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+}
+
+@media (max-width: 900px) {
+  .sync-painel { right: auto; left: 0; }
+}
+
+/* ==========================================================================
+   AS CAIXINHAS, POR DENTRO — árvore expansível de dois níveis
+   ==========================================================================
+   O pedido era clicar na caixinha e ver as subcaixas. O nível "caixinha
+   nomeada" não existe na fonte (0114), então a árvore mostra os dois que
+   existem — conta → posição → movimento — e carimba o ausente com a hachura
+   ROXA de indeterminado (`.cert-hachura`), nunca cinza: cinza lê como
+   "desativado", e o que falta aqui não está desativado, está desconhecido.
+
+   Cada linha carrega o confronto pai × filhos SEMPRE visível, não só quando
+   diverge. Confronto que só aparece no erro ensina a ler o silêncio como
+   ausência de conferência. */
+.cx-arvore { display: grid; gap: 6px; }
+
+.cx-no[data-nivel="conta"] > .cx-linha { border-left: 3px solid var(--line); }
+.cx-no[data-nivel="posicao"] { margin-left: 18px; }
+
+.cx-linha {
+  width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 14px; cursor: pointer; font: inherit; color: var(--ink);
+  transition: background .12s ease, border-color .12s ease;
+}
+.cx-linha:hover { background: var(--card); border-color: var(--muted); }
+.cx-linha:focus-visible { outline: 2px solid var(--cert-provavel); outline-offset: 2px; }
+
+.cx-chevron { color: var(--muted); font-size: 11px; width: 10px; flex: none; }
+
+.cx-nome { display: grid; gap: 2px; min-width: 0; flex: 1 1 auto; font-size: 13.5px; font-weight: 600; }
+.cx-nome small {
+  font-weight: 400; font-size: 11.5px; color: var(--muted); line-height: 1.45;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* O confronto. Os dois números têm o MESMO peso visual de propósito: nenhum
+   dos dois é "o certo" contra o qual o outro se mede — eles se medem entre si. */
+.cx-confronto { display: flex; align-items: center; gap: 10px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.cx-val { display: grid; gap: 1px; text-align: right; }
+.cx-val b { font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 650; }
+.cx-val small { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+
+.cx-igual { font-size: 15px; font-weight: 700; line-height: 1; }
+.cx-igual[data-bate="1"] { color: var(--cert-firme); }
+.cx-igual[data-bate="0"] { color: var(--cert-indet); }
+
+.cx-esperado b { color: var(--cert-observado); }
+.cx-sobra { padding: 3px 8px; border-radius: 5px; border: 1px solid var(--cert-indet); }
+.cx-sobra b { color: var(--cert-indet); }
+
+.cx-filhos { display: grid; gap: 6px; padding: 8px 0 10px 18px; }
+
+/* A lacuna do nome, antes da lista e não num rodapé. */
+.cx-lacuna { border: 1px solid var(--cert-indet); border-radius: 8px; padding: 12px 14px; display: grid; gap: 7px; }
+.cx-lacuna p { margin: 0; font-size: 12.5px; color: var(--ink); line-height: 1.55; max-width: 84ch; }
+.cx-lacuna-saida { color: var(--muted) !important; font-size: 11.5px !important; }
+
+.cx-encerradas { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.5; max-width: 84ch; }
+
+/* A ficha da posição: o que a fonte entrega sobre aquele lote. */
+.cx-ficha { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 2px 0 6px; }
+.cx-ficha > div { display: grid; gap: 1px; min-width: 0; }
+.cx-ficha dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.cx-ficha dd { margin: 0; font-size: 12.5px; color: var(--ink); font-variant-numeric: tabular-nums; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.cx-mov { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cx-mov th {
+  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--line);
+}
+.cx-mov td { padding: 5px 8px; border-bottom: 1px solid var(--line); color: var(--ink); }
+.cx-mov tr:last-child td { border-bottom: 0; }
+
+@media (max-width: 720px) {
+  .cx-linha { flex-wrap: wrap; }
+  .cx-confronto { width: 100%; justify-content: flex-start; padding-left: 22px; }
+  .cx-val { text-align: left; }
+  .cx-no[data-nivel="posicao"] { margin-left: 8px; }
+  .cx-filhos { padding-left: 8px; }
+}

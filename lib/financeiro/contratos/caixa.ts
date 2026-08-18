@@ -161,6 +161,90 @@ export type Emprestimo = {
   fonteIndexadorConsultadaEm: string | null;
 };
 
+/* ========================================================================== */
+/* O DETALHE DA CAIXINHA                                                      */
+/* ========================================================================== */
+/**
+ * Um lote de CDB dentro de uma conta de aplicação — o NÍVEL 1 do detalhe.
+ *
+ * `caixinhaNome` é sempre nulo e `caixinhaNomeMotivo` diz por quê. Não é
+ * descuido: o Polp entrega a camada de investimento (o lote que lastreia o
+ * dinheiro), não o nome que aparece no app do Nubank. Ver a 0114 para a
+ * medição campo a campo.
+ */
+export type CaixinhaPosicao = {
+  posicaoId: number;
+  accountSlug: string;
+  externalId: string;
+  status: string;
+  produto: string;
+  emissor: string | null;
+  emissaoEm: string | null;
+  carenciaEm: string | null;
+  vencimentoEm: string | null;
+  indexador: string | null;
+  taxaPercent: number | null;
+  principalCents: number;
+  brutoCents: number;
+  impostosCents: number;
+  saldoCents: number;
+  rendimentoLiquidoCents: number;
+  lidoEm: string | null;
+  /** SEMPRE null. O motivo ao lado é obrigatório — é o contrato `Medida`. */
+  caixinhaNome: null;
+  caixinhaNomeMotivo: string;
+  movimentos: number;
+  aplicadoCents: number;
+  resgatadoCents: number;
+  fluxoLiquidoCents: number;
+  primeiroMovimento: string | null;
+  ultimoMovimento: string | null;
+  /** saldo − fluxo líquido. Fecha quando é igual ao rendimento. */
+  residuoCents: number;
+  /** O que sobra sem explicação. ≠ 0 é achado, e a tela mostra. */
+  divergenciaCents: number;
+};
+
+/** Um BUY/SELL de uma posição — o NÍVEL 2. NUNCA some isto ao caixa. */
+export type CaixinhaMovimento = {
+  movimentoId: number;
+  posicaoId: number;
+  direcao: string;
+  dataEm: string | null;
+  valorCents: number;
+  assinadoCents: number;
+};
+
+/** O total do pai contra a soma dos filhos, calculado no banco, não na tela. */
+export type CaixinhaAncora = {
+  accountId: number;
+  accountSlug: string;
+  accountNome: string;
+  saldoContaCents: number;
+  somaPosicoesCents: number;
+  /** ≠ 0 é sempre defeito de sincronização. */
+  deltaCents: number;
+  posicoes: number;
+  posicoesAtivas: number;
+  posicoesEncerradas: number;
+  principalCents: number;
+  rendimentoLiquidoCents: number;
+  impostosCents: number;
+  movimentos: number;
+  posicoesDivergentes: number;
+  divergenciaCents: number;
+  lidoEm: string | null;
+  proximoVencimento: string | null;
+};
+
+export type CaixinhaDetalhe = {
+  ancoras: CaixinhaAncora[];
+  posicoes: CaixinhaPosicao[];
+  movimentos: CaixinhaMovimento[];
+  /** Nulo quando o detalhe está disponível. Preenchido, a tela degrada dizendo. */
+  indisponivelMotivo: string | null;
+};
+
 export type CaixaDado = {
   contas: ContaCaixa[];
   totalDisponivelCents: number;
@@ -171,6 +255,14 @@ export type CaixaDado = {
   extratoCaixa: LinhaExtratoCaixa[];
   transferencias: Transferencia[];
   premissas: Premissa[];
+  caixinhas: CaixinhaDetalhe;
+};
+
+const CAIXINHAS_VAZIO: CaixinhaDetalhe = {
+  ancoras: [],
+  posicoes: [],
+  movimentos: [],
+  indisponivelMotivo: null
 };
 
 const VAZIO: CaixaDado = {
@@ -182,7 +274,8 @@ const VAZIO: CaixaDado = {
   confronto: [],
   extratoCaixa: [],
   transferencias: [],
-  premissas: []
+  premissas: [],
+  caixinhas: CAIXINHAS_VAZIO
 };
 
 const num = (v: unknown): number => (v === null || v === undefined ? 0 : Number(v));
@@ -198,6 +291,119 @@ async function temEmprestimo(): Promise<boolean> {
   return Boolean(r[0]?.existe);
 }
 
+/**
+ * O detalhe das caixinhas, dois níveis.
+ *
+ * Depende da 0114. Enquanto ela não estiver aplicada o detalhe volta com
+ * `indisponivelMotivo` preenchido e a tela DEGRADA DIZENDO O QUE FALTA — uma
+ * lista vazia seria indistinguível de "a conta não tem posições", que é
+ * exatamente a mentira que este módulo existe para não contar.
+ *
+ * Os movimentos vêm todos de uma vez, e isso é deliberado: são 163 linhas para
+ * 66 posições. Uma chamada por posição ao clicar transformaria um clique em 18
+ * viagens ao banco, e a lição do `/financeiro/agenda` é que consulta por linha
+ * esgota o pool de 5 conexões e derruba OUTRAS rotas.
+ */
+async function getCaixinhas(): Promise<CaixinhaDetalhe> {
+  const existe = await query<{ existe: boolean }>(
+    "SELECT to_regclass('public.fin_caixinha_ancora_v') IS NOT NULL AS existe"
+  );
+  if (!existe[0]?.existe) {
+    return {
+      ...CAIXINHAS_VAZIO,
+      indisponivelMotivo:
+        "a migration 0114 ainda não está aplicada neste ambiente: o detalhe por posição " +
+        "não pode ser lido. O total da conta acima é real e independe dela."
+    };
+  }
+
+  const ancorasRes = await query<Record<string, unknown>>(
+    `SELECT account_id, account_slug, account_nome, saldo_conta_cents, soma_posicoes_cents,
+            delta_cents, posicoes, posicoes_ativas, posicoes_encerradas, principal_cents,
+            rendimento_liquido_cents, impostos_cents, movimentos, posicoes_divergentes,
+            divergencia_cents, lido_em, proximo_vencimento
+       FROM fin_caixinha_ancora_v ORDER BY account_slug`
+  );
+
+  const posicoesRes = await query<Record<string, unknown>>(
+    `SELECT posicao_id, account_slug, external_id, status, product_subtype, issuer,
+            issue_date, grace_date, due_date, rate_type, rate_percent,
+            principal_cents, gross_cents, taxes_cents, balance_cents,
+            rendimento_liquido_cents, quoted_on, caixinha_nome, caixinha_nome_motivo,
+            movimentos, aplicado_cents, resgatado_cents, fluxo_liquido_cents,
+            primeiro_movimento, ultimo_movimento, residuo_cents, divergencia_cents
+       FROM fin_caixinha_posicao_v
+      ORDER BY (status = 'ativa') DESC, balance_cents DESC, external_id`
+  );
+
+  const movimentosRes = await query<Record<string, unknown>>(
+    `SELECT movimento_id, posicao_id, direction, trade_date, amount_cents, assinado_cents
+       FROM fin_caixinha_movimento_v ORDER BY posicao_id, trade_date, movimento_id`
+  );
+
+  return {
+    indisponivelMotivo: null,
+    ancoras: ancorasRes.map((r) => ({
+      accountId: num(r.account_id),
+      accountSlug: String(r.account_slug),
+      accountNome: String(r.account_nome),
+      saldoContaCents: num(r.saldo_conta_cents),
+      somaPosicoesCents: num(r.soma_posicoes_cents),
+      deltaCents: num(r.delta_cents),
+      posicoes: num(r.posicoes),
+      posicoesAtivas: num(r.posicoes_ativas),
+      posicoesEncerradas: num(r.posicoes_encerradas),
+      principalCents: num(r.principal_cents),
+      rendimentoLiquidoCents: num(r.rendimento_liquido_cents),
+      impostosCents: num(r.impostos_cents),
+      movimentos: num(r.movimentos),
+      posicoesDivergentes: num(r.posicoes_divergentes),
+      divergenciaCents: num(r.divergencia_cents),
+      lidoEm: dia(r.lido_em),
+      proximoVencimento: dia(r.proximo_vencimento)
+    })),
+    posicoes: posicoesRes.map((r) => ({
+      posicaoId: num(r.posicao_id),
+      accountSlug: String(r.account_slug),
+      externalId: String(r.external_id),
+      status: String(r.status),
+      produto: String(r.product_subtype ?? ""),
+      emissor: (r.issuer as string) ?? null,
+      emissaoEm: dia(r.issue_date),
+      carenciaEm: dia(r.grace_date),
+      vencimentoEm: dia(r.due_date),
+      indexador: (r.rate_type as string) ?? null,
+      taxaPercent: numOuNulo(r.rate_percent),
+      principalCents: num(r.principal_cents),
+      brutoCents: num(r.gross_cents),
+      impostosCents: num(r.taxes_cents),
+      saldoCents: num(r.balance_cents),
+      rendimentoLiquidoCents: num(r.rendimento_liquido_cents),
+      lidoEm: dia(r.quoted_on),
+      // O banco garante NULL (asserção 5.3 da 0114). O `as null` não afrouxa
+      // nada: se algum dia vier texto, a asserção derruba a migration antes.
+      caixinhaNome: null,
+      caixinhaNomeMotivo: String(r.caixinha_nome_motivo ?? ""),
+      movimentos: num(r.movimentos),
+      aplicadoCents: num(r.aplicado_cents),
+      resgatadoCents: num(r.resgatado_cents),
+      fluxoLiquidoCents: num(r.fluxo_liquido_cents),
+      primeiroMovimento: dia(r.primeiro_movimento),
+      ultimoMovimento: dia(r.ultimo_movimento),
+      residuoCents: num(r.residuo_cents),
+      divergenciaCents: num(r.divergencia_cents)
+    })),
+    movimentos: movimentosRes.map((r) => ({
+      movimentoId: num(r.movimento_id),
+      posicaoId: num(r.posicao_id),
+      direcao: String(r.direction),
+      dataEm: dia(r.trade_date),
+      valorCents: num(r.amount_cents),
+      assinadoCents: num(r.assinado_cents)
+    }))
+  };
+}
+
 export async function getCaixa(): Promise<Contrato<CaixaDado>> {
   if (!isFinanceConfigured()) {
     return contratoIndisponivel(DOMINIO, VAZIO, "FINANCE_DATABASE_URL não configurada");
@@ -205,6 +411,7 @@ export async function getCaixa(): Promise<Contrato<CaixaDado>> {
 
   return comFallback(DOMINIO, VAZIO, async () => {
     const migrada = await temEmprestimo();
+    const caixinhas = await getCaixinhas();
 
     // ------------------------------------------------------------------
     // As contas. Esta consulta NÃO depende da 0110: se a migration não
@@ -311,7 +518,7 @@ export async function getCaixa(): Promise<Contrato<CaixaDado>> {
     if (!migrada) {
       return contrato({
         dominio: DOMINIO,
-        dado: { ...VAZIO, contas, totalDisponivelCents, contasSemCobertura, serie },
+        dado: { ...VAZIO, contas, totalDisponivelCents, contasSemCobertura, serie, caixinhas },
         ressalvas: [
           ...ressalvas,
           "A migration 0110 ainda não está aplicada neste ambiente: o empréstimo Pronampe " +
@@ -474,7 +681,8 @@ export async function getCaixa(): Promise<Contrato<CaixaDado>> {
         confronto,
         extratoCaixa,
         transferencias,
-        premissas
+        premissas,
+        caixinhas
       },
       ressalvas
     });

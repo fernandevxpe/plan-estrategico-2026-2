@@ -17,7 +17,15 @@ import {
 import { ChartWithLegend, useLegendToggle, type LegendSeries } from "@/components/charts/useLegendToggle";
 import { Medida, Ressalva, SeloCamada, brl } from "@/components/financeiro/Certeza";
 import { brlCompact, brlPrecise, monthKeyLabel, shortDateLabel } from "@/lib/financeiro/format";
-import type { CaixaDado, ContaCaixa, PontoSerie } from "@/lib/financeiro/contratos/caixa";
+import type {
+  CaixaDado,
+  CaixinhaAncora,
+  CaixinhaDetalhe,
+  CaixinhaMovimento,
+  CaixinhaPosicao,
+  ContaCaixa,
+  PontoSerie
+} from "@/lib/financeiro/contratos/caixa";
 
 /**
  * Caixa por conta, com histórico, e o Pronampe.
@@ -157,9 +165,365 @@ function PainelContas({ dado }: { dado: CaixaDado }) {
         )}
       </section>
 
+      <PainelCaixinhas caixinhas={dado.caixinhas} />
+
       <GraficoEmpilhado serie={dado.serie} contas={dado.contas} />
       <GraficosIndividuais serie={dado.serie} contas={dado.contas} />
     </>
+  );
+}
+
+/* ========================================================================== */
+/* AS CAIXINHAS, POR DENTRO                                                   */
+/* ========================================================================== */
+/**
+ * O pedido foi: clicar na caixinha e ver as subcaixas.
+ *
+ * ---------------------------------------------------------------------------
+ * O NÍVEL QUE O FERNANDO PROCURA NÃO EXISTE NA FONTE — E A TELA DIZ ISSO
+ * ---------------------------------------------------------------------------
+ * "Caixinha" com nome ("Reserva", "Impostos") é agrupamento do APLICATIVO do
+ * Nubank. O Open Finance transmite a camada de baixo: o lote de CDB da NU
+ * FINANCEIRA que lastreia o dinheiro. Medido campo a campo na 0114 — `name`
+ * tem UM valor distinto em 66 posições e todos os campos de identidade são
+ * nulos.
+ *
+ * Então a tela mostra os dois níveis que EXISTEM (conta → posição →
+ * movimento) e carimba o nível ausente com a hachura roxa de indeterminado,
+ * com o motivo ao lado. Inventar "Caixinha 1", "Caixinha 2" a partir de valor
+ * ou data seria o rótulo inventado que a restrição 5 proíbe.
+ *
+ * ---------------------------------------------------------------------------
+ * UM NÍVEL POR VEZ, E A SOMA DOS FILHOS SEMPRE À VISTA
+ * ---------------------------------------------------------------------------
+ * Cada linha soma apenas os FILHOS DIRETOS, nunca os netos. A soma aparece ao
+ * lado do total do pai, sempre — não só quando diverge. Um confronto que só
+ * aparece no erro ensina a ler o silêncio como ausência de conferência; visível
+ * sempre, ele vira prova.
+ *
+ * Quando diverge, a tela mostra o número e o nome do que falta. Não há
+ * arredondamento que absorva: no nível da conta a divergência é defeito de
+ * sincronização; no nível da posição é histórico de movimento incompleto na
+ * fonte, e vale R$ 12,14 numa das 18 ativas hoje.
+ */
+function PainelCaixinhas({ caixinhas }: { caixinhas: CaixinhaDetalhe }) {
+  const [contaAberta, setContaAberta] = useState<string | null>(null);
+  const [posicaoAberta, setPosicaoAberta] = useState<number | null>(null);
+
+  // Contas de aplicação que de fato têm carteira. `caixa-aplicacao` existe com
+  // zero posições e não deve virar uma linha vazia para clicar.
+  const comCarteira = caixinhas.ancoras.filter((a) => a.posicoes > 0);
+
+  if (caixinhas.indisponivelMotivo) {
+    return (
+      <section className="fin-card">
+        <header className="fin-card-head">
+          <h2>As caixinhas, por dentro</h2>
+        </header>
+        <div className="cert-hachura" style={{ padding: "14px 16px", borderRadius: 6 }}>
+          <SeloCamada camada="indeterminado" />
+          <p style={{ margin: "8px 0 0", fontSize: 13 }}>{caixinhas.indisponivelMotivo}</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!comCarteira.length) return null;
+
+  const abrirConta = (slug: string) => {
+    setContaAberta((atual) => (atual === slug ? null : slug));
+    // Fechar a conta tem de fechar a posição junto: deixar um nível aberto
+    // dentro de um pai fechado faz o próximo clique reabrir num estado que
+    // ninguém pediu.
+    setPosicaoAberta(null);
+  };
+
+  return (
+    <section className="fin-card">
+      <header className="fin-card-head">
+        <h2>As caixinhas, por dentro</h2>
+        <p className="fin-card-hint">
+          Clique para expandir um nível. Cada linha mostra o próprio total e, ao lado, a soma dos
+          seus filhos diretos — se os dois não baterem, a diferença aparece com nome.
+        </p>
+      </header>
+
+      <div className="cx-arvore">
+        {comCarteira.map((a) => (
+          <NoConta
+            key={a.accountSlug}
+            ancora={a}
+            aberta={contaAberta === a.accountSlug}
+            onToggle={() => abrirConta(a.accountSlug)}
+            posicoes={caixinhas.posicoes.filter((p) => p.accountSlug === a.accountSlug)}
+            movimentos={caixinhas.movimentos}
+            posicaoAberta={posicaoAberta}
+            onTogglePosicao={(id) => setPosicaoAberta((atual) => (atual === id ? null : id))}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Nível 0 → 1: a conta, expandindo nas posições. */
+function NoConta({
+  ancora,
+  aberta,
+  onToggle,
+  posicoes,
+  movimentos,
+  posicaoAberta,
+  onTogglePosicao
+}: {
+  ancora: CaixinhaAncora;
+  aberta: boolean;
+  onToggle: () => void;
+  posicoes: CaixinhaPosicao[];
+  movimentos: CaixinhaMovimento[];
+  posicaoAberta: number | null;
+  onTogglePosicao: (id: number) => void;
+}) {
+  const ativas = posicoes.filter((p) => p.status === "ativa");
+  const encerradas = posicoes.filter((p) => p.status !== "ativa");
+  // O motivo é o mesmo em todas as linhas — vem do banco uma vez por posição, e
+  // a tela mostra uma vez por conta.
+  const motivoNome = posicoes[0]?.caixinhaNomeMotivo ?? "";
+
+  return (
+    <div className="cx-no" data-nivel="conta">
+      <button
+        type="button"
+        className="cx-linha"
+        aria-expanded={aberta}
+        onClick={onToggle}
+        style={{ borderLeftColor: corDe(ancora.accountSlug) }}
+      >
+        <span className="cx-chevron" aria-hidden>
+          {aberta ? "▾" : "▸"}
+        </span>
+        <span className="cx-nome">
+          {ancora.accountNome}
+          <small>
+            {ancora.posicoesAtivas} posição(ões) ativa(s)
+            {ancora.posicoesEncerradas ? ` · ${ancora.posicoesEncerradas} encerrada(s)` : ""}
+            {ancora.lidoEm ? ` · lido em ${shortDateLabel(ancora.lidoEm)}` : ""}
+          </small>
+        </span>
+        <ConfrontoPaiFilhos
+          rotuloPai="saldo da conta"
+          paiCents={ancora.saldoContaCents}
+          rotuloFilhos={`soma das ${ancora.posicoes} posições`}
+          filhosCents={ancora.somaPosicoesCents}
+          diferencaNome="defeito de sincronização: alguma posição entrou sem lançamento, ou o saldo foi mexido à mão"
+        />
+      </button>
+
+      {aberta && (
+        <div className="cx-filhos">
+          {/* A lacuna, uma vez por conta, antes da lista — a ressalva vem
+              ANTES do número, não num rodapé depois de a pessoa já ter lido. */}
+          <div className="cert-hachura cx-lacuna">
+            <SeloCamada camada="indeterminado" texto="nome da caixinha" />
+            <p>{motivoNome}</p>
+            <p className="cx-lacuna-saida">
+              O que está abaixo é a camada que a fonte entrega: cada lote de CDB que lastreia o
+              dinheiro, com emissão, vencimento, taxa e imposto. A soma deles é o saldo da conta,
+              ao centavo.
+            </p>
+          </div>
+
+          {ativas.map((p) => (
+            <NoPosicao
+              key={p.posicaoId}
+              posicao={p}
+              aberta={posicaoAberta === p.posicaoId}
+              onToggle={() => onTogglePosicao(p.posicaoId)}
+              movimentos={movimentos.filter((m) => m.posicaoId === p.posicaoId)}
+            />
+          ))}
+
+          {encerradas.length > 0 && (
+            <p className="cx-encerradas">
+              {encerradas.length} posição(ões) já liquidada(s), somando {brl(0)} — são histórico,
+              não caixa, e por isso ficam fora da lista. Elas continuam no banco e nos movimentos.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Nível 1 → 2: a posição, expandindo nos movimentos. */
+function NoPosicao({
+  posicao,
+  aberta,
+  onToggle,
+  movimentos
+}: {
+  posicao: CaixinhaPosicao;
+  aberta: boolean;
+  onToggle: () => void;
+  movimentos: CaixinhaMovimento[];
+}) {
+  const p = posicao;
+
+  return (
+    <div className="cx-no" data-nivel="posicao">
+      <button type="button" className="cx-linha" aria-expanded={aberta} onClick={onToggle}>
+        <span className="cx-chevron" aria-hidden>
+          {aberta ? "▾" : "▸"}
+        </span>
+        <span className="cx-nome">
+          {p.produto} #{p.externalId}
+          <small>
+            {p.indexador && p.taxaPercent !== null ? `${p.taxaPercent}% do ${p.indexador} · ` : ""}
+            emitido em {shortDateLabel(p.emissaoEm) ?? "—"} · vence em{" "}
+            {shortDateLabel(p.vencimentoEm) ?? "—"} · {p.movimentos} movimento(s)
+          </small>
+        </span>
+        <ConfrontoPaiFilhos
+          rotuloPai="saldo da posição"
+          paiCents={p.saldoCents}
+          rotuloFilhos={`${p.movimentos} movimento(s), líquido`}
+          filhosCents={p.fluxoLiquidoCents}
+          // A diferença ESPERADA entre saldo e fluxo tem nome: é o rendimento
+          // apropriado dentro da aplicação, que nunca passa pela conta
+          // corrente. Ela não é erro — só precisa ser dita.
+          esperadoCents={p.rendimentoLiquidoCents}
+          esperadoNome="rendimento apropriado dentro da posição (nunca passou pela conta corrente)"
+          diferencaNome="movimento que a fonte não entregou: o saldo não se explica nem por fluxo nem por rendimento"
+        />
+      </button>
+
+      {aberta && (
+        <div className="cx-filhos">
+          <dl className="cx-ficha">
+            <div>
+              <dt>principal aplicado</dt>
+              <dd>{brl(p.principalCents)}</dd>
+            </div>
+            <div>
+              <dt>bruto</dt>
+              <dd>{brl(p.brutoCents)}</dd>
+            </div>
+            <div>
+              <dt>IR/IOF provisionado</dt>
+              <dd>−{brl(p.impostosCents)}</dd>
+            </div>
+            <div>
+              <dt>saldo líquido</dt>
+              <dd>
+                <strong>{brl(p.saldoCents)}</strong>
+              </dd>
+            </div>
+            <div>
+              <dt>carência</dt>
+              <dd>{shortDateLabel(p.carenciaEm) ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>emissor</dt>
+              <dd title={p.emissor ?? ""}>{p.emissor ?? "—"}</dd>
+            </div>
+          </dl>
+
+          {movimentos.length ? (
+            <table className="cx-mov">
+              <thead>
+                <tr>
+                  <th>data</th>
+                  <th>movimento</th>
+                  <th style={{ textAlign: "right" }}>valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movimentos.map((m) => (
+                  <tr key={m.movimentoId}>
+                    <td>{shortDateLabel(m.dataEm) ?? "—"}</td>
+                    <td>{m.direcao === "aplicacao" ? "aplicação" : "resgate"}</td>
+                    <td
+                      style={{
+                        textAlign: "right",
+                        fontVariantNumeric: "tabular-nums",
+                        color: m.assinadoCents < 0 ? "var(--cert-atrasado)" : undefined
+                      }}
+                    >
+                      {m.assinadoCents < 0 ? "−" : "+"}
+                      {brl(Math.abs(m.assinadoCents))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="cx-encerradas">
+              Nenhum movimento nesta posição no acervo. Ela existe no saldo, e o que a criou é
+              anterior à janela coberta.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * O total do pai, a soma dos filhos DIRETOS, e a diferença com nome.
+ *
+ * `esperadoCents` é a parte da diferença que já tem explicação (o rendimento,
+ * no caso da posição). O que sobra depois dela é o achado, e recebe destaque —
+ * nunca some num arredondamento.
+ */
+function ConfrontoPaiFilhos({
+  rotuloPai,
+  paiCents,
+  rotuloFilhos,
+  filhosCents,
+  esperadoCents = 0,
+  esperadoNome,
+  diferencaNome
+}: {
+  rotuloPai: string;
+  paiCents: number;
+  rotuloFilhos: string;
+  filhosCents: number;
+  esperadoCents?: number;
+  esperadoNome?: string;
+  diferencaNome: string;
+}) {
+  const residuo = paiCents - filhosCents;
+  const sobra = residuo - esperadoCents;
+
+  return (
+    <span className="cx-confronto">
+      <span className="cx-val">
+        <b>{brl(paiCents)}</b>
+        <small>{rotuloPai}</small>
+      </span>
+      <span className="cx-igual" data-bate={sobra === 0 ? "1" : "0"} aria-hidden>
+        {sobra === 0 ? "=" : "≠"}
+      </span>
+      <span className="cx-val">
+        <b>{brl(filhosCents)}</b>
+        <small>{rotuloFilhos}</small>
+      </span>
+      {esperadoCents !== 0 && (
+        <span className="cx-val cx-esperado" title={esperadoNome}>
+          <b>+{brl(esperadoCents)}</b>
+          <small>rendimento</small>
+        </span>
+      )}
+      {sobra !== 0 && (
+        <span className="cx-val cx-sobra cert-hachura" title={diferencaNome}>
+          <b>
+            {sobra < 0 ? "−" : "+"}
+            {brl(Math.abs(sobra))}
+          </b>
+          <small>sem explicação</small>
+        </span>
+      )}
+    </span>
   );
 }
 

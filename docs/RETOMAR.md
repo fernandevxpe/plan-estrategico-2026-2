@@ -103,8 +103,15 @@ antes de concluir qualquer coisa.
 
 ### 4. Telas que ainda não existem
 
-Cartões, a pagar, fila de pagamento, tributário e cobertura de fontes têm
-backend pronto e nenhuma interface. A de pagamento depende da dúvida 27.
+A pagar, fila de pagamento, tributário e cobertura de fontes têm backend pronto
+e nenhuma interface. A de pagamento depende da dúvida 27.
+
+**Cartões saiu desta lista em 18/08/2026**: `/financeiro/cartoes` existe, com a
+árvore emissor → linha → fatura → subcartão → item, o histórico em dois painéis
+que nunca se somam e os 25 planos de parcelamento. Ela depende da migration
+`0114_fin_cartao_detalhe.sql`, que está **validada e NÃO aplicada** — enquanto
+não for, a tela degrada nomeando as sete views que faltam. Ver a seção da frente
+em `docs/CONTINUACAO.md`.
 
 ### 5. A reorganização visual, fase 5
 

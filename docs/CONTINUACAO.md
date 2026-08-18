@@ -150,6 +150,171 @@ justifique.
 
 ---
 
+## Frente do detalhamento de cartão · 18/08/2026 (migration 0114 — validada, NÃO aplicada)
+
+O pedido, com as palavras dele:
+
+> *"na parte de despesas saidas do caixa, quero que mostre tbm os valores de
+> cartões, historico de cartao e tbm permita ver o detalhe de cartoes por banco
+> ou conta e até detalhamento de cartões online, sub cartões se for possível...
+> quero maximo de detalhamento"*
+
+**`0114_fin_cartao_detalhe.sql` — validada em transação com ROLLBACK, 29
+afirmações, âncora de dinheiro por conta idêntica antes e depois. NÃO aplicada.**
+`node scripts/test-cartao-detalhe.mjs` roda o arquivo inteiro e prova tudo o que
+está escrito abaixo.
+
+### O número que a tela existe para impedir
+
+```
+competência (itens) .....  R$  84.058,09     781 itens em fin_card_transaction
+não itemizado ...........  R$  54.607,28     42,0% — a fonte não entrega
+caixa (fatura paga) .....  R$ 107.600,75     17 lançamentos em fin_transaction
+faturas declaradas ......  R$ 130.108,74     = itemizado + não itemizado
+
+somar competência com caixa daria R$ 191.658,84 — R$ 61.550,10 A MAIS do que
+tudo que os emissores já cobraram desde 2025.
+```
+
+Fatura e item são o **mesmo dinheiro visto de dois lugares**, e nem caem no
+mesmo mês: a fatura de março é paga em março, com compras de fevereiro. O banco
+já recusava a versão grosseira do erro por três caminhos (CHECK de
+`fin_account.kind`, ausência de ponteiro entre as duas tabelas, gatilho
+`fin_transaction_fatura_sem_itemizacao`). Faltava a quarta defesa: uma tela que
+mostre os dois lados ao mesmo tempo, em campos separados. Enquanto o único jeito
+de ver o gasto de cartão for somar números a mão, alguém vai somar os errados.
+
+### O defeito medido: 38% do caixa do cartão estava invisível
+
+`getCartao()` media o caixa por `c.code = '9.01'`. Os **9 pagamentos de fatura
+do Inter — R$ 40.862,41** — têm `category_id` NULO, porque o gatilho da 0094 os
+barrou até existir `fin_card_bill` ligada (hoje existe; o carimbo continua sendo
+decisão humana e pode nunca vir). Medir por rótulo escondia justamente a linha
+cuja classificação está em aberto.
+
+A âncora passa a ser **`fin_card_bill.paid_transaction_id`** — o ponteiro que já
+era o único ponto de contato entre o subledger e o ledger. Conferido no fio:
+`caixaPagamentoFatura12mCents` foi de R$ 66.738,34 para R$ 107.600,75.
+
+### Por que a árvore é emissor → linha → FATURA → subcartão → item
+
+A ordem pedida parecia emissor → linha → subcartão → fatura. **O dado não
+aceita: fatura pertence à linha de crédito, não ao subcartão.** As 12 faturas do
+Nubank misturam de 5 a 8 finais cada uma. Pendurar a fatura sob o subcartão
+exigiria repetir a fatura inteira sob cada final (×7 no total) ou inventar uma
+"fatura do final 7626" que nenhum emissor mandou.
+
+A árvore desce pela fatura e abre por subcartão dentro dela. O subcartão ganha o
+eixo do tempo em `fin_card_serie_mensal_v`, que é onde a pergunta "quanto este
+plástico gasta" de fato mora. Medido, e cada nível soma o de cima:
+
+```
+emissor          3 nós   R$ 138.665,37
+linha            3 nós   R$ 138.665,37
+fatura          22 nós   R$ 138.665,37     21 faturas + 1 "ainda sem fatura"
+subcartao       91 nós   R$  84.058,09
+nao_itemizado   21 nós   R$  54.607,28     ← irmão dos subcartões, não diluído
+item           781 nós   R$  84.058,09
+```
+
+### A parte não itemizada é um NÓ, nunca uma diferença
+
+R$ 54.607,28 não é explicado por item nenhum. A tentação é fechar por diferença
+— ratear entre os subcartões, ou somar ao último item. Isso daria um total
+bonito e uma base errada: **gasto sem dono viraria gasto com dono inventado.**
+Aqui ele é um nó com valor e motivo próprios, hachurado em roxo, e soma no pai
+como qualquer outro filho. `total = itemizado + não itemizado` é conferido nas
+21 faturas.
+
+### O que segue sem nome e sem dono, recontado
+
+```
+itens ................ 781      (os 795 de antes incluíam 14 'pagamento_fatura',
+sem categoria ........ 500       que são o espelho do débito na corrente e não
+                                 são gasto)
+   R$ 51.067,66
+sem titular .......... 781      12 subcartões sem dono declarado
+sem centro de custo .. 781
+```
+
+**Nenhum dos dois é deduzido.** A fonte não devolve `owner`, `tax_number` nem
+`holderType`; categoria adivinhada entra na DRE como fato. Uma asserção da 0114
+recusa qualquer item com campo ausente e sem motivo, e outra recusa titular sem
+pessoa ligada.
+
+### O parcelamento que atravessa a reemissão — e a distinção que faltava
+
+16 de 25 planos aparecem em mais de um final e continuam sendo UM plano. A 0114
+acrescenta o que não estava escrito: **`fin_card.replaces_card_id` e
+`replaced_by_card_id` estão NULOS nos 12 subcartões.** A troca de plástico não
+está declarada em lugar nenhum — ela é **inferida** pela continuidade da
+numeração das parcelas. `reemissao_declarada` separa dedução de registro, e uma
+asserção exige o motivo em toda parcela cuja reemissão é inferida.
+
+### O gráfico: dois painéis, nunca um
+
+Competência e caixa no mesmo desenho fazem o olho somar, e eixo duplo é o erro
+nº 1 de gráfico. Dois painéis empilhados com a **mesma escala vertical**
+permitem a leitura legítima ("gastei mais do que paguei neste mês?") sem que
+exista um total que junte os dois.
+
+A paleta (`#b67818` itemizado · `#6b4e8f` não itemizado · `#c8553d` caixa) passa
+os seis testes do validador em fundo claro: faixa de luminosidade, piso de
+croma, separação para daltonismo (pior par ΔE 16,9 em protanopia), piso de visão
+normal ΔE 21,5 e contraste ≥ 3:1. A hachura no indeterminado é encoding
+**secundário** — quem não distingue as cores distingue liso de hachurado. Verde
+ficou de fora: nesta base verde é ENTRADA (`--fin-in`), e cartão é saída inteira.
+
+### O defeito que só apareceu rodando a rota
+
+Com a 0114 não aplicada, o 503 vinha com uma ressalva **derivada do dado vazio**:
+*"competência R$ 0,00 e caixa R$ 0,00 são medidas diferentes; somá-las daria
+R$ 0,00 — mais do que tudo que os emissores já cobraram"*. Zero é uma afirmação
+sobre o dinheiro; ali não havia dinheiro medido, havia uma view faltando. A
+restrição 5 do projeto quebrada pelo próprio código que a explica. **Ressalva
+medida não se aplica a contrato indisponível** — as duas saídas da rota agora
+devolvem o contrato como está quando `disponivel` é falso.
+
+### Onde ficou
+
+```
+migration ......... 0114, validada em transação, NÃO aplicada
+teste ............. node scripts/test-cartao-detalhe.mjs   29 afirmações, 0 falhas
+                    (não entrou em package.json: outra frente tem o arquivo modificado)
+tela .............. /financeiro/cartoes   (barra PAGAR, ao lado de "Custos do mês")
+rotas ............. GET /api/financeiro/gerencial/cartao/detalhe
+                    GET /api/financeiro/gerencial/cartao/detalhe?pai=<chave>
+contrato .......... lib/financeiro/contratos/cartao-detalhe.ts
+views novas ....... fin_card_saida_caixa_v · fin_card_item_v · fin_card_arvore_v
+                    fin_card_serie_mensal_v · fin_card_caixa_mensal_v
+                    fin_card_plano_parcela_v · fin_card_prova_nao_soma_v
+corrigido ......... getCartao().caixaPagamentoFatura12mCents (a âncora por 9.01)
+                    a rota, que afirmava sobre o vazio
+ponteiro .......... /financeiro/custos ganha "ver a composição em Cartões" nas
+                    linhas cuja camada começa com pagar_cartao
+```
+
+Medido no fio, com `next start` e as duas credenciais:
+
+```
+/financeiro/cartoes                       sem cred 401 · comum 404 · admin 200
+/api/.../cartao/detalhe                   503 + a ressalva que nomeia as 7 views
+/api/.../cartao/detalhe?pai=sub:1:5       503 + a mesma
+/api/.../cartao                           200
+```
+
+**Estado medido depois desta frente:** `validar-cartoes.mjs` **0 falhas · 10
+lacunas** · `test:integridade --strict` **39/41** (D6 e F1, de outras frentes,
+iguais) · D2 e D3 passam · caixa **4/4 conferíveis fecham · 2 declaradas** ·
+`npx tsc --noEmit` limpo · `npm run build:app` exit 0.
+
+**Para aplicar:** `npm run db:backup` e então a 0114 **sozinha** — 0113 é de
+outra frente e não deve ser arrastada (§6). Ela não cria tabela, não escreve um
+centavo e não toca gatilho: são sete views de leitura. Enquanto não for
+aplicada, `/financeiro/cartoes` degrada nomeando as views que faltam.
+
+---
+
 ## Frente do alarme de fonte — o lobo, os dias úteis e o botão · 17/08/2026 (migration 0109)
 
 O pedido, olhando a tela:

@@ -26,7 +26,7 @@ function ofxDate(value: string): string | null {
 export const ofxParser: BankParser = {
   id: "ofx",
   // Padrão Inter (o exportador de OFX mais usado aqui); a tela deixa trocar
-  // para caixa-aplicacao / caixa-emprestimo.
+  // para caixa-aplicacao / caixa.
   accountSlug: "inter",
   label: "OFX (Inter/Caixa)",
 

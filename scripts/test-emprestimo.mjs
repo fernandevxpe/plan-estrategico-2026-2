@@ -82,6 +82,14 @@ try {
 
   await client.query('BEGIN');
 
+  // Migrations posteriores (a 0118) estenderam fin_caixa_conta_v com colunas
+  // novas no fim. CREATE OR REPLACE VIEW nao aceita remover coluna — e a
+  // 0110 original, replayada aqui, tem menos colunas que a view ja tem em
+  // producao. Sem isto, o replay falha com "cannot drop columns from view"
+  // a cada nova coluna que uma migration futura acrescentar. So dentro desta
+  // transacao, que sempre termina em ROLLBACK: nada disto toca producao.
+  await client.query('DROP VIEW IF EXISTS fin_caixa_conta_v');
+
   console.log('\n1. A migration aplica inteira, com as proprias assercoes');
   const sql = fs.readFileSync(MIGRATION, 'utf8');
   const t0 = Date.now();
@@ -247,7 +255,9 @@ try {
     contas.rows.filter((r) => r.saldo_cents === null && !r.motivo_sem_saldo).length === 0,
     'nenhuma conta sem saldo ficou sem motivo'
   );
-  const emprestimoConta = contas.rows.find((r) => r.slug === 'caixa-emprestimo');
+  // A 0119 fundiu caixa-emprestimo em caixa: mesma conta fisica da Caixa, uma
+  // linha so. O passivo do Pronampe mora em caixa desde entao.
+  const emprestimoConta = contas.rows.find((r) => r.slug === 'caixa');
   afirma(
     emprestimoConta && emprestimoConta.saldo_cents === null && emprestimoConta.passivo_saldo_devedor_cents !== null,
     'o passivo do Pronampe NAO virou saldo de conta',

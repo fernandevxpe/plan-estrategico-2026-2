@@ -124,9 +124,11 @@ export async function getVisaoExecutiva(): Promise<Contrato<VisaoExecutiva>> {
     }));
 
     const saldoTotal = cobertura.contas
-      // A conta de empréstimo fica fora: saldo negativo ali é normal e somá-lo
-      // faria o runway mentir.
-      .filter((c) => c.slug !== "caixa-emprestimo")
+      // "caixa" carrega o passivo do Pronampe (fundida com a antiga
+      // caixa-emprestimo na 0119) e não tem extrato ainda — o saldo bruto
+      // desta conta aqui é current_balance_cents, não o declarado, e somá-lo
+      // faria o runway mentir por zero em vez de por dívida.
+      .filter((c) => c.slug !== "caixa")
       .reduce((soma, c) => soma + c.saldoCents, 0);
 
     const totalReceita = concentracao.reduce((soma, c) => soma + Number(c.total), 0);

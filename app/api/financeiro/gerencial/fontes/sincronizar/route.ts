@@ -1,5 +1,11 @@
 import { FinanceUnavailableError } from "@/lib/financeiro/db";
-import { RecusaSync, dispararSync, fontesAtualizaveis, lerExecucao } from "@/lib/financeiro/fontes";
+import {
+  RecusaSync,
+  dispararSync,
+  estadoDoBotao,
+  fontesAtualizaveis,
+  lerExecucao
+} from "@/lib/financeiro/fontes";
 
 import { autorDe, erro, lerCorpo } from "../../categorizacao/_escrita";
 
@@ -93,22 +99,61 @@ export async function POST(request: Request): Promise<Response> {
  *
  * Um botão que falha em silêncio é pior que não ter botão: ele consome a
  * confiança que o alarme já tinha gastado.
+ *
+ * ==========================================================================
+ * GET /api/financeiro/gerencial/fontes/sincronizar   (sem `execucao`)
+ * ==========================================================================
+ * O estado do botão do CABEÇALHO, que aparece em toda página. Ele responde as
+ * três perguntas que o botão precisa fazer ao ser montado:
+ *
+ *   está rodando alguma coisa agora?  → `execucaoCorrente` (com progresso)
+ *   como terminou a última?           → `ultimaExecucao`
+ *   quanto isto costuma levar?        → `referencia` (a última bem-sucedida)
+ *
+ * Ela é DELIBERADAMENTE mais barata que `GET /fontes`: duas leituras por índice
+ * em `fin_fonte_sync_execucao`, sem tocar `fin_fonte_frescor_v` — a view de
+ * dias úteis e feriados. Pendurar aquela view em cada navegação é o caminho
+ * conhecido para esgotar o pool de 5 conexões e derrubar outras rotas.
+ *
+ * A forma anterior (só `fontesAtualizaveis` + `motivo`) continua inteira dentro
+ * desta: é acréscimo, não troca.
  */
 export async function GET(request: Request): Promise<Response> {
   const sp = new URL(request.url).searchParams;
   const bruto = sp.get("execucao");
 
   if (!bruto) {
-    return Response.json(
-      {
-        fontesAtualizaveis: await fontesAtualizaveis(),
-        motivo:
-          "as demais fontes ou são importação manual (uma pessoa exporta o arquivo) ou são API sem " +
-          "etapa no agendador. A tela /financeiro/fontes diz, por linha, qual é o caso.",
-        uso: "?execucao=<id> para acompanhar um disparo"
-      },
-      { headers: { "Cache-Control": "no-store" } }
-    );
+    const explicacao = {
+      motivo:
+        "as demais fontes ou são importação manual (uma pessoa exporta o arquivo) ou são API sem " +
+        "etapa no agendador. A tela /financeiro/fontes diz, por linha, qual é o caso.",
+      uso: "?execucao=<id> para acompanhar um disparo"
+    };
+    try {
+      const estado = await estadoDoBotao();
+      return Response.json(
+        { ...estado, ...explicacao },
+        { headers: { "Cache-Control": "no-store" } }
+      );
+    } catch (e) {
+      // Sem a 0109 aplicada não há trilha para ler. Degradar dizendo o que falta
+      // — e ainda assim entregar a lista de fontes alcançáveis, que não depende
+      // do banco — vale mais que 500 ou que um objeto vazio, que o cabeçalho
+      // leria como "nada rodando, tudo bem".
+      const motivo = e instanceof RecusaSync || e instanceof FinanceUnavailableError ? e.message : null;
+      if (motivo === null) throw e;
+      return Response.json(
+        {
+          ...explicacao,
+          execucaoCorrente: null,
+          ultimaExecucao: null,
+          referencia: null,
+          fontesAtualizaveis: await fontesAtualizaveis(),
+          indisponivel: motivo
+        },
+        { status: 503, headers: { "Cache-Control": "no-store" } }
+      );
+    }
   }
 
   const id = Number(bruto);

@@ -4,6 +4,14 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 
 import { queryOne, transaction } from "@/lib/financeiro/db";
+import {
+  contadorDeEtapasPrevistas,
+  paraExecucao,
+  referenciaDoEscopo,
+  type ExecucaoBruta,
+  type ExecucaoSync,
+  type ReferenciaSync
+} from "@/lib/financeiro/contratos/fontes";
 
 /**
  * O disparo do botão "atualizar fontes".
@@ -188,44 +196,81 @@ export async function dispararSync(args: { escopo: string; ator: string }): Prom
   return { execucaoId: execucao, escopo, etapas };
 }
 
-export type EstadoExecucao = {
-  id: number;
-  escopo: string;
-  status: string;
-  ator: string;
-  iniciadaEm: string;
-  terminadaEm: string | null;
-  etapas: unknown[];
-  erro: string | null;
+// A entidade vai literal, e não por parâmetro, para o trecho poder ser
+// concatenado com filtros de numeração diferente sem cada chamador ter de saber
+// qual índice sobrou. É constante do módulo, nunca entrada de usuário.
+const SELECT_EXECUCAO = `
+  SELECT e.id, e.escopo, e.status, e.ator, e.iniciada_em, e.terminada_em, e.etapas, e.erro
+    FROM fin_fonte_sync_execucao e
+    JOIN fin_entity n ON n.id = e.entity_id AND n.slug = 'xpe'`;
+
+/**
+ * O estado de uma execução, para o polling da tela — já com o progresso.
+ *
+ * O tipo devolvido é o MESMO `ExecucaoSync` do contrato de leitura, e o mapeador
+ * também. A versão anterior mantinha aqui uma cópia da forma (`EstadoExecucao`)
+ * com os mesmos campos: duas definições do mesmo objeto que só se manteriam
+ * iguais por disciplina, e o polling e a listagem passariam a divergir no
+ * primeiro campo novo. Este arquivo dispara, aquele lê; a forma é uma só.
+ */
+export async function lerExecucao(id: number): Promise<ExecucaoSync | null> {
+  const [r, previstasDoEscopo] = await Promise.all([
+    queryOne<ExecucaoBruta>(`${SELECT_EXECUCAO} WHERE e.id = $1`, [id]),
+    contadorDeEtapasPrevistas()
+  ]);
+  if (!r) return null;
+  return paraExecucao(r, previstasDoEscopo);
+}
+
+export type EstadoDoBotao = {
+  /** A execução viva, se houver. É ela que o cabeçalho passa a acompanhar. */
+  execucaoCorrente: ExecucaoSync | null;
+  /** A última terminada, viva ou não — para o cabeçalho dizer o que houve. */
+  ultimaExecucao: ExecucaoSync | null;
+  /** Quanto a última completa bem-sucedida levou. Null enquanto não houver uma. */
+  referencia: ReferenciaSync | null;
+  fontesAtualizaveis: string[];
 };
 
-/** O estado de uma execução, para o polling da tela. */
-export async function lerExecucao(id: number): Promise<EstadoExecucao | null> {
-  const r = await queryOne<{
-    id: string;
-    escopo: string;
-    status: string;
-    ator: string;
-    iniciada_em: Date;
-    terminada_em: Date | null;
-    etapas: unknown[] | null;
-    erro: string | null;
-  }>(
-    `SELECT e.id, e.escopo, e.status, e.ator, e.iniciada_em, e.terminada_em, e.etapas, e.erro
-       FROM fin_fonte_sync_execucao e
-       JOIN fin_entity n ON n.id = e.entity_id AND n.slug = $2
-      WHERE e.id = $1`,
-    [id, ENTITY]
+/**
+ * O que o botão do cabeçalho precisa saber ao ser montado.
+ *
+ * Existe separado de `getFontes` de propósito: o cabeçalho aparece em TODA
+ * página, e `getFontes` roda `fin_fonte_frescor_v` — uma view com dias úteis,
+ * feriados e agregação por fonte. Pendurar isso em cada navegação é como se
+ * chega à consulta lenta que já esgotou o pool de 5 conexões e derrubou outras
+ * rotas (`docs/RETOMAR.md`). Aqui são duas leituras por índice
+ * (`fin_fonte_sync_recentes_idx`) e uma leitura do módulo do trabalhador.
+ *
+ * O cabeçalho chama isto do cliente, ao montar, e não do servidor: assim uma
+ * página que não depende de fonte nenhuma não paga por esta consulta na
+ * renderização.
+ */
+export async function estadoDoBotao(): Promise<EstadoDoBotao> {
+  const instalada = await queryOne<{ ok: boolean }>(
+    `SELECT to_regclass('fin_fonte_sync_execucao') IS NOT NULL AS ok`
   );
-  if (!r) return null;
+  if (!instalada?.ok) {
+    throw new RecusaSync(
+      503,
+      "a migration 0109 não está aplicada neste banco: não há trilha de sincronização para ler"
+    );
+  }
+
+  const [corrente, ultima, referencia, alcancadas, previstasDoEscopo] = await Promise.all([
+    queryOne<ExecucaoBruta>(
+      `${SELECT_EXECUCAO} WHERE e.status = 'rodando' ORDER BY e.iniciada_em DESC LIMIT 1`
+    ),
+    queryOne<ExecucaoBruta>(`${SELECT_EXECUCAO} ORDER BY e.iniciada_em DESC LIMIT 1`),
+    referenciaDoEscopo("todas"),
+    fontesAtualizaveis(),
+    contadorDeEtapasPrevistas()
+  ]);
+
   return {
-    id: Number(r.id),
-    escopo: r.escopo,
-    status: r.status,
-    ator: r.ator,
-    iniciadaEm: new Date(r.iniciada_em).toISOString(),
-    terminadaEm: r.terminada_em ? new Date(r.terminada_em).toISOString() : null,
-    etapas: Array.isArray(r.etapas) ? r.etapas : [],
-    erro: r.erro
+    execucaoCorrente: corrente ? paraExecucao(corrente, previstasDoEscopo) : null,
+    ultimaExecucao: ultima ? paraExecucao(ultima, previstasDoEscopo) : null,
+    referencia,
+    fontesAtualizaveis: alcancadas
   };
 }

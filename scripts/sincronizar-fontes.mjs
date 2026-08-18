@@ -298,33 +298,81 @@ async function principal() {
     await client.query(`UPDATE fin_fonte_sync_execucao SET pid = $2 WHERE id = $1`, [EXECUCAO, process.pid]);
     console.log(`[fontes] execução ${EXECUCAO} · escopo ${escopo} · ${selecionadas.length} etapa(s)`);
 
-    for (const etapa of selecionadas) {
-      console.log(`[fontes] → ${etapa.nome}`);
-      etapas = [...etapas, { etapa: etapa.nome, script: etapa.script, fonte: etapa.fonte, estado: 'rodando' }];
+    /**
+     * O PLANO INTEIRO É GRAVADO ANTES DA PRIMEIRA ETAPA RODAR.
+     *
+     * A versão anterior só acrescentava a etapa no momento em que ela começava.
+     * Isso bastava para dizer "o que já rodou", e não bastava para dizer
+     * "quanto falta": com 2 etapas gravadas ninguém sabe se são 2 de 2 ou 2 de
+     * 6, e o denominador é metade de um percentual.
+     *
+     * Gravar o plano com todas em `pendente` resolve isso sem coluna nova e sem
+     * estimar tempo: o percentual é `concluídas / previstas`, uma contagem de
+     * fatos. Uma barra que anda por relógio finge saber quanto falta; esta anda
+     * quando um processo de fato terminou.
+     *
+     * A consequência boa e não óbvia: se a execução morrer no meio, as etapas
+     * que nunca rodaram continuam `pendente` no banco — a tela diz quais
+     * ficaram para trás em vez de fazer parecer que o plano era só o que rodou.
+     */
+    etapas = selecionadas.map((e, i) => ({
+      ordem: i + 1,
+      etapa: e.nome,
+      script: e.script,
+      fonte: e.fonte,
+      estado: 'pendente'
+    }));
+    await anotar(etapas);
+
+    for (let i = 0; i < selecionadas.length; i += 1) {
+      const etapa = selecionadas[i];
+      console.log(`[fontes] → (${i + 1}/${selecionadas.length}) ${etapa.nome}`);
+      // `iniciadaEm` por etapa: sem ele a tela sabe que a etapa 3 está rodando
+      // e não sabe há quanto tempo — que é a diferença entre "está indo" e
+      // "está pendurada".
+      etapas = etapas.map((x, j) =>
+        j === i ? { ...x, estado: 'rodando', iniciadaEm: new Date().toISOString() } : x
+      );
       await anotar(etapas);
 
       const r = await rodarEtapa(etapa);
-      etapas = etapas.slice(0, -1).concat({
-        etapa: etapa.nome,
-        script: etapa.script,
-        fonte: etapa.fonte,
-        estado: r.ok ? 'ok' : 'erro',
-        ms: r.ms,
-        erro: r.erro,
-        saida: r.saida || null
-      });
+      etapas = etapas.map((x, j) =>
+        j === i
+          ? { ...x, estado: r.ok ? 'ok' : 'erro', ms: r.ms, erro: r.erro, saida: r.saida || null }
+          : x
+      );
       await anotar(etapas);
       console.log(`[fontes]   ${r.ok ? 'ok' : 'ERRO'} em ${Math.round(r.ms / 1000)}s${r.erro ? ` — ${r.erro}` : ''}`);
     }
 
     const falhas = etapas.filter((e) => e.estado === 'erro');
-    const status = falhas.length === 0 ? 'ok' : falhas.length === etapas.length ? 'erro' : 'parcial';
+    const sucessos = etapas.filter((e) => e.estado === 'ok');
+    // 'ok' exige que TODAS tenham rodado bem — com o plano gravado desde o
+    // início, uma etapa que sobrou em `pendente` não pode ser confundida com
+    // etapa inexistente, e um plano incompleto não vira sucesso.
+    const naoRodaram = etapas.filter((e) => e.estado === 'pendente');
+    const status =
+      falhas.length === 0 && naoRodaram.length === 0
+        ? 'ok'
+        : sucessos.length === 0
+          ? 'erro'
+          : 'parcial';
+    // O CHECK `fin_fonte_sync_erro_com_motivo` recusa 'erro' sem motivo, e ele
+    // está certo: status vermelho sem frase é o "erro ao sincronizar" que esta
+    // frente veio eliminar. Etapa que nunca rodou também é motivo.
+    const motivo =
+      [
+        ...falhas.map((f) => `${f.etapa}: ${f.erro}`),
+        ...(naoRodaram.length
+          ? [`não chegaram a rodar: ${naoRodaram.map((f) => f.etapa).join(', ')}`]
+          : [])
+      ].join(' · ') || null;
 
     await client.query(
       `UPDATE fin_fonte_sync_execucao
           SET status = $2, terminada_em = now(), etapas = $3::jsonb, erro = $4
         WHERE id = $1`,
-      [EXECUCAO, status, JSON.stringify(etapas), falhas.length ? falhas.map((f) => `${f.etapa}: ${f.erro}`).join(' · ') : null]
+      [EXECUCAO, status, JSON.stringify(etapas), motivo]
     );
 
     console.log(`[fontes] execução ${EXECUCAO} terminou como '${status}' (${falhas.length} falha(s))`);

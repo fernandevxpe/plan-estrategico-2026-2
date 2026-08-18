@@ -85,13 +85,78 @@ export type LinhaFonte = {
 };
 
 export type EtapaExecucao = {
+  /** 1-based, gravado com o plano. Ausente nas execuções anteriores ao plano. */
+  ordem?: number;
   etapa: string;
   script: string;
   fonte: string | null;
-  estado: "rodando" | "ok" | "erro";
+  /** `pendente` = declarada no plano e ainda não rodou. É o que dá denominador. */
+  estado: "pendente" | "rodando" | "ok" | "erro";
+  iniciadaEm?: string;
   ms?: number;
   erro?: string | null;
   saida?: string | null;
+};
+
+/**
+ * O quanto andou — e a regra é que ele conta ETAPAS CONCLUÍDAS, nunca tempo.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE NÃO UMA BARRA POR RELÓGIO
+ * ---------------------------------------------------------------------------
+ * A tentação é dividir o decorrido pela duração da última execução e mostrar
+ * uma barra suave. Isso é uma estimativa vestida de medida: quando a sync do
+ * Asaas encalha, a barra continua andando e chega a 100% com a sync parada —
+ * exatamente o defeito de alarme que esta frente inteira veio consertar, só que
+ * na direção otimista.
+ *
+ * O percentual daqui só sobe quando um processo terminou. Ele anda aos saltos, e
+ * andar aos saltos é honesto: a tela diz "etapa 3 de 6" ao lado, que é a frase
+ * que a pessoa de fato lê. A duração da última execução bem-sucedida aparece
+ * como REFERÊNCIA separada ("a de ontem levou 4m10s"), sem se misturar ao
+ * percentual.
+ *
+ * Nenhuma etapa sabe reportar progresso interno hoje — `rodarEtapa` só observa
+ * o código de saída do processo filho. Enquanto for assim, a menor unidade
+ * honesta é a etapa.
+ */
+export type ProgressoSync = {
+  /** Quantas etapas o plano tem. Vem do plano gravado; ver `planoPresumido`. */
+  previstas: number;
+  /** Terminaram, bem ou mal. É o numerador. */
+  concluidas: number;
+  ok: number;
+  falhas: number;
+  /** Declaradas e ainda não rodadas. */
+  pendentes: number;
+  /** `concluidas / previstas` em %, inteiro. Contagem de fatos, não de relógio. */
+  pct: number;
+  /** 1-based, ou null quando nenhuma etapa está rodando. */
+  etapaAtual: number | null;
+  nomeEtapaAtual: string | null;
+  /** Há quanto tempo a etapa corrente está rodando. Distingue "indo" de "pendurada". */
+  etapaAtualMs: number | null;
+  /** Do relógio do SERVIDOR: `now − iniciada_em`, ou a duração fechada. */
+  decorridoMs: number;
+  /**
+   * O trabalhador ainda não gravou o plano, então `previstas` foi deduzida do
+   * escopo. A tela mostra "iniciando…" em vez de 0% de um denominador incerto.
+   */
+  planoPresumido: boolean;
+};
+
+/**
+ * A última execução bem-sucedida do mesmo escopo — o "quanto isto costuma
+ * demorar" que o percentual se recusa a fingir.
+ *
+ * Fica null enquanto não houver uma. Uma média de zero execuções seria um número
+ * inventado, e a tela diz "primeira vez, não sei quanto demora".
+ */
+export type ReferenciaSync = {
+  execucaoId: number;
+  terminadaEm: string;
+  duracaoMs: number;
+  porEtapa: { etapa: string; ms: number }[];
 };
 
 export type ExecucaoSync = {
@@ -103,6 +168,7 @@ export type ExecucaoSync = {
   terminadaEm: string | null;
   etapas: EtapaExecucao[];
   erro: string | null;
+  progresso: ProgressoSync;
 };
 
 export type PainelFontes = {
@@ -112,6 +178,8 @@ export type PainelFontes = {
   fontesAtualizaveis: string[];
   execucaoCorrente: ExecucaoSync | null;
   ultimasExecucoes: ExecucaoSync[];
+  /** Quanto a última sincronização completa bem-sucedida levou. Null na primeira vez. */
+  referencia: ReferenciaSync | null;
   /** Anos com feriado nacional conferido — a cobertura declarada do calendário. */
   anosDeCalendario: number[];
 };
@@ -163,8 +231,16 @@ type LinhaBruta = {
   alarma: boolean;
 };
 
-type ExecucaoBruta = {
-  id: number;
+/**
+ * A linha crua de `fin_fonte_sync_execucao`.
+ *
+ * `id` é `bigint` no banco e o driver o entrega como STRING; declarar `number`
+ * aqui compilava só porque ninguém tipava a consulta do outro lado. Aceitar os
+ * dois e converter em `paraExecucao` é o que impede a próxima consulta de
+ * comparar um id-string com um id-número e não achar nada.
+ */
+export type ExecucaoBruta = {
+  id: string | number;
   escopo: string;
   status: string;
   ator: string;
@@ -174,16 +250,130 @@ type ExecucaoBruta = {
   erro: string | null;
 };
 
-const paraExecucao = (r: ExecucaoBruta): ExecucaoSync => ({
-  id: Number(r.id),
-  escopo: r.escopo,
-  status: r.status as ExecucaoSync["status"],
-  ator: r.ator,
-  iniciadaEm: iso(r.iniciada_em) as string,
-  terminadaEm: iso(r.terminada_em),
-  etapas: Array.isArray(r.etapas) ? r.etapas : [],
-  erro: r.erro
-});
+/**
+ * Quantas etapas o escopo prevê, lido do próprio trabalhador.
+ *
+ * É a mesma `etapasDoEscopo` que o script executa — importada, nunca copiada,
+ * pelo motivo de sempre: uma lista duplicada divergiria no primeiro mês e o
+ * denominador do percentual passaria a mentir sem ninguém perceber.
+ */
+export async function contadorDeEtapasPrevistas(): Promise<(escopo: string) => number> {
+  const mod = await import("@/scripts/sincronizar-fontes.mjs");
+  const f = (mod as { etapasDoEscopo: (e: string) => unknown[] }).etapasDoEscopo;
+  return (escopo: string) => f(escopo).length;
+}
+
+/**
+ * O progresso, derivado do que está gravado. Não consulta nada.
+ *
+ * `agoraMs` é injetável para o teste poder fixar o relógio.
+ */
+export function progressoDe(
+  args: {
+    escopo: string;
+    status: ExecucaoSync["status"];
+    iniciadaEm: string;
+    terminadaEm: string | null;
+    etapas: EtapaExecucao[];
+  },
+  previstasDoEscopo: (escopo: string) => number,
+  agoraMs: number = Date.now()
+): ProgressoSync {
+  const etapas = args.etapas;
+  const ok = etapas.filter((e) => e.estado === "ok").length;
+  const falhas = etapas.filter((e) => e.estado === "erro").length;
+  const pendentes = etapas.filter((e) => e.estado === "pendente").length;
+  const concluidas = ok + falhas;
+
+  // O plano gravado é a verdade sobre ESTA execução. Cair no escopo só vale
+  // enquanto ele não existe — usar a lista de hoje para uma execução de semanas
+  // atrás faria o histórico mudar de denominador quando alguém acrescentar uma
+  // etapa, e um número que muda sozinho no passado não é um registro.
+  const planoPresumido = etapas.length === 0;
+  let previstas = etapas.length;
+  if (planoPresumido) {
+    try {
+      previstas = previstasDoEscopo(args.escopo);
+    } catch {
+      previstas = 0;
+    }
+  }
+
+  const inicio = new Date(args.iniciadaEm).getTime();
+  const fim = args.terminadaEm ? new Date(args.terminadaEm).getTime() : agoraMs;
+  // Relógio para trás (NTP, container reiniciado) não pode virar decorrido
+  // negativo na tela.
+  const decorridoMs = Math.max(0, fim - inicio);
+
+  const idxRodando = etapas.findIndex((e) => e.estado === "rodando");
+  const rodando = idxRodando >= 0 ? etapas[idxRodando] : null;
+
+  return {
+    previstas,
+    concluidas,
+    ok,
+    falhas,
+    pendentes,
+    pct: previstas > 0 ? Math.round((concluidas / previstas) * 100) : 0,
+    etapaAtual: rodando ? (rodando.ordem ?? idxRodando + 1) : null,
+    nomeEtapaAtual: rodando ? rodando.etapa : null,
+    etapaAtualMs:
+      rodando?.iniciadaEm ? Math.max(0, agoraMs - new Date(rodando.iniciadaEm).getTime()) : null,
+    decorridoMs,
+    planoPresumido
+  };
+}
+
+export const paraExecucao = (
+  r: ExecucaoBruta,
+  previstasDoEscopo: (escopo: string) => number
+): ExecucaoSync => {
+  const base = {
+    id: Number(r.id),
+    escopo: r.escopo,
+    status: r.status as ExecucaoSync["status"],
+    ator: r.ator,
+    iniciadaEm: iso(r.iniciada_em) as string,
+    terminadaEm: iso(r.terminada_em),
+    etapas: Array.isArray(r.etapas) ? r.etapas : [],
+    erro: r.erro
+  };
+  return { ...base, progresso: progressoDe(base, previstasDoEscopo) };
+};
+
+/**
+ * A última execução bem-sucedida do escopo, para a tela poder dizer quanto isto
+ * costuma levar sem inventar média de zero amostras.
+ */
+export async function referenciaDoEscopo(escopo: string): Promise<ReferenciaSync | null> {
+  const r = await queryOne<{
+    id: string;
+    iniciada_em: Date | string;
+    terminada_em: Date | string;
+    etapas: EtapaExecucao[] | null;
+  }>(
+    `SELECT e.id, e.iniciada_em, e.terminada_em, e.etapas
+       FROM fin_fonte_sync_execucao e
+       JOIN fin_entity n ON n.id = e.entity_id AND n.slug = 'xpe'
+      WHERE e.status = 'ok' AND e.escopo = $1 AND e.terminada_em IS NOT NULL
+      ORDER BY e.terminada_em DESC
+      LIMIT 1`,
+    [escopo]
+  );
+  if (!r) return null;
+  const duracaoMs = Math.max(
+    0,
+    new Date(r.terminada_em).getTime() - new Date(r.iniciada_em).getTime()
+  );
+  return {
+    execucaoId: Number(r.id),
+    terminadaEm: iso(r.terminada_em) as string,
+    duracaoMs,
+    porEtapa: (Array.isArray(r.etapas) ? r.etapas : [])
+      .filter((e) => typeof e.ms === "number")
+      .map((e) => ({ etapa: e.etapa, ms: e.ms as number }))
+  };
+}
 
 export async function getFontes(): Promise<Contrato<PainelFontes>> {
   const vazio: PainelFontes = {
@@ -192,6 +382,7 @@ export async function getFontes(): Promise<Contrato<PainelFontes>> {
     fontesAtualizaveis: [],
     execucaoCorrente: null,
     ultimasExecucoes: [],
+    referencia: null,
     anosDeCalendario: []
   };
 
@@ -216,7 +407,7 @@ export async function getFontes(): Promise<Contrato<PainelFontes>> {
     );
   }
 
-  const [linhas, correntes, recentes, anos, alcancadas] = await Promise.all([
+  const [linhas, correntes, recentes, anos, alcancadas, previstasDoEscopo, referencia] = await Promise.all([
     query<LinhaBruta>(`
       SELECT fonte, conta, rotulo, alimenta, natureza, agendada, comando, motivo_nao_agendada,
              ultimo_dado_em, ultima_ingestao_em, ultima_tentativa_em,
@@ -239,7 +430,9 @@ export async function getFontes(): Promise<Contrato<PainelFontes>> {
         JOIN fin_entity n ON n.id = e.entity_id AND n.slug = 'xpe'
        ORDER BY e.iniciada_em DESC LIMIT 8`),
     query<{ ano: number }>(`SELECT ano FROM fin_calendario_ano ORDER BY ano`),
-    fontesAlcancadas()
+    fontesAlcancadas(),
+    contadorDeEtapasPrevistas(),
+    referenciaDoEscopo("todas")
   ]);
 
   const fontes: LinhaFonte[] = linhas.map((r) => {
@@ -305,8 +498,9 @@ export async function getFontes(): Promise<Contrato<PainelFontes>> {
       disponivel: true,
       fontes,
       fontesAtualizaveis: alcancadas,
-      execucaoCorrente: correntes.length ? paraExecucao(correntes[0]) : null,
-      ultimasExecucoes: recentes.map(paraExecucao),
+      execucaoCorrente: correntes.length ? paraExecucao(correntes[0], previstasDoEscopo) : null,
+      ultimasExecucoes: recentes.map((r) => paraExecucao(r, previstasDoEscopo)),
+      referencia,
       anosDeCalendario: anos.map((a) => Number(a.ano))
     },
     cobertura,

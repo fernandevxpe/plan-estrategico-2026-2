@@ -15,6 +15,7 @@ import type { Analysis, CommercialFunnel } from "@/lib/analysis/types";
 import { getExecutiveKpis, getPlanning } from "@/lib/analysis/metrics";
 import { brl, formatGrowth, monthLabel, NEW_DEALS_CONVERSION_SHORT, number } from "@/lib/analysis/format";
 import { RevenueChart, YearComparisonChart } from "@/components/charts";
+import { ChartFrame } from "@/components/charts/ChartFrame";
 
 type Props = {
   analysis: Analysis;
@@ -245,7 +246,9 @@ export function ComercialDashboard({ analysis }: Props) {
             <BarChart3 size={18} />
           </div>
           <div className="chart-box">
-            <RevenueChart data={chartData} />
+            <ChartFrame titulo="Receita, novos e fechamentos — 2026 mês a mês">
+              <RevenueChart data={chartData} />
+            </ChartFrame>
           </div>
         </div>
 
@@ -258,7 +261,9 @@ export function ComercialDashboard({ analysis }: Props) {
             <TrendingUp size={18} />
           </div>
           <div className="chart-box">
-            <YearComparisonChart data={growthRows} />
+            <ChartFrame titulo="2025 × 2026 — receita realizada por mês">
+              <YearComparisonChart data={growthRows} />
+            </ChartFrame>
           </div>
         </div>
       </section>

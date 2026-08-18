@@ -81,7 +81,7 @@
 -- ===========================================================================
 -- Nao cria tabela, nao escreve um centavo, nao mexe em gatilho, nao toca
 -- `fin_account`, `fin_transaction`, `fin_card_transaction` nem `fin_card_bill`.
--- Sao SEIS VIEWS de leitura sobre o que a 0047, a 0074 e a 0083 ja modelaram.
+-- Sao SETE VIEWS de leitura sobre o que a 0047, a 0074 e a 0083 ja modelaram.
 -- Nenhum titular e deduzido, nenhuma categoria e adivinhada: onde a fonte cala,
 -- a coluna vem NULA com o motivo ao lado.
 -- ===========================================================================
@@ -258,14 +258,14 @@ item_no AS (
     FROM item t
 ),
 sub AS (
-  SELECT t.entity_id, t.emissor_slug, t.card_account_id, t.bill_key, t.card_id, t.last4,
+  SELECT t.entity_id, t.emissor_slug, t.linha_slug, t.card_account_id, t.bill_key, t.card_id, t.last4,
          t.titular, t.titular_motivo,
          count(*)                                                        AS itens,
          sum(t.amount_cents)                                             AS valor_cents,
          count(*) FILTER (WHERE t.category_id IS NOT NULL)               AS itens_com_categoria,
          COALESCE(sum(t.amount_cents) FILTER (WHERE t.category_id IS NOT NULL), 0) AS valor_com_categoria_cents
     FROM item_no t
-   GROUP BY 1,2,3,4,5,6,7,8
+   GROUP BY 1,2,3,4,5,6,7,8,9
 )
 -- nivel 1: emissor
 SELECT ca.entity_id,
@@ -273,6 +273,8 @@ SELECT ca.entity_id,
        'emissor'                             AS nivel,
        'emissor:' || i.slug                  AS chave,
        NULL::text                            AS chave_pai,
+       i.slug                                AS emissor_slug,
+       NULL::text                            AS linha_slug,
        i.name                                AS rotulo,
        count(DISTINCT ca.id)::text || ' linha(s) de credito' AS detalhe,
        COALESCE(sum(f.total_amount_cents), 0)::bigint        AS valor_cents,
@@ -291,6 +293,7 @@ UNION ALL
 SELECT ca.entity_id, 2, 'linha',
        'linha:' || ca.id::text,
        'emissor:' || i.slug,
+       i.slug, ca.slug,
        ca.name,
        ca.itemization_level || ' · liquida em ' || COALESCE(acc.slug, 'conta nao declarada'),
        COALESCE(sum(f.total_amount_cents), 0)::bigint,
@@ -313,6 +316,7 @@ UNION ALL
 SELECT ca.entity_id, 3, 'fatura',
        'fatura:' || f.bill_key,
        'linha:' || ca.id::text,
+       (SELECT i2.slug FROM fin_card_issuer i2 WHERE i2.id = ca.issuer_id), ca.slug,
        CASE WHEN f.bill_id IS NULL THEN 'ainda sem fatura'
             ELSE to_char(f.reference_month, 'MM/YYYY')
        END,
@@ -337,6 +341,7 @@ UNION ALL
 SELECT s.entity_id, 4, 'subcartao',
        'sub:' || s.bill_key || ':' || COALESCE(s.card_id::text, 'sem-cartao'),
        'fatura:' || s.bill_key,
+       s.emissor_slug, s.linha_slug,
        CASE WHEN s.last4 IS NULL THEN 'final nao informado' ELSE 'final ' || s.last4 END,
        COALESCE(s.titular, 'titular nao declarado')
          || ' · ' || s.itens_com_categoria::text || ' de ' || s.itens::text || ' com categoria',
@@ -353,6 +358,7 @@ UNION ALL
 SELECT ca.entity_id, 4, 'nao_itemizado',
        'naoitem:' || f.bill_key,
        'fatura:' || f.bill_key,
+       (SELECT i2.slug FROM fin_card_issuer i2 WHERE i2.id = ca.issuer_id), ca.slug,
        'nao itemizado',
        'a fonte declara o total e nao entrega as compras',
        f.unitemized_amount_cents, 0::bigint, f.unitemized_amount_cents,
@@ -370,6 +376,7 @@ UNION ALL
 SELECT t.entity_id, 5, 'item',
        'item:' || t.id::text,
        'sub:' || t.bill_key || ':' || COALESCE(t.card_id::text, 'sem-cartao'),
+       t.emissor_slug, t.linha_slug,
        COALESCE(t.merchant, t.description, 'sem descricao na fonte'),
        to_char(t.posted_on, 'DD/MM')
          || COALESCE(' · ' || t.categoria_code || ' ' || t.categoria, '')

@@ -281,6 +281,54 @@ try {
          WHERE t.bill_id = b.id AND t.kind <> 'pagamento_fatura'), 0)`);
   afirma('o acumulador de itens confere com a recontagem nas 21 faturas', Number(acum.n) === 0);
 
+  // =========================================================================
+  console.log('\n[8] O contrato da tela: as colunas que lib/financeiro/contratos/cartao-detalhe.ts lê');
+  // =========================================================================
+  // Uma view pode ser renomeada por dentro sem que nada acuse: a tela lê
+  // `l.categoria_motivo`, a coluna vira `motivo_categoria`, e o campo chega
+  // `undefined` — que no TypeScript vira `null`, e no `Certeza.tsx` vira
+  // "indeterminado". O dado sumiria vestido de ignorância declarada, que é a
+  // pior forma de perder dado nesta base.
+  //
+  // Isto NÃO duplica a consulta do contrato: afirma só que as colunas que ele
+  // nomeia existem. Quem renomear uma delas quebra aqui, com o nome na mão.
+  const EXIGIDAS = {
+    fin_card_arvore_v: ['entity_id', 'profundidade', 'nivel', 'chave', 'chave_pai', 'emissor_slug',
+      'linha_slug', 'rotulo', 'detalhe', 'valor_cents', 'itemizado_cents', 'nao_itemizado_cents',
+      'itens', 'motivo', 'ordem'],
+    fin_card_saida_caixa_v: ['entity_id', 'transaction_id', 'conta', 'posted_on', 'saiu_cents',
+      'description_raw', 'categoria_code', 'categoria', 'categoria_motivo', 'emissor', 'emissor_slug',
+      'linha_slug', 'bill_id', 'origem_fatura', 'reference_month', 'due_date', 'fatura_cents',
+      'itemizado_cents', 'nao_itemizado_cents', 'pct_explicado', 'diferenca_declarado_pago_cents',
+      'unreconciled_reason'],
+    fin_card_serie_mensal_v: ['entity_id', 'mes', 'emissor_slug', 'linha_slug', 'card_id', 'last4',
+      'titular', 'faixa', 'itens', 'valor_cents', 'com_categoria_cents', 'itens_sem_categoria', 'motivo'],
+    fin_card_caixa_mensal_v: ['entity_id', 'mes', 'emissor_slug', 'linha_slug', 'conta', 'pagamentos',
+      'saiu_cents', 'fatura_declarada_cents', 'pagamentos_sem_categoria'],
+    fin_card_prova_nao_soma_v: ['entity_id', 'mes', 'emissor_slug', 'linha_slug',
+      'competencia_itens_cents', 'competencia_nao_itemizado_cents', 'itens', 'caixa_saiu_cents',
+      'caixa_pagamentos', 'caixa_conta', 'porque_nao_soma'],
+    fin_card_plano_parcela_v: ['entity_id', 'emissor_slug', 'linha_slug', 'plano_id', 'merchant_label',
+      'purchase_date', 'installments_total', 'installments_billed', 'installments_open',
+      'installment_amount_cents', 'total_amount_cents', 'total_is_estimated', 'first_competence_month',
+      'last_competence_month', 'status', 'finais', 'atravessa_reemissao', 'reemissao_declarada',
+      'reemissao_motivo', 'categoria_code', 'categoria', 'categoria_motivo', 'item_id',
+      'installment_number', 'last4_da_parcela', 'card_id', 'posted_on', 'competence_month', 'bill_id',
+      'amount_cents', 'futura'],
+    fin_card_item_v: ['entity_id', 'id', 'card_id', 'category_id', 'cost_center_id', 'titular',
+      'titular_motivo', 'categoria_motivo', 'centro_custo_motivo', 'amount_cents']
+  };
+  for (const [view, colunas] of Object.entries(EXIGIDAS)) {
+    const reais = new Set(
+      (await c.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [view]
+      )).rows.map((r) => r.column_name)
+    );
+    const faltando = colunas.filter((k) => !reais.has(k));
+    afirma(`${view} tem as ${colunas.length} colunas que a tela lê`, faltando.length === 0,
+      faltando.length ? `faltam: ${faltando.join(', ')}` : '');
+  }
+
   const ancoraDepois = (
     await c.query(
       `SELECT a.slug, sum(t.amount_cents)::text AS total, count(*)::text AS n

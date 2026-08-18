@@ -58,6 +58,18 @@ export {
 } from "./lancamentos";
 export { getCartao, type PainelCartao, type LinhaDeCredito, type Fatura, type Subcartao } from "./cartao";
 export {
+  getCartaoDetalhe,
+  getFilhosDoCartao,
+  type CartaoDetalhe,
+  type NoArvore,
+  type NivelArvore,
+  type SaidaDeCaixa,
+  type PontoCompetencia,
+  type PontoCaixa,
+  type LinhaProva,
+  type PlanoParcelado
+} from "./cartao-detalhe";
+export {
   getContasAReceber,
   getContasAPagar,
   getPrioridadeReceita,

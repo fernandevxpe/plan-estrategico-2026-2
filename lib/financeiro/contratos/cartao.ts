@@ -136,14 +136,26 @@ export async function getCartao(): Promise<Contrato<PainelCartao>> {
           WHERE e.slug = $1 AND l.itens > 0 ORDER BY l.valor_cents DESC`,
         [ENTIDADE]
       ),
-      // Categoria 9.01 é o PAGAMENTO da fatura: a única linha do cartão que é
-      // caixa de verdade.
+      // O pagamento da fatura é a única linha do cartão que é caixa de verdade.
+      //
+      // A ÂNCORA É O PONTEIRO, NÃO A CATEGORIA — e isto já esteve errado aqui.
+      //
+      // Esta consulta filtrava `c.code = '9.01'`. Os 9 pagamentos de fatura do
+      // Inter — R$ 40.862,41, 38% do que sai — têm `category_id` NULO, porque o
+      // gatilho `fin_transaction_fatura_sem_itemizacao` (0094) os barrou até
+      // existir `fin_card_bill` ligada. A ligação existe hoje; o carimbo de 9.01
+      // continua sendo decisão humana e pode nunca vir.
+      //
+      // Medir caixa de cartão por rótulo, portanto, escondia mais de um terço do
+      // que sai — e escondia justamente a linha cuja classificação está em
+      // aberto, que é a que mais precisa aparecer. `paid_transaction_id` é o
+      // ÚNICO ponto de contato entre o subledger do cartão e o ledger: é ele.
       query<{ total: string }>(
         `SELECT COALESCE(SUM(-t.amount_cents), 0)::text AS total
-           FROM fin_transaction t
+           FROM fin_card_bill b
+           JOIN fin_transaction t ON t.id = b.paid_transaction_id
            JOIN fin_entity e ON e.id = t.entity_id
-           JOIN fin_category c ON c.id = t.category_id
-          WHERE e.slug = $1 AND c.code = '9.01' AND t.amount_cents < 0
+          WHERE e.slug = $1
             AND t.posted_on >= (date_trunc('month', CURRENT_DATE) - interval '11 months')::date`,
         [ENTIDADE]
       )

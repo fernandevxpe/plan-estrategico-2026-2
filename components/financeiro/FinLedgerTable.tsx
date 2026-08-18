@@ -5,6 +5,29 @@ import { useMemo, useState } from "react";
 import type { Lancamento } from "@/lib/financeiro/queries";
 import { brlPrecise, dateLabel } from "@/lib/financeiro/format";
 
+/**
+ * O rótulo humano de `source_kind`. Existe porque "PAYMENT_RECEIVED" e "PIX"
+ * respondem uma pergunta que a soma de Faturado não deixa ver sozinha:
+ * dinheiro que entrou por cobrança formal (Asaas, com fatura rastreável) é
+ * outra coisa de dinheiro que entrou por Pix avulso direto na conta — que
+ * pode ser cliente, pode ser rateio de evento, pode ser reembolso de
+ * parceiro. As duas contam como caixa; só a primeira é sempre venda.
+ */
+const ROTULO_ORIGEM: Record<string, string> = {
+  PAYMENT_RECEIVED: "Cobrança (Asaas)",
+  CREDIT: "Crédito (Asaas)",
+  PIX: "Pix avulso",
+  RESGATE_RDB: "Resgate de aplicação",
+  APLICACAO: "Aplicação (CDB)",
+  ESTORNO: "Estorno",
+  PIX_TRANSACTION_DEBIT_REFUND: "Estorno de Pix",
+  ASAAS_CARD_BALANCE_REFUND: "Estorno de cartão",
+  RENDIMENTO: "Rendimento",
+  EXTRATO: "Extrato erp-obras",
+  OUTROS: "Outros"
+};
+const rotuloOrigem = (kind: string) => ROTULO_ORIGEM[kind] ?? kind;
+
 type Props = {
   lancamentos: Lancamento[];
   /** true quando a origem não respondeu — diferente de extrato vazio. */
@@ -45,9 +68,17 @@ export function FinLedgerTable({
   const [busca, setBusca] = useState(inicialBusca);
   const [conta, setConta] = useState("");
   const [nucleo, setNucleo] = useState("");
+  const [origem, setOrigem] = useState("");
   const [somenteSemCategoria, setSomenteSemCategoria] = useState(inicialSemCategoria);
   const [mostrarTransferencias, setMostrarTransferencias] = useState(false);
   const [porQueAberto, setPorQueAberto] = useState<number | null>(null);
+
+  // As origens que de fato existem nos dados carregados — só oferece no
+  // seletor o que a pessoa pode realmente encontrar aqui.
+  const origensDisponiveis = useMemo(() => {
+    const vistas = new Set(lancamentos.map((l) => l.sourceKind).filter((v): v is string => Boolean(v)));
+    return Array.from(vistas).sort();
+  }, [lancamentos]);
 
   // Filtro no cliente: são no máximo 500 linhas já carregadas, e filtrar aqui é
   // instantâneo. Passar de volta ao servidor a cada tecla tornaria a busca
@@ -58,6 +89,7 @@ export function FinLedgerTable({
       if (!mostrarTransferencias && linha.transferStatus !== "nao") return false;
       if (conta && linha.conta !== conta) return false;
       if (nucleo && linha.nucleo !== nucleo) return false;
+      if (origem && linha.sourceKind !== origem) return false;
       if (somenteSemCategoria && linha.categoria) return false;
       if (termo) {
         const alvo = `${linha.descricao} ${linha.contraparte ?? ""} ${linha.categoria ?? ""}`.toLowerCase();
@@ -65,7 +97,7 @@ export function FinLedgerTable({
       }
       return true;
     });
-  }, [lancamentos, busca, conta, nucleo, somenteSemCategoria, mostrarTransferencias]);
+  }, [lancamentos, busca, conta, nucleo, origem, somenteSemCategoria, mostrarTransferencias]);
 
   const total = filtrados.reduce((sum, linha) => sum + linha.amountCents, 0);
   const entradas = filtrados.filter((l) => l.amountCents > 0).reduce((s, l) => s + l.amountCents, 0);
@@ -95,6 +127,14 @@ export function FinLedgerTable({
           {nucleos.map((item) => (
             <option key={item.slug} value={item.slug}>
               {item.name}
+            </option>
+          ))}
+        </select>
+        <select className="fin-select" value={origem} onChange={(e) => setOrigem(e.target.value)} aria-label="Origem">
+          <option value="">Toda origem</option>
+          {origensDisponiveis.map((kind) => (
+            <option key={kind} value={kind}>
+              {rotuloOrigem(kind)}
             </option>
           ))}
         </select>
@@ -154,6 +194,14 @@ export function FinLedgerTable({
                   {linha.transferStatus === "em_transito" ? (
                     <span className="fin-tag" title="Saiu desta conta e ainda não foi vista chegando na outra. Não conta como receita nem despesa.">
                       em trânsito
+                    </span>
+                  ) : null}
+                  {linha.sourceKind === "PIX" && linha.amountCents > 0 ? (
+                    <span
+                      className="fin-tag fin-tag-atencao"
+                      title="Pix avulso, sem cobrança formal vinculada — pode ser cliente, rateio de evento, ou outra origem. Confira antes de contar como faturamento."
+                    >
+                      Pix avulso
                     </span>
                   ) : null}
                 </td>

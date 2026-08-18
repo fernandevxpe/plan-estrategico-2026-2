@@ -1,22 +1,116 @@
+/* ===========================================================================
+   TOKENS DE COR — claro (padrão), escuro, e a trinca neon da marca.
+   ---------------------------------------------------------------------------
+   `--purple`/`--green`/etc. são os tokens ANTIGOS, usados em ~830 lugares do
+   arquivo — continuam existindo, só com valores mais vivos. `--neon-*` são
+   NOVOS: cor cheia para preenchimento grande/decoração/glow; `--neon-*-ink`
+   é a MESMA cor escurecida o suficiente para ser texto legível sobre fundo
+   claro (neon puro como texto falha contraste — a diferença entre "vibrante"
+   e "ilegível" é exatamente essa segunda variante existir).
+
+   `#bc13fe` é o roxo do site da XPE — já estava documentado em
+   `lib/chart-theme.ts` e nunca usado em lugar nenhum além de um comentário.
+   Esta é a primeira vez que a marca aparece na cor real dela.
+
+   Cobertura HONESTA: estes tokens, mais os de `--cert-*` e `--fin-*` (mais
+   abaixo no arquivo), cobrem a base compartilhada — cartão, botão, tabela,
+   borda, sombra — usada pela maioria das telas. As ~830 cores literais
+   espalhadas em classes específicas de cada área (`marketing-`, `vendas-`,
+   `gestao-`, etc.) NÃO foram auditadas uma a uma nesta passada; onde uma
+   tela usar cor fixa em vez de token, o tema escuro pode não a alcançar
+   ainda — é trabalho de acompanhamento, tela a tela, não desta fundação.
+   =========================================================================== */
 :root {
   --bg: #f6f8f9;
   --bg-band: #edf4f2;
   --surface: #ffffff;
   --surface-2: #eef3f5;
   --card: #ffffff;
-  --ink: #172126;
+  --ink: #14121a;
   --muted: #64727a;
   --line: #dce5e8;
-  --green: #21a67a;
-  /* Acento XPE — roxo do site (#bc13fe) escurecido p/ fundo claro */
-  --purple: #6d28d9;
-  --purple-deep: #5b21b6;
-  --blue: #6d28d9;
+  --green: #1c9e73;
+  /* Acento XPE — roxo do site (#bc13fe), agora usado de verdade */
+  --purple: #7c1fe0;
+  --purple-deep: #59179e;
+  --blue: #7c1fe0;
   --amber: #b67818;
   --red: #bd4b4b;
   --teal: #0f766e;
   --shadow: 0 12px 30px rgba(35, 55, 65, 0.07);
   --shadow-strong: 0 22px 54px rgba(35, 55, 65, 0.12);
+
+  --neon-purple: #bc13fe;
+  --neon-green: #14e8a0;
+  --neon-pink: #ff2ea6;
+  --neon-purple-ink: #8a0fd1;
+  --neon-green-ink: #0a8f5c;
+  --neon-pink-ink: #c8117e;
+  --glow-purple: rgba(188, 19, 254, 0.4);
+  --glow-green: rgba(20, 232, 160, 0.4);
+  --glow-pink: rgba(255, 46, 166, 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) {
+    --bg: #0b0a12;
+    --bg-band: #120e1e;
+    --surface: #15121f;
+    --surface-2: #1c1829;
+    --card: #17131f;
+    --ink: #f1eefb;
+    --muted: #a79fc0;
+    --line: #2c2740;
+    --green: #2be7a4;
+    --purple: #b34bff;
+    --purple-deep: #9020f0;
+    --blue: #b34bff;
+    --amber: #e0a53f;
+    --red: #ff6b6b;
+    --teal: #2dd4c8;
+    --shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    --shadow-strong: 0 22px 60px rgba(0, 0, 0, 0.65);
+
+    --neon-purple: #c94dff;
+    --neon-green: #2dffc0;
+    --neon-pink: #ff5cc0;
+    --neon-purple-ink: #d9a3ff;
+    --neon-green-ink: #6dffce;
+    --neon-pink-ink: #ff8fd6;
+    --glow-purple: rgba(201, 77, 255, 0.55);
+    --glow-green: rgba(45, 255, 192, 0.55);
+    --glow-pink: rgba(255, 92, 192, 0.55);
+  }
+}
+
+:root[data-theme="escuro"] {
+  --bg: #0b0a12;
+  --bg-band: #120e1e;
+  --surface: #15121f;
+  --surface-2: #1c1829;
+  --card: #17131f;
+  --ink: #f1eefb;
+  --muted: #a79fc0;
+  --line: #2c2740;
+  --green: #2be7a4;
+  --purple: #b34bff;
+  --purple-deep: #9020f0;
+  --blue: #b34bff;
+  --amber: #e0a53f;
+  --red: #ff6b6b;
+  --teal: #2dd4c8;
+  --shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  --shadow-strong: 0 22px 60px rgba(0, 0, 0, 0.65);
+
+  --neon-purple: #c94dff;
+  --neon-green: #2dffc0;
+  --neon-pink: #ff5cc0;
+  --neon-purple-ink: #d9a3ff;
+  --neon-green-ink: #6dffce;
+  --neon-pink-ink: #ff8fd6;
+  --glow-purple: rgba(201, 77, 255, 0.55);
+  --glow-green: rgba(45, 255, 192, 0.55);
+  --glow-pink: rgba(255, 92, 192, 0.55);
 }
 
 /* Funil 360° — mídia, pré-vendas e CRM em uma única leitura */
@@ -436,14 +530,42 @@ body {
   background:
     linear-gradient(180deg, var(--bg-band) 0, var(--bg) 340px, var(--bg) 100%);
   color: var(--ink);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body), Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
+
+/* `--font-display` (Sora, carregada em app/layout.tsx) só em título — o
+   resto do app é denso de tabela, e trocar a fonte de dado prejudicaria
+   leitura em troca de personalidade que já mora no cabeçalho. */
+h1, .page-header h1 { font-family: var(--font-display), var(--font-body), sans-serif; }
 
 button,
 input,
 select {
   font: inherit;
 }
+
+/* ── Botão de tema — flutuante, fora de qualquer shell, sempre no mesmo lugar ── */
+.theme-toggle {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--purple);
+  box-shadow: var(--shadow-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: box-shadow .18s ease, transform .18s ease, color .18s ease;
+}
+.theme-toggle:hover { box-shadow: 0 0 0 1px var(--neon-purple), 0 0 24px var(--glow-purple), var(--shadow-strong); transform: translateY(-1px); }
+.theme-toggle:focus-visible { outline: 2px solid var(--neon-purple); outline-offset: 2px; }
+@media (max-width: 640px) { .theme-toggle { right: 12px; bottom: 12px; width: 38px; height: 38px; } }
 
 a {
   color: inherit;
@@ -10240,6 +10362,10 @@ button.linkish {
   --fin-alert: var(--amber);
   --fin-neutral: var(--muted);
 }
+:root[data-theme="escuro"] { --fin-out: #ff8a68; --fin-previsto: #d9c9ff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) { --fin-out: #ff8a68; --fin-previsto: #d9c9ff; }
+}
 
 .fin-shell { display: flex; flex-direction: column; gap: 18px; }
 
@@ -10386,6 +10512,7 @@ button.linkish {
 .fin-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--purple); background: #f3efff; padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
 .fin-cat { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .fin-tag { display: inline-block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--surface-2); border-radius: 5px; padding: 2px 6px; margin-left: 6px; }
+.fin-tag-atencao { color: var(--neon-pink-ink); background: color-mix(in srgb, var(--neon-pink) 14%, var(--surface-2)); }
 
 .fin-badge-ok { color: var(--green); font-size: 12.5px; }
 .fin-badge-atencao { color: var(--amber); font-size: 12.5px; font-weight: 600; }
@@ -11411,6 +11538,22 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   --cert-observado: #8a6212;  --cert-observado-bg: #f6eedb;
   --cert-atrasado: #a33a3a;   --cert-atrasado-bg: #f8e4e4;
   --cert-indet: #6b4e8f;      --cert-indet-bg: #efe9f6;  --cert-hatch: #b9a6d4;
+}
+:root[data-theme="escuro"] {
+  --cert-firme: #4ade80;      --cert-firme-bg: #123024;
+  --cert-provavel: #7db2f5;   --cert-provavel-bg: #142236;
+  --cert-observado: #f0c25e;  --cert-observado-bg: #2e2310;
+  --cert-atrasado: #ff8a8a;   --cert-atrasado-bg: #341616;
+  --cert-indet: #c9a8ff;      --cert-indet-bg: #241c33;  --cert-hatch: #4a3966;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) {
+    --cert-firme: #4ade80;      --cert-firme-bg: #123024;
+    --cert-provavel: #7db2f5;   --cert-provavel-bg: #142236;
+    --cert-observado: #f0c25e;  --cert-observado-bg: #2e2310;
+    --cert-atrasado: #ff8a8a;   --cert-atrasado-bg: #341616;
+    --cert-indet: #c9a8ff;      --cert-indet-bg: #241c33;  --cert-hatch: #4a3966;
+  }
 }
 
 /* A hachura do indeterminado. Usada em cartão, célula e linha de tabela. */
@@ -12700,3 +12843,114 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .extratos-resumo-erro { color: var(--fin-out, #a33a3a); font-weight: 600; }
 
 .extratos-btn-desabilitado { opacity: .45; pointer-events: none; }
+
+/* ===========================================================================
+   FUNDAÇÃO DE DESIGN — componentes compartilhados (Fase 0 do plano de UX)
+   `KpiCard`, `Nota`, `ChartFrame` — o canônico que substitui, aos poucos, as
+   15 variações de card de KPI e as ~20 de toolbar que a auditoria achou.
+   =========================================================================== */
+
+/* ---- KpiCard ------------------------------------------------------------ */
+.kpi-card {
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 18px; box-shadow: var(--shadow);
+  border-left: 3px solid var(--line);
+}
+.kpi-rotulo { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .01em; }
+.kpi-valor { font-family: var(--font-display), var(--font-body), sans-serif; font-size: 26px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.kpi-detalhe { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+.kpi-acento-purple { border-left-color: var(--neon-purple); }
+.kpi-acento-purple .kpi-valor { color: var(--neon-purple-ink); }
+.kpi-acento-green { border-left-color: var(--neon-green); }
+.kpi-acento-green .kpi-valor { color: var(--neon-green-ink); }
+.kpi-acento-pink { border-left-color: var(--neon-pink); }
+.kpi-acento-pink .kpi-valor { color: var(--neon-pink-ink); }
+
+/* Glow — só para o número que a tela existe pra mostrar, nunca em série. */
+.kpi-brilho { text-shadow: 0 0 18px currentColor; }
+@media (prefers-reduced-motion: reduce) { .kpi-brilho { text-shadow: none; } }
+
+/* ---- Nota (texto técnico sob demanda) ------------------------------------ */
+.nota { margin: 6px 0; }
+.nota-gatilho {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font: inherit; font-size: 12.5px; color: var(--purple); font-weight: 600;
+}
+.nota-gatilho:hover { color: var(--neon-purple-ink); }
+.nota-icone {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%; border: 1px solid currentColor;
+  font-size: 11px; line-height: 1;
+}
+.nota-corpo {
+  margin-top: 8px; padding: 12px 14px; border-radius: 10px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  font-size: 12.5px; color: var(--muted); line-height: 1.55;
+}
+.nota-corpo p:first-child { margin-top: 0; }
+.nota-corpo p:last-child { margin-bottom: 0; }
+
+/* ---- ChartFrame ----------------------------------------------------------- */
+.chart-frame {
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px 16px; box-shadow: var(--shadow);
+}
+.chart-frame-tela-cheia {
+  border-radius: 0; height: 100vh; justify-content: center; padding: 24px 32px;
+}
+.chart-frame-barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.chart-frame-titulo { font-size: 13px; font-weight: 650; color: var(--ink); }
+.chart-frame-acoes { display: flex; align-items: center; gap: 4px; }
+.chart-frame-acoes button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--muted); cursor: pointer; font-size: 13px;
+  transition: color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.chart-frame-acoes button:hover:not(:disabled) {
+  color: var(--neon-purple-ink); border-color: var(--neon-purple);
+  box-shadow: 0 0 12px var(--glow-purple);
+}
+.chart-frame-acoes button:disabled { opacity: .35; cursor: default; }
+.chart-frame-zoom-valor { font-size: 11px; color: var(--muted); min-width: 34px; text-align: center; font-variant-numeric: tabular-nums; }
+.chart-frame-divisor { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+.chart-frame-status { margin: 0; font-size: 11.5px; color: var(--neon-pink-ink); }
+.chart-frame-viewport { overflow: auto; }
+.chart-frame-conteudo { transform-origin: top left; transition: transform .15s ease; }
+.chart-frame-tela-cheia .chart-frame-viewport { flex: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .chart-frame-conteudo { transition: none; }
+  .theme-toggle { transition: box-shadow .18s ease, color .18s ease; }
+  .theme-toggle:hover { transform: none; }
+}
+
+/* ---- Drill-down do gráfico de receita (painel) --------------------------- */
+.receita-chart-controles { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.receita-chart-agregacao { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.receita-chart-agregacao button {
+  border: none; background: var(--surface); color: var(--muted); font-size: 12px; padding: 5px 11px; cursor: pointer;
+}
+.receita-chart-agregacao button + button { border-left: 1px solid var(--line); }
+.receita-chart-agregacao button.is-ativo { background: var(--purple); color: #fff; font-weight: 600; }
+.receita-chart-carregando { font-size: 11.5px; color: var(--muted); }
+
+.receita-composicao {
+  margin-top: 8px; padding: 12px 14px; border-radius: 10px;
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.receita-composicao header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.receita-composicao header strong { font-size: 13px; color: var(--ink); }
+.receita-composicao header span { font-family: var(--font-body); font-size: 14px; font-weight: 700; color: var(--neon-purple-ink); font-variant-numeric: tabular-nums; }
+.receita-composicao-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.receita-composicao-lista li { display: grid; grid-template-columns: 160px 1fr auto; align-items: center; gap: 10px; font-size: 12px; }
+.receita-composicao-lista li > span:first-child { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.receita-composicao-barra { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.receita-composicao-barra i { display: block; height: 100%; background: var(--neon-purple); border-radius: 4px; }
+.receita-composicao-valor { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+@media (max-width: 640px) {
+  .receita-composicao-lista li { grid-template-columns: 1fr; gap: 2px; }
+}

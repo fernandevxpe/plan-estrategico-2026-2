@@ -14,6 +14,7 @@ import {
   resolvePresetGoalIds
 } from "@/lib/analysis/metrics";
 import { brl, number } from "@/lib/analysis/format";
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { GoalCard } from "@/components/planning/GoalCard";
 import { PlanningKpiStrip } from "@/components/planning/PlanningKpiStrip";
 import { CommercialFunnelChart } from "@/components/planning/CommercialFunnelChart";
@@ -247,7 +248,9 @@ export function PlanningPage({ analysis }: Props) {
           ) : null}
 
           <div className="chart-box chart-box-tall">
-            <GoalsCompareChart goals={selectedGoals} mode={effectiveMode} currentMonth={currentMonth} />
+            <ChartFrame titulo={`Metas comparadas — ${effectiveMode === "attainment" ? "% realizado" : effectiveMode === "accumulated" ? "acumulado" : "valores"}`}>
+              <GoalsCompareChart goals={selectedGoals} mode={effectiveMode} currentMonth={currentMonth} />
+            </ChartFrame>
           </div>
 
           <div className="table-wrap">
@@ -333,7 +336,9 @@ export function PlanningPage({ analysis }: Props) {
               <h3>Meta x realizado — {goalShortTitle(focusGoal)}</h3>
               <p className="chart-caption">Por {focusGoal.interval === "quarterly" ? "trimestre" : "mês"}</p>
               <div className="chart-box chart-box-tall">
-                <GoalProgressChart goal={focusGoal} currentMonth={currentMonth} />
+                <ChartFrame titulo={`Meta x realizado — ${goalShortTitle(focusGoal)}`}>
+                  <GoalProgressChart goal={focusGoal} currentMonth={currentMonth} />
+                </ChartFrame>
               </div>
             </article>
 
@@ -341,7 +346,9 @@ export function PlanningPage({ analysis }: Props) {
               <h3>Acumulado no ano — {goalShortTitle(focusGoal)}</h3>
               <p className="chart-caption">Realizado acumulado vs meta acumulada</p>
               <div className="chart-box chart-box-tall">
-                <GoalCumulativeChart goal={focusGoal} currentMonth={currentMonth} />
+                <ChartFrame titulo={`Acumulado no ano — ${goalShortTitle(focusGoal)}`}>
+                  <GoalCumulativeChart goal={focusGoal} currentMonth={currentMonth} />
+                </ChartFrame>
               </div>
             </article>
           </div>

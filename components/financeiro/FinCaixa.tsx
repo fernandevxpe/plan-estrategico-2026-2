@@ -345,8 +345,13 @@ function NoConta({
 
           {encerradas.length > 0 && (
             <p className="cx-encerradas">
-              {encerradas.length} posição(ões) já liquidada(s), somando {brl(0)} — são histórico,
-              não caixa, e por isso ficam fora da lista. Elas continuam no banco e nos movimentos.
+              {encerradas.length} posição(ões) já liquidada(s), somando{" "}
+              {/* MEDIDO, não afirmado. Escrever "R$ 0,00" à mão aqui faria a
+                  frase continuar dizendo zero no dia em que uma liquidada
+                  voltasse com saldo — e essa é a linha que ninguém releria. */}
+              {brl(encerradas.reduce((s, p) => s + p.saldoCents, 0))} — são histórico, não caixa, e
+              por isso ficam fora da lista. Elas continuam no banco e nos movimentos, e estão
+              somadas no confronto acima.
             </p>
           )}
         </div>

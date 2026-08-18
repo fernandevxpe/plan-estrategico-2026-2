@@ -2309,6 +2309,91 @@ parada um dia depois.
 
 ---
 
+## 67. O nome da caixinha do Nubank não vem em fonte nenhuma — pedir ao banco, ou digitar?
+
+**Em jogo:** R$ 27.700,17 que a tela mostra como 18 lotes de CDB em vez das
+caixinhas que o Fernando vê no app.
+
+**O pedido.** *"Aprimore o design tbm para detalhar mais as caixinhas do nubank,
+que hoje mostra o total, mas quero ver tbm o detalhado, acho que se o usuario
+clicar na caixinha deveria expandir as subcaixas"*
+
+**O fato, medido em 18/08/2026, GET a GET na API do Polp (integração 2906):**
+
+```
+GET /integrations/2906/investments     66 posições, 36 campos cada
+GET /investments/{id}                  o mesmo objeto, campo a campo
+GET /integrations/2906/accounts        2 contas: CHECKING_ACCOUNT e CREDIT
+GET /integrations/2906/bank-accounts   HTTP 404
+GET /integrations/2906/products        HTTP 404
+```
+
+Nas 66 posições, **todo campo capaz de carregar identidade de caixinha é
+constante ou nulo**:
+
+```
+name .......... 1 valor distinto em 66 linhas
+                "CDB - NU FINANCEIRA S.A. - SOCIEDADE DE CREDITO, FINANCIAMENTO E INVESTIMENTO"
+number ........ null 66/66      code ........ null 66/66
+isin .......... null 66/66      owner ....... null 66/66
+institution ... null 66/66      metadata .... null 66/66
+provider_id ... null 66/66
+```
+
+Os movimentos (`/investments/{id}/transactions`) trazem `description: null`.
+
+**A razão é estrutural, não um campo esquecido.** O Open Finance transmite a
+camada de INVESTIMENTO — o lote de CDB emitido pela NU FINANCEIRA que lastreia
+o dinheiro. "Caixinha" é agrupamento do **aplicativo** do Nubank, uma camada
+acima, que não é transmitida. O agregador não pode entregar o que não recebe.
+
+**Duas fontes independentes concordam:**
+
+- o extrato da conta corrente escreve `Aplicação RDB` (65×) e `Resgate RDB`
+  (54×), sem nome de caixinha em nenhuma das 119 linhas;
+- o PDF *"Extrato de Rendimentos — Caixinhas PJ"* (lote 4, sha256 41cd7597…)
+  imprime `Compra por aplicação` e `Rendimento até essa data`, idem.
+
+**Por que não foi resolvido.** Agrupar as 18 posições ativas por valor, por data
+de emissão ou por proximidade produziria "Caixinha 1", "Caixinha 2" — nomes que
+parecem dado e não são. É o rótulo inventado que a restrição 5 proíbe, e neste
+caso ele seria especialmente traiçoeiro: a pessoa que abrisse a tela
+reconheceria a estrutura do próprio app e acreditaria nela.
+
+**O que foi entregue no lugar.** A árvore mostra os dois níveis que EXISTEM —
+conta → posição → movimento —, fecha ao centavo (R$ 27.700,17 = soma das 18
+ativas, delta 0) e carimba o nível ausente com hachura roxa e o motivo, antes
+da lista.
+
+**Opções:**
+
+*(a)* **Pedir ao Nubank/Polp.** Se o Polp expuser um endpoint de *pockets* ou se
+o Nubank passar a mandar o apelido no Open Finance, o nível vira dado sozinho —
+a asserção 5.4 da 0114 já avisa por NOTICE quando `name` passar a ter mais de um
+valor distinto. Custo zero de modelagem, prazo fora do nosso controle.
+
+*(b)* **O Fernando nomeia, e o nome fica no nosso lado.** Uma tabela
+`fin_investment_apelido` (posição → nome declarado, com autor e data) resolve a
+leitura hoje. O custo é que o vínculo se perde quando a posição é liquidada e
+uma nova nasce no lugar — e isso acontece o tempo todo: 48 das 66 já foram
+liquidadas em 8 meses. Nomear lote de CDB é nomear algo efêmero.
+
+*(c)* **Nomear pelo destino, não pelo lote.** Se as caixinhas do app têm
+finalidade ("Impostos", "Reserva"), o que dura é a finalidade. Modelar
+`fin_reserva` com regra de rateio sobre o saldo total resolveria a pergunta
+("quanto está separado para imposto?") sem depender de casar lote com pocket.
+Mais trabalho, e exige o Fernando declarar as finalidades e os valores.
+
+*(d)* **Deixar como está.** A tela já responde "onde está o dinheiro, rendendo
+quanto, vencendo quando". O nome só importa se a empresa usa as caixinhas como
+envelopes de finalidade — e isso ninguém declarou ainda.
+
+**A pergunta que decide entre (b), (c) e (d):** as caixinhas do Nubank têm
+finalidade declarada (uma para imposto, uma para reserva), ou são só o lugar
+onde sobra caixa rende?
+
+---
+
 ## Resolvida — Ancora Imobiliária, R$ 300,00 classificada por precedente
 
 A regra `meios-de-pagamento` (v1) tinha 25 acertos e zero verdadeiros

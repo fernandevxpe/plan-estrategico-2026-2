@@ -3,6 +3,138 @@
 Este documento existe para quem chega depois. Ele é auto-suficiente: se você só
 puder ler um arquivo antes de tocar em qualquer coisa, leia este.
 
+## Frente das caixinhas do Nubank · 18/08/2026 (migration 0114 — validada, NÃO aplicada)
+
+O pedido, olhando a tela:
+
+> *"Aprimore o design tbm para detalhar mais as caixinhas do nubank, que hoje
+> mostra o total, mas quero ver tbm o detalhado, acho que se o usuario clicar
+> na caixinha deveria expandir as subcaixas"*
+
+**A resposta curta: o nível que ele procura não existe em fonte nenhuma, e a
+tela agora diz isso em vez de inventá-lo.**
+
+### O que a medição achou — e ela derruba o número "66 RDBs"
+
+Havia menção a 66 RDBs numa frente anterior. **66 é `meta.total` da API, e é
+verdade — mas 48 delas estão liquidadas e valem R$ 0,00.** O que existe hoje:
+
+```
+conta nubank-caixinhas ......... R$ 27.700,17
+  18 posições ATIVAS ........... R$ 27.700,17   ← delta 0, ao centavo
+  48 posições liquidadas ....... R$      0,00   ← histórico, não caixa
+  163 movimentos BUY/SELL
+```
+
+Quem responder "66 caixinhas" para o Fernando está certo sobre o acervo e
+errado sobre o dinheiro. A tela lista as 18 e declara as 48.
+
+### O nome da caixinha NÃO vem do Polp, e a razão é estrutural
+
+Medido em 18/08/2026, GET a GET (integração 2906, "Nubank Empresas"):
+
+```
+GET /integrations/2906/investments    66 posições, 36 campos cada
+GET /investments/{id}                 o mesmo objeto, campo a campo
+GET /integrations/2906/accounts       2 contas: CHECKING_ACCOUNT e CREDIT
+GET /integrations/2906/bank-accounts  HTTP 404
+GET /integrations/2906/products       HTTP 404
+```
+
+Nas 66 posições, **todo campo capaz de carregar identidade é constante ou nulo**:
+
+```
+name ......... 1 valor distinto em 66 linhas ("CDB - NU FINANCEIRA S.A. …")
+number ....... null 66/66     code ....... null 66/66     isin ..... null 66/66
+owner ........ null 66/66     institution  null 66/66     metadata . null 66/66
+provider_id .. null 66/66     (movimentos: description = null)
+```
+
+O Open Finance transmite a camada de **investimento** — o lote de CDB da NU
+FINANCEIRA que lastreia o dinheiro. **"Caixinha" é agrupamento do APLICATIVO do
+Nubank, uma camada acima, e não é transmitida.** O agregador não pode entregar
+o que não recebe.
+
+Duas fontes independentes concordam: o extrato escreve `Aplicação RDB` (65×) e
+`Resgate RDB` (54×) sem nome em nenhuma das 119 linhas; o PDF *"Extrato de
+Rendimentos — Caixinhas PJ"* imprime `Compra por aplicação` e `Rendimento até
+essa data`, idem.
+
+**Agrupar as 18 por valor ou por data produziria "Caixinha 1", "Caixinha 2" —
+nomes que parecem dado e não são.** Aqui isso seria especialmente traiçoeiro: a
+pessoa reconheceria a estrutura do próprio app e acreditaria nela. **Dúvida 67**,
+com quatro opções e a pergunta que decide entre elas.
+
+### O trabalho era de EXPOSIÇÃO, não de ingestão
+
+`fin_investment` (0043) já guardava emissor, emissão, carência, vencimento,
+indexador, taxa, principal, bruto, imposto, saldo e o dia da leitura. **O
+detalhe já estava no banco e só não chegava à tela.** Por isso a 0114 é só
+views — criar tabela duplicaria o dinheiro em dois lugares, que é exatamente o
+que a 0043 se preocupou em não fazer.
+
+```
+fin_caixinha_posicao_v ..... nível 1, uma linha por lote de CDB
+fin_caixinha_movimento_v ... nível 2, os BUY/SELL de cada lote
+fin_caixinha_ancora_v ...... o total do pai × a soma dos filhos
+```
+
+### A tela: um nível por clique, e o confronto SEMPRE à vista
+
+Cada linha soma **apenas os filhos diretos**, nunca os netos, e mostra a soma
+ao lado do próprio total — **não só quando diverge**. Confronto que só aparece
+no erro ensina a ler o silêncio como ausência de conferência.
+
+```
+conta    R$ 27.700,17  =  R$ 27.700,17 (66 posições)
+posição  R$    626,67  ≠  R$    584,43 (4 mov) + R$ 30,10 rendimento
+                                            ⚠ R$ 12,14 SEM EXPLICAÇÃO
+```
+
+A diferença **esperada** entre saldo e fluxo tem nome e é dita: rendimento
+apropriado dentro da aplicação, que nunca passa pela conta corrente. O que
+sobra depois dela é achado, ganha hachura roxa e a frase "sem explicação".
+
+**O achado:** 12 das 66 posições têm histórico de movimento incompleto na
+fonte, somando **R$ 283,56** — só uma delas está ativa (a 10087, R$ 12,14).
+Isso **não** contamina o saldo, que vem da posição e não do fluxo, e um teste
+exige que a divergência **continue exposta** — um teste que exigisse zero
+forçaria a próxima pessoa a escondê-la para passar.
+
+### Provas
+
+`node scripts/test-caixinha-detalhe.mjs` — 16 afirmações, 0 falhas, tudo em
+ROLLBACK, âncora de dinheiro idêntica nas 4 contas. `--catalogo` imprime a
+árvore inteira como a tela a mostra. Duas afirmações são deliberadamente
+"não deve bater": a divergência tem de continuar visível, e o fluxo líquido
+tem de continuar diferente do saldo — se batesse, alguém somaria os dois.
+
+`/financeiro/caixa` medido no fio com a 0114 **não** aplicada: **HTTP 200**, e
+a seção nova degrada dizendo *"a migration 0114 ainda não está aplicada neste
+ambiente"* em vez de mostrar lista vazia — que seria indistinguível de "a conta
+não tem posições". `npx tsc --noEmit` limpo · `npm run build:app` compila ·
+caixa **4/4 conferíveis fecham** · invariantes **39/41** (D6 e F1, iguais).
+
+### ⚠ A migration reservada era a 0113, e ela já estava ocupada
+
+A frente recebeu **`0113_fin_caixinha_detalhe.sql`** como número reservado. Ao
+chegar, `db/migrations/0113_fin_caixa_polp.sql` **já existia na árvore, não
+commitado**, da frente da Caixa/Polp — junto com `scripts/lib/polp.mjs`,
+`sync-polp-caixa.mjs` e `conectar-polp-caixa.mjs`. Escrever por cima teria
+apagado o trabalho dela em silêncio.
+
+Entregue como **0114**. É o §6 outra vez: **numa árvore com N frentes, número
+reservado por prompt não é número livre no disco — confira `ls db/migrations/`
+antes de escrever, inclusive o que não está commitado.**
+
+**Para aplicar:** `npm run db:backup` e então a 0114 **sozinha**. Ela não toca
+`fin_transaction`, não cria tabela e não escreve um centavo — só três views e
+um `UPDATE` numa frase de `fin_fonte_catalogo`. As asserções conferem a âncora
+e recusam a migration se alguém preencher `caixinha_nome` sem a fonte que o
+justifique.
+
+---
+
 ## Frente do alarme de fonte — o lobo, os dias úteis e o botão · 17/08/2026 (migration 0109)
 
 O pedido, olhando a tela:

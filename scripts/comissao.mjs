@@ -121,7 +121,9 @@ if (!entidade) throw new Error('entidade xpe não encontrada — banco errado?')
 const ENTITY = entidade.id;
 
 const { rows: contas } = await pool.query('SELECT count(*)::int AS n FROM fin_account');
-if (contas[0].n !== 6) throw new Error(`fin_account tem ${contas[0].n} contas; o ledger certo tem 6 — banco errado`);
+// 6 originais + `caixa` (corrente) da 0113. Menos que 6 é o outro banco, o
+// estratégico, cujas tabelas fin_* respondem sem erro com números plausíveis.
+if (contas[0].n < 6) throw new Error(`fin_account tem ${contas[0].n} contas; o ledger certo tem pelo menos 6 — banco errado`);
 
 const { rows: transacoes } = await pool.query(`
   SELECT t.id, t.posted_on, t.amount_cents, t.description_raw, t.category_id,

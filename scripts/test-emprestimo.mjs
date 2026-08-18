@@ -235,7 +235,14 @@ try {
     );
   }
   console.log(`     ${'TOTAL disponivel'.padEnd(18)} ${brl(total).padStart(14)}`);
-  afirma(contas.rows.filter((r) => r.saldo_cents !== null).length === 4, '4 contas com saldo, 2 sem');
+  const comSaldo = contas.rows.filter((r) => r.saldo_cents !== null);
+  const semSaldo = contas.rows.filter((r) => r.saldo_cents === null);
+  afirma(comSaldo.length === 4, '4 contas com extrato continuam com saldo');
+  afirma(
+    semSaldo.every((r) => String(r.slug).startsWith('caixa')),
+    'só contas Caixa sem extrato ficam indeterminadas',
+    semSaldo.map((r) => r.slug).join(',')
+  );
   afirma(
     contas.rows.filter((r) => r.saldo_cents === null && !r.motivo_sem_saldo).length === 0,
     'nenhuma conta sem saldo ficou sem motivo'

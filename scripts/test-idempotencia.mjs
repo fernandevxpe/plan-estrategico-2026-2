@@ -93,6 +93,7 @@ const CATALOGO = [
   { nome: 'importar-orcamento-erp', script: './importar-orcamento-erp.mjs', argv: ['--aplicar'], fonte: 'erp' },
   { nome: 'sync-polp-cartao', script: './sync-polp-cartao.mjs', argv: [], fonte: 'api' },
   { nome: 'sync-polp-investimentos', script: './sync-polp-investimentos.mjs', argv: [], fonte: 'api' },
+  { nome: 'sync-polp-caixa', script: './sync-polp-caixa.mjs', argv: ['--aplicar'], fonte: 'api' },
   { nome: 'sync-cartao-inter', script: './sync-cartao-inter.mjs', argv: ['--aplicar'], fonte: 'api' },
   { nome: 'backfill-nubank-polp', script: './backfill-nubank-polp.mjs', argv: [], fonte: 'api' }
 ];

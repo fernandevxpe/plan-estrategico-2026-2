@@ -937,6 +937,25 @@ function LinhaItem({
                 : `item derivado de ${camada ?? "camada não declarada"}`}
             {item.origemRef ? <code title="a chave que amarra item e projeção">{item.origemRef}</code> : null}
           </span>
+          {/* A FATURA DE CARTÃO É A ÚNICA LINHA DESTA TELA QUE TEM COMPOSIÇÃO
+              EM OUTRO LUGAR.
+
+              Toda outra saída daqui é o próprio custo: o aluguel é o aluguel.
+              A fatura não — ela é a soma de dezenas de compras que vivem em
+              `fin_card_transaction`, fora do ledger e fora desta tabela.
+
+              A composição NÃO é trazida para cá, e isso é a decisão. Item de
+              cartão não é `fin_transaction`, não move conta e cai em outra
+              competência que a saída que o paga; colocá-lo numa tabela de caixa
+              terminaria em alguém somando a fatura com os itens dela — o único
+              erro que este módulo não pode cometer. Então fica um endereço, não
+              um número. */}
+          {item.origemCamada?.startsWith("pagar_cartao") ? (
+            <span className="fin-custo-regra">
+              <a href="/financeiro/cartoes">ver a composição em Cartões</a> — a fatura é o que sai do
+              caixa; as compras dentro dela são custo na competência, e os dois não se somam
+            </span>
+          ) : null}
           {item.diaRegra ? <span className="fin-custo-regra">{item.diaRegra}</span> : null}
           {item.alerta ? <span className="fin-custo-alerta-linha">{item.alerta}</span> : null}
           {!item.entraNoTotal && item.motivoForaDaSoma ? (

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import type { AreaDashboardItem } from "@/lib/areas/types";
 import type {
@@ -680,22 +681,24 @@ export function CommercialIntelPage({
               <span>Mediana de dias entre criação e fechamento</span>
             </header>
             <div className="ci-chart">
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={trend} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => `${num(value, 1)} dias`} />
-                  <Bar dataKey="cicloMediano" name="Ciclo mediano" radius={[4, 4, 0, 0]}>
-                    {trend.map((row) => (
-                      <Cell
-                        key={row.month}
-                        fill={(row.cicloMediano ?? 0) > 45 ? "#f59e0b" : "#14b8a6"}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <ChartFrame titulo="Ciclo de vendas mês a mês">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={trend} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(value: number) => `${num(value, 1)} dias`} />
+                    <Bar dataKey="cicloMediano" name="Ciclo mediano" radius={[4, 4, 0, 0]}>
+                      {trend.map((row) => (
+                        <Cell
+                          key={row.month}
+                          fill={(row.cicloMediano ?? 0) > 45 ? "#f59e0b" : "#14b8a6"}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartFrame>
             </div>
           </article>
 

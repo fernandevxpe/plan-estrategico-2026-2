@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { ChartWithLegend, useLegendToggle } from "@/components/charts/useLegendToggle";
 import type { MarketingMetrics } from "@/lib/areas/build-marketing-dashboard";
 
@@ -301,6 +302,7 @@ export function MarketingTrendChart({ daily }: { daily: DailyRow[] }) {
       {!chartData.length ? (
         <p className="marketing-empty">Sem série diária no período.</p>
       ) : (
+        <ChartFrame titulo="Marketing — tendência">
         <ChartWithLegend series={legendSeries} hidden={legend.hidden} onToggle={legend.toggle}>
           <ResponsiveContainer width="100%" height={340}>
             <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
@@ -426,6 +428,7 @@ export function MarketingTrendChart({ daily }: { daily: DailyRow[] }) {
             </ComposedChart>
           </ResponsiveContainer>
         </ChartWithLegend>
+        </ChartFrame>
       )}
       <p className="marketing-trend-hint">
         Clique na legenda para mostrar ou ocultar séries. Eixo esquerdo = volume; eixo direito = R$.

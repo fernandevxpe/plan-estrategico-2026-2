@@ -258,6 +258,13 @@ nº 1 de gráfico. Dois painéis empilhados com a **mesma escala vertical**
 permitem a leitura legítima ("gastei mais do que paguei neste mês?") sem que
 exista um total que junte os dois.
 
+O histórico tem dois eixos de recorte: **linha de crédito** e **subcartão**. Ao
+escolher um subcartão o painel de CAIXA some e vira hachura com o motivo — o
+emissor cobra uma fatura por linha e o débito sai uma vez, então *"quanto o
+final 7626 pagou"* é pergunta sem resposta. Ratear a fatura entre os finais na
+proporção do gasto daria número plausível para um pagamento que nunca
+aconteceu; barras zeradas afirmariam que aquele plástico não custou nada.
+
 A paleta (`#b67818` itemizado · `#6b4e8f` não itemizado · `#c8553d` caixa) passa
 os seis testes do validador em fundo claro: faixa de luminosidade, piso de
 croma, separação para daltonismo (pior par ΔE 16,9 em protanopia), piso de visão

@@ -251,9 +251,15 @@ export function AtualizarFontes() {
             ? `indisponível: ${indisponivel}`
             : rodando
               ? `sincronizando — ${textoDoProgresso(execucao)}`
-              : `Roda o mesmo pipeline do agendador: ${alcance.join(", ") || "nenhuma fonte alcançada"}.\n` +
-                `Não atualiza o instantâneo de CRM do carimbo ao lado.\n` +
-                textoDaReferencia(estado?.referencia ?? null)
+              : // Antes de a primeira leitura chegar, o botão NÃO afirma "nenhuma
+                // fonte alcançada": ele ainda não sabe. Renderizado no servidor,
+                // aquele texto aparecia por um instante em toda navegação, e é
+                // uma frase falsa — o mesmo erro de tratar ausência como zero.
+                estado === null
+                ? "Atualizar as bases financeiras — lendo o estado da última sincronização…"
+                : `Roda o mesmo pipeline do agendador: ${alcance.join(", ") || "nenhuma fonte alcançada"}.\n` +
+                  `Não atualiza o instantâneo de CRM do carimbo ao lado.\n` +
+                  textoDaReferencia(estado.referencia)
         }
       >
         <span className={`sync-icone${rodando ? " gira" : ""}`} aria-hidden>
@@ -291,6 +297,8 @@ export function AtualizarFontes() {
 
           {indisponivel ? (
             <p className="sync-painel-nota is-alerta">{indisponivel}</p>
+          ) : estado === null ? (
+            <p className="sync-painel-nota">lendo o estado da última sincronização…</p>
           ) : (
             <p className="sync-painel-nota">
               Roda o pipeline do agendador para <strong>{alcance.join(", ") || "nenhuma fonte"}</strong>.
@@ -334,7 +342,12 @@ export function AtualizarFontes() {
             </p>
           ) : null}
 
-          <p className="sync-painel-nota">{textoDaReferencia(estado?.referencia ?? null)}</p>
+          {/* A referência histórica só é afirmada depois de a leitura chegar:
+              "primeira vez neste ambiente" é uma afirmação, e afirmar antes de
+              ter medido é o que esta base chama de inventar. */}
+          {estado ? (
+            <p className="sync-painel-nota">{textoDaReferencia(estado.referencia)}</p>
+          ) : null}
         </div>
       ) : null}
     </div>

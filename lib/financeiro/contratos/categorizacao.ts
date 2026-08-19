@@ -361,6 +361,9 @@ export type CategoriaPlano = {
   grupo: string | null;
   dreLine: string | null;
   nucleoPadrao: string | null;
+  /** A quem esta categoria pertence na visão por produto (0124). Nulo = ainda não atribuída. */
+  linhaProdutoId: number | null;
+  linhaProduto: string | null;
   ativa: boolean;
   /**
    * O sinal que a categoria exige do valor. Derivado de `kind`, nunca gravado
@@ -384,6 +387,22 @@ export type CategoriaPlano = {
   motivoBloqueio: string | null;
 };
 
+export type LinhaProduto = {
+  id: number;
+  slug: string;
+  nome: string;
+  descricao: string | null;
+  ordem: number;
+  ativa: boolean;
+  nCategorias: number;
+  nCategoriasAtivas: number;
+  categoriasCodes: string[];
+  usoVivo: number;
+  valorVivoCents: number;
+  podeDesativar: boolean;
+  motivoBloqueio: string | null;
+};
+
 /** Receita exige entrada; custo/despesa/pessoal/imposto/investimento exigem saída. */
 export function sinalEsperadoDe(kind: string): "entrada" | "saida" | "ambos" {
   if (kind === "receita") return "entrada";
@@ -397,12 +416,18 @@ export function sinalEsperadoDe(kind: string): "entrada" | "saida" | "ambos" {
 
 export async function getPlanoDeContas(
   incluirInativas = false
-): Promise<Contrato<{ categorias: CategoriaPlano[]; gruposFluxo: { slug: string; nome: string; direcao: string }[] }>> {
-  const vazio = { categorias: [], gruposFluxo: [] };
+): Promise<
+  Contrato<{
+    categorias: CategoriaPlano[];
+    gruposFluxo: { slug: string; nome: string; direcao: string }[];
+    linhasProduto: LinhaProduto[];
+  }>
+> {
+  const vazio = { categorias: [], gruposFluxo: [], linhasProduto: [] };
   if (!isFinanceConfigured()) return contratoIndisponivel(`${DOMINIO}.plano`, vazio, "banco não configurado");
 
   try {
-    const [linhas, grupos] = await Promise.all([
+    const [linhas, grupos, linhasProdutoRows] = await Promise.all([
       query<Record<string, unknown>>(
         `SELECT u.* FROM fin_categoria_uso_v u
            JOIN fin_category c ON c.id = u.id
@@ -413,6 +438,13 @@ export async function getPlanoDeContas(
       ),
       query<Record<string, unknown>>(
         `SELECT slug, name, direction FROM fin_cash_flow_group WHERE is_active ORDER BY sort_order`
+      ),
+      query<Record<string, unknown>>(
+        `SELECT u.* FROM fin_linha_produto_uso_v u
+           JOIN fin_entity e ON e.id = u.entity_id AND e.slug = $1
+          WHERE ($2::boolean OR u.is_active)
+          ORDER BY u.sort_order, u.name`,
+        [ENTIDADE, incluirInativas]
       )
     ]);
 
@@ -424,6 +456,8 @@ export async function getPlanoDeContas(
       grupo: (l.cash_flow_group as string) ?? null,
       dreLine: (l.dre_line as string) ?? null,
       nucleoPadrao: (l.default_nucleo as string) ?? null,
+      linhaProdutoId: l.product_line_id === null || l.product_line_id === undefined ? null : Number(l.product_line_id),
+      linhaProduto: (l.linha_produto as string) ?? null,
       ativa: Boolean(l.is_active),
       sinalEsperado: sinalEsperadoDe(String(l.kind)),
       usoLancamento: Number(l.n_lancamento),
@@ -442,10 +476,27 @@ export async function getPlanoDeContas(
 
     const ociosas = categorias.filter((c) => c.ativa && c.usoVivo === 0 && !c.marcadorDeIndecisao);
 
+    const linhasProduto: LinhaProduto[] = linhasProdutoRows.map((l) => ({
+      id: Number(l.id),
+      slug: String(l.slug),
+      nome: String(l.name),
+      descricao: (l.descricao as string) ?? null,
+      ordem: Number(l.sort_order),
+      ativa: Boolean(l.is_active),
+      nCategorias: Number(l.n_categorias),
+      nCategoriasAtivas: Number(l.n_categorias_ativas),
+      categoriasCodes: (l.categorias_codes as string[]) ?? [],
+      usoVivo: Number(l.n_vivo),
+      valorVivoCents: Number(l.valor_vivo_cents ?? 0),
+      podeDesativar: Boolean(l.pode_desativar),
+      motivoBloqueio: (l.motivo_bloqueio as string) ?? null
+    }));
+
     return contrato({
       dominio: `${DOMINIO}.plano`,
       dado: {
         categorias,
+        linhasProduto,
         gruposFluxo: grupos.map((g) => ({
           slug: String(g.slug),
           nome: String(g.name),

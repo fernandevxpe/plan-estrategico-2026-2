@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const VISOES = ["caixa", "competencia"] as const;
-const DIMENSOES = ["nucleo", "cliente", "centro_custo"] as const satisfies readonly Dimensao[];
+const DIMENSOES = ["nucleo", "cliente", "centro_custo", "linha_produto"] as const satisfies readonly Dimensao[];
 
 /** GET /api/financeiro/gerencial/dre/dimensao?visao=&dimensao=&ano=&de=&ate= */
 export const GET = rotaDeLeitura(async (sp) => {

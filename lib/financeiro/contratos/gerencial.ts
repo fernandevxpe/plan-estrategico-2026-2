@@ -811,24 +811,29 @@ export async function getContratosEParcelas(
 
 const DOMINIO_DIMENSAO = "resultado.dimensao";
 
-export type Dimensao = "nucleo" | "cliente" | "centro_custo";
+export type Dimensao = "nucleo" | "cliente" | "centro_custo" | "linha_produto";
 
 /**
  * Como cada dimensão vira chave e rótulo no SQL.
  *
  * Lista branca porque o nome vem da URL. Interpolar `?dimensao=` direto seria
- * injeção; aceitar só estes três é o que torna a interpolação segura.
+ * injeção; aceitar só estas quatro é o que torna a interpolação segura.
  */
 const EIXOS: Record<Dimensao, { chave: string; rotulo: string }> = {
   nucleo: { chave: "d.nucleo", rotulo: "d.nucleo" },
   cliente: { chave: "d.counterparty_id::text", rotulo: "d.cliente" },
-  centro_custo: { chave: "d.cost_center_id::text", rotulo: "d.centro_custo" }
+  centro_custo: { chave: "d.cost_center_id::text", rotulo: "d.centro_custo" },
+  // Vem da CATEGORIA do lançamento (0124), não do lançamento em si — duas
+  // vendas do mesmo produto em categorias diferentes caem em linhas
+  // diferentes até a categoria ser atribuída à linha certa.
+  linha_produto: { chave: "d.linha_produto_id::text", rotulo: "d.linha_produto" }
 };
 
 const MOTIVO_SEM_ATRIBUICAO: Record<Dimensao, string> = {
   nucleo: "lançamento sem núcleo atribuído",
   cliente: "lançamento sem contraparte identificada",
-  centro_custo: "lançamento sem centro de custo (o projeto vem do erp-obras e ainda não cobre tudo)"
+  centro_custo: "lançamento sem centro de custo (o projeto vem do erp-obras e ainda não cobre tudo)",
+  linha_produto: "a categoria deste lançamento ainda não foi atribuída a nenhuma linha de produto"
 };
 
 export type LinhaDimensao = {

@@ -123,6 +123,14 @@ export type FiltrosBusca = {
   categoria?: string;
   /** `true` devolve só o que não tem categoria utilizável (nula, 3.99 ou 5.99). */
   semCategoria?: boolean;
+  /**
+   * O slug de `v.fonte` — conta bancária no universo lançamento, fonte de
+   * dado (asaas/clickup) no documento, cartão no item de cartão. Filtrar por
+   * um slug de conta bancária devolve zero linhas de documento e item de
+   * cartão: é o resultado certo, não um bug — nenhum dos dois tem conta
+   * bancária até ser conciliado.
+   */
+  conta?: string;
   nucleo?: string;
   centroCusto?: string;
   contraparte?: number;
@@ -202,6 +210,7 @@ export async function getBuscaCategorizacao(
   const cond = new Condicoes(["e.slug = $1"], [ENTIDADE]);
   cond.add("v.universo = $?", filtros.universo);
   cond.add("v.categoria_code = $?", filtros.categoria);
+  cond.add("v.fonte = $?", filtros.conta);
   cond.add("v.nucleo = $?", filtros.nucleo);
   cond.add("v.centro_custo = $?", filtros.centroCusto);
   cond.add("v.contraparte_id = $?", filtros.contraparte);

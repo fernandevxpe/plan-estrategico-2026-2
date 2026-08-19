@@ -39,9 +39,13 @@ const NATUREZAS = ["entrada", "saida"] as const;
 
 /**
  * GET /api/financeiro/gerencial/categorizacao/busca
- *   ?busca=&universo=&categoria=&semCategoria=&nucleo=&centroCusto=&contraparte=
+ *   ?busca=&universo=&categoria=&semCategoria=&conta=&nucleo=&centroCusto=&contraparte=
  *   &de=&ate=&valorMinCents=&valorMaxCents=&natureza=&estado=&procedencia=
  *   &travado=&apenasClassificavel=&ordenarPor=&direcao=&pagina=&porPagina=
+ *
+ * `conta` é o slug de `fin_account` — só filtra o universo lançamento.
+ * Documento e item de cartão não têm conta bancária, então um `conta=`
+ * volta zero linhas dos dois: é o resultado certo, não um bug.
  *
  * A busca que atravessa os TRÊS universos onde existe categoria.
  *
@@ -78,6 +82,7 @@ export const GET = rotaDeLeitura(async (sp) => {
       universo: opcaoOpcionalDe(sp, "universo", UNIVERSOS),
       categoria: textoDe(sp, "categoria", 20),
       semCategoria: bandeiraEstritaDe(sp, "semCategoria"),
+      conta: textoDe(sp, "conta", 60),
       nucleo: textoDe(sp, "nucleo", 60),
       centroCusto: textoDe(sp, "centroCusto", 80),
       contraparte: inteiroDe(sp, "contraparte", { min: 1, max: 2_147_483_647 }),

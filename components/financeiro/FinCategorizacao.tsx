@@ -166,6 +166,7 @@ type Filtros = {
   categoria: string;
   estado: "" | EstadoCategorizacao;
   procedencia: "" | ProcedenciaFamilia;
+  conta: string;
   nucleo: string;
   centroCusto: string;
   contraparte: string;
@@ -189,6 +190,7 @@ const FILTROS_VAZIOS: Filtros = {
   categoria: "",
   estado: "",
   procedencia: "",
+  conta: "",
   nucleo: "",
   centroCusto: "",
   contraparte: "",
@@ -233,6 +235,7 @@ function queryDe(f: Filtros): string {
   add("categoria", f.categoria);
   add("estado", f.estado);
   add("procedencia", f.procedencia);
+  add("conta", f.conta);
   add("nucleo", f.nucleo);
   add("centroCusto", f.centroCusto);
   add("contraparte", f.contraparte);
@@ -266,6 +269,7 @@ type PlanoDado = {
 type Props = {
   plano: PlanoDado;
   ressalvasPlano: string[];
+  contas: { slug: string; nome: string }[];
   nucleos: { slug: string; nome: string }[];
   centrosCusto: { slug: string; nome: string; tipo: string }[];
   /** Os indeterminados classificáveis dos três universos, medidos no servidor. */
@@ -354,6 +358,7 @@ export function FinCategorizacao(props: Props) {
       {aba === "itens" ? (
         <Itens
           categorias={categoriasAtivas}
+          contas={props.contas}
           nucleos={props.nucleos}
           centrosCusto={props.centrosCusto}
           foraDaRegua={props.foraDaRegua}
@@ -383,11 +388,13 @@ export function FinCategorizacao(props: Props) {
 
 function Itens({
   categorias,
+  contas,
   nucleos,
   centrosCusto,
   foraDaRegua
 }: {
   categorias: CategoriaPlano[];
+  contas: { slug: string; nome: string }[];
   nucleos: { slug: string; nome: string }[];
   centrosCusto: { slug: string; nome: string; tipo: string }[];
   foraDaRegua: ResumoUniverso[];
@@ -642,6 +649,25 @@ function Itens({
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className="fin-field">
+              <span>conta bancária</span>
+              <select
+                className="fin-select"
+                value={filtros.conta}
+                onChange={(e) => mudar({ conta: e.target.value })}
+              >
+                <option value="">qualquer</option>
+                {contas.map((c) => (
+                  <option key={c.slug} value={c.slug}>
+                    {c.nome}
+                  </option>
+                ))}
+              </select>
+              <span className="fin-field-hint">
+                só o universo lançamento tem conta — documento e item de cartão não conciliados voltam vazios
+              </span>
             </label>
 
             <label className="fin-field">

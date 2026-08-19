@@ -47,9 +47,9 @@ export default async function CategorizacaoPage() {
         <h1>Categorização</h1>
         <p>
           Tudo o que tem categoria — ou deveria ter — nos três universos onde ela existe: lançamentos do extrato,
-          cobranças e itens de fatura de cartão. Busque por texto, faixa de valor, tipo, categoria, período,
-          estado ou por quem decidiu; troque a categoria de um item ou de vários; cadastre a linha que falta no
-          plano de contas.{" "}
+          cobranças e itens de fatura de cartão. Busque por texto, faixa de valor, tipo, categoria, conta bancária,
+          período, estado ou por quem decidiu; troque a categoria de um item ou de vários; cadastre a linha que
+          falta no plano de contas.{" "}
           {foraDoPainel > 0 ? (
             <>
               <strong>{foraDoPainel.toLocaleString("pt-BR")} destes itens não aparecem em indicador nenhum</strong>{" "}
@@ -63,6 +63,7 @@ export default async function CategorizacaoPage() {
           plano={plano.dado}
           planoDisponivel={plano.disponivel}
           ressalvasPlano={plano.ressalvas}
+          contas={opcoes.dado.contas}
           nucleos={opcoes.dado.nucleos}
           centrosCusto={opcoes.dado.centrosCusto}
           foraDaRegua={foraDaRegua}

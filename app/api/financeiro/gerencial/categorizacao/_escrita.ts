@@ -63,6 +63,14 @@ export function textoOpcional(valor: unknown): string | null | undefined {
   return texto === "" ? null : texto;
 }
 
+/** Irmão de `textoOpcional`, para campos numéricos opcionais (ex.: `linhaProduto`). */
+export function numeroOpcional(valor: unknown): number | null | undefined {
+  if (valor === undefined) return undefined;
+  if (valor === null || valor === "") return null;
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Ids de lote: inteiros seguros, sem repetição, na ordem em que chegaram. */
 export function idsDe(valor: unknown): number[] {
   if (!Array.isArray(valor)) return [];

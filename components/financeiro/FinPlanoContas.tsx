@@ -40,6 +40,7 @@ type Props = {
   categorias: CategoriaPlano[];
   gruposFluxo: GrupoFluxo[];
   nucleos: { slug: string; nome: string }[];
+  linhasProduto: { id: number; nome: string }[];
   ressalvas: string[];
   recarregando: boolean;
   onMudou: () => void;
@@ -86,6 +87,7 @@ type Nova = {
   linhaDre: string;
   nucleoPadrao: string;
   categoriaPai: string;
+  linhaProduto: string;
 };
 
 const NOVA_VAZIA: Nova = {
@@ -95,7 +97,8 @@ const NOVA_VAZIA: Nova = {
   grupoFluxo: "",
   linhaDre: "",
   nucleoPadrao: "",
-  categoriaPai: ""
+  categoriaPai: "",
+  linhaProduto: ""
 };
 
 /**
@@ -116,15 +119,15 @@ const CASO_IOF: Partial<Nova> = {
   linhaDre: "impostos"
 };
 
-type Edicao = { nome: string; grupoFluxo: string; linhaDre: string; nucleoPadrao: string };
+type Edicao = { nome: string; grupoFluxo: string; linhaDre: string; nucleoPadrao: string; linhaProduto: string };
 
-export function FinPlanoContas({ categorias, gruposFluxo, nucleos, ressalvas, recarregando, onMudou }: Props) {
+export function FinPlanoContas({ categorias, gruposFluxo, nucleos, linhasProduto, ressalvas, recarregando, onMudou }: Props) {
   const [busca, setBusca] = useState("");
   const [mostrarInativas, setMostrarInativas] = useState(false);
   const [criando, setCriando] = useState(false);
   const [nova, setNova] = useState<Nova>(NOVA_VAZIA);
   const [editando, setEditando] = useState<string | null>(null);
-  const [edicao, setEdicao] = useState<Edicao>({ nome: "", grupoFluxo: "", linhaDre: "", nucleoPadrao: "" });
+  const [edicao, setEdicao] = useState<Edicao>({ nome: "", grupoFluxo: "", linhaDre: "", nucleoPadrao: "", linhaProduto: "" });
   const [pendente, setPendente] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [recado, setRecado] = useState<string | null>(null);
@@ -177,7 +180,8 @@ export function FinPlanoContas({ categorias, gruposFluxo, nucleos, ressalvas, re
           grupoFluxo: nova.grupoFluxo,
           linhaDre: nova.linhaDre,
           nucleoPadrao: nova.nucleoPadrao || null,
-          categoriaPai: nova.categoriaPai || null
+          categoriaPai: nova.categoriaPai || null,
+          linhaProduto: nova.linhaProduto || null
         },
         "nova"
       );
@@ -203,7 +207,8 @@ export function FinPlanoContas({ categorias, gruposFluxo, nucleos, ressalvas, re
           grupoFluxo: edicao.grupoFluxo,
           linhaDre: edicao.linhaDre,
           // `null` aqui é instrução de limpar; `undefined` seria "não mexa".
-          nucleoPadrao: edicao.nucleoPadrao || null
+          nucleoPadrao: edicao.nucleoPadrao || null,
+          linhaProduto: edicao.linhaProduto || null
         },
         code
       );
@@ -403,6 +408,23 @@ export function FinPlanoContas({ categorias, gruposFluxo, nucleos, ressalvas, re
                   ))}
               </select>
             </label>
+
+            <label className="fin-field">
+              <span>linha de produto (opcional)</span>
+              <select
+                className="fin-select"
+                value={nova.linhaProduto}
+                onChange={(e) => setNova((n) => ({ ...n, linhaProduto: e.target.value }))}
+              >
+                <option value="">sem linha</option>
+                {linhasProduto.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nome}
+                  </option>
+                ))}
+              </select>
+              <span className="fin-field-hint">visão por produto, separada da natureza contábil — gerenciada na aba ao lado</span>
+            </label>
           </div>
 
           <div className="fin-cat-form-acoes">
@@ -424,6 +446,7 @@ export function FinPlanoContas({ categorias, gruposFluxo, nucleos, ressalvas, re
               <th>nome</th>
               <th>natureza · sinal</th>
               <th>grupo · DRE</th>
+              <th>linha de produto</th>
               <th className="num">uso vivo</th>
               <th className="num">valor</th>
               <th>ações</th>
@@ -513,6 +536,26 @@ export function FinPlanoContas({ categorias, gruposFluxo, nucleos, ressalvas, re
                     )}
                   </td>
 
+                  <td>
+                    {editandoEsta ? (
+                      <select
+                        className="fin-select"
+                        value={edicao.linhaProduto}
+                        onChange={(e) => setEdicao((x) => ({ ...x, linhaProduto: e.target.value }))}
+                        aria-label={`Linha de produto de ${c.code}`}
+                      >
+                        <option value="">sem linha</option>
+                        {linhasProduto.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.nome}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="fin-desc">{c.linhaProduto ?? "—"}</span>
+                    )}
+                  </td>
+
                   <td className="num fin-table-money">
                     {c.usoVivo.toLocaleString("pt-BR")}
                     <span className="fin-desc-sub">
@@ -561,7 +604,8 @@ export function FinPlanoContas({ categorias, gruposFluxo, nucleos, ressalvas, re
                               nome: c.nome,
                               grupoFluxo: c.grupo ?? "",
                               linhaDre: c.dreLine ?? "",
-                              nucleoPadrao: c.nucleoPadrao ?? ""
+                              nucleoPadrao: c.nucleoPadrao ?? "",
+                              linhaProduto: c.linhaProdutoId ? String(c.linhaProdutoId) : ""
                             });
                           }}
                         >

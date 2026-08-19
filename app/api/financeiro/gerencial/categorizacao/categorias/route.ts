@@ -4,7 +4,7 @@ import { responderContrato, rotaDeLeitura } from "@/lib/financeiro/contratos/htt
 import { FinanceUnavailableError } from "@/lib/financeiro/db";
 
 import { bandeiraEstritaDe } from "../../_parametros";
-import { autorDe, erro, lerCorpo, textoOpcional } from "../_escrita";
+import { autorDe, erro, lerCorpo, numeroOpcional, textoOpcional } from "../_escrita";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -68,7 +68,8 @@ export async function POST(request: Request) {
         dreLine: String(corpo.linhaDre ?? "").trim(),
         tocClass: textoOpcional(corpo.tocClass) ?? undefined,
         nucleoPadrao: textoOpcional(corpo.nucleoPadrao),
-        parentCode: textoOpcional(corpo.categoriaPai)
+        parentCode: textoOpcional(corpo.categoriaPai),
+        productLineId: numeroOpcional(corpo.linhaProduto)
       },
       autorDe(request)
     );
@@ -104,6 +105,7 @@ export async function PATCH(request: Request) {
         dreLine: textoOpcional(corpo.linhaDre) ?? undefined,
         nucleoPadrao: corpo.nucleoPadrao === undefined ? undefined : textoOpcional(corpo.nucleoPadrao),
         parentCode: corpo.categoriaPai === undefined ? undefined : textoOpcional(corpo.categoriaPai),
+        productLineId: corpo.linhaProduto === undefined ? undefined : numeroOpcional(corpo.linhaProduto),
         ativa: typeof corpo.ativa === "boolean" ? corpo.ativa : undefined
       },
       autorDe(request)

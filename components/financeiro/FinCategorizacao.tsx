@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { Medida, Ressalva, SeloCamada, brl, type Camada } from "@/components/financeiro/Certeza";
 import { FinPlanoContas } from "@/components/financeiro/FinPlanoContas";
+import { FinLinhasProduto } from "@/components/financeiro/FinLinhasProduto";
 import { dateLabel } from "@/lib/financeiro/format";
 import type { Contrato } from "@/lib/financeiro/contratos/base";
 import type { PropostaRegra, ResultadoLote } from "@/lib/financeiro/categorizacao";
@@ -13,6 +14,7 @@ import type {
   CategoriaPlano,
   EstadoCategorizacao,
   ItemCategorizavel,
+  LinhaProduto,
   ProcedenciaFamilia,
   ResumoUniverso,
   Universo
@@ -264,6 +266,7 @@ type RespostaRegra = { ok: boolean; dryRun: boolean; proposta: PropostaRegra; re
 type PlanoDado = {
   categorias: CategoriaPlano[];
   gruposFluxo: { slug: string; nome: string; direcao: string }[];
+  linhasProduto: LinhaProduto[];
 };
 
 type Props = {
@@ -310,7 +313,7 @@ async function erroDaResposta(r: Response): Promise<string> {
 // ---------------------------------------------------------------------------
 
 export function FinCategorizacao(props: Props) {
-  const [aba, setAba] = useState<"itens" | "plano">("itens");
+  const [aba, setAba] = useState<"itens" | "plano" | "linhas">("itens");
 
   // O plano é servido pelo Server Component na primeira pintura e recarregado
   // pela rota depois de cada criação/edição — a lista de categorias do seletor
@@ -353,6 +356,14 @@ export function FinCategorizacao(props: Props) {
         >
           Plano de contas <span className="fin-tag">{categoriasAtivas.length} ativas</span>
         </button>
+        <button
+          type="button"
+          className={aba === "linhas" ? "fin-cat-aba ativa" : "fin-cat-aba"}
+          onClick={() => setAba("linhas")}
+        >
+          Linhas de produto{" "}
+          <span className="fin-tag">{plano.linhasProduto.filter((l) => l.ativa).length} ativas</span>
+        </button>
       </nav>
 
       {aba === "itens" ? (
@@ -363,20 +374,29 @@ export function FinCategorizacao(props: Props) {
           centrosCusto={props.centrosCusto}
           foraDaRegua={props.foraDaRegua}
         />
-      ) : props.planoDisponivel ? (
-        <FinPlanoContas
-          categorias={plano.categorias}
-          gruposFluxo={plano.gruposFluxo}
-          nucleos={props.nucleos}
-          ressalvas={ressalvasPlano}
+      ) : aba === "plano" ? (
+        props.planoDisponivel ? (
+          <FinPlanoContas
+            categorias={plano.categorias}
+            gruposFluxo={plano.gruposFluxo}
+            nucleos={props.nucleos}
+            linhasProduto={plano.linhasProduto.filter((l) => l.ativa).map((l) => ({ id: l.id, nome: l.nome }))}
+            ressalvas={ressalvasPlano}
+            recarregando={recarregandoPlano}
+            onMudou={() => void recarregarPlano()}
+          />
+        ) : (
+          <p className="fin-alert">
+            O plano de contas não pôde ser lido do banco financeiro. Nada foi escondido: a lista está vazia porque a
+            fonte não respondeu, não porque não existem categorias.
+          </p>
+        )
+      ) : (
+        <FinLinhasProduto
+          linhas={plano.linhasProduto}
           recarregando={recarregandoPlano}
           onMudou={() => void recarregarPlano()}
         />
-      ) : (
-        <p className="fin-alert">
-          O plano de contas não pôde ser lido do banco financeiro. Nada foi escondido: a lista está vazia porque a
-          fonte não respondeu, não porque não existem categorias.
-        </p>
       )}
     </div>
   );

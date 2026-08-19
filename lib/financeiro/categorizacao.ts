@@ -554,6 +554,8 @@ export type CategoriaEntrada = {
   tocClass?: string;
   nucleoPadrao?: string | null;
   parentCode?: string | null;
+  /** Linha de produto (0124) — nula é "ainda não classificada", não um erro. */
+  productLineId?: number | null;
 };
 
 const KINDS = [
@@ -601,13 +603,14 @@ export async function criarCategoria(entrada: CategoriaEntrada, ator: string) {
     const { rows } = await cli.query<Record<string, unknown>>(
       `INSERT INTO fin_category
          (entity_id, parent_id, code, name, kind, toc_class, dre_line, cash_flow_group,
-          default_nucleo, is_active, sort_order)
+          default_nucleo, is_active, sort_order, product_line_id)
        SELECT e.id,
               (SELECT p.id FROM fin_category p WHERE p.entity_id = e.id AND p.code = $9),
               $1, $2, $3, $4, $5, $6, $7, true,
-              COALESCE((SELECT max(c2.sort_order) + 1 FROM fin_category c2 WHERE c2.entity_id = e.id), 1)
+              COALESCE((SELECT max(c2.sort_order) + 1 FROM fin_category c2 WHERE c2.entity_id = e.id), 1),
+              $10
          FROM fin_entity e WHERE e.slug = $8
-       RETURNING id, code, name, kind, cash_flow_group, dre_line, default_nucleo, is_active`,
+       RETURNING id, code, name, kind, cash_flow_group, dre_line, default_nucleo, is_active, product_line_id`,
       [
         code,
         entrada.nome.trim(),
@@ -617,7 +620,8 @@ export async function criarCategoria(entrada: CategoriaEntrada, ator: string) {
         entrada.cashFlowGroup,
         entrada.nucleoPadrao ?? null,
         ENTIDADE,
-        entrada.parentCode ?? null
+        entrada.parentCode ?? null,
+        entrada.productLineId ?? null
       ]
     );
 
@@ -642,6 +646,8 @@ export type CategoriaEdicao = {
   nucleoPadrao?: string | null;
   parentCode?: string | null;
   ativa?: boolean;
+  /** Linha de produto (0124). `undefined` não mexe; `null` desatribui. */
+  productLineId?: number | null;
 };
 
 /**
@@ -669,6 +675,7 @@ export async function editarCategoria(code: string, edicao: CategoriaEdicao, ato
   if (edicao.cashFlowGroup !== undefined) push("cash_flow_group = $?", edicao.cashFlowGroup);
   if (edicao.dreLine !== undefined) push("dre_line = $?", edicao.dreLine);
   if (edicao.nucleoPadrao !== undefined) push("default_nucleo = $?", edicao.nucleoPadrao);
+  if (edicao.productLineId !== undefined) push("product_line_id = $?", edicao.productLineId);
   if (edicao.ativa !== undefined) push("is_active = $?", edicao.ativa);
   if (edicao.parentCode !== undefined) {
     params.push(edicao.parentCode);
@@ -694,7 +701,7 @@ export async function editarCategoria(code: string, edicao: CategoriaEdicao, ato
          FROM fin_entity e
         WHERE e.id = c.entity_id AND e.slug = $1 AND c.code = $2
        RETURNING c.id, c.code, c.name, c.kind, c.cash_flow_group, c.dre_line,
-                 c.default_nucleo, c.is_active`,
+                 c.default_nucleo, c.is_active, c.product_line_id`,
       params
     );
 

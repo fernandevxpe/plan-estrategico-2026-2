@@ -322,9 +322,21 @@ export async function reclassificarLote(args: {
     }
 
     // ---- 5. AUDITORIA. `before`/`after` no formato que o desfazer lê.
+    //
+    // `target_id` é NOT NULL em fin_audit_log (0004) — esta linha resume um
+    // LOTE, não uma única linha, então não existe um alvo único de verdade.
+    // Em vez de um sentinela inventado (0, -1: nenhum dos dois documentado em
+    // lugar nenhum), uso o primeiro id do lote como âncora — o resto do lote
+    // já está inteiro dentro de `before`/`after`, e `batch_id` é o que agrupa
+    // a trilha completa (fin_audit_log.batch_id, lido por
+    // lib/financeiro/contratos/auditoria.ts). Bug pré-existente: literal NULL
+    // aqui violava a constraint sempre que `aplicar: true` chegava a esta
+    // linha — achado ao reclassificar um lançamento de verdade, não
+    // introduzido agora.
+    const primeiroId = args.alvos.flatMap((a) => a.ids)[0];
     await cli.query(
       `INSERT INTO fin_audit_log (entity_id, batch_id, actor, action, target_table, target_id, before, after, fields)
-       SELECT e.id, $1::uuid, $2::text, 'bulk_update', 'fin_categorizavel_v', NULL,
+       SELECT e.id, $1::uuid, $2::text, 'bulk_update', 'fin_categorizavel_v', $6::bigint,
               $3::jsonb, $4::jsonb, ARRAY['category_id','classified_by','human_locked_fields']
          FROM fin_entity e WHERE e.slug = $5`,
       [
@@ -339,7 +351,8 @@ export async function reclassificarLote(args: {
           filaResolvida: base.filaResolvida,
           travasEscritas: base.travasEscritas
         }),
-        ENTIDADE
+        ENTIDADE,
+        primeiroId
       ]
     );
 

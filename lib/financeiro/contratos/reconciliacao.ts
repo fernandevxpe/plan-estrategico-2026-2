@@ -38,6 +38,12 @@ export type Reconciliacao = {
 
 const VAZIO: Reconciliacao = { linhas: [], totalReferencias: 0, totalPendentes: 0, somaAbsDiferencasCents: 0 };
 
+/** "2026-01" e "2026-01-15" viram data válida; qualquer outra coisa vira `undefined`. */
+function dataDe(valor: string | undefined): string | undefined {
+  if (!valor) return undefined;
+  return /^\d{4}-\d{2}$/.test(valor) ? `${valor}-01` : valor;
+}
+
 export async function getReconciliacao(
   opcoes: { de?: string; ate?: string } = {}
 ): Promise<Contrato<Reconciliacao>> {
@@ -46,13 +52,15 @@ export async function getReconciliacao(
   try {
     const params: unknown[] = [ENTIDADE];
     let where = "v.entity_id = (SELECT id FROM fin_entity WHERE slug = $1)";
-    if (opcoes.de) {
-      params.push(opcoes.de);
-      where += ` AND v.mes >= $${params.length}`;
+    const de = dataDe(opcoes.de);
+    const ate = dataDe(opcoes.ate);
+    if (de) {
+      params.push(de);
+      where += ` AND v.mes >= $${params.length}::date`;
     }
-    if (opcoes.ate) {
-      params.push(opcoes.ate);
-      where += ` AND v.mes <= $${params.length}`;
+    if (ate) {
+      params.push(ate);
+      where += ` AND v.mes <= $${params.length}::date`;
     }
 
     const linhas = await query<Record<string, unknown>>(

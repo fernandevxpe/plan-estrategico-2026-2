@@ -151,6 +151,10 @@ export const FINANCEIRO_GRUPOS: Grupo[] = [
     rotas: [
       { href: "/financeiro/lancamentos", label: "Lançamentos" },
       { href: "/financeiro/extratos", label: "Extratos" },
+      // Sistema × referência externa (planilha, relatório de terceiro) — não
+      // é uma tela de resultado, é ferramenta de conferência. Fica ao lado de
+      // Lançamentos/Extratos, não em "Resultado", pelo mesmo motivo.
+      { href: "/financeiro/reconciliacao", label: "Reconciliação" },
       {
         // Revisão é a porta de fato: é a única das três que o painel "O que
         // falta qualificar" da home linka (medido — Categorização e

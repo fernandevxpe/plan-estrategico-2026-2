@@ -12254,6 +12254,16 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 .fin-cat-lacuna-botao:hover { border-color: var(--purple); background: #f6f2ff; }
 
+/* ---- Reconciliação ---- */
+.fin-recon-diff { font-weight: 650; }
+.fin-recon-diff-ok { color: var(--green); }
+.fin-recon-diff-warn { color: var(--amber); }
+.fin-recon-diff-bad { color: var(--neon-pink-ink); }
+.fin-recon-fonte {
+  max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; color: var(--muted);
+}
+
 /* ---- Filtros ---- */
 .fin-cat-filtros {
   display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px;

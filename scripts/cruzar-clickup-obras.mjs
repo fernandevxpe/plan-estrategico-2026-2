@@ -135,26 +135,72 @@ for (const row of sistema) {
   candidatosPorChave.set(chave, [...(candidatosPorChave.get(chave) || []), row]);
 }
 
-const semPar = [], ambiguos = [], divergentes = [], conformes = [];
+// O QUE O EXTRATO SABE E O CLICKUP NÃO
+// ------------------------------------
+// A regra geral deste script é que o ClickUp vale mais, porque ele tem a
+// intenção de quem pagou. Há uma exceção medida, e ela se repetiu em MARÇO,
+// ABRIL e MAIO de 2026 sem falhar uma vez: quando o extrato diz "Aplicação
+// RDB", o dinheiro foi para uma aplicação financeira — mesmo quando o ClickUp
+// rotula a linha como "pagamento imposto parcela 2" ou "Caixa Impostos".
+//
+// O que acontece na prática é que a operação separa dinheiro num RDB PARA
+// pagar imposto depois. O ClickUp registra o propósito (imposto); o extrato
+// registra o fato (aplicação). Para a DRE vale o fato: aplicar não é pagar.
+//
+// Sem esta guarda o script propôs, três meses seguidos, mover de 9.03 para
+// 7.01 lançamentos que estavam certos — R$12.365,76 em março, R$1.206,73 em
+// abril, R$3.723,42 em maio. Três vezes a sugestão foi lida e descartada à
+// mão. Na quarta ela não aparece.
+const EXTRATO_MANDA = [
+  { padrao: /aplica[çc][ãa]o\s+rdb/i, motivo: 'extrato diz "Aplicação RDB": é aplicação financeira, não pagamento de imposto' },
+  { padrao: /resgate\s+rdb/i,         motivo: 'extrato diz "Resgate RDB": é resgate de aplicação, não entrada operacional' }
+];
+
+const semPar = [], ambiguos = [], divergentes = [], conformes = [], extratoVence = [];
+
+// Uma transação só pode ter UM destino. Quando duas linhas do ClickUp caem no
+// mesmo (data, valor) — gêmeas — elas apontam para a mesma transação, e o
+// script chegava a propor a MESMA id em dois lotes com destinos diferentes
+// (abril: #75299 foi para 4.02 e para 4.03 no mesmo relatório). Aplicar os
+// dois lotes faria a segunda escrita desfazer a primeira, em silêncio.
+const linhasPorChave = new Map();
 for (const l of clickupSaida) {
   const chave = `${l.data}|${Math.round(l.valor * 100)}`;
+  linhasPorChave.set(chave, [...(linhasPorChave.get(chave) || []), l]);
+}
+
+for (const [chave, linhas] of linhasPorChave) {
   const cands = candidatosPorChave.get(chave) || [];
-  if (cands.length === 0) { semPar.push(l); continue; }
-  if (cands.length > 1) { ambiguos.push({ l, cands }); continue; }
-  const sist = cands[0];
+  if (cands.length === 0) { semPar.push(...linhas); continue; }
+
+  // Gêmeas do ClickUp, ou mais de um candidato no banco: em qualquer dos dois
+  // casos o pareamento 1-para-1 não existe, e propor destino seria adivinhar.
+  if (cands.length > 1 || linhas.length > 1) {
+    for (const l of linhas) ambiguos.push({ l, cands });
+    continue;
+  }
+
+  const l = linhas[0], sist = cands[0];
+  const veto = EXTRATO_MANDA.find((v) => v.padrao.test(sist.description_raw || ''));
+  if (veto) { extratoVence.push({ l, sist, motivo: veto.motivo }); continue; }
+
   const aceitos = ACEITAVEL[l.categoria] || [];
   if (aceitos.length && !aceitos.includes(sist.code)) divergentes.push({ l, sist });
   else conformes.push({ l, sist });
 }
 
 if (JSON_OUT) {
-  console.log(JSON.stringify({ mes: MES, divergentes, ambiguos, semPar, totalClickup: clickupSaida.length, totalConformes: conformes.length }, null, 2));
+  console.log(JSON.stringify({ mes: MES, divergentes, ambiguos, semPar, extratoVence, totalClickup: clickupSaida.length, totalConformes: conformes.length }, null, 2));
   process.exit(0);
 }
 
 console.log(`=== Cruzamento ClickUp × sistema — ${MES} ===`);
 console.log(`ClickUp (saída, obras): ${clickupSaida.length} lançamentos, R$ ${clickupSaida.reduce((s, l) => s + l.valor, 0).toFixed(2)}`);
-console.log(`Conformes: ${conformes.length} | Divergentes: ${divergentes.length} | Ambíguos: ${ambiguos.length} | Sem par: ${semPar.length}\n`);
+console.log(`Conformes: ${conformes.length} | Divergentes: ${divergentes.length} | Ambíguos: ${ambiguos.length} | Sem par: ${semPar.length}`);
+if (extratoVence.length) {
+  console.log(`Vetados pelo extrato: ${extratoVence.length} (o ClickUp sugeria mudar, o extrato prova que não)`);
+}
+console.log();
 
 if (divergentes.length) {
   console.log('--- DIVERGENTES (categoria do sistema não bate com a intenção registrada no ClickUp) ---');
@@ -184,6 +230,14 @@ if (semPar.length) {
   console.log('\n--- SEM PAR NO SISTEMA (ClickUp diz que pagou; nenhuma transação bancária encontrada) ---');
   console.log('    Mesmo risco do padrão "baixa sem recebimento" — confira se o dinheiro realmente saiu.');
   for (const l of semPar) console.log(`  ${l.data} R$${l.valor.toFixed(2)} "${l.nome.slice(0, 60)}" [${l.categoria}/${l.sub ?? '-'}]`);
+}
+
+if (extratoVence.length) {
+  console.log('\n--- VETADOS PELO EXTRATO (o ClickUp sugeria mover; o extrato prova que a categoria atual está certa) ---');
+  for (const { l, sist, motivo } of extratoVence) {
+    console.log(`  #${sist.id} ${l.data} R$${l.valor.toFixed(2)} "${l.nome.slice(0, 44)}" [${l.categoria}]`);
+    console.log(`     mantido em ${sist.code ?? 'SEM CATEGORIA'} — ${motivo}`);
+  }
 }
 
 if (!divergentes.length && !ambiguos.length && !semPar.length) {

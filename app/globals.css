@@ -13008,7 +13008,10 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;
   box-shadow: var(--shadow);
 }
-.fin-kpi-destaque { border-color: color-mix(in srgb, var(--neon-purple) 38%, var(--line)); }
+/* --purple, não --neon-purple: o neon foi escurecido no tema escuro para
+   contrastar com texto branco, o que o torna péssimo como BORDA sobre fundo
+   escuro (1,69:1 — o KPI mais importante perdia a moldura). */
+.fin-kpi-destaque { border-color: color-mix(in srgb, var(--purple) 55%, var(--line)); }
 .fin-kpi-rotulo {
   font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
 }
@@ -13020,6 +13023,12 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .tom-bom { color: var(--green); }
 .tom-ruim { color: var(--red); }
 .tom-neutro { color: var(--ink); }
+/* Na TABELA o texto é 13,5px — texto normal, que exige 4,5:1. --green sobre
+   branco dá 3,39:1 e reprova; sobre a linha em hover, 3,03:1. Escopado aqui
+   porque o token global serve badges e pílulas maiores, onde ele passa.
+   Medido, não estimado. */
+.fin-analise-tabela .tom-bom { color: #0e7a52; }
+.fin-analise-tabela .tom-ruim { color: #b23c3c; }
 
 .fin-analise-abas { display: flex; gap: 6px; flex-wrap: wrap; }
 .fin-aba {
@@ -13027,21 +13036,28 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   border-radius: 999px; padding: 6px 14px; font-size: 12.5px; font-weight: 550; cursor: pointer;
 }
 .fin-aba:hover { background: var(--surface-2); color: var(--ink); }
-.fin-aba-ativa {
+/* `.ativa`, não `.fin-aba-ativa`: o modificador é o padrão da casa e empata em
+   especificidade com `:hover`, ganhando por vir depois. A variante com sufixo
+   tinha especificidade MENOR que `.fin-chip:hover`, e o rótulo do mês
+   selecionado sumia ao passar o mouse — no gesto de quem está apresentando. */
+.fin-aba.ativa {
   background: var(--purple); border-color: var(--purple); color: #fff;
 }
-.fin-aba-ativa:hover { background: var(--purple-deep); color: #fff; }
+.fin-aba.ativa:hover { background: var(--purple-deep); color: #fff; }
 
 .fin-analise-seletor { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .fin-analise-seletor > span {
   font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
 }
 .fin-analise-meses { display: flex; gap: 5px; flex-wrap: wrap; }
-.fin-chip-ativo { background: var(--purple); border-color: var(--purple); color: #fff; }
 
 .fin-analise-caption {
   caption-side: top; text-align: left; padding: 0 0 10px; font-size: 12px;
   color: var(--muted); line-height: 1.5;
+  /* Sem o teto, a legenda herda os 640px de min-width da tabela e o leitor
+     precisa rolar na horizontal para ler a explicação — arrastando as colunas
+     junto. Mesmo valor do irmão .fin-painel-caption. */
+  max-width: 84ch;
 }
 .fin-analise-tabela td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .fin-analise-tabela td.forte { font-weight: 620; }
@@ -13055,16 +13071,32 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .fin-barra-cel { width: 90px; min-width: 90px; }
 .fin-barra {
   display: block; height: 7px; border-radius: 4px;
-  background: color-mix(in srgb, var(--neon-purple) 62%, transparent);
+  /* Mesma razão do KPI destaque: o neon puro quase some no escuro (1,97:1). */
+  background: color-mix(in srgb, var(--neon-purple-ink) 72%, transparent);
 }
 
 .fin-recorrencia {
   display: inline-block; font-variant-numeric: tabular-nums; font-size: 11.5px; font-weight: 600;
   border-radius: 6px; padding: 2px 7px;
 }
-.fin-recorrencia-alta { color: var(--neon-green-ink); background: color-mix(in srgb, var(--neon-green) 16%, var(--surface-2)); }
-.fin-recorrencia-media { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, var(--surface-2)); }
-.fin-recorrencia-baixa { color: var(--muted); background: var(--surface-2); }
+/* O color-mix clareia o FUNDO e a cor do texto não acompanhava: alta dava
+   3,39:1, média 2,85:1 (a pior da tela) e baixa 4,44:1, todas abaixo de 4,5.
+   --amber não tem variante `-ink`, que é o que o irmão .fin-tag-atencao usa. */
+.fin-recorrencia-alta  { color: #07714a; background: color-mix(in srgb, var(--neon-green) 16%, var(--surface-2)); }
+.fin-recorrencia-media { color: #7a5210; background: color-mix(in srgb, var(--amber) 14%, var(--surface-2)); }
+.fin-recorrencia-baixa { color: #5b6870; background: var(--surface-2); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) .fin-recorrencia-alta  { color: var(--neon-green-ink); }
+  :root:not([data-theme="claro"]) .fin-recorrencia-media { color: var(--amber); }
+  :root:not([data-theme="claro"]) .fin-recorrencia-baixa { color: var(--muted); }
+  :root:not([data-theme="claro"]) .fin-analise-tabela .tom-bom  { color: var(--green); }
+  :root:not([data-theme="claro"]) .fin-analise-tabela .tom-ruim { color: var(--red); }
+}
+:root[data-theme="escuro"] .fin-recorrencia-alta  { color: var(--neon-green-ink); }
+:root[data-theme="escuro"] .fin-recorrencia-media { color: var(--amber); }
+:root[data-theme="escuro"] .fin-recorrencia-baixa { color: var(--muted); }
+:root[data-theme="escuro"] .fin-analise-tabela .tom-bom  { color: var(--green); }
+:root[data-theme="escuro"] .fin-analise-tabela .tom-ruim { color: var(--red); }
 
 .fin-vazio { color: var(--muted); }
 .fin-analise-ressalvas { display: flex; flex-direction: column; gap: 6px; }

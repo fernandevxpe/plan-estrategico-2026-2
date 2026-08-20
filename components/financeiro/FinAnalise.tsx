@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { brl, Ressalva } from "./Certeza";
+import { pct } from "@/lib/financeiro/format";
 import type {
   Analise,
   LinhaAnaliseMensal,
@@ -19,22 +20,19 @@ function mesRotulo(mes: string): string {
 }
 
 /**
- * Percentual formatado. `null` vira travessão, nunca "0%".
+ * Variação com sinal explícito: +12,4% e −8,1% se leem diferente de 12,4%.
  *
- * A distinção não é estética: um mês sem receita não tem margem de zero por
- * cento — ele não tem margem. Desenhar 0% ali faz o leitor comparar um número
- * que não existe com números que existem.
+ * O percentual em si vem de `pct` (lib/financeiro/format), que formata em
+ * pt-BR. Reimplementar aqui com `toFixed` produzia "17.9%" com ponto — numa
+ * tela de dinheiro em vírgula, na mesma linha.
+ *
+ * `null` vira travessão, nunca "0%": um mês sem receita não tem margem de zero
+ * por cento, não tem margem.
  */
-function pct(v: number | null, casas = 1): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
-  return `${v.toFixed(casas)}%`;
-}
-
-/** Variação com sinal explícito: +12,4% e −8,1% se leem diferente de 12,4%. */
 function delta(v: number | null): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "—";
   const s = v > 0 ? "+" : v < 0 ? "−" : "";
-  return `${s}${Math.abs(v).toFixed(1)}%`;
+  return `${s}${pct(Math.abs(v))}`;
 }
 
 function tomDelta(v: number | null, bomQuandoSobe = true): string {
@@ -62,6 +60,12 @@ export function FinAnalise({ dados, disponivel, ressalvas }: Props) {
   const [mesFoco, setMesFoco] = useState<string | null>(null);
 
   const meses = useMemo(() => dados.mensal.map((m) => m.mes), [dados.mensal]);
+  // O contrato pede o ano inteiro; só há dado até o mês corrente. "8 meses"
+  // obrigava o leitor a deduzir quais — e o título diz "do ano", o que sugere
+  // ano fechado.
+  const periodoRotulo = meses.length
+    ? `${mesRotulo(meses[0])} – ${mesRotulo(meses[meses.length - 1])}`
+    : "sem período";
   const mesAtivo = mesFoco && meses.includes(mesFoco) ? mesFoco : meses[meses.length - 1] ?? null;
 
   const totais = useMemo(() => {
@@ -107,8 +111,8 @@ export function FinAnalise({ dados, disponivel, ressalvas }: Props) {
   return (
     <div className="fin-analise">
       <section className="fin-analise-kpis">
-        <Kpi rotulo="Receita bruta" valor={brl(totais.receita)} nota={`${dados.mensal.length} meses`} />
-        <Kpi rotulo="Custo operacional" valor={brl(totais.custo)} nota={pct(totais.pctCusto)} tom="ruim" />
+        <Kpi rotulo="Receita bruta" valor={brl(totais.receita)} nota={periodoRotulo} />
+        <Kpi rotulo="Custo operacional" valor={brl(totais.custo)} nota={`${pct(totais.pctCusto)} da receita bruta`} tom="ruim" />
         <Kpi
           rotulo="EBITDA"
           valor={brl(totais.ebitda)}
@@ -120,12 +124,12 @@ export function FinAnalise({ dados, disponivel, ressalvas }: Props) {
         <Kpi
           rotulo="Resultado de caixa"
           valor={brl(totais.caixa)}
-          nota="após impostos, cartão e capex"
+          nota="após impostos, cartão e investimentos"
           tom={tomValor(totais.caixa)}
         />
       </section>
 
-      <nav className="fin-analise-abas" role="tablist">
+      <nav className="fin-analise-abas" aria-label="Visões da análise">
         {(
           [
             ["resultado", "Resultado mês a mês"],
@@ -136,9 +140,8 @@ export function FinAnalise({ dados, disponivel, ressalvas }: Props) {
           <button
             key={id}
             type="button"
-            role="tab"
-            aria-selected={aba === id}
-            className={aba === id ? "fin-aba fin-aba-ativa" : "fin-aba"}
+            aria-current={aba === id ? "true" : undefined}
+            className={aba === id ? "fin-aba ativa" : "fin-aba"}
             onClick={() => setAba(id)}
           >
             {rotulo}
@@ -150,13 +153,14 @@ export function FinAnalise({ dados, disponivel, ressalvas }: Props) {
 
       {aba !== "resultado" && mesAtivo ? (
         <div className="fin-analise-seletor">
-          <span>Mês</span>
-          <div className="fin-analise-meses">
+          <span id="fin-analise-mes-rot">Mês</span>
+          <div className="fin-analise-meses" role="group" aria-labelledby="fin-analise-mes-rot">
             {meses.map((m) => (
               <button
                 key={m}
                 type="button"
-                className={m === mesAtivo ? "fin-chip fin-chip-ativo" : "fin-chip"}
+                className={m === mesAtivo ? "fin-chip ativo" : "fin-chip"}
+                aria-pressed={m === mesAtivo}
                 onClick={() => setMesFoco(m)}
               >
                 {mesRotulo(m)}
@@ -212,7 +216,7 @@ function TabelaResultado({ linhas }: { linhas: LinhaAnaliseMensal[] }) {
           <tr>
             <th scope="col">mês</th>
             <th scope="col" className="num">receita</th>
-            <th scope="col" className="num">Δ</th>
+            <th scope="col" className="num">variação</th>
             <th scope="col" className="num">custo direto</th>
             <th scope="col" className="num">pessoal</th>
             <th scope="col" className="num">custo op.</th>
@@ -260,11 +264,15 @@ function TabelaNucleos({ linhas, mes }: { linhas: LinhaAnaliseNucleo[]; mes: str
   }
   const maiorCusto = Math.max(...linhas.map((l) => Math.abs(l.custoCents)), 1);
   return (
+    <>
+    <p className="fin-card-hint">
+      Área marcada como <strong>overhead</strong> não tem receita própria — a margem negativa ali é
+      estrutural, não desempenho.
+    </p>
     <div className="fin-table-wrap">
       <table className="fin-table fin-analise-tabela">
         <caption className="fin-analise-caption">
-          Participação de cada área na receita e no custo de {mesRotulo(mes)}. Núcleo marcado como
-          overhead não tem receita própria — a margem negativa ali é estrutural, não desempenho.
+          Participação de cada área na receita e no custo de {mesRotulo(mes)}.
         </caption>
         <thead>
           <tr>
@@ -273,7 +281,7 @@ function TabelaNucleos({ linhas, mes }: { linhas: LinhaAnaliseNucleo[]; mes: str
             <th scope="col" className="num">% rec.</th>
             <th scope="col" className="num">custo</th>
             <th scope="col" className="num">% custo</th>
-            <th scope="col">peso do custo</th>
+            <th scope="col" className="fin-barra-cel">peso do custo</th>
             <th scope="col" className="num">resultado</th>
             <th scope="col" className="num">margem</th>
           </tr>
@@ -305,6 +313,7 @@ function TabelaNucleos({ linhas, mes }: { linhas: LinhaAnaliseNucleo[]; mes: str
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
@@ -313,12 +322,14 @@ function TabelaReceita({ linhas, mes }: { linhas: LinhaAnaliseReceita[]; mes: st
     return <p className="fin-card-hint">Sem receita em {mesRotulo(mes)}.</p>;
   }
   return (
+    <>
+    <p className="fin-card-hint">
+      <strong>Recorrência</strong> conta em quantos dos últimos seis meses aquela linha teve
+      receita — 6/6 é assinatura, 1/6 é projeto pontual.
+    </p>
     <div className="fin-table-wrap">
       <table className="fin-table fin-analise-tabela">
-        <caption className="fin-analise-caption">
-          Receita de {mesRotulo(mes)} por linha. <strong>Recorrência</strong> conta em quantos dos
-          últimos seis meses aquela linha teve receita — 6/6 é assinatura, 1/6 é projeto pontual.
-        </caption>
+        <caption className="fin-analise-caption">Receita de {mesRotulo(mes)} por linha.</caption>
         <thead>
           <tr>
             <th scope="col">linha</th>
@@ -331,13 +342,13 @@ function TabelaReceita({ linhas, mes }: { linhas: LinhaAnaliseReceita[]; mes: st
           </tr>
         </thead>
         <tbody>
-          {linhas.map((l) => {
+          {linhas.map((l, i) => {
             const variou =
               l.mesAnteriorCents !== null && l.mesAnteriorCents !== 0
                 ? ((l.receitaCents - l.mesAnteriorCents) * 100) / Math.abs(l.mesAnteriorCents)
                 : null;
             return (
-              <tr key={`${l.categoriaCode}`}>
+              <tr key={l.categoriaCode ?? l.categoriaNome ?? `linha-${i}`}>
                 <th scope="row">
                   <span className="fin-code">{l.categoriaCode ?? "—"}</span> {l.categoriaNome ?? ""}
                 </th>
@@ -371,5 +382,6 @@ function TabelaReceita({ linhas, mes }: { linhas: LinhaAnaliseReceita[]; mes: st
         .
       </p>
     </div>
+    </>
   );
 }

@@ -141,6 +141,11 @@ export const FINANCEIRO_GRUPOS: Grupo[] = [
       // menu nenhum. "(DRE)" entra no rótulo porque "Resultado" sozinho é a
       // palavra mais genérica do módulo — foi assim que ela se escondeu.
       { href: "/financeiro/resultado", label: "Resultado (DRE)" },
+      // Vem logo depois da DRE de propósito: é a mesma régua lida como gestão
+      // — percentual sobre receita, variação contra o mês anterior, e qual
+      // área puxou. Separada porque a DRE responde "quanto" e esta responde
+      // "quanto isso representa", que é a pergunta seguinte.
+      { href: "/financeiro/analise", label: "Análise gerencial" },
       { href: "/financeiro/indicadores", label: "Indicadores" },
       { href: "/financeiro/planejamento", label: "Planejamento" },
       { href: "/financeiro/modelo", label: "Modelo de gestão" }

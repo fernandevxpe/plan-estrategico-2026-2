@@ -12980,3 +12980,96 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 @media (max-width: 640px) {
   .receita-composicao-lista li { grid-template-columns: 1fr; gap: 2px; }
 }
+
+/* ===========================================================================
+   ANÁLISE GERENCIAL (/financeiro/analise)
+   ---------------------------------------------------------------------------
+   A DRE lida como gestão. Três decisões de desenho que não são estéticas:
+
+   1. `tom-neutro` existe e é cinza. Um percentual que não pôde ser calculado
+      (mês sem receita) não é bom nem ruim — pintá-lo de verde ou vermelho
+      inventaria um juízo sobre um número que não existe.
+
+   2. `.num small` põe o percentual EMBAIXO do valor, não ao lado. Numa linha
+      com nove colunas numéricas, o percentual ao lado dobra a largura e força
+      rolagem horizontal; embaixo ele cabe e continua legível.
+
+   3. A barra de peso do custo é decorativa e leva `aria-hidden` no componente:
+      o mesmo dado já está na coluna "% custo" em texto. Barra sem número é
+      gráfico; barra com número ao lado é reforço visual.
+   =========================================================================== */
+.fin-analise { display: flex; flex-direction: column; gap: 18px; }
+
+.fin-analise-kpis {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;
+}
+.fin-kpi {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;
+  box-shadow: var(--shadow);
+}
+.fin-kpi-destaque { border-color: color-mix(in srgb, var(--neon-purple) 38%, var(--line)); }
+.fin-kpi-rotulo {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+}
+.fin-kpi-valor {
+  font-size: 19px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+}
+.fin-kpi-nota { font-size: 11.5px; color: var(--muted); }
+
+.tom-bom { color: var(--green); }
+.tom-ruim { color: var(--red); }
+.tom-neutro { color: var(--ink); }
+
+.fin-analise-abas { display: flex; gap: 6px; flex-wrap: wrap; }
+.fin-aba {
+  border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+  border-radius: 999px; padding: 6px 14px; font-size: 12.5px; font-weight: 550; cursor: pointer;
+}
+.fin-aba:hover { background: var(--surface-2); color: var(--ink); }
+.fin-aba-ativa {
+  background: var(--purple); border-color: var(--purple); color: #fff;
+}
+.fin-aba-ativa:hover { background: var(--purple-deep); color: #fff; }
+
+.fin-analise-seletor { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fin-analise-seletor > span {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+}
+.fin-analise-meses { display: flex; gap: 5px; flex-wrap: wrap; }
+.fin-chip-ativo { background: var(--purple); border-color: var(--purple); color: #fff; }
+
+.fin-analise-caption {
+  caption-side: top; text-align: left; padding: 0 0 10px; font-size: 12px;
+  color: var(--muted); line-height: 1.5;
+}
+.fin-analise-tabela td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fin-analise-tabela td.forte { font-weight: 620; }
+.fin-analise-tabela td.num small {
+  display: block; font-size: 10.5px; color: var(--muted); font-weight: 450; margin-top: 1px;
+}
+.fin-analise-tabela td.delta { font-weight: 600; }
+.fin-analise-tabela th[scope="row"] { font-weight: 550; color: var(--ink); text-transform: none;
+  font-size: 13px; letter-spacing: 0; }
+
+.fin-barra-cel { width: 90px; min-width: 90px; }
+.fin-barra {
+  display: block; height: 7px; border-radius: 4px;
+  background: color-mix(in srgb, var(--neon-purple) 62%, transparent);
+}
+
+.fin-recorrencia {
+  display: inline-block; font-variant-numeric: tabular-nums; font-size: 11.5px; font-weight: 600;
+  border-radius: 6px; padding: 2px 7px;
+}
+.fin-recorrencia-alta { color: var(--neon-green-ink); background: color-mix(in srgb, var(--neon-green) 16%, var(--surface-2)); }
+.fin-recorrencia-media { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, var(--surface-2)); }
+.fin-recorrencia-baixa { color: var(--muted); background: var(--surface-2); }
+
+.fin-vazio { color: var(--muted); }
+.fin-analise-ressalvas { display: flex; flex-direction: column; gap: 6px; }
+
+@media (max-width: 720px) {
+  .fin-analise-kpis { grid-template-columns: repeat(2, 1fr); }
+  .fin-barra-cel { display: none; }
+}

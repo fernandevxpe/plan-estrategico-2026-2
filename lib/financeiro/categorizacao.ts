@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 
 import type pg from "pg";
 
+import { normalizeName } from "@/scripts/lib/fin-normalize.mjs";
+
 import { query, transaction } from "./db";
 import { MARCADORES_INDECISAO, sinalEsperadoDe, type Universo } from "./contratos/categorizacao";
 
@@ -484,29 +486,53 @@ export async function virarRegra(args: {
     .replace(/^-|-$/g, "")
     .slice(0, 46)}`;
 
+  // `counterparty_name_norm` do motor é SEMPRE `fin_counterparty.normalized_name`,
+  // que passou por `normalizeName` — sem forma societária (LTDA, CIA) e sem
+  // conectores (de, da, do). Gravar aqui o nome cru em minúscula produzia regra
+  // natimorta: "denilson ferreira da silva" nunca é igual a "denilson ferreira
+  // silva", e as três regras criadas em 20/08/2026 ficaram com alcance zero sem
+  // que nada acusasse — a condição era válida, o slug era bonito, e o motor
+  // simplesmente não casava. Normalizar aqui é o que faz a regra ver o mesmo
+  // texto que o motor vê.
+  const alvoNorm = args.porContraparte ? normalizeName(alvo) : alvo.slice(0, 60).toLowerCase();
+
   const cond = args.porContraparte
-    ? { all: [{ op: "equals", field: "counterparty_name_norm", value: alvo.toLowerCase() }] }
-    : { all: [{ op: "contains_any", field: "description_norm", value: [alvo.slice(0, 60).toLowerCase()] }] };
+    ? { all: [{ op: "equals", field: "counterparty_name_norm", value: alvoNorm }] }
+    : { all: [{ op: "contains_any", field: "description_norm", value: [alvoNorm] }] };
 
   // O alcance é medido contra o acervo de HOJE, com a mesma semântica da
   // condição. "Quantos itens futuros pegaria" não tem resposta exata; "quantos
   // do acervo atual pegaria" tem, e é o número honesto de oferecer.
+  //
+  // O JOIN com fin_counterparty não é enfeite: é o que faz o preview medir o
+  // MESMO texto que o motor compara. Medir por `v.contraparte` (o nome cru de
+  // exibição) fazia o preview prometer "casaria 41 lançamentos" para uma regra
+  // que casaria zero — o preview mentia com a mesma confiança com que acertava.
+  // Lançamento sem contraparte cadastrada tem `counterparty_name_norm = ''` no
+  // motor e não casa regra de contraparte nenhuma; o COALESCE reflete isso.
+  const de = args.porContraparte
+    ? `fin_categorizavel_v v LEFT JOIN fin_counterparty cp ON cp.id = v.contraparte_id`
+    : `fin_categorizavel_v v`;
+  const onde = args.porContraparte
+    ? `coalesce(cp.normalized_name, '') = $1`
+    : `v.descricao_norm LIKE '%' || $1 || '%'`;
+
   const alcance = await query<Record<string, unknown>>(
     `SELECT v.universo, count(*)::text AS n, sum(v.valor_abs_cents)::text AS valor,
             count(*) FILTER (WHERE v.travado)::text AS protegidos
-       FROM fin_categorizavel_v v
-      WHERE ${args.porContraparte ? "lower(coalesce(v.contraparte, '')) = $1" : "v.descricao_norm LIKE '%' || $1 || '%'"}
+       FROM ${de}
+      WHERE ${onde}
       GROUP BY v.universo ORDER BY v.universo`,
-    [args.porContraparte ? alvo.toLowerCase() : alvo.slice(0, 60).toLowerCase()]
+    [alvoNorm]
   );
 
   const conflitos = await query<Record<string, unknown>>(
     `SELECT v.categoria_code, count(*)::text AS n
-       FROM fin_categorizavel_v v
-      WHERE ${args.porContraparte ? "lower(coalesce(v.contraparte, '')) = $1" : "v.descricao_norm LIKE '%' || $1 || '%'"}
+       FROM ${de}
+      WHERE ${onde}
         AND v.categoria_code IS NOT NULL AND v.categoria_code <> $2
       GROUP BY 1 ORDER BY 2 DESC`,
-    [args.porContraparte ? alvo.toLowerCase() : alvo.slice(0, 60).toLowerCase(), args.code]
+    [alvoNorm, args.code]
   );
 
   const proposta: PropostaRegra = {

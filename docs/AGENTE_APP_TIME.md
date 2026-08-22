@@ -128,7 +128,46 @@ por quê é trabalho de campo, não de código — comece perguntando a duas pes
 3. **Não existe coluna de e-mail** em `fin_person`, nem em nenhuma das 121
    tabelas. É a peça faltante para o login que o Fernando quer.
 
-### 4.5 O comprovante e o backup
+### 4.5 Quem vê o quê — já resolvido pela topologia, não por checagem
+
+O requisito é: **cada pessoa vê o seu; o admin vê o seu e o total dos outros.**
+Isso já está implementado, e o mecanismo é o *lugar* da rota, não um `if`.
+
+| prefixo | quem alcança | como é garantido |
+|---|---|---|
+| `/api/time/*` | **só o próprio** | estrutural: nenhuma função de `lib/financeiro/time.ts` aceita pessoa como parâmetro, e `/api/time/envios` não lê `searchParams`. O escopo vem sempre da sessão. |
+| `/api/financeiro/*` | **só admin** | `SO_ADMIN` em `lib/auth/perfis.ts:41`; o middleware devolve **404**, não 403 |
+| `/api/financeiro/time` | admin — a fila de todo mundo + a decisão | mora sob o prefixo protegido **de propósito**, com dupla checagem redundante dentro da rota |
+| `/financeiro/reembolsos` | admin — matriz pessoa × 12 meses | idem |
+
+`scripts/test-perfil-guard.mjs` **verifica isso como teste**: ele reprova se
+alguma função exportada do time passar a receber `personId`, e se
+`/api/time/envios` passar a ler qualquer parâmetro de URL.
+
+> **Consequência para quem for implementar:** a visão de admin **não** se
+> constrói afrouxando `/api/time`. Ela já existe em `/api/financeiro/time` e
+> `/financeiro/reembolsos`. Acrescentar "se for admin, mostre todos" dentro de
+> `/api/time/envios` quebraria o guard — e trocaria uma garantia estrutural por
+> uma condicional que alguém pode inverter sem ninguém notar.
+
+O que falta é só o **caminho de entrada**: hoje ser admin depende da senha
+compartilhada da plataforma; passa a depender também de com qual e-mail a pessoa
+entrou (1.1b).
+
+### 4.6 Google como login — ficou mais fácil do que eu supunha
+
+Sendo endereços **do Gmail**, "entrar com Google" é OAuth padrão contra contas
+Google comuns. A ressalva: por serem contas pessoais e não Workspace, **não dá
+para restringir por domínio** (`hd`) — a autorização tem de ser uma **lista
+explícita de e-mails** conferida contra `fin_person.email`. O que é aceitável:
+são 28 pessoas, e a lista já é o cadastro.
+
+Ordem sugerida: e-mail e senha primeiro (destrava tudo, zero dependência
+externa), Google depois como segundo caminho para a mesma sessão — o
+vocabulário de `prova` já foi desenhado para crescer, então vira mais um valor
+(`'google'`) e não uma segunda modelagem.
+
+### 4.7 O comprovante e o backup
 
 `fin_anexo_blob.conteudo` é `bytea` no Postgres, por decisão escrita na 0105:
 *"o volume do Railway é cache, e cache não é onde comprovante fiscal mora"*.
@@ -151,11 +190,23 @@ Cada onda diz o indicador que move. Ordem por dependência.
 
 ### Onda 1 — destravar o app (nada funciona sem isto)
 
-- [ ] **1.1 E-mail e senha.** `fin_person.email citext UNIQUE` com CHECK de
-      domínio; hash de senha em `fin_person_acesso` (a tabela já tem
-      `pin_sha256`/`pin_salt` — reuse ou renomeie, não crie outra); terceiro
-      valor `'senha'` no CHECK de `prova` em `fin_time_sessao` e
-      `fin_time_envio`. → *identidade deixa de ser declarada*
+- [ ] **1.1 E-mail e senha.** `fin_person.email citext UNIQUE`, **sem CHECK de
+      domínio** — os endereços são pessoais no Gmail
+      (`fernando.xpenergy@gmail.com`, `igor.xpenergy@gmail.com`), não um
+      Workspace `@xpenergy.com.br`. Um CHECK de domínio rejeitaria os dois.
+      Hash de senha em `fin_person_acesso` (a tabela já tem `pin_sha256`/
+      `pin_salt` — reuse ou renomeie, não crie outra); terceiro valor `'senha'`
+      no CHECK de `prova` em `fin_time_sessao` e `fin_time_envio`.
+      → *identidade deixa de ser declarada*
+
+- [ ] **1.1b Quem é admin.** `fin_person.is_admin boolean NOT NULL DEFAULT
+      false`, verdadeiro hoje para Fernando e Igor. O login por e-mail resolve
+      **duas coisas de uma vez**: qual pessoa é (para o "só o meu") e qual
+      perfil carimbar em `x-xpe-perfil` (para o "e o dos outros").
+      `lib/auth/perfis.ts` continua sendo a única fonte da regra de acesso — o
+      login só passa a ser um segundo jeito de chegar ao perfil `admin`, ao lado
+      do par `DASHBOARD_ADMIN_USER`/`PASSWORD` que já existe.
+      **Não** acrescente checagem de admin dentro de `/api/time/*`: ver §4.5.
 - [ ] **1.2 Isentar `/time` e `/api/time` do Basic Auth.** Early-return em
       `middleware.ts`, **antes** do bloco Basic (linha 93), reconhecendo a
       sessão. O middleware roda no edge e não pode consultar Postgres: ele só
@@ -169,7 +220,7 @@ Cada onda diz o indicador que move. Ordem por dependência.
       sessão. Hoje o comprovante entra e nada o serve de volta — anexo
       write-only não é prova. → *comprovante conferível*
 - [ ] **1.5 Compressão de imagem no cliente** + tirar `conteudo` do NDJSON.
-      Ver §4.5. Faça **antes** de convidar o time. → *backup não explode*
+      Ver §4.7. Faça **antes** de convidar o time. → *backup não explode*
 
 ### Onda 2 — o eixo destino
 

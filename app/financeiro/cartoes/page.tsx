@@ -1,6 +1,8 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { FinCartaoDescrito } from "@/components/financeiro/FinCartaoDescrito";
 import { FinCartoes } from "@/components/financeiro/FinCartoes";
 import { FinShell } from "@/components/financeiro/FinShell";
+import { getCartoesDescritos } from "@/lib/financeiro/cartao-descrito";
 import { getCartaoDetalhe } from "@/lib/financeiro/contratos";
 
 export const metadata = {
@@ -44,7 +46,11 @@ export const revalidate = 0;
  * de uma tela vazia — que seria indistinguível de "não há gasto em cartão".
  */
 export default async function CartoesPage() {
-  const contrato = await getCartaoDetalhe();
+  // As duas leituras em paralelo: a fatura (o que o banco cobrou) e o descrito
+  // (o que o time contou). São perguntas independentes, e uma não espera a
+  // outra — nem uma falha derruba a outra, porque `getCartoesDescritos` já
+  // degrada sozinha quando a view da 0150 não existe.
+  const [contrato, descrito] = await Promise.all([getCartaoDetalhe(), getCartoesDescritos()]);
 
   return (
     <AppShell>
@@ -76,6 +82,14 @@ export default async function CartoesPage() {
             </p>
           </section>
         )}
+
+        {/*
+          Abaixo da fatura, sempre — inclusive quando o contrato de fatura não
+          está de pé. O que o time descreveu não depende do sync do banco, e
+          esconder essa seção junto com a outra tiraria da tela justamente o
+          dado que já existe.
+        */}
+        <FinCartaoDescrito cartoes={descrito.cartoes} totalCents={descrito.totalCents} />
       </FinShell>
     </AppShell>
   );

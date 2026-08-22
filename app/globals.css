@@ -14129,3 +14129,88 @@ body:has(.time-page) .theme-toggle {
 }
 .foto-cartao button:disabled { opacity: .6; cursor: progress; }
 .foto-cartao small { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+
+/* ===========================================================================
+   DESCRITO PELO TIME — o outro lado do cartão
+   ---------------------------------------------------------------------------
+   Vive abaixo da fatura e nunca somado a ela: em cima está o que o banco
+   cobrou, aqui o que uma pessoa contou. A separação visual carrega essa regra.
+   =========================================================================== */
+.descrito-lista { display: grid; gap: 14px; }
+
+.descrito-cartao {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--card);
+}
+.descrito-cartao > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+/* A tarja é a cor do plástico. Serve para achar o cartão sem ler o número —
+   que é para isso que a cor foi guardada. */
+.descrito-tarja { width: 5px; align-self: stretch; min-height: 34px; border-radius: 3px; flex: none; }
+.descrito-quem { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.descrito-quem strong { font-size: 14.5px; font-weight: 640; }
+.descrito-quem span { font-size: 12px; color: var(--muted); }
+.descrito-valor { text-align: right; flex: none; display: grid; gap: 2px; }
+.descrito-valor b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.descrito-valor span { font-size: 11.5px; color: var(--muted); }
+
+.descrito-aviso {
+  margin: 0;
+  padding: 10px 15px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-amber);
+  background: var(--tint-amber-soft);
+  border-bottom: 1px solid var(--tint-amber-line);
+}
+
+.descrito-tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+.descrito-tabela th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 9px 15px;
+  border-bottom: 1px solid var(--line);
+}
+.descrito-tabela td { padding: 10px 15px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.descrito-tabela tr:last-child td { border-bottom: 0; }
+.descrito-tabela .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.descrito-tabela th.num { text-align: right; }
+.descrito-titulo { display: block; font-weight: 550; }
+.descrito-meta { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+.descrito-selo {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--tint-amber-soft);
+  color: var(--ink-amber);
+  border: 1px solid var(--tint-amber-line);
+}
+.descrito-selo.aprovado,
+.descrito-selo.atendida {
+  background: var(--tint-green-soft); color: var(--ink-green); border-color: var(--tint-green-line);
+}
+.descrito-selo.recusado {
+  background: var(--tint-red-soft, var(--surface-2)); color: var(--cert-atrasado); border-color: var(--line);
+}
+
+/* A tabela rola dentro dela mesma no celular; a página nunca rola de lado. */
+@media (max-width: 720px) {
+  .descrito-cartao { overflow-x: auto; }
+  .descrito-tabela { min-width: 560px; }
+}

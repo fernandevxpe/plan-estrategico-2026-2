@@ -47,7 +47,7 @@ type Opcoes = {
   bancos: {
     id: number;
     nome: string;
-    plasticos: { id: number; nome: string; final: string | null; bandeira: string | null }[];
+    plasticos: { id: number; nome: string; final: string | null; bandeira: string | null; cor: string | null }[];
   }[];
 };
 type Envio = {
@@ -872,6 +872,31 @@ const CORES_EMISSOR: Record<string, string> = {
   asaas: "linear-gradient(135deg, #1e40af, #1e3a8a)"
 };
 
+/*
+ * A COR DO PLÁSTICO GANHA DA COR DO BANCO.
+ *
+ * `CORES_EMISSOR` pinta pelo emissor, então os nove Nubank saem nove retângulos
+ * roxos idênticos — e quem procura o próprio cartão tem de comparar número a
+ * número. Quando a foto disse a cor, ela vale: "o dourado" é como a pessoa
+ * reconhece o cartão dela, muito antes de ler quatro dígitos.
+ */
+const CORES_PLASTICO: Record<string, string> = {
+  preto: "linear-gradient(135deg, #2b2b31, #131317)",
+  branco: "linear-gradient(135deg, #f4f4f6, #d9d9e0)",
+  cinza: "linear-gradient(135deg, #6b6b76, #45454e)",
+  prata: "linear-gradient(135deg, #c9ccd4, #8e939e)",
+  dourado: "linear-gradient(135deg, #d4af37, #9c7c1c)",
+  roxo: "linear-gradient(135deg, #820ad1, #5f0a99)",
+  azul: "linear-gradient(135deg, #1e5fd4, #133b87)",
+  verde: "linear-gradient(135deg, #12805c, #0a4f38)",
+  vermelho: "linear-gradient(135deg, #c2283c, #841a29)",
+  laranja: "linear-gradient(135deg, #ff7a00, #e05e00)",
+  rosa: "linear-gradient(135deg, #d6449b, #9c2c70)",
+  transparente: "linear-gradient(135deg, #7d8592, #4d5561)"
+};
+/* Cartão claro precisa de letra escura, ou o texto some no plástico. */
+const CORES_CLARAS = new Set(["branco", "prata", "dourado"]);
+
 const BANDEIRA_ROTULO: Record<string, string> = {
   visa: "VISA",
   mastercard: "Mastercard",
@@ -886,6 +911,7 @@ function Miniatura({
   nome,
   final,
   bandeira,
+  cor,
   ativo,
   aoTocar
 }: {
@@ -893,15 +919,19 @@ function Miniatura({
   nome: string;
   final: string | null;
   bandeira: string | null;
+  /** A cor lida da foto do plástico. Quando existe, ganha da cor do emissor. */
+  cor?: string | null;
   ativo: boolean;
   aoTocar: () => void;
 }) {
   const chave = Object.keys(CORES_EMISSOR).find((k) => emissor.toLowerCase().includes(k));
+  const fundo = (cor && CORES_PLASTICO[cor]) || (chave ? CORES_EMISSOR[chave] : null) ||
+    "linear-gradient(135deg, #3f3d56, #2a2839)";
   return (
     <button
       type="button"
-      className={ativo ? "cartao ativo" : "cartao"}
-      style={{ background: chave ? CORES_EMISSOR[chave] : "linear-gradient(135deg, #3f3d56, #2a2839)" }}
+      className={`${ativo ? "cartao ativo" : "cartao"}${cor && CORES_CLARAS.has(cor) ? " claro" : ""}`}
+      style={{ background: fundo }}
       onClick={aoTocar}
       aria-pressed={ativo}
     >
@@ -961,8 +991,64 @@ function CadastrarCartao({
   const [apelido, setApelido] = useState("");
   const [bandeira, setBandeira] = useState(inicial?.bandeira ?? "");
   const [tipo, setTipo] = useState("fisico");
+  const [cor, setCor] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [lendoCartao, setLendoCartao] = useState(false);
+  const [leituraCartao, setLeituraCartao] = useState<string | null>(null);
+  const fotoRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * A FOTO DO CARTÃO PREENCHE O CADASTRO — e não é guardada.
+   *
+   * Dos quatro últimos dígitos não dá para saber banco, bandeira nem cor: o que
+   * identifica isso é o BIN, os PRIMEIROS seis a oito dígitos, e a casa não
+   * guarda o número completo de propósito — número em banco é PAN.
+   *
+   * Olhar o cartão resolve, e a pessoa o tem na mão exatamente agora. A imagem
+   * vai para `/api/time/cartao/ler`, é lida em memória e descartada na mesma
+   * requisição: ela contém o número inteiro, e guardá-la seria trocar
+   * conveniência por hospedar dado de cartão.
+   */
+  async function fotografar(f: File) {
+    setLendoCartao(true);
+    setLeituraCartao(null);
+    setErro(null);
+    try {
+      const form = new FormData();
+      form.append("arquivo", await encolherImagem(f));
+      const r = await fetch("/api/time/cartao/ler", { method: "POST", body: form });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setLeituraCartao(j.error ?? "não consegui ler o cartão");
+        return;
+      }
+      const l = j.lido as {
+        banco: string | null; bandeira: string; cor: string; final: string | null;
+        tipo: string; titular: string | null; legibilidade: string;
+      };
+      const veio: string[] = [];
+      if (l.final && !final) { setFinal(l.final); veio.push(`final ${l.final}`); }
+      if (l.bandeira !== "indeterminado" && !bandeira) { setBandeira(l.bandeira); veio.push(l.bandeira); }
+      if (l.cor !== "indeterminado" && !cor) { setCor(l.cor); veio.push(l.cor); }
+      if (l.tipo !== "indeterminado") setTipo(l.tipo);
+      // O banco casa por NOME contra as contas que existem. Sem casar, fica
+      // vazio: escolher o parecido é como o 5585 foi parar no Nubank.
+      if (l.banco && !banco) {
+        const achado = bancos.find((b) => b.nome.toLowerCase().includes(l.banco!.toLowerCase().split(/\s+/)[0]));
+        if (achado) { setBanco(String(achado.id)); veio.push(achado.nome); }
+      }
+      setLeituraCartao(
+        veio.length
+          ? `Li ${veio.join(", ")}. Confira antes de salvar.`
+          : "Não consegui ler nada novo — preencha à mão."
+      );
+    } catch {
+      setLeituraCartao("não consegui ler o cartão");
+    } finally {
+      setLendoCartao(false);
+    }
+  }
 
   async function salvar() {
     if (final.length !== 4) return setErro("preciso dos 4 últimos dígitos");
@@ -971,7 +1057,7 @@ function CadastrarCartao({
     const r = await fetch("/api/time/cartao", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ natureza, banco, final, apelido, bandeira, tipo, titular })
+      body: JSON.stringify({ natureza, banco, final, apelido, bandeira, tipo, titular, cor })
     });
     const j = await r.json().catch(() => ({}));
     setSalvando(false);
@@ -1005,8 +1091,38 @@ function CadastrarCartao({
           nome={apelido || "sem apelido"}
           final={final.padEnd(4, "•")}
           bandeira={bandeira || null}
+          cor={cor || null}
           ativo
           aoTocar={() => {}}
+        />
+      </div>
+
+      {/*
+        FOTOGRAFAR O CARTÃO — o atalho que responde três campos de uma vez.
+        Fica logo abaixo da prévia porque é o que faz a prévia deixar de ser um
+        retângulo genérico e virar o cartão que a pessoa está segurando.
+      */}
+      <div className="foto-cartao">
+        <button type="button" onClick={() => fotoRef.current?.click()} disabled={lendoCartao}>
+          {lendoCartao ? "lendo o cartão…" : "fotografar o cartão"}
+        </button>
+        <small>
+          {leituraCartao ??
+            "Eu leio banco, bandeira, cor e os 4 últimos. A foto NÃO é guardada — ela tem o número inteiro."}
+        </small>
+        <input
+          ref={fotoRef}
+          type="file"
+          className="anexar-input"
+          accept="image/*"
+          capture="environment"
+          tabIndex={-1}
+          aria-hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) void fotografar(f);
+          }}
         />
       </div>
 

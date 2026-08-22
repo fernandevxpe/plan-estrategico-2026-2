@@ -1589,6 +1589,8 @@ export type NovoCartao = {
   tipo?: unknown;
   /** Quem carrega o plástico, quando é pessoal e não é de quem está logado. */
   titular?: unknown;
+  /** A cor do plástico, lida da foto do cartão. Vocabulário fechado na 0149. */
+  cor?: unknown;
 };
 
 /**
@@ -1659,6 +1661,10 @@ export async function procurarCartaoPeloFinal(sessao: Sessao, finalBruto: unknow
 
 const BANDEIRAS = new Set(["visa", "mastercard", "elo", "amex", "hipercard", "outra"]);
 const TIPOS_DE_PLASTICO = new Set(["fisico", "virtual", "adicional"]);
+const CORES = new Set([
+  "preto", "branco", "cinza", "prata", "dourado",
+  "roxo", "azul", "verde", "vermelho", "laranja", "rosa", "transparente"
+]);
 
 export async function cadastrarCartao(sessao: Sessao, corpo: NovoCartao) {
   const natureza = corpo.natureza === "pessoal" ? "pessoal" : "empresa";
@@ -1668,6 +1674,9 @@ export async function cadastrarCartao(sessao: Sessao, corpo: NovoCartao) {
   const apelido = opcionalTexto(corpo.apelido, 60);
   const bandeira = BANDEIRAS.has(String(corpo.bandeira)) ? String(corpo.bandeira) : null;
   const tipo = TIPOS_DE_PLASTICO.has(String(corpo.tipo)) ? String(corpo.tipo) : "desconhecido";
+  // Fora do vocabulário vira NULL, não erro: a cor é conveniência, e recusar o
+  // cadastro inteiro por causa dela seria perder o cartão por um enfeite.
+  const cor = CORES.has(String(corpo.cor)) ? String(corpo.cor) : null;
 
   return transaction(async (client) => {
     /*
@@ -1720,9 +1729,9 @@ export async function cadastrarCartao(sessao: Sessao, corpo: NovoCartao) {
 
     const r = await client.query<{ id: number }>(
       `INSERT INTO fin_card
-         (card_account_id, holder_person_id, last4, label, brand, kind, status,
+         (card_account_id, holder_person_id, last4, label, brand, kind, cor, status,
           origem, cadastrado_por_person_id, cadastrado_em)
-       VALUES ($1, $2, $3, $4, $5, $6, 'registrado', 'app_time', $7, now())
+       VALUES ($1, $2, $3, $4, $5, $6, $8, 'registrado', 'app_time', $7, now())
        RETURNING id`,
       [
         contaId,
@@ -1734,7 +1743,8 @@ export async function cadastrarCartao(sessao: Sessao, corpo: NovoCartao) {
         apelido,
         bandeira,
         tipo,
-        sessao.personId
+        sessao.personId,
+        cor
       ]
     );
 
@@ -1756,7 +1766,7 @@ export async function cadastrarCartao(sessao: Sessao, corpo: NovoCartao) {
       ]
     );
 
-    return { id: Number(r.rows[0].id), final, apelido, bandeira, natureza, titularId };
+    return { id: Number(r.rows[0].id), final, apelido, bandeira, cor, natureza, titularId };
   });
 }
 
@@ -1923,9 +1933,10 @@ export async function opcoesDoTime() {
       last4: string | null;
       label: string | null;
       brand: string | null;
+      cor: string | null;
     }>(
       `SELECT a.id AS conta_id, coalesce(i.name, a.name) AS conta, i.name AS emissor,
-              c.id AS card_id, c.last4, c.label, c.brand
+              c.id AS card_id, c.last4, c.label, c.brand, c.cor
          FROM fin_card_account a
          LEFT JOIN fin_card_issuer i ON i.id = a.issuer_id
          LEFT JOIN fin_card c ON c.card_account_id = a.id AND c.status = 'registrado'
@@ -1948,7 +1959,11 @@ export async function opcoesDoTime() {
       cartoes.reduce<
         Record<
           number,
-          { id: number; nome: string; plasticos: { id: number; nome: string; final: string | null; bandeira: string | null }[] }
+          {
+            id: number;
+            nome: string;
+            plasticos: { id: number; nome: string; final: string | null; bandeira: string | null; cor: string | null }[];
+          }
         >
       >(
         (acc, l) => {
@@ -1961,7 +1976,10 @@ export async function opcoesDoTime() {
               // "final 7626" que um nome inventado que ninguém reconhece.
               nome: l.label ?? `final ${l.last4 ?? "????"}`,
               final: l.last4,
-              bandeira: l.brand
+              bandeira: l.brand,
+              // A cor é como se reconhece um cartão antes de ler o número —
+              // e os nove Nubank sem apelido são nove retângulos idênticos.
+              cor: l.cor
             });
           }
           return acc;

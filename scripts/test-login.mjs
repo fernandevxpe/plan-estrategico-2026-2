@@ -310,10 +310,21 @@ try {
   afirma(bancos.length >= 2, 'os bancos chegam no formulário', bancos.map((b) => b.nome).join(', '));
   const inter = bancos.find((b) => /inter/i.test(b.nome));
   const nubank = bancos.find((b) => /nubank/i.test(b.nome));
+  // Era `inter.plasticos.length === 0`, e quebrou no dia em que o Inter ganhou
+  // o primeiro plástico — que é o problema sendo RESOLVIDO, não uma regressão.
+  //
+  // A propriedade que interessa nunca foi "o Inter está vazio": é que um banco
+  // aparece na lista tendo plástico cadastrado ou não. Sem isso não havia como
+  // registrar compra no Inter, que é onde estão os R$ 40.862,41 sem itemização.
   afirma(
-    Boolean(inter) && inter.plasticos.length === 0,
-    'o Inter é escolhível MESMO sem plástico cadastrado',
-    'é onde estão os R$ 40.862,41 sem itemização'
+    Boolean(inter) && Array.isArray(inter.plasticos),
+    'o Inter é escolhível independente de ter plástico cadastrado',
+    `${inter?.plasticos.length} plástico(s) — o banco aparece de qualquer jeito`
+  );
+  afirma(
+    bancos.every((b) => Array.isArray(b.plasticos)),
+    'e isso vale para TODO banco ativo',
+    bancos.map((b) => `${b.nome}:${b.plasticos.length}`).join(' · ')
   );
   // Nove era o número dos plásticos vindos do SYNC. Desde que o app permite
   // cadastrar, gente cadastra — e travar em 9 transformava uso real do produto

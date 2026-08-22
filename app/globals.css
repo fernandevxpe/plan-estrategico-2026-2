@@ -14105,3 +14105,27 @@ body:has(.time-page) .theme-toggle {
   font-size: 12.5px;
   cursor: pointer;
 }
+
+/* Cartão claro — branco, prata, dourado — precisa de letra escura, senão o
+   texto branco padrão some no plástico. */
+.cartao.claro { color: #16141c; }
+.cartao.claro .cartao-emissor,
+.cartao.claro .cartao-rodape i { color: rgba(22, 20, 28, .72); }
+
+/* Fotografar o cartão: o atalho que responde banco, bandeira, cor e final de
+   uma vez. Fica logo abaixo da prévia, que é o que ele transforma. */
+.foto-cartao { display: grid; gap: 6px; justify-items: start; }
+.foto-cartao button {
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid var(--purple);
+  border-radius: 999px;
+  background: var(--tint-purple);
+  color: var(--ink-purple);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.foto-cartao button:disabled { opacity: .6; cursor: progress; }
+.foto-cartao small { font-size: 11.5px; color: var(--muted); line-height: 1.45; }

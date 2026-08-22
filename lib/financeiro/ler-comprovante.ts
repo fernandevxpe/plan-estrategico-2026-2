@@ -81,8 +81,47 @@ const Extracao = z.object({
         "Devolva 1 quando estiver escrito 1x, e null quando não houver parcelamento indicado."
     ),
   itens: z
-    .array(z.string())
-    .describe("Itens comprados, se estiverem discriminados. Lista vazia quando não estiverem."),
+    .array(
+      z.object({
+        descricao: z.string().describe("O nome do produto como está escrito, sem abreviar."),
+        quantidade: z.number().nullable().describe("Quantas unidades. null se não estiver escrito."),
+        valorUnitario: z.number().nullable().describe("Preço de UMA unidade, em reais. null se só houver o total.")
+      })
+    )
+    .describe(
+      "Cada produto discriminado, com quantidade e preço unitário quando aparecerem. " +
+        'Tela de e-commerce escreve "3 un." ou "Qtd: 3" ao lado do nome. Lista vazia se não houver discriminação.'
+    ),
+  numeroPedido: z
+    .string()
+    .nullable()
+    .describe(
+      'Número do pedido ou da compra, quando a tela mostrar. Ex.: "Compra #2000014503310099" ' +
+        "vira 2000014503310099. É o que permite achar esta compra de novo na loja. null se não houver."
+    ),
+  categoriaCode: z
+    .string()
+    .nullable()
+    .describe(
+      "O CÓDIGO da linha da DRE que melhor descreve esta compra, escolhido da lista do catálogo " +
+        'que vem no prompt (ex.: "5.07"). Use exatamente um código do catálogo, nunca invente. ' +
+        "null quando nenhuma linha servir claramente — e null é a resposta certa mais vezes do que parece."
+    ),
+  areaNome: z
+    .string()
+    .nullable()
+    .describe(
+      "O NOME da área que consumiu a compra, escolhido da lista de áreas do prompt " +
+        '(ex.: "Comercial"). Use o nome exato da lista. null quando o comprovante não der ' +
+        "elemento nenhum para decidir — a área é sobre para quem foi, e o cupom raramente diz."
+    ),
+  porQue: z
+    .string()
+    .describe(
+      "Uma frase curta dizendo em que você se baseou para sugerir a categoria e a área. " +
+        'Ex.: "banner e impressão em gráfica, típico de material de apresentação". ' +
+        'Se não sugeriu nenhuma das duas, explique o que faltou. Máximo 120 caracteres.'
+    ),
   resumo: z
     .string()
     .describe(
@@ -93,6 +132,12 @@ const Extracao = z.object({
     .enum(["boa", "parcial", "ruim"])
     .describe("'ruim' quando a imagem está borrada, cortada ou escura demais para confiar.")
 });
+
+/** O catálogo que aterra o palpite: sem ele o modelo inventa nomes de rubrica. */
+export type CatalogoDeClassificacao = {
+  categorias: { code: string; nome: string }[];
+  areas: string[];
+};
 
 export type ComprovanteLido = z.infer<typeof Extracao>;
 
@@ -111,7 +156,9 @@ Extraia só o que estiver VISÍVEL. A regra mais importante:
   ou o vendedor. Se nenhum dos dois estiver escrito, volte null — endereço não é loja.
 - Chave de NF-e tem exatamente 44 dígitos. Se contar diferente disso, volte null.
 - Data no formato AAAA-MM-DD. Comprovante brasileiro escreve DD/MM/AAAA: converta.
-  Quando o ano não aparecer ("12 de agosto"), use o ano corrente.
+  Quando o ano NÃO aparecer ("12 de agosto"), use a data de hoje, informada abaixo, para
+  decidir: normalmente é o ano corrente, e só é o anterior se o mês já passou de hoje —
+  ninguém anexa comprovante de uma compra que ainda não aconteceu.
 - Cartão: "Mastercard **** 5585" dá bandeira mastercard e final 5585. O logotipo da bandeira
   também conta, mesmo sem o nome escrito.
 - "1x R$ 193,83" é uma parcela só — devolva 1, não null. Parcela e total são coisas diferentes:
@@ -119,8 +166,77 @@ Extraia só o que estiver VISÍVEL. A regra mais importante:
 - Se a imagem estiver borrada ou escura a ponto de você não ter certeza dos números,
   marque legibilidade como "ruim" e volte null nos campos que dependem de leitura precisa.
 
+ITENS: discrimine tudo que a tela listar. "Cabo Hdmi 4k 2 Metros — 3 un." é um item com
+quantidade 3. Quando só houver o total e a quantidade, deixe valorUnitario null em vez de
+dividir: a divisão erra quando há frete ou desconto embutido.
+
+CLASSIFICAÇÃO (categoriaCode e areaNome)
+Estes dois campos são PALPITE, e a tela mostra eles como palpite, ao lado da sua frase de
+justificativa. Isso muda o que se espera de você: não é para acertar sempre, é para não
+afirmar o que não dá para sustentar.
+
+- Escolha SEMPRE de dentro das listas que vêm abaixo. Um código fora do catálogo é
+  descartado pelo servidor, então inventar não ajuda ninguém — só some.
+- A categoria sai do QUE FOI COMPRADO. Um cabo HDMI é material; um banner é material de
+  evento; um almoço com cliente é representação.
+- A área sai de PARA QUEM FOI, e quase nunca está escrita no comprovante. Sugira só quando
+  o próprio produto denunciar: banner de estande e brinde denunciam Comercial; toner e café
+  denunciam Administrativo; cabo de campo e EPI denunciam Operações. Na dúvida, null.
+- Nunca deduza área a partir de quem comprou nem do endereço de entrega.
+- Em porQue, diga o que na imagem te levou ali. Se você não sugeriu, diga o que faltava.
+
 Preencher errado é pior que não preencher: o campo vazio a pessoa nota e digita; o campo
 errado ela aceita sem olhar.`;
+
+/**
+ * O catálogo entra no prompt em vez de no schema.
+ *
+ * Um enum com os 24 códigos travaria a resposta a um valor válido, o que parece
+ * melhor — mas as categorias são criadas por quem usa o app, e um enum
+ * compilado ficaria velho no dia em que alguém criasse a vigésima quinta.
+ * Texto no prompt acompanha o banco, e a validação depois joga fora o que não
+ * existir: um código inventado vira null, não vira categoria errada.
+ */
+/**
+ * A DATA DE HOJE PRECISA IR NO PROMPT.
+ *
+ * Medido no print do Mercado Livre: a tela escreve "12 de agosto" sem ano, e o
+ * modelo devolveu 2024-08-12 — a compra é de 2026. Um custo de agosto/2026
+ * entraria dois anos atrás, num mês já fechado, e ninguém veria: a data está
+ * preenchida e é plausível.
+ *
+ * O modelo não tem relógio. Sem esta linha ele usa o ano em que foi treinado, o
+ * que é o tipo de erro que nunca aparece em teste — porque em teste o ano
+ * costuma bater.
+ */
+function hojeEmTexto(): string {
+  const hoje = new Date().toISOString().slice(0, 10);
+  return `\n\nHOJE É ${hoje}. Use isto para resolver datas sem ano e para nunca devolver data futura.`;
+}
+
+function catalogoEmTexto(catalogo: CatalogoDeClassificacao): string {
+  const linhas = catalogo.categorias.map((c) => `  ${c.code}  ${c.nome}`).join("\n");
+  return `\n\nCATÁLOGO DE CATEGORIAS (use o código exato):\n${linhas}\n\nÁREAS (use o nome exato):\n  ${catalogo.areas.join("\n  ")}`;
+}
+
+/**
+ * Uma data que pode mesmo ser deste comprovante.
+ *
+ * Dezoito meses para trás cobre nota antiga que alguém achou na gaveta; um dia
+ * para frente cobre fuso horário. Fora disso é leitura errada, não comprovante
+ * velho — e o caso concreto que motivou a trava foi o modelo devolver o ano em
+ * que foi treinado quando o print não trazia ano nenhum.
+ */
+function dataPlausivel(v: string | null): string | null {
+  if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const t = Date.parse(`${v}T12:00:00Z`);
+  if (Number.isNaN(t)) return null;
+  const agora = Date.now();
+  const DIA = 86_400_000;
+  if (t > agora + DIA) return null;
+  if (t < agora - 550 * DIA) return null;
+  return v;
+}
 
 export class ComprovanteIndisponivel extends Error {
   constructor(mensagem: string) {
@@ -133,7 +249,11 @@ export function leituraDeComprovanteDisponivel(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
 }
 
-export async function lerComprovante(bytes: Buffer, mime: string): Promise<ComprovanteLido> {
+export async function lerComprovante(
+  bytes: Buffer,
+  mime: string,
+  catalogo: CatalogoDeClassificacao = { categorias: [], areas: [] }
+): Promise<ComprovanteLido> {
   if (!leituraDeComprovanteDisponivel()) {
     throw new ComprovanteIndisponivel("a leitura automática não está configurada neste ambiente");
   }
@@ -164,8 +284,12 @@ export async function lerComprovante(bytes: Buffer, mime: string): Promise<Compr
       model: "claude-haiku-4-5",
       // Extração de campo: a resposta são poucas centenas de tokens. Teto baixo
       // aqui é economia real, não mesquinharia — é o parâmetro que multiplica.
-      max_tokens: 1500,
-      system: INSTRUCAO,
+      // Subiu de 1500 com os itens discriminados: uma nota de supermercado com
+      // trinta linhas estourava o teto e voltava JSON cortado, que o parse
+      // recusa inteiro — a pessoa perdia a leitura por causa do último item.
+      max_tokens: 4000,
+      system:
+        INSTRUCAO + hojeEmTexto() + (catalogo.categorias.length ? catalogoEmTexto(catalogo) : ""),
       messages: [{ role: "user", content: [anexo, { type: "text", text: "Extraia os campos deste comprovante." }] }],
       output_config: { format: zodOutputFormat(Extracao) }
     });
@@ -211,8 +335,42 @@ export async function lerComprovante(bytes: Buffer, mime: string): Promise<Compr
 
   const finalCartao = (lido.cartaoFinal ?? "").replace(/\D/g, "").slice(-4);
 
+  // A CLASSIFICAÇÃO SÓ VALE SE EXISTIR NO BANCO.
+  //
+  // O modelo escolhe de uma lista escrita no prompt, e ainda assim pode
+  // devolver "5.14" — um código plausível que não existe. Conferir contra o
+  // catálogo aqui é o que separa "sugestão" de "texto que parece uma
+  // sugestão": o que não bate vira null e a pessoa escolhe, em vez de a tela
+  // exibir uma rubrica inventada com cara de resposta do sistema.
+  const codigos = new Set(catalogo.categorias.map((c) => c.code));
+  const categoriaCode = lido.categoriaCode && codigos.has(lido.categoriaCode.trim())
+    ? lido.categoriaCode.trim()
+    : null;
+
+  // Área compara sem acento e sem caixa: "operacoes" e "Operações" são a mesma
+  // área, e recusar por causa do acento perderia um palpite certo.
+  const chaveArea = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  const porArea = new Map(catalogo.areas.map((a) => [chaveArea(a), a]));
+  const areaNome = lido.areaNome ? (porArea.get(chaveArea(lido.areaNome)) ?? null) : null;
+
   return {
     ...lido,
+    categoriaCode,
+    areaNome,
+    // A justificativa é o que torna o palpite conferível. Cortada no tamanho
+    // que cabe numa linha do celular — a frase que rola não é lida.
+    porQue: (lido.porQue ?? "").trim().slice(0, 120),
+    // Item sem nome não é item. Quantidade zero ou negativa é leitura torta, e
+    // vale mais deixar a pessoa digitar do que gravar "-1 unidade".
+    itens: (lido.itens ?? [])
+      .filter((i) => i.descricao?.trim())
+      .slice(0, 40)
+      .map((i) => ({
+        descricao: i.descricao.trim().slice(0, 200),
+        quantidade: typeof i.quantidade === "number" && i.quantidade > 0 ? i.quantidade : null,
+        valorUnitario: typeof i.valorUnitario === "number" && i.valorUnitario > 0 ? i.valorUnitario : null
+      })),
+    numeroPedido: (lido.numeroPedido ?? "").replace(/[^0-9A-Za-z-]/g, "").slice(0, 40) || null,
     // Quatro dígitos ou nada. Três é leitura parcial, e um final errado é pior
     // que nenhum: ele casaria com o cartão de outra pessoa.
     cartaoFinal: finalCartao.length === 4 ? finalCartao : null,
@@ -226,10 +384,13 @@ export async function lerComprovante(bytes: Buffer, mime: string): Promise<Compr
     // O título do envio tem teto de 200; e um título longo demais some no
     // celular. Corta aqui em vez de deixar a tela cortar no meio da palavra.
     resumo: lido.resumo.trim().slice(0, 90),
-    // Data só passa se for uma data de verdade — o modelo pode devolver
-    // "2026-13-45" e o formulário aceitaria como texto.
-    data: /^\d{4}-\d{2}-\d{2}$/.test(lido.data ?? "") && !Number.isNaN(Date.parse(lido.data!))
-      ? lido.data
-      : null
+    // Data só passa se for uma data de verdade E PLAUSÍVEL.
+    //
+    // O formato sozinho não bastava: "2024-08-12" é uma data perfeita e estava
+    // errada por dois anos. A janela recusa o que não pode ser um comprovante
+    // que alguém tem na mão agora — mais de 18 meses atrás, ou no futuro.
+    // Fora dela o campo fica vazio e a pessoa digita, que é melhor que um ano
+    // errado preenchido com cara de leitura.
+    data: dataPlausivel(lido.data)
   };
 }

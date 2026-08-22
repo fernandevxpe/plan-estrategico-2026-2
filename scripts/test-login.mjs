@@ -391,6 +391,35 @@ try {
   afirma(gp.rows[0]?.card_last4 === '0343', 'o final digitado fica', gp.rows[0]?.card_last4);
   afirma(gp.rows[0]?.card_id !== null, 'e casou sozinho com o plástico cadastrado', `card_id=${gp.rows[0]?.card_id}`);
 
+  console.log('\n=== 5b2c. FOTO E NOTA NO MESMO ENVIO ===');
+  // Antes o laço de `lerCorpo` sobrescrevia o arquivo a cada campo: mandar dois
+  // guardava só o último, EM SILÊNCIO. A pessoa anexava o print e a nota, via
+  // os dois na tela, e um sumia entre o toque e o banco.
+  {
+    const form = new FormData();
+    form.append('kind', 'custo');
+    form.append('titulo', 'teste automatizado — foto e nota');
+    form.append('valor', '193,83');
+    form.append('data', new Date().toISOString().slice(0, 10));
+    form.append('pagamento', 'a_definir');
+    form.append('arquivo', new Blob([Buffer.from('conteudo do print')], { type: 'image/jpeg' }), 'print.jpg');
+    form.append('arquivoNota', new Blob([Buffer.from('<?xml version="1.0"?><nfeProc/>')], { type: 'text/xml' }), 'nota.xml');
+    const r = await fetch(`${BASE}/api/time/envio`, { method: 'POST', body: form, headers: { cookie: cookieAtual() } });
+    const corpo = await r.json().catch(() => ({}));
+    afirma(r.status === 201, 'envio com os dois arquivos é aceito', `status ${r.status} ${JSON.stringify(corpo)}`);
+
+    const anexos = await db.query(
+      `SELECT a.kind, a.file_name FROM fin_payment_attachment a
+        WHERE a.target_table = 'fin_time_envio' AND a.target_id = $1 ORDER BY a.kind`,
+      [corpo.id]);
+    afirma(anexos.rows.length === 2, 'os DOIS ficam guardados',
+      `${anexos.rows.length} anexo(s) — antes o segundo sumia sem erro`);
+    const porTipo = Object.fromEntries(anexos.rows.map((x) => [x.kind, x.file_name]));
+    afirma(porTipo.comprovante === 'print.jpg', 'o print vira comprovante', String(porTipo.comprovante));
+    afirma(porTipo.nota_fiscal === 'nota.xml', 'e a nota vira nota_fiscal',
+      `${porTipo.nota_fiscal} — é o kind que a contabilidade procura`);
+  }
+
   console.log('\n=== 5b3. A RESPOSTA QUE SE PERDE NA VOLTA (0145) ===');
   // O cenário: COMMIT feito, resposta perdida no 4G, pessoa toca de novo. Sem a
   // chave nasciam dois custos idênticos — e quem conciliasse com a fatura

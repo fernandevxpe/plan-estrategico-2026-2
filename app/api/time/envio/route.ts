@@ -18,12 +18,17 @@ import { TimeError, criarEnvioDoTime } from "@/lib/financeiro/time";
 export async function POST(request: Request) {
   try {
     const { sessao } = await exigirContexto();
-    const { dados, arquivo } = await lerCorpo(request);
+    const { dados, arquivo, arquivos } = await lerCorpo(request);
 
     const kind = dados.kind === "nota_entrada" ? "nota_entrada" : dados.kind === "custo" ? "custo" : null;
     if (!kind) throw new TimeError("informe se é 'custo' ou 'nota_entrada'");
 
-    const resultado = await criarEnvioDoTime(sessao, { ...dados, kind, anexo: arquivo });
+    const resultado = await criarEnvioDoTime(sessao, {
+      ...dados,
+      kind,
+      anexo: arquivos.arquivo ?? arquivo,
+      anexoNota: arquivos.arquivoNota ?? null
+    });
     return Response.json({ ok: true, ...resultado }, { status: 201 });
   } catch (erro) {
     return respostaDeErro(erro);

@@ -78,6 +78,7 @@
   --tint-red: #fae7e7;
   --ink-red: #b42318;
   --tint-purple: #f3e8ff;
+  --tint-purple-line: #ddc6f7;
   --tint-purple-soft: #faf5ff;
   --ink-purple: #6d28d9;
   --tint-blue: #eff6ff;
@@ -156,6 +157,8 @@
     --tint-red: rgba(255, 107, 107, 0.16);
     --ink-red: #ff9d9d;
     --tint-purple: rgba(179, 75, 255, 0.16);
+  --tint-purple-line: rgba(179, 75, 255, 0.38);
+    --tint-purple-line: rgba(179, 75, 255, 0.38);
     --tint-purple-soft: rgba(179, 75, 255, 0.10);
     --ink-purple: #d9a3ff;
     --tint-blue: rgba(122, 162, 255, 0.16);
@@ -13558,8 +13561,20 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
    no `body`, FORA do `AppShell` e fora de qualquer página ("assim nenhuma tela
    precisa lembrar de incluí-lo"). Ele não é descendente de `.time-page`, então
    só dá para alcançá-lo olhando para o irmão. */
+/* No app do time o seletor de tema sobe para o TOPO.
+   
+   Embaixo ele não cabe mais: o canto direito virou o botão "foto da compra"
+   (medido: o seletor em x 343–381 cortava o rótulo do botão, e com z maior),
+   e no canto esquerdo ele passava por cima do chip "Não sei" — trocar um
+   estorvo por outro, dessa vez tapando algo clicável.
+   
+   O topo resolve porque lá não há nada interativo: o cabeçalho é título e
+   texto. E a hierarquia fica honesta — embaixo, no alcance do polegar, fica o
+   que se repete a cada compra; o tema se escolhe uma vez na vida. */
 body:has(.time-page) .theme-toggle {
-  bottom: calc(80px + env(safe-area-inset-bottom));
+  top: calc(10px + env(safe-area-inset-top));
+  bottom: auto;
+  right: 12px;
 }
 
 /* ===========================================================================
@@ -13811,3 +13826,191 @@ body:has(.time-page) .theme-toggle {
   border: 1px solid var(--tint-green-line); border-radius: 12px; background: var(--tint-green-soft);
 }
 .compartilhado strong { font-size: 13.5px; color: var(--ink-green); }
+
+/* ===========================================================================
+   O BOTÃO FLUTUANTE DE ANEXO
+   ---------------------------------------------------------------------------
+   Mora acima da barra inferior (78px + área de gestos) e à direita, que é onde
+   o polegar chega sem a segunda mão. Fica sobre o conteúdo de propósito: é a
+   primeira coisa a fazer no formulário, não a última.
+
+   z-index 45: acima do conteúdo, ABAIXO do menu "Mais" (70). Se ficasse por
+   cima, o menu aberto teria um botão flutuando dentro dele.
+   =========================================================================== */
+.anexar {
+  position: fixed;
+  right: 14px;
+  bottom: calc(90px + env(safe-area-inset-bottom));
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+}
+
+.anexar-botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  /* Pílula com texto, não um círculo com ícone. Um ícone de câmera sozinho é
+     adivinhação: "foto da compra" diz o que acontece, e é o que faz a pessoa
+     tocar da primeira vez. */
+  min-height: 52px;
+  padding: 0 18px 0 15px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--purple);
+  color: var(--on-bright);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .28), 0 0 0 1px rgba(255, 255, 255, .07) inset;
+}
+.anexar-botao.aberto { background: var(--ink); color: var(--card); }
+.anexar-botao:active { transform: translateY(1px); }
+
+/* O girinho da leitura. `prefers-reduced-motion` desliga: giro constante no
+   canto da tela é desconforto real para quem tem sensibilidade vestibular. */
+.anexar-girando {
+  width: 17px;
+  height: 17px;
+  border: 2.5px solid rgba(255, 255, 255, .35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: anexar-giro .7s linear infinite;
+}
+@keyframes anexar-giro { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .anexar-girando { animation: none; border-top-color: rgba(255, 255, 255, .8); }
+}
+
+.anexar-folha {
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  min-width: 232px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--card);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .3);
+}
+
+.anexar-opcao {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 11px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.anexar-opcao:hover { background: var(--surface-2); }
+.anexar-opcao span { display: grid; gap: 1px; }
+.anexar-opcao strong { font-size: 14px; font-weight: 620; }
+.anexar-opcao small { font-size: 11.5px; color: var(--muted); }
+
+/* Os inputs existem para receber `.click()`, nunca para serem vistos. Não uso
+   `display:none`: em alguns navegadores um input escondido assim não abre o
+   seletor quando clicado por script. */
+.anexar-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ===========================================================================
+   O PALPITE DA IMAGEM, E AS FICHAS DE ANEXO
+   =========================================================================== */
+
+/* Roxo, não verde. O cartão verde ao lado dele é a sugestão por HISTÓRICO —
+   "você já classificou este CNPJ assim 7 de 8 vezes", um fato contado. Este é
+   leitura de imagem: acerta menos e merece outra cor, senão os dois se
+   apresentam com a mesma autoridade e a pessoa para de distinguir. */
+.sugestao.palpite {
+  border-color: var(--tint-purple-line);
+  background: var(--tint-purple-soft);
+}
+.sugestao.palpite strong { color: var(--ink-purple); }
+.sugestao.palpite .sugestao-acoes button { background: var(--ink-purple); }
+
+.sugestao-acoes { display: flex; gap: 6px; flex: none; }
+/* "não" tem o mesmo tamanho de alvo que "usar": recusar um palpite não pode
+   ser mais difícil que aceitá-lo, senão a recusa vira aceitação por atrito. */
+.sugestao-acoes .sugestao-nao {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 600;
+  padding: 0 13px;
+}
+
+.anexos { display: grid; gap: 7px; }
+.anexos-lista { display: grid; gap: 7px; }
+
+.anexo-ficha {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "nome acao" "meta acao";
+  align-items: center;
+  gap: 1px 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.anexo-ficha strong {
+  grid-area: nome;
+  font-size: 13px;
+  font-weight: 620;
+  /* Nome de arquivo de celular é "IMG_20260812_140322_recorte_final.jpg" e
+     estoura a linha; cortar no fim mantém a extensão longe, mas é a extensão
+     que menos importa — o que identifica é o começo. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.anexo-ficha small { grid-area: meta; font-size: 11.5px; color: var(--muted); }
+.anexo-ficha button {
+  grid-area: acao;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+/* A nota fiscal se distingue do print: é ela que a contabilidade procura. */
+.anexo-ficha.fiscal { border-color: var(--tint-green-line); background: var(--tint-green-soft); }
+.anexo-ficha.fiscal strong { color: var(--ink-green); }
+
+.anexos-vazio {
+  margin: 0;
+  padding: 12px 13px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.anexos-vazio strong { color: var(--ink); font-weight: 640; }
+
+/* O formulário que tem botão flutuante precisa de chão embaixo.
+   Medido: com a página rolada até o fim, o flutuante (y 710–762) cobria o
+   "enviar custo" (y 729–775). É o mesmo defeito que o menu "Mais" tinha — um
+   elemento fixo por cima do único botão que conclui a tarefa. A reserva é a
+   altura do flutuante mais o respiro; a barra inferior continua coberta pelo
+   padding de `.time-conteudo`. */
+.time-form:has(> .anexar) { padding-bottom: 104px; }

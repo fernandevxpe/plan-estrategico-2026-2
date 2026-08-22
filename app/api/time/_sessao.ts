@@ -93,9 +93,25 @@ export async function exigirContexto(opcoes?: { senhaPendenteOk?: boolean }): Pr
  * sempre inviabilizaria a foto, que é a lacuna que este app existe para fechar
  * (0 de 193 itens têm comprovante hoje).
  */
+/**
+ * Lê o corpo e separa dados de arquivos.
+ *
+ * `arquivo` é o PRINCIPAL — o comprovante, o campo que sempre existiu. Quem
+ * precisar de mais de um usa `arquivos`, indexado pelo nome do campo: o
+ * formulário de custo manda `arquivo` (a foto) e `arquivoNota` (a NF-e), e os
+ * dois viram anexos de `kind` diferente no mesmo envio.
+ *
+ * Antes o laço sobrescrevia `arquivo` a cada iteração, então mandar dois
+ * arquivos guardava só o último — em silêncio. A pessoa anexava a foto e a
+ * nota, via as duas na tela, e uma sumia.
+ */
 export async function lerCorpo(
   request: Request
-): Promise<{ dados: Record<string, unknown>; arquivo: AnexoEntrada | null }> {
+): Promise<{
+  dados: Record<string, unknown>;
+  arquivo: AnexoEntrada | null;
+  arquivos: Record<string, AnexoEntrada>;
+}> {
   const tipo = request.headers.get("content-type") ?? "";
 
   if (tipo.includes("multipart/form-data")) {
@@ -106,19 +122,27 @@ export async function lerCorpo(
       throw new TimeError("não consegui ler o formulário", 400);
     }
     const dados: Record<string, unknown> = {};
+    const arquivos: Record<string, AnexoEntrada> = {};
     let arquivo: AnexoEntrada | null = null;
     for (const [chave, valor] of form.entries()) {
       if (valor instanceof File) {
         if (valor.size === 0) continue;
-        arquivo = {
+        const entrada: AnexoEntrada = {
           nome: valor.name || "comprovante",
           mime: valor.type || "application/octet-stream",
           bytes: Buffer.from(await valor.arrayBuffer())
         };
+        arquivos[chave] = entrada;
+        // O primeiro campo de arquivo vira o principal. `arquivo` continua
+        // sendo o comprovante em todas as rotas que só conhecem um.
+        if (!arquivo) arquivo = entrada;
       } else {
         dados[chave] = valor;
       }
     }
+    // Quando vêm os dois, o principal é o comprovante — não a ordem em que o
+    // navegador serializou o FormData.
+    if (arquivos.arquivo) arquivo = arquivos.arquivo;
     // `links` chega como JSON dentro de um campo de texto: FormData não tem
     // forma nativa de lista de objetos, e inventar `links[0][url]` criaria um
     // protocolo particular que só este formulário fala.
@@ -129,12 +153,12 @@ export async function lerCorpo(
         throw new TimeError("a lista de links veio malformada", 400);
       }
     }
-    return { dados, arquivo };
+    return { dados, arquivo, arquivos };
   }
 
   try {
     const dados = (await request.json()) as Record<string, unknown>;
-    return { dados: dados ?? {}, arquivo: null };
+    return { dados: dados ?? {}, arquivo: null, arquivos: {} };
   } catch {
     throw new TimeError("corpo inválido: mande JSON ou multipart/form-data", 400);
   }

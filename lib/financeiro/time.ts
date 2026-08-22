@@ -615,7 +615,20 @@ export async function guardarAnexo(
   if (anexo.bytes.length > TETO_ANEXO_BYTES) {
     throw new TimeError("comprovante acima de 10 MB — fotografe em resolução menor", 413);
   }
-  if (!MIMES_ACEITOS.has(anexo.mime)) {
+  // O Android manda `.xml` como `application/octet-stream` com frequência — o
+  // gerenciador de arquivos não reconhece a extensão e cai no genérico. Recusar
+  // por causa disso barraria justamente a NF-e, que é o arquivo mais valioso
+  // que chega aqui: dele sai valor exato, CNPJ e chave, sem IA nenhuma.
+  //
+  // A confiança está no CONTEÚDO, não no nome: o byte inicial precisa parecer
+  // XML. Um binário renomeado para .xml continua sendo recusado.
+  const ehXmlDisfarcado =
+    (anexo.mime === "application/octet-stream" || !anexo.mime) &&
+    /\.xml$/i.test(anexo.nome) &&
+    anexo.bytes.subarray(0, 200).toString("utf8").replace(/^\ufeff/, "").trimStart().startsWith("<");
+  const mime = ehXmlDisfarcado ? "text/xml" : anexo.mime;
+
+  if (!MIMES_ACEITOS.has(mime)) {
     throw new TimeError(`tipo de arquivo não aceito: ${anexo.mime || "desconhecido"} (aceito PDF, foto ou XML)`);
   }
 
@@ -630,7 +643,7 @@ export async function guardarAnexo(
                                  bytes_originais, bytes_gravados, file_name, uploaded_by)
      VALUES ($1, $2, $3, 'gzip', $4, $5, $6, $7, $8)
      ON CONFLICT (storage_key) DO NOTHING`,
-    [chave, comprimido, anexo.mime, sha, anexo.bytes.length, comprimido.length, anexo.nome.slice(0, 200), autor]
+    [chave, comprimido, mime, sha, anexo.bytes.length, comprimido.length, anexo.nome.slice(0, 200), autor]
   );
   return chave;
 }
@@ -875,6 +888,16 @@ export type NovoEnvio = {
   nfeNumero?: unknown;
   nfeSerie?: unknown;
   anexo?: AnexoEntrada | null;
+  /**
+   * A NF-e, quando a pessoa anexa a nota ALÉM do print.
+   *
+   * Dois arquivos com `kind` diferente no mesmo envio, e a distinção não é
+   * decorativa: a contabilidade precisa do documento fiscal, e o print serve de
+   * evidência do que foi comprado. "Print de tela de e-commerce" e "XML da
+   * NF-e" respondem perguntas diferentes, e guardar os dois como `comprovante`
+   * apagaria qual é qual justamente para quem vai procurar a nota depois.
+   */
+  anexoNota?: AnexoEntrada | null;
   /** Chave de um blob já guardado — veio pela folha de compartilhamento. */
   anexoChave?: unknown;
   /**
@@ -941,7 +964,7 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
       `SELECT id, code FROM fin_time_envio WHERE idempotency_key = $1 AND person_id = $2`,
       [chaveEnvio, sessao.personId]
     );
-    if (jaFoi) return { id: jaFoi.id, code: jaFoi.code, anexo: null, repetido: true };
+    if (jaFoi) return { id: jaFoi.id, code: jaFoi.code, anexo: null, nota: null, repetido: true };
   }
 
   return transaction(async (client) => {
@@ -1105,6 +1128,22 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
       );
     }
 
+    // A NOTA, quando vem junto. `fin_payment_attachment` já aceita vários
+    // anexos por alvo e já tem 'nota_fiscal' no CHECK — não precisou de
+    // migration, precisou de o app parar de mandar um arquivo só.
+    let chaveNota: string | null = null;
+    if (corpo.anexoNota) {
+      chaveNota = await registrarAnexo(
+        client,
+        entityId,
+        "fin_time_envio",
+        envio.rows[0].id,
+        "nota_fiscal",
+        corpo.anexoNota,
+        `time:${sessao.nome}`
+      );
+    }
+
     await client.query(
       `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, after, fields, actor)
        VALUES ($1, 'fin_time_envio', $2, 'insert', $3::jsonb, ARRAY['titulo','amount_cents','kind'], $4)`,
@@ -1117,13 +1156,14 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
           titulo,
           amount_cents: valorCents,
           identidade: sessao.prova,
-          anexo: chave
+          anexo: chave,
+          nota: chaveNota
         }),
         `app-time:${sessao.nome}`
       ]
     );
 
-    return { id: envio.rows[0].id, code: envio.rows[0].code, anexo: chave, repetido: false };
+    return { id: envio.rows[0].id, code: envio.rows[0].code, anexo: chave, nota: chaveNota, repetido: false };
   });
 }
 
@@ -1696,6 +1736,41 @@ export async function sugerirCategoria(documento: string) {
  * Os projetos vêm antes dos funcionais na ordenação porque é neles que o custo
  * de campo cai, e são eles que a pessoa procura.
  */
+/**
+ * O vocabulário que a leitura automática pode usar para classificar.
+ *
+ * Vai para dentro do prompt do Haiku e volta validado contra esta mesma lista.
+ * Sem ele o modelo devolveria nomes de rubrica plausíveis e inexistentes — que
+ * é o pior resultado possível, porque parecem resposta do sistema.
+ *
+ * As ÁREAS são os centros de custo funcionais. A distinção importa: obra é
+ * `projeto` e a pessoa escolhe na busca, porque só ela sabe qual; área é
+ * `funcional` e às vezes o próprio produto denuncia — banner de estande é
+ * Comercial, toner é Administrativo. Só o segundo caso é palpite honesto.
+ */
+export async function catalogoDeClassificacao() {
+  const [categorias, areas] = await Promise.all([
+    query<{ code: string; nome: string }>(
+      `SELECT c.code, c.name AS nome FROM fin_category c
+         JOIN fin_entity e ON e.id = c.entity_id AND e.slug = $1
+        WHERE (c.code LIKE '4.%' OR c.code LIKE '5.%' OR c.code LIKE '8.%')
+          -- "a classificar" não é classificação: sugerir isso é devolver a
+          -- pergunta com outro nome, e o formulário já começa assim.
+          AND c.code NOT IN ('5.99')
+        ORDER BY c.code`,
+      [ENTITY]
+    ),
+    query<{ name: string }>(
+      `SELECT cc.name FROM fin_cost_center cc
+         JOIN fin_entity e ON e.id = cc.entity_id AND e.slug = $1
+        WHERE cc.is_active AND cc.kind = 'funcional'
+        ORDER BY cc.name`,
+      [ENTITY]
+    )
+  ]);
+  return { categorias, areas: areas.map((a) => a.name) };
+}
+
 export async function opcoesDoTime() {
   const [tipos, categorias, centros, linhas, cartoes] = await Promise.all([
     query<{ slug: string; name: string; requires_nfe: boolean }>(

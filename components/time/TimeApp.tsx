@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { AnexarFlutuante, type OrigemAnexo } from "@/components/time/AnexarFlutuante";
 import { SeloCamada, brl } from "@/components/financeiro/Certeza";
 
 /**
@@ -1147,11 +1148,25 @@ type AoFalhar = (r: { tom: "ok" | "erro"; texto: string }) => void;
 const LADO_MAXIMO = 1600;
 const QUALIDADE = 0.8;
 
+/** O que o modelo aceita direto. HEIC e HEIF do iPhone não estão aqui. */
+const MIMES_QUE_O_MODELO_LE = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
 async function encolherImagem(arquivo: File): Promise<File> {
   if (!arquivo.type.startsWith("image/")) return arquivo;
+
+  // HEIC SEMPRE PASSA PELO CANVAS, mesmo pequeno.
+  //
+  // O iPhone grava foto em HEIC e o modelo não lê o formato. O atalho do
+  // "abaixo de 400 KB devolve como está" mandava o HEIC cru para a API, que
+  // respondia 400 — e a tela dizia "não consegui ler o comprovante", como se o
+  // problema fosse a foto. O canvas do Safari decodifica HEIC e devolve JPEG,
+  // então converter resolve na origem; quando o navegador não consegue, o
+  // servidor recusa dizendo o nome do formato.
+  const precisaConverter = !MIMES_QUE_O_MODELO_LE.has(arquivo.type);
+
   // Abaixo de 400 KB não vale o reencode: o ganho é pequeno e a requantização
   // sempre perde alguma nitidez do texto da nota.
-  if (arquivo.size <= 400 * 1024) return arquivo;
+  if (!precisaConverter && arquivo.size <= 400 * 1024) return arquivo;
 
   try {
     const bitmap = await createImageBitmap(arquivo);
@@ -1168,7 +1183,10 @@ async function encolherImagem(arquivo: File): Promise<File> {
     bitmap.close();
 
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", QUALIDADE));
-    if (!blob || blob.size >= arquivo.size) return arquivo;
+    // Quando o objetivo era CONVERTER, um JPEG maior que o HEIC original ainda
+    // é o resultado certo: HEIC comprime melhor, e devolver o original por ele
+    // ser menor traria de volta o 400 que esta conversão existe para evitar.
+    if (!blob || (blob.size >= arquivo.size && !precisaConverter)) return arquivo;
 
     const nome = arquivo.name.replace(/\.[^.]+$/, "") + ".jpg";
     return new File([blob], nome, { type: "image/jpeg", lastModified: arquivo.lastModified });
@@ -1177,15 +1195,26 @@ async function encolherImagem(arquivo: File): Promise<File> {
   }
 }
 
-async function postar(url: string, dados: Record<string, unknown>, arquivo: File | null) {
+async function postar(
+  url: string,
+  dados: Record<string, unknown>,
+  arquivo: File | null,
+  // A nota entra num campo PRÓPRIO, não numa lista: o servidor precisa saber
+  // qual dos dois é o documento fiscal para gravar o `kind` certo, e ordem de
+  // upload não é informação — é acidente.
+  arquivoNota: File | null = null
+) {
   let resposta: Response;
-  if (arquivo) {
+  if (arquivo || arquivoNota) {
     const form = new FormData();
     for (const [k, v] of Object.entries(dados)) {
       if (v === null || v === undefined || v === "") continue;
       form.append(k, typeof v === "object" ? JSON.stringify(v) : String(v));
     }
-    form.append("arquivo", await encolherImagem(arquivo));
+    if (arquivo) form.append("arquivo", await encolherImagem(arquivo));
+    // A nota NÃO passa pelo encolhedor: um XML não é imagem, e um PDF
+    // reencodado como JPEG deixaria de ser o documento fiscal.
+    if (arquivoNota) form.append("arquivoNota", arquivoNota);
     resposta = await fetch(url, { method: "POST", body: form });
   } else {
     resposta = await fetch(url, {
@@ -1356,7 +1385,25 @@ function FormEnvio({
   const [enviando, setEnviando] = useState(false);
   const [lendo, setLendo] = useState(false);
   const [leitura, setLeitura] = useState<{ tom: "ok" | "aviso" | "erro"; texto: string } | null>(null);
-  const arquivoRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * O que a IA achou que isto é — categoria, área, e em que ela se baseou.
+   *
+   * Guardado separado do valor dos campos de propósito: enquanto está aqui, é
+   * palpite exibido com a justificativa ao lado; só vira conteúdo do formulário
+   * quando a pessoa toca em "usar". A `porQue` é o que permite discordar sem
+   * abrir a foto de novo.
+   */
+  const [palpite, setPalpite] = useState<{
+    categoriaId: string | null;
+    categoriaRotulo: string | null;
+    centroId: string | null;
+    centroNome: string | null;
+    porQue: string;
+  } | null>(null);
+
+  /** A NF-e, quando vem junto do print. */
+  const [arquivoNota, setArquivoNota] = useState<File | null>(null);
   const tentativaRef = useRef<string | null>(null);
 
   /**
@@ -1389,7 +1436,16 @@ function FormEnvio({
           documento: string | null; chaveNfe: string | null; resumo: string;
           cartaoFinal: string | null; cartaoBandeira: string; parcelas: number | null;
           legibilidade: "boa" | "parcial" | "ruim";
+          // Do XML vem `emitente` no lugar de `estabelecimento`: o layout da
+          // NF-e chama assim, e renomear no servidor esconderia de onde veio.
+          emitente?: string | null;
+          itens?: { descricao: string; quantidade: number | null; valorUnitario: number | null }[];
+          numeroPedido?: string | null;
+          categoriaCode?: string | null;
+          areaNome?: string | null;
+          porQue?: string;
         };
+        const doXml = j.fonte === "xml";
 
         const preenchidos: string[] = [];
         const por = (atual: string, valor: string | null | undefined, set: (v: string) => void, rotulo: string) => {
@@ -1400,7 +1456,7 @@ function FormEnvio({
         por(titulo, l.resumo, setTitulo, "descrição");
         por(valor, l.valorTotal != null ? l.valorTotal.toFixed(2).replace(".", ",") : null, setValor, "valor");
         por(data === HOJE() ? "" : data, l.data, setData, "data");
-        por(fornecedor, l.estabelecimento, setFornecedor, "fornecedor");
+        por(fornecedor, l.estabelecimento ?? l.emitente, setFornecedor, "fornecedor");
         por(nfeKey, l.chaveNfe, setNfeKey, "chave da NF-e");
 
         // O CARTÃO SAI DA FOTO. "Mastercard **** 5585" é o dado mais chato de
@@ -1416,15 +1472,61 @@ function FormEnvio({
           preenchidos.push("parcelas");
         }
 
+        // OS ITENS VÃO PARA A DESCRIÇÃO LONGA, não para o título.
+        //
+        // "Cabo HDMI 4K 2 Metros — 3 un. × R$ 64,61" é o que responde "o que
+        // você comprou?" seis meses depois, quando ninguém lembra e a foto
+        // virou um blob no banco. O título fica curto porque é ele que aparece
+        // na lista; o detalhe fica aqui porque é aqui que se procura.
+        const itens = l.itens ?? [];
+        if (itens.length && !descricao.trim()) {
+          const linhas = itens.map((i) => {
+            const q = i.quantidade ? `${i.quantidade % 1 === 0 ? i.quantidade : i.quantidade.toFixed(3)} un.` : null;
+            const vu = i.valorUnitario != null ? `R$ ${i.valorUnitario.toFixed(2).replace(".", ",")}` : null;
+            const cauda = [q, vu].filter(Boolean).join(" × ");
+            return cauda ? `${i.descricao} — ${cauda}` : i.descricao;
+          });
+          if (l.numeroPedido) linhas.push(`Pedido ${l.numeroPedido}`);
+          setDescricao(linhas.join("\n"));
+          preenchidos.push(itens.length === 1 ? "o item" : `os ${itens.length} itens`);
+        }
+
+        // A CLASSIFICAÇÃO DA IA NÃO PREENCHE NADA SOZINHA.
+        //
+        // Ela vira um cartão com a frase que a justifica, e a pessoa toca em
+        // "usar" — ou ignora. É a mesma disciplina da sugestão por contraparte,
+        // pelo mesmo motivo: campo preenchido em silêncio é campo que ninguém
+        // confere, e aqui o palpite vem de uma foto, não de histórico contado.
+        const codigo = l.categoriaCode ?? null;
+        const alvo = codigo ? opcoes.categorias.find((c) => c.rotulo.startsWith(`${codigo} `)) : null;
+        const area = l.areaNome
+          ? opcoes.centros.find((c) => !c.ehProjeto && c.nome === l.areaNome)
+          : null;
+        if ((alvo && !categoria) || (area && !centro)) {
+          setPalpite({
+            categoriaId: alvo && !categoria ? String(alvo.id) : null,
+            categoriaRotulo: alvo && !categoria ? alvo.rotulo : null,
+            centroId: area && !centro ? String(area.id) : null,
+            centroNome: area && !centro ? area.nome : null,
+            porQue: l.porQue ?? ""
+          });
+        }
+
         // O CNPJ da foto vira sugestão de categoria — ele era extraído e
         // descartado. Medido: quando a contraparte já apareceu antes, o
-        // histórico acerta 76,4% contra 26,7% do chute cego. SUGERE, não
-        // preenche: um em quatro vem errado, e campo preenchido em silêncio é
-        // campo que ninguém confere.
+        // histórico acerta 76,4% contra 26,7% do chute cego.
+        //
+        // O HISTÓRICO GANHA DO PALPITE quando os dois existem: "você já
+        // classificou este CNPJ assim 7 de 8 vezes" é um fato contado, e o
+        // palpite da imagem é uma impressão. Mostrar os dois cartões brigando
+        // faria a pessoa escolher entre duas telas em vez de conferir uma.
         if (l.documento && !categoria) {
           const sr = await fetch(`/api/time/sugerir-categoria?documento=${encodeURIComponent(l.documento)}`);
           const sj = await sr.json().catch(() => ({}));
-          if (sj.sugestao) setSugestao(sj.sugestao);
+          if (sj.sugestao) {
+            setSugestao(sj.sugestao);
+            setPalpite((p) => (p && p.centroId ? { ...p, categoriaId: null, categoriaRotulo: null } : null));
+          }
         }
 
         if (l.legibilidade === "ruim") {
@@ -1437,6 +1539,11 @@ function FormEnvio({
           });
         } else if (preenchidos.length === 0) {
           setLeitura({ tom: "aviso", texto: "Não achei nada novo para preencher — o que você digitou foi mantido." });
+        } else if (doXml) {
+          // Do XML os números são EXATOS, e dizer isso muda o que se pede da
+          // pessoa: conferir uma leitura de foto é obrigação, conferir um campo
+          // que veio do arquivo fiscal é cortesia.
+          setLeitura({ tom: "ok", texto: `Li a nota e preenchi ${preenchidos.join(", ")} — valores exatos, do XML.` });
         } else {
           setLeitura({ tom: "ok", texto: `Preenchi ${preenchidos.join(", ")}. Confira antes de enviar.` });
         }
@@ -1446,7 +1553,7 @@ function FormEnvio({
         setLendo(false);
       }
     },
-    [titulo, valor, data, fornecedor, nfeKey, final, parcelas]
+    [titulo, valor, data, fornecedor, nfeKey, final, parcelas, descricao, categoria, centro, opcoes]
   );
 
   async function enviar(e: React.FormEvent) {
@@ -1490,7 +1597,8 @@ function FormEnvio({
           cartao,
           anexoChave: anexoCompartilhado ?? undefined
         },
-        arquivo
+        arquivo,
+        arquivoNota
       );
       await aoEnviar(
         compra
@@ -1499,6 +1607,9 @@ function FormEnvio({
       );
       tentativaRef.current = null;
       setTitulo("");
+      setArquivoNota(null);
+      setPalpite(null);
+      setLeitura(null);
       setValor("");
       setDescricao("");
       setNfeKey("");
@@ -1510,7 +1621,7 @@ function FormEnvio({
       setBanco("");
       setCartao("");
       setArquivo(null);
-      if (arquivoRef.current) arquivoRef.current.value = "";
+      setArquivo(null);
     } catch (erro) {
       aoFalhar({ tom: "erro", texto: (erro as Error).message });
     } finally {
@@ -1796,6 +1907,43 @@ function FormEnvio({
         </details>
       ) : null}
 
+      {/*
+        O PALPITE DA IMAGEM, com a razão à vista.
+        Ele mostra o que sugere E em que se baseou, na mesma altura. Sem a
+        razão, "Comercial" é um chute que a pessoa aceita por preguiça; com
+        ela, é uma afirmação que dá para discordar em dois segundos.
+      */}
+      {palpite && (palpite.categoriaId || palpite.centroId) ? (
+        <div className="sugestao palpite">
+          <div>
+            <strong>
+              {[palpite.categoriaRotulo, palpite.centroNome].filter(Boolean).join(" · ")}
+            </strong>
+            <span className="time-sub">
+              {palpite.porQue ? `Li da imagem: ${palpite.porQue}` : "Palpite a partir da imagem."} Confira — é chute, não histórico.
+            </span>
+          </div>
+          <div className="sugestao-acoes">
+            <button
+              type="button"
+              onClick={() => {
+                if (palpite.categoriaId) setCategoria(palpite.categoriaId);
+                if (palpite.centroId) {
+                  setCentro(palpite.centroId);
+                  setLinha("");
+                }
+                setPalpite(null);
+              }}
+            >
+              usar
+            </button>
+            <button type="button" className="sugestao-nao" onClick={() => setPalpite(null)}>
+              não
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {sugestao && !categoria ? (
         <div className="sugestao">
           <div>
@@ -1825,29 +1973,45 @@ function FormEnvio({
         <small>É uma sugestão. Quem decide a categoria é o financeiro — ela muda a DRE.</small>
       </label>
 
-      <label className="campo">
-        <span>{nota ? "Arquivo da nota (PDF ou XML)" : "Comprovante"}</span>
-        <input
-          ref={arquivoRef}
-          type="file"
-          accept="image/*,application/pdf,.xml"
-          // `capture` não é obrigatório: sem ele o Android e o iPhone abrem a
-          // folha "Câmera / Fototeca / Arquivos", que é o que a pessoa quer —
-          // forçar a câmera impediria escolher um print que já está na galeria,
-          // que é metade dos casos.
-          onChange={(e) => {
-            const f = e.target.files?.[0] ?? null;
-            setArquivo(f);
-            setLeitura(null);
-            if (f) void lerArquivo(f);
-          }}
-        />
+      {/*
+        O QUE JÁ FOI ANEXADO.
+        Deixou de ser um `<input type="file">` no fim do formulário e virou um
+        recibo do que está preso ao envio: o botão flutuante é quem anexa. Os
+        dois cabem juntos porque respondem perguntas diferentes — o print prova
+        o que foi comprado, a nota é o documento que a contabilidade precisa.
+      */}
+      <div className="anexos">
+        <span className="campo-rotulo" id="grupo-anexos">
+          {nota ? "Arquivo da nota" : "Comprovante"}
+        </span>
+        <div className="anexos-lista" role="group" aria-labelledby="grupo-anexos">
+          {arquivo ? (
+            <div className="anexo-ficha">
+              <strong>{arquivo.name}</strong>
+              <small>foto ou print · {(arquivo.size / 1024).toFixed(0)} KB</small>
+              <button type="button" onClick={() => { setArquivo(null); setLeitura(null); }} aria-label="tirar a foto do envio">
+                tirar
+              </button>
+            </div>
+          ) : null}
+          {arquivoNota ? (
+            <div className="anexo-ficha fiscal">
+              <strong>{arquivoNota.name}</strong>
+              <small>nota fiscal · {(arquivoNota.size / 1024).toFixed(0)} KB</small>
+              <button type="button" onClick={() => setArquivoNota(null)} aria-label="tirar a nota do envio">
+                tirar
+              </button>
+            </div>
+          ) : null}
+          {!arquivo && !arquivoNota ? (
+            <p className="anexos-vazio">
+              Nada anexado ainda. Toque em <strong>foto da compra</strong>, ali embaixo — eu leio e preencho o que der.
+            </p>
+          ) : null}
+        </div>
         {lendo ? <small className="reemb-lendo">lendo o comprovante…</small> : null}
         {leitura ? <small className={`reemb-leitura ${leitura.tom}`}>{leitura.texto}</small> : null}
-        {!lendo && !leitura ? (
-          <small>Escolha a foto e eu preencho o que der. Você confere antes de enviar.</small>
-        ) : null}
-      </label>
+      </div>
 
       <button className="time-botao" disabled={enviando}>
         {enviando ? "enviando…" : nota ? "enviar nota" : "enviar custo"}
@@ -1855,6 +2019,27 @@ function FormEnvio({
       <p className="time-nota">
         Isto não vira lançamento nem mexe em saldo. Vira um pedido aguardando decisão de quem cuida do financeiro.
       </p>
+
+      {/*
+        Dentro do <form> por causa do `position: fixed` — ele sai do fluxo de
+        qualquer jeito, e ficar aqui mantém o botão ao lado do estado que ele
+        altera, em vez de num irmão que precisaria receber cinco callbacks.
+      */}
+      <AnexarFlutuante
+        lendo={lendo}
+        jaTem={Boolean(arquivo || arquivoNota)}
+        aoEscolher={(f, origem: OrigemAnexo) => {
+          if (lendo) return;
+          setLeitura(null);
+          // A nota vai para o slot fiscal; foto e print, para o slot de
+          // evidência. É esta escolha que o servidor traduz em `kind`, e é por
+          // isso que a folha pergunta a origem em vez de aceitar tudo num
+          // campo só.
+          if (origem === "nota") setArquivoNota(f);
+          else setArquivo(f);
+          void lerArquivo(f);
+        }}
+      />
     </form>
   );
 }

@@ -867,6 +867,7 @@ export type NovoEnvio = {
   centroCusto?: unknown;
   linhaServico?: unknown;
   cartao?: unknown;
+  banco?: unknown;
   nfeKey?: unknown;
   nfeNumero?: unknown;
   nfeSerie?: unknown;
@@ -932,11 +933,28 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
     // da 0138 recusaria a combinação incoerente, e recusar o envio inteiro por
     // isso perderia o lançamento. Descarta o cartão e mantém o resto.
     let cartaoId: number | null = null;
+    let bancoId: number | null = null;
     if (pagamento === "cartao_da_empresa" || pagamento === "ja_paguei_do_meu") {
-      const id = Number(corpo.cartao);
-      if (Number.isInteger(id) && id > 0) {
-        const c = await client.query(`SELECT id FROM fin_card WHERE id = $1 AND status = 'registrado'`, [id]);
-        cartaoId = c.rows[0] ? Number(c.rows[0].id) : null;
+      const idPlastico = Number(corpo.cartao);
+      if (Number.isInteger(idPlastico) && idPlastico > 0) {
+        // O banco DERIVA do plástico. Guardar os dois vindos do formulário
+        // abriria espaço para eles divergirem — plástico do Nubank com banco
+        // Inter —, e o CHECK da 0140 não pega essa combinação, só a ausência.
+        const c = await client.query(
+          `SELECT id, card_account_id FROM fin_card WHERE id = $1 AND status = 'registrado'`,
+          [idPlastico]
+        );
+        if (c.rows[0]) {
+          cartaoId = Number(c.rows[0].id);
+          bancoId = Number(c.rows[0].card_account_id);
+        }
+      }
+      if (!bancoId) {
+        const idBanco = Number(corpo.banco);
+        if (Number.isInteger(idBanco) && idBanco > 0) {
+          const a = await client.query(`SELECT id FROM fin_card_account WHERE id = $1 AND is_active`, [idBanco]);
+          bancoId = a.rows[0] ? Number(a.rows[0].id) : null;
+        }
       }
     }
 
@@ -955,10 +973,10 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
       `INSERT INTO fin_time_envio
          (entity_id, kind, person_id, identidade_prova, titulo, descricao, amount_cents,
           incurred_on, due_on, pagamento, ja_pago, categoria_sugerida_id,
-          cost_center_id, product_line_id, card_id,
+          cost_center_id, product_line_id, card_id, card_account_id,
           fornecedor_nome, fornecedor_documento, nfe_key, nfe_numero, nfe_serie, nfe_emissao,
           status, enviado_em)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12, $18, $19, $20,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12, $18, $19, $20, $21,
                $13, $14, $15, $16, $17,
                CASE WHEN $2 = 'nota_entrada' THEN $8::date ELSE NULL END,
                'enviado', now())
@@ -983,7 +1001,8 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
         opcionalTexto(corpo.nfeSerie, 10),
         centroCustoId,
         linhaServicoId,
-        cartaoId
+        cartaoId,
+        bancoId
       ]
     );
 
@@ -1457,15 +1476,30 @@ export async function opcoesDoTime() {
         ORDER BY pl.sort_order, pl.name`,
       [ENTITY]
     ),
-    // Só os plásticos VIVOS. Cartão histórico ou cancelado na lista faria
-    // alguém escolher um cartão que não existe mais, e a fatura nunca casaria.
-    query<{ id: number; last4: string | null; label: string | null; emissor: string | null }>(
-      `SELECT c.id, c.last4, c.label, i.name AS emissor
-         FROM fin_card c
-         JOIN fin_card_account a ON a.id = c.card_account_id
+    // Os BANCOS, com os plásticos vivos dentro de cada um.
+    //
+    // O banco é o que se pergunta; o plástico é opcional. O Inter tem ZERO
+    // plásticos cadastrados (a fonte não os expõe) e mesmo assim precisa ser
+    // escolhível — senão não há como registrar uma compra feita nele, que é
+    // justamente onde estão os R$ 40.862,41 sem itemização de 2026.
+    //
+    // Cartão histórico ou cancelado fica de fora: escolher um que não existe
+    // mais garante que a fatura nunca vai casar.
+    query<{
+      conta_id: number;
+      conta: string;
+      emissor: string | null;
+      card_id: number | null;
+      last4: string | null;
+      label: string | null;
+    }>(
+      `SELECT a.id AS conta_id, coalesce(i.name, a.name) AS conta, i.name AS emissor,
+              c.id AS card_id, c.last4, c.label
+         FROM fin_card_account a
          LEFT JOIN fin_card_issuer i ON i.id = a.issuer_id
-        WHERE c.status = 'registrado'
-        ORDER BY (c.label IS NULL), c.label, c.last4`
+         LEFT JOIN fin_card c ON c.card_account_id = a.id AND c.status = 'registrado'
+        WHERE a.is_active AND a.nature = 'credito'
+        ORDER BY conta, (c.label IS NULL), c.label, c.last4`
     )
   ]);
   return {
@@ -1478,13 +1512,23 @@ export async function opcoesDoTime() {
       nucleo: c.nucleo
     })),
     linhas: linhas.map((l) => ({ id: Number(l.id), slug: l.slug, nome: l.name })),
-    cartoes: cartoes.map((c) => ({
-      id: Number(c.id),
-      // Sem apelido cadastrado, o final é o que existe. Melhor "final 7626" que
-      // um nome inventado que ninguém reconhece.
-      nome: c.label ?? `final ${c.last4 ?? "????"}`,
-      final: c.last4,
-      emissor: c.emissor
-    }))
+    bancos: Object.values(
+      cartoes.reduce<Record<number, { id: number; nome: string; plasticos: { id: number; nome: string }[] }>>(
+        (acc, l) => {
+          const id = Number(l.conta_id);
+          acc[id] ??= { id, nome: l.conta, plasticos: [] };
+          if (l.card_id) {
+            acc[id].plasticos.push({
+              id: Number(l.card_id),
+              // Sem apelido cadastrado, o final é o que existe. Melhor
+              // "final 7626" que um nome inventado que ninguém reconhece.
+              nome: l.label ?? `final ${l.last4 ?? "????"}`
+            });
+          }
+          return acc;
+        },
+        {}
+      )
+    )
   };
 }

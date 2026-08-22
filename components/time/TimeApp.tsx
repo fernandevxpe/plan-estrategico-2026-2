@@ -42,7 +42,7 @@ type Opcoes = {
   categorias: { id: number; rotulo: string }[];
   centros: { id: number; nome: string; ehProjeto: boolean; nucleo: string | null }[];
   linhas: { id: number; slug: string; nome: string }[];
-  cartoes: { id: number; nome: string; final: string | null; emissor: string | null }[];
+  bancos: { id: number; nome: string; plasticos: { id: number; nome: string }[] }[];
 };
 type Envio = {
   origem: string;
@@ -86,7 +86,7 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
   const [sessao, setSessao] = useState<Sessao | null>(null);
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [porta, setPorta] = useState<Porta>("sessao");
-  const [opcoes, setOpcoes] = useState<Opcoes>({ tipos: [], categorias: [], centros: [], linhas: [], cartoes: [] });
+  const [opcoes, setOpcoes] = useState<Opcoes>({ tipos: [], categorias: [], centros: [], linhas: [], bancos: [] });
   const [envios, setEnvios] = useState<Envio[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [recado, setRecado] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
@@ -934,6 +934,7 @@ function FormEnvio({
   const [categoria, setCategoria] = useState("");
   const [centro, setCentro] = useState("");
   const [linha, setLinha] = useState("");
+  const [banco, setBanco] = useState("");
   const [cartao, setCartao] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -1027,6 +1028,7 @@ function FormEnvio({
           categoriaSugerida: categoria,
           centroCusto: centro,
           linhaServico: centro ? "" : linha,
+          banco,
           cartao
         },
         arquivo
@@ -1043,6 +1045,7 @@ function FormEnvio({
       setNfeNumero("");
       setCentro("");
       setLinha("");
+      setBanco("");
       setCartao("");
       setArquivo(null);
       if (arquivoRef.current) arquivoRef.current.value = "";
@@ -1109,21 +1112,53 @@ function FormEnvio({
         795 itens de fatura, contra 37,5% de cobertura de contraparte. É o
         sinal que quase sempre casa.
       */}
-      {pagamento === "cartao_da_empresa" && opcoes.cartoes.length > 0 ? (
-        <label className="campo">
-          <span>Qual cartão</span>
-          <select value={cartao} onChange={(e) => setCartao(e.target.value)}>
-            <option value="">— não lembro qual —</option>
-            {opcoes.cartoes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.emissor ? `${c.emissor} · ` : ""}
-                {c.nome}
-              </option>
-            ))}
-          </select>
-          <small>É o que vai casar este custo com a fatura quando ela fechar.</small>
-        </label>
-      ) : null}
+      {pagamento === "cartao_da_empresa" && opcoes.bancos.length > 0
+        ? (() => {
+            const escolhido = opcoes.bancos.find((b) => String(b.id) === banco);
+            return (
+              <>
+                <label className="campo">
+                  <span>Qual banco</span>
+                  <select
+                    value={banco}
+                    onChange={(e) => {
+                      setBanco(e.target.value);
+                      setCartao("");
+                    }}
+                  >
+                    <option value="">— não lembro —</option>
+                    {opcoes.bancos.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <small>É o que vai casar este custo com a fatura quando ela fechar.</small>
+                </label>
+
+                {/*
+                  O plástico só aparece quando o banco tem mais de um. Perguntar
+                  "qual dos nove finais" a quem já disse "Nubank" é pedir um dado
+                  que a pessoa muitas vezes não tem na cabeça — e campo que ela
+                  não sabe responder é campo que ela deixa em branco ou erra.
+                */}
+                {escolhido && escolhido.plasticos.length > 1 ? (
+                  <label className="campo">
+                    <span>Qual cartão do {escolhido.nome}</span>
+                    <select value={cartao} onChange={(e) => setCartao(e.target.value)}>
+                      <option value="">— não sei o final —</option>
+                      {escolhido.plasticos.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </>
+            );
+          })()
+        : null}
 
       <label className="campo">
         <span>Quem cobrou / emitiu</span>

@@ -306,39 +306,71 @@ try {
     );
   }
 
-  const cartoes = (await c('/api/time/envios')).corpo?.opcoes?.cartoes ?? [];
-  afirma(cartoes.length > 0, 'os cartões chegam no formulário', `${cartoes.length} plásticos registrados`);
-  if (cartoes.length) {
-    const comCartao = await c('/api/time/envio', {
-      method: 'POST',
-      body: JSON.stringify({
-        kind: 'custo', titulo: 'teste automatizado — compra no cartão', valor: '55,00',
-        data: new Date().toISOString().slice(0, 10),
-        pagamento: 'cartao_da_empresa', cartao: cartoes[0].id
-      })
-    });
-    afirma(comCartao.status === 201, 'custo com cartão é aceito', `status ${comCartao.status}`);
-    const g = await db.query(
-      `SELECT card_id, pagamento FROM fin_time_envio WHERE person_id = $1 ORDER BY id DESC LIMIT 1`, [cobaia.id]);
-    afirma(Number(g.rows[0]?.card_id) === cartoes[0].id, 'o cartão FICOU gravado', `card_id=${g.rows[0]?.card_id}`);
+  const bancos = (await c('/api/time/envios')).corpo?.opcoes?.bancos ?? [];
+  afirma(bancos.length >= 2, 'os bancos chegam no formulário', bancos.map((b) => b.nome).join(', '));
+  const inter = bancos.find((b) => /inter/i.test(b.nome));
+  const nubank = bancos.find((b) => /nubank/i.test(b.nome));
+  afirma(
+    Boolean(inter) && inter.plasticos.length === 0,
+    'o Inter é escolhível MESMO sem plástico cadastrado',
+    'é onde estão os R$ 40.862,41 sem itemização'
+  );
+  afirma(Boolean(nubank) && nubank.plasticos.length === 9, 'o Nubank traz os nove plásticos dentro',
+    `${nubank?.plasticos.length} finais`);
 
-    // A trava da 0138: cartão declarado com pagamento que não é cartão.
-    const incoerente = await c('/api/time/envio', {
+  if (inter) {
+    const soBanco = await c('/api/time/envio', {
       method: 'POST',
       body: JSON.stringify({
-        kind: 'custo', titulo: 'teste automatizado — cartão incoerente', valor: '10,00',
-        data: new Date().toISOString().slice(0, 10),
-        pagamento: 'pix_da_empresa', cartao: cartoes[0].id
+        kind: 'custo', titulo: 'teste automatizado — compra no Inter', valor: '55,00',
+        data: new Date().toISOString().slice(0, 10), pagamento: 'cartao_da_empresa', banco: inter.id
       })
     });
-    const gi = await db.query(
-      `SELECT card_id FROM fin_time_envio WHERE person_id = $1 ORDER BY id DESC LIMIT 1`, [cobaia.id]);
+    afirma(soBanco.status === 201, 'custo só com o banco é aceito', `status ${soBanco.status}`);
+    const g = await db.query(
+      `SELECT card_account_id, card_id FROM fin_time_envio WHERE person_id = $1 ORDER BY id DESC LIMIT 1`,
+      [cobaia.id]);
     afirma(
-      incoerente.status === 201 && gi.rows[0]?.card_id === null,
-      'cartão com PIX é descartado, não recusa o envio',
-      'o CHECK do banco recusaria a linha inteira e a pessoa perderia o lançamento'
+      Number(g.rows[0]?.card_account_id) === inter.id && g.rows[0]?.card_id === null,
+      'grava o banco sem plástico',
+      'a pessoa sempre sabe o banco; nem sempre o final'
     );
   }
+
+  if (nubank?.plasticos.length) {
+    const comPlastico = await c('/api/time/envio', {
+      method: 'POST',
+      body: JSON.stringify({
+        kind: 'custo', titulo: 'teste automatizado — compra no plástico', valor: '77,00',
+        data: new Date().toISOString().slice(0, 10),
+        pagamento: 'cartao_da_empresa', cartao: nubank.plasticos[0].id
+      })
+    });
+    afirma(comPlastico.status === 201, 'custo com plástico é aceito', `status ${comPlastico.status}`);
+    const g = await db.query(
+      `SELECT card_account_id, card_id FROM fin_time_envio WHERE person_id = $1 ORDER BY id DESC LIMIT 1`,
+      [cobaia.id]);
+    afirma(
+      Number(g.rows[0]?.card_id) === nubank.plasticos[0].id && Number(g.rows[0]?.card_account_id) === nubank.id,
+      'o banco DERIVA do plástico',
+      'guardar os dois vindos do formulário deixaria eles divergirem'
+    );
+  }
+
+  const incoerente = await c('/api/time/envio', {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'custo', titulo: 'teste automatizado — cartão incoerente', valor: '10,00',
+      data: new Date().toISOString().slice(0, 10), pagamento: 'pix_da_empresa', banco: inter?.id
+    })
+  });
+  const gi = await db.query(
+    `SELECT card_account_id FROM fin_time_envio WHERE person_id = $1 ORDER BY id DESC LIMIT 1`, [cobaia.id]);
+  afirma(
+    incoerente.status === 201 && gi.rows[0]?.card_account_id === null,
+    'banco com PIX é descartado, não recusa o envio',
+    'o CHECK recusaria a linha inteira e a pessoa perderia o lançamento'
+  );
 
   const lixo = await c('/api/time/envio', {
     method: 'POST',

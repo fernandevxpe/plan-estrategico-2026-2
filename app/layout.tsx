@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Sora } from "next/font/google";
 
 import "./globals.css";
@@ -6,7 +6,35 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "XPE Consultoria | Indicadores 2026",
-  description: "Dashboard local para planejamento estrategico 2026.2"
+  description: "Dashboard local para planejamento estrategico 2026.2",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "XPE" },
+  icons: {
+    icon: [
+      { url: "/icone-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icone-512.png", sizes: "512x512", type: "image/png" }
+    ],
+    apple: [{ url: "/icone-192.png", sizes: "192x192", type: "image/png" }]
+  }
+};
+
+/**
+ * Sem `viewport` o celular renderiza numa largura virtual de 980px e encolhe
+ * tudo — o app parecia um site de desktop espremido. Não havia nenhum aqui.
+ *
+ * `themeColor` responde ao tema: é a cor da barra de status do sistema quando
+ * o app está instalado, e os dois valores são o `--bg` de cada tema.
+ * `viewportFit: cover` deixa o conteúdo ir até a borda em aparelho com notch —
+ * combinado com `env(safe-area-inset-*)` no CSS do app do time.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f8f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0a12" }
+  ]
 };
 
 /** Os dados são hidratados do PostgreSQL para o volume e lidos em runtime. */

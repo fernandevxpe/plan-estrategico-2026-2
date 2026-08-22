@@ -31,6 +31,24 @@ export type Perfil = "admin" | "comum";
 export const CABECALHO_PERFIL = "x-xpe-perfil";
 
 /**
+ * Por qual porta a requisição entrou.
+ *
+ * `basic`  passou pela credencial compartilhada da plataforma. Ela prova
+ *          "alguém do time", nunca "quem" — e é justamente por isso que ela
+ *          basta para o login DECLARADO (clicar no próprio nome numa lista):
+ *          a lista já era visível para quem tinha a senha.
+ * `sessao` veio pelo prefixo do app do time, que é isento do Basic para o app
+ *          instalável funcionar. Aqui não há credencial compartilhada por trás,
+ *          então declarar quem se é não vale nada: só e-mail e senha entram.
+ *
+ * Sem esta distinção, isentar `/api/time` do Basic transformaria o login
+ * declarado numa porta aberta — qualquer um abriria sessão como qualquer
+ * pessoa do cadastro.
+ */
+export type Porta = "basic" | "sessao";
+export const CABECALHO_PORTA = "x-xpe-porta";
+
+/**
  * Prefixos que só o admin alcança.
  *
  * Comparação por segmento, não por `startsWith` cru: `/financeiro` tem de casar

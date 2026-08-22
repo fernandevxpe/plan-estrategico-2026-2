@@ -116,7 +116,25 @@ try {
     // row_to_json preserva tipos como o Postgres os serializa, incluindo bigint
     // como número JSON e date como 'YYYY-MM-DD'. Fazer o dump no servidor evita
     // trazer 12 mil linhas como objetos JS só para reserializá-las.
-    const { rows } = await client.query(`SELECT row_to_json(t)::text AS line FROM ${table} t ORDER BY 1`);
+    //
+    // A exceção é o BLOB do comprovante. `row_to_json` serializa `bytea` em
+    // hex, o que DOBRA o tamanho (medido: 1.000 bytes de bytea → 2.011 bytes de
+    // JSON), e o conteúdo já chega gzipado de `guardarAnexo`, então nem o gzip
+    // daqui nem o TOAST recuperam nada. Com KEEP_DAILY = 14, cada MB de anexo
+    // viraria ~14 MB retidos, além do MB na tabela viva — 193 fotos de celular
+    // levariam este backup de 32 MB para ~8 GB. Pior: tudo isso acontece dentro
+    // de UMA transação e materializado em memória JS, então o container morre e
+    // se perde o dia inteiro de backup, não só a tabela do anexo.
+    //
+    // O METADADO CONTINUA: `fin_payment_attachment` guarda chave, sha256,
+    // tamanho, MIME e autor, e é ele que sustenta a auditoria. O que fica de
+    // fora é só o byte da imagem — que precisa de um caminho próprio, por lote
+    // e menos frequente, quando houver volume que justifique.
+    const colunas =
+      table === 'fin_anexo_blob'
+        ? `(to_jsonb(t) - 'conteudo')::text`
+        : `row_to_json(t)::text`;
+    const { rows } = await client.query(`SELECT ${colunas} AS line FROM ${table} t ORDER BY 1`);
     const ndjson = Buffer.from(rows.map((row) => row.line).join('\n') + (rows.length ? '\n' : ''), 'utf8');
     const compressed = gzipSync(ndjson, { level: 9 });
     const checksum = createHash('sha256').update(ndjson).digest('hex');

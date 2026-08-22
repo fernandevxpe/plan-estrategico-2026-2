@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { gzipSync } from "node:zlib";
 
 import { FinanceUnavailableError, query, queryOne, transaction } from "@/lib/financeiro/db";
@@ -92,12 +92,69 @@ export async function schemaTimeDisponivel(): Promise<boolean> {
 
 export type Pessoa = { id: number; nome: string; area: string | null; exigePin: boolean };
 
+export type ProvaDeIdentidade = "declarada" | "pin" | "senha";
+
 export type Sessao = {
   personId: number;
   nome: string;
-  prova: "declarada" | "pin";
+  prova: ProvaDeIdentidade;
+  admin: boolean;
+  trocarSenha: boolean;
   expiraEm: string;
 };
+
+// ---------------------------------------------------------------------------
+// Senha — scrypt, não sha256
+// ---------------------------------------------------------------------------
+/**
+ * O PIN ao lado usa sha256(pin || salt), e para um PIN de 4 dígitos atrás do
+ * Basic Auth compartilhado isso era proporcional. Senha exposta na internet
+ * não é: sha256 é rápido de propósito, e é isso que a torna péssima aqui —
+ * uma GPU testa bilhões por segundo contra um hash vazado.
+ *
+ * scrypt tem custo de memória e de tempo declarados. Os parâmetros viajam
+ * dentro do próprio hash (`scrypt$N$r$p$salt$hash`) para que endurecer o custo
+ * amanhã não invalide as senhas de hoje.
+ */
+const SCRYPT = { N: 16384, r: 8, p: 1, tamanho: 32 } as const;
+
+export function hashDeSenha(senha: string): string {
+  const salt = randomBytes(16);
+  const hash = scryptSync(senha.normalize("NFKC"), salt, SCRYPT.tamanho, {
+    N: SCRYPT.N,
+    r: SCRYPT.r,
+    p: SCRYPT.p,
+    maxmem: 64 * 1024 * 1024
+  });
+  return `scrypt$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString("hex")}$${hash.toString("hex")}`;
+}
+
+/**
+ * Comparação em tempo constante, e tolerante a hash malformado.
+ *
+ * `timingSafeEqual` estoura se os buffers tiverem tamanhos diferentes — o que
+ * por si só já vazaria o comprimento. Por isso o tamanho esperado sai dos
+ * parâmetros guardados, nunca do que está sendo comparado.
+ */
+export function conferirSenha(senha: string, guardado: string | null): boolean {
+  if (!guardado) return false;
+  const partes = guardado.split("$");
+  if (partes.length !== 6 || partes[0] !== "scrypt") return false;
+  const [, n, r, p, saltHex, hashHex] = partes;
+  let esperado: Buffer;
+  try {
+    esperado = Buffer.from(hashHex, "hex");
+    const calculado = scryptSync(senha.normalize("NFKC"), Buffer.from(saltHex, "hex"), esperado.length, {
+      N: Number(n),
+      r: Number(r),
+      p: Number(p),
+      maxmem: 64 * 1024 * 1024
+    });
+    return timingSafeEqual(calculado, esperado);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Quem o time pode dizer que é.
@@ -133,8 +190,8 @@ export async function abrirSessao(personId: number, pin: string | null, userAgen
   if (!Number.isInteger(personId) || personId <= 0) throw new TimeError("escolha quem é você");
 
   return transaction(async (client) => {
-    const pessoa = await client.query<{ id: number; name: string }>(
-      `SELECT p.id, p.name FROM fin_person p
+    const pessoa = await client.query<{ id: number; name: string; is_admin: boolean }>(
+      `SELECT p.id, p.name, p.is_admin FROM fin_person p
          JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $2
         WHERE p.id = $1 AND p.status = 'ativo'`,
       [personId, ENTITY]
@@ -171,24 +228,175 @@ export async function abrirSessao(personId: number, pin: string | null, userAgen
         personId,
         nome: pessoa.rows[0].name,
         prova,
+        admin: pessoa.rows[0].is_admin === true,
+        trocarSenha: false,
         expiraEm: linha.rows[0].expira_em.toISOString()
       } satisfies Sessao
     };
   });
 }
 
+/**
+ * Entrar com e-mail e senha. É este o caminho quando `/time` não está mais
+ * atrás do Basic Auth.
+ *
+ * Três decisões que valem a explicação:
+ *
+ * 1. **A mensagem de erro é a mesma para e-mail inexistente e senha errada.**
+ *    O caminho declarado (`abrirSessao`) podia distinguir, porque quem chegava
+ *    lá já tinha passado pela credencial do time e a lista de pessoas era
+ *    visível de qualquer jeito. Aqui não: mensagens diferentes transformam o
+ *    login num confirmador de quem trabalha na empresa.
+ *
+ * 2. **O hash é conferido mesmo quando o e-mail não existe.** Sem isso, "não
+ *    achei o e-mail" responde em 1ms e "senha errada" em ~80ms, e o relógio
+ *    entrega a lista de endereços válidos sem nunca acertar uma senha.
+ *
+ * 3. **O bloqueio é por atraso progressivo, não permanente.** Conta travada
+ *    para sempre por tentativa alheia é negação de serviço contra a própria
+ *    pessoa — o inverso do que a trava deveria proteger.
+ */
+const SENHA_FALSA = hashDeSenha(randomBytes(24).toString("hex"));
+
+export async function autenticar(email: string, senha: string, userAgent: string | null) {
+  const alvo = String(email ?? "").trim().toLowerCase();
+  const segredo = String(senha ?? "");
+  if (!alvo || !segredo) throw new TimeError("informe e-mail e senha", 400);
+
+  return transaction(async (client) => {
+    const linha = await client.query<{
+      id: number;
+      name: string;
+      is_admin: boolean;
+      senha_hash: string | null;
+      status: string | null;
+      senha_trocar: boolean | null;
+      falhas: number | null;
+      bloqueado_ate: Date | null;
+    }>(
+      `SELECT p.id, p.name, p.is_admin,
+              a.senha_hash, a.status, a.senha_trocar, a.falhas, a.bloqueado_ate
+         FROM fin_person p
+         JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $2
+         LEFT JOIN fin_person_acesso a ON a.person_id = p.id
+        WHERE lower(p.email) = $1 AND p.status = 'ativo'`,
+      [alvo, ENTITY]
+    );
+    const p = linha.rows[0];
+
+    // Roda sempre, inclusive sem pessoa: é o que iguala o tempo de resposta.
+    const senhaConfere = conferirSenha(segredo, p?.senha_hash ?? SENHA_FALSA);
+
+    if (!p || !p.senha_hash) throw new TimeError("e-mail ou senha incorretos", 401);
+    if (p.status === "bloqueado") throw new TimeError("acesso bloqueado — fale com o admin", 403);
+    if (p.bloqueado_ate && p.bloqueado_ate > new Date()) {
+      throw new TimeError("muitas tentativas — espere um pouco antes de tentar de novo", 429);
+    }
+
+    if (!senhaConfere) {
+      const falhas = (p.falhas ?? 0) + 1;
+      // 1–4 sem espera; da 5ª em diante o atraso dobra a cada erro, teto de 15min.
+      const esperaSegundos = falhas < 5 ? 0 : Math.min(15 * 60, 30 * 2 ** (falhas - 5));
+      await client.query(
+        `UPDATE fin_person_acesso
+            SET falhas = $2,
+                bloqueado_ate = CASE WHEN $3::int > 0 THEN now() + ($3 || ' seconds')::interval ELSE NULL END
+          WHERE person_id = $1`,
+        [p.id, falhas, esperaSegundos]
+      );
+      throw new TimeError("e-mail ou senha incorretos", 401);
+    }
+
+    await client.query(
+      `UPDATE fin_person_acesso
+          SET falhas = 0, bloqueado_ate = NULL, last_seen_at = now()
+        WHERE person_id = $1`,
+      [p.id]
+    );
+
+    const token = randomBytes(32).toString("base64url");
+    const criada = await client.query<{ expira_em: Date }>(
+      `INSERT INTO fin_time_sessao (token_sha256, person_id, prova, expira_em, user_agent)
+       VALUES ($1, $2, 'senha', now() + ($3 || ' days')::interval, $4)
+       RETURNING expira_em`,
+      [sha256(token), p.id, String(DIAS_DE_SESSAO), userAgent?.slice(0, 300) ?? null]
+    );
+
+    return {
+      token,
+      sessao: {
+        personId: Number(p.id),
+        nome: p.name,
+        prova: "senha",
+        admin: p.is_admin === true,
+        trocarSenha: p.senha_trocar === true,
+        expiraEm: criada.rows[0].expira_em.toISOString()
+      } satisfies Sessao
+    };
+  });
+}
+
+/**
+ * Trocar a própria senha. A sessão diz de quem é — nunca um parâmetro.
+ *
+ * Exige a senha atual mesmo com sessão válida: sessão de 30 dias num celular
+ * que ficou na mesa não pode virar troca de senha.
+ */
+export async function trocarSenha(
+  sessao: Sessao,
+  tokenCorrente: string,
+  atual: string,
+  nova: string
+): Promise<void> {
+  if (String(nova ?? "").length < 8) throw new TimeError("a nova senha precisa de pelo menos 8 caracteres", 422);
+  if (atual === nova) throw new TimeError("a nova senha tem de ser diferente da atual", 422);
+
+  await transaction(async (client) => {
+    const linha = await client.query<{ senha_hash: string | null }>(
+      `SELECT senha_hash FROM fin_person_acesso WHERE person_id = $1 FOR UPDATE`,
+      [sessao.personId]
+    );
+    if (!conferirSenha(String(atual ?? ""), linha.rows[0]?.senha_hash ?? SENHA_FALSA)) {
+      throw new TimeError("senha atual incorreta", 401);
+    }
+    await client.query(
+      `UPDATE fin_person_acesso
+          SET senha_hash = $2, senha_set_at = now(), senha_set_by = 'a própria pessoa',
+              senha_trocar = false, falhas = 0, bloqueado_ate = NULL
+        WHERE person_id = $1`,
+      [sessao.personId, hashDeSenha(nova)]
+    );
+    // As outras sessões caem: trocar senha porque desconfiou de algo tem de
+    // expulsar quem estiver dentro, e a sessão corrente é preservada para a
+    // pessoa não ser deslogada pelo próprio acerto.
+    await client.query(
+      `UPDATE fin_time_sessao SET encerrada_em = now()
+        WHERE person_id = $1 AND encerrada_em IS NULL AND token_sha256 <> $2`,
+      [sessao.personId, sha256(tokenCorrente ?? "")]
+    );
+  });
+}
+
 /** Resolve o cookie em sessão, ou `null`. Toda rota do time começa por aqui. */
 export async function lerSessao(token: string | null | undefined): Promise<Sessao | null> {
   if (!token) return null;
-  const linha = await queryOne<{ person_id: number; name: string; prova: "declarada" | "pin"; expira_em: Date }>(
+  const linha = await queryOne<{
+    person_id: number;
+    name: string;
+    prova: ProvaDeIdentidade;
+    is_admin: boolean;
+    senha_trocar: boolean | null;
+    expira_em: Date;
+  }>(
     `UPDATE fin_time_sessao s SET ultimo_uso = now()
        FROM fin_person p
+       LEFT JOIN fin_person_acesso a ON a.person_id = p.id
       WHERE s.token_sha256 = $1
         AND p.id = s.person_id
         AND s.expira_em > now()
         AND s.encerrada_em IS NULL
         AND p.status = 'ativo'
-      RETURNING s.person_id, p.name, s.prova, s.expira_em`,
+      RETURNING s.person_id, p.name, s.prova, p.is_admin, a.senha_trocar, s.expira_em`,
     [sha256(token)]
   );
   if (!linha) return null;
@@ -196,6 +404,10 @@ export async function lerSessao(token: string | null | undefined): Promise<Sessa
     personId: Number(linha.person_id),
     nome: linha.name,
     prova: linha.prova,
+    admin: linha.is_admin === true,
+    // Só cobra troca de quem entrou POR senha: quem entrou declarado ainda não
+    // tem senha para trocar, e pedir isso a ele seria um beco sem saída.
+    trocarSenha: linha.prova === "senha" && linha.senha_trocar === true,
     expiraEm: linha.expira_em.toISOString()
   };
 }

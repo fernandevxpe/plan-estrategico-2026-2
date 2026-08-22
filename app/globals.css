@@ -13231,3 +13231,80 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   .fin-analise-kpis { grid-template-columns: repeat(2, 1fr); }
   .fin-barra-cel { display: none; }
 }
+
+/* ===========================================================================
+   APP INSTALADO — quando a pessoa abre pelo ícone, não pelo navegador
+   ---------------------------------------------------------------------------
+   O manifest declara `scope: /time`: instalado, o único lugar navegável é o app
+   do time. Então o cromo da plataforma (topbar de 68px, faixa de sync, as sete
+   abas de área, breadcrumb) não é navegação — é 800px de nada antes do
+   conteúdo, num aparelho que tem 852px de altura.
+
+   Isto é `@media (display-mode: standalone)`, não uma classe: a mesma URL
+   servida no navegador continua com o cromo inteiro, e só a janela instalada o
+   perde. Sem JS, sem estado, sem divergência entre servidor e cliente.
+
+   `env(safe-area-inset-*)` porque `viewportFit: cover` no layout leva o
+   conteúdo até a borda — sem isto o texto entra embaixo do notch e da barra
+   de gestos.
+   =========================================================================== */
+@media (display-mode: standalone) {
+  .topbar,
+  .subbar,
+  .skip-link {
+    display: none !important;
+  }
+
+  .page {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .shell {
+    width: min(1440px, calc(100vw - 24px));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  /* As abas do time viram a navegação principal: grudam no topo e ganham a
+     altura de alvo de toque que o guia de acessibilidade pede (44px). */
+  .fin-shell > .fin-tabs {
+    position: sticky;
+    top: env(safe-area-inset-top);
+    z-index: 20;
+    margin: 0 -12px 14px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-left));
+    background: var(--topbar-bg);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .fin-shell > .fin-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .fin-shell > .fin-tabs .fin-tab {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  /* O botão de tema flutua sobre o conteúdo; instalado, ele precisa subir
+     acima da barra de gestos do sistema. */
+  .theme-toggle {
+    bottom: calc(18px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Alvo de toque no app do time, instalado ou não. 44px é o mínimo do WCAG 2.5.5
+   e o que a mão molhada de quem está na obra realmente acerta. */
+@media (pointer: coarse) {
+  .time-app .time-botao,
+  .time-app .time-pessoa,
+  .time-app input,
+  .time-app select,
+  .time-app textarea {
+    min-height: 44px;
+  }
+}

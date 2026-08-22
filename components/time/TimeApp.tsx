@@ -27,7 +27,15 @@ import { SeloCamada, brl } from "@/components/financeiro/Certeza";
  *    logo vou receber") é o que gera a cobrança na semana seguinte.
  */
 
-type Sessao = { personId: number; nome: string; prova: "declarada" | "pin"; expiraEm: string };
+type Sessao = {
+  personId: number;
+  nome: string;
+  prova: "declarada" | "pin" | "senha";
+  admin: boolean;
+  trocarSenha: boolean;
+  expiraEm: string;
+};
+type Porta = "basic" | "sessao";
 type Pessoa = { id: number; nome: string; area: string | null; exigePin: boolean };
 type Opcoes = {
   tipos: { slug: string; nome: string; exigeNfe: boolean }[];
@@ -74,6 +82,7 @@ const ORIGEM_ROTULO: Record<string, string> = {
 export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel: boolean; motivo: string | null }) {
   const [sessao, setSessao] = useState<Sessao | null>(null);
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
+  const [porta, setPorta] = useState<Porta>("sessao");
   const [opcoes, setOpcoes] = useState<Opcoes>({ tipos: [], categorias: [] });
   const [envios, setEnvios] = useState<Envio[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -84,6 +93,7 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
     const j = await r.json();
     setSessao(j.sessao ?? null);
     setPessoas(j.pessoas ?? []);
+    setPorta((j.porta as Porta) ?? "sessao");
     return j.sessao as Sessao | null;
   }, []);
 
@@ -130,12 +140,17 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
 
   if (carregando) return <div className="time-aviso">carregando…</div>;
 
-  if (!sessao) {
-    return <Identificacao pessoas={pessoas} aoEntrar={async () => {
-      const s = await carregarSessao();
-      if (s) await carregarEnvios();
-    }} />;
-  }
+  const recarregar = async () => {
+    const s = await carregarSessao();
+    if (s) await carregarEnvios();
+  };
+
+  if (!sessao) return <Identificacao pessoas={pessoas} porta={porta} aoEntrar={recarregar} />;
+
+  // A senha que o admin definiu é de ENTREGA: quem a definiu conhece o valor.
+  // Ela não pode sobreviver à primeira sessão, e por isso esta tela vem ANTES
+  // de qualquer outra — não é um aviso que dá para adiar.
+  if (sessao.trocarSenha) return <TrocarSenha nome={sessao.nome} aoTrocar={recarregar} />;
 
   return (
     <div className="time-app">
@@ -168,23 +183,38 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
 // Identidade
 // ---------------------------------------------------------------------------
 
-function Identificacao({ pessoas, aoEntrar }: { pessoas: Pessoa[]; aoEntrar: () => Promise<void> }) {
-  const [id, setId] = useState<number | null>(null);
-  const [pin, setPin] = useState("");
+function Identificacao({
+  pessoas,
+  porta,
+  aoEntrar
+}: {
+  pessoas: Pessoa[];
+  porta: Porta;
+  aoEntrar: () => Promise<void>;
+}) {
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const escolhida = pessoas.find((p) => p.id === id);
 
-  async function entrar() {
-    if (!id) return setErro("escolha quem é você");
+  // O caminho declarado (clicar no próprio nome) só existe quando a requisição
+  // passou pela credencial compartilhada da plataforma. Pela porta do app não
+  // há nada por trás, e escolher um nome numa lista viraria "escolha de quem
+  // você quer ser". Ver o comentário em app/api/time/sessao/route.ts.
+  const podeDeclarar = porta === "basic" && pessoas.length > 0;
+  const [declarado, setDeclarado] = useState<number | null>(null);
+  const [pin, setPin] = useState("");
+  const escolhida = pessoas.find((p) => p.id === declarado);
+
+  async function postar(corpo: Record<string, unknown>) {
     setEnviando(true);
     setErro(null);
     const r = await fetch("/api/time/sessao", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ personId: id, pin: pin || null })
+      body: JSON.stringify(corpo)
     });
-    const j = await r.json();
+    const j = await r.json().catch(() => ({}));
     setEnviando(false);
     if (!r.ok) return setErro(j.error ?? "não consegui entrar");
     await aoEntrar();
@@ -192,43 +222,166 @@ function Identificacao({ pessoas, aoEntrar }: { pessoas: Pessoa[]; aoEntrar: () 
 
   return (
     <div className="time-identidade">
-      <h2>Quem é você?</h2>
+      <h2>Entrar</h2>
       <p className="time-sub">
-        A senha desta plataforma é a mesma para o time inteiro — ela sabe que você é do time, não sabe qual pessoa. Por
-        isso a escolha abaixo é uma <strong>declaração</strong>, e é assim que ela fica registrada em tudo que você
-        enviar.
+        Use o seu e-mail e a sua senha. É essa entrada que faz cada lançamento nascer com o seu nome — e é por ela que
+        você vê o seu reembolso, e só o seu.
       </p>
 
-      <div className="time-pessoas">
-        {pessoas.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={id === p.id ? "time-pessoa ativa" : "time-pessoa"}
-            onClick={() => {
-              setId(p.id);
-              setErro(null);
-            }}
-          >
-            <span className="time-pessoa-nome">{p.nome}</span>
-            {p.area ? <span className="time-pessoa-area">{p.area}</span> : null}
-            {p.exigePin ? <span className="time-pessoa-pin">PIN</span> : null}
-          </button>
-        ))}
-      </div>
-
-      {escolhida?.exigePin ? (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!email.trim() || !senha) return setErro("informe e-mail e senha");
+          void postar({ email: email.trim(), senha });
+        }}
+      >
         <label className="campo">
-          <span>PIN de {escolhida.nome}</span>
-          <input type="password" inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)} autoComplete="off" />
+          <span>E-mail</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="voce.xpenergy@gmail.com"
+          />
         </label>
+        <label className="campo">
+          <span>Senha</span>
+          <input
+            type="password"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            autoComplete="current-password"
+          />
+        </label>
+
+        {erro ? <p className="time-erro">{erro}</p> : null}
+
+        <button type="submit" className="time-botao" disabled={enviando || !email.trim() || !senha}>
+          {enviando ? "entrando…" : "entrar"}
+        </button>
+      </form>
+
+      <p className="time-sub">Sem senha ainda? Peça ao Fernando ou ao Igor — eles cadastram e te entregam uma.</p>
+
+      {podeDeclarar ? (
+        <details className="time-declarar">
+          <summary>Entrar declarando quem sou (só pelo navegador da plataforma)</summary>
+          <p className="time-sub">
+            A senha da plataforma é a mesma para o time inteiro: ela sabe que você é do time, não sabe qual pessoa. Por
+            isso a escolha abaixo fica registrada como <strong>declaração</strong>, não como prova — e esta porta não
+            existe no app instalado no celular.
+          </p>
+          <div className="time-pessoas">
+            {pessoas.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={declarado === p.id ? "time-pessoa ativa" : "time-pessoa"}
+                onClick={() => {
+                  setDeclarado(p.id);
+                  setErro(null);
+                }}
+              >
+                <span className="time-pessoa-nome">{p.nome}</span>
+                {p.area ? <span className="time-pessoa-area">{p.area}</span> : null}
+                {p.exigePin ? <span className="time-pessoa-pin">PIN</span> : null}
+              </button>
+            ))}
+          </div>
+          {escolhida?.exigePin ? (
+            <label className="campo">
+              <span>PIN de {escolhida.nome}</span>
+              <input
+                type="password"
+                inputMode="numeric"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                autoComplete="off"
+              />
+            </label>
+          ) : null}
+          <button
+            type="button"
+            className="time-botao secundario"
+            onClick={() => {
+              if (!declarado) return setErro("escolha quem é você");
+              void postar({ personId: declarado, pin: pin || null });
+            }}
+            disabled={enviando || !declarado}
+          >
+            {enviando ? "entrando…" : "entrar declarando"}
+          </button>
+        </details>
       ) : null}
+    </div>
+  );
+}
 
-      {erro ? <p className="time-erro">{erro}</p> : null}
+/**
+ * Troca obrigatória da senha de entrega.
+ *
+ * Não há botão de "depois". A senha atual foi definida por outra pessoa, que a
+ * conhece — adiar a troca é manter uma credencial compartilhada com quem não
+ * deveria mais tê-la.
+ */
+function TrocarSenha({ nome, aoTrocar }: { nome: string; aoTrocar: () => Promise<void> }) {
+  const [atual, setAtual] = useState("");
+  const [nova, setNova] = useState("");
+  const [repetida, setRepetida] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
 
-      <button type="button" className="time-botao" onClick={entrar} disabled={enviando || !id}>
-        {enviando ? "entrando…" : "entrar"}
-      </button>
+  const curta = nova.length > 0 && nova.length < 8;
+  const diferem = repetida.length > 0 && nova !== repetida;
+
+  async function trocar(e: React.FormEvent) {
+    e.preventDefault();
+    if (nova !== repetida) return setErro("as duas senhas novas não são iguais");
+    setEnviando(true);
+    setErro(null);
+    const r = await fetch("/api/time/senha", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ atual, nova })
+    });
+    const j = await r.json().catch(() => ({}));
+    setEnviando(false);
+    if (!r.ok) return setErro(j.error ?? "não consegui trocar a senha");
+    await aoTrocar();
+  }
+
+  return (
+    <div className="time-identidade">
+      <h2>Escolha uma senha sua, {nome.split(" ")[0]}</h2>
+      <p className="time-sub">
+        A senha que você recebeu foi criada por outra pessoa, e ela conhece o valor. Antes de qualquer outra coisa,
+        troque por uma que só você saiba. As outras sessões abertas com a senha antiga vão cair.
+      </p>
+      <form onSubmit={trocar}>
+        <label className="campo">
+          <span>Senha que você recebeu</span>
+          <input type="password" value={atual} onChange={(e) => setAtual(e.target.value)} autoComplete="current-password" />
+        </label>
+        <label className="campo">
+          <span>Nova senha (mínimo 8 caracteres)</span>
+          <input type="password" value={nova} onChange={(e) => setNova(e.target.value)} autoComplete="new-password" />
+          {curta ? <span className="time-erro">faltam {8 - nova.length} caractere(s)</span> : null}
+        </label>
+        <label className="campo">
+          <span>Repita a nova senha</span>
+          <input type="password" value={repetida} onChange={(e) => setRepetida(e.target.value)} autoComplete="new-password" />
+          {diferem ? <span className="time-erro">as duas não são iguais</span> : null}
+        </label>
+        {erro ? <p className="time-erro">{erro}</p> : null}
+        <button type="submit" className="time-botao" disabled={enviando || !atual || nova.length < 8 || nova !== repetida}>
+          {enviando ? "trocando…" : "trocar e continuar"}
+        </button>
+      </form>
     </div>
   );
 }
@@ -321,6 +474,57 @@ type AoFalhar = (r: { tom: "ok" | "erro"; texto: string }) => void;
  * mensagem daqui é escrita para a pessoa ("este tipo exige a chave da NF-e"),
  * e trocá-la por um genérico desperdiça a única explicação que existe.
  */
+/**
+ * Encolhe a foto ANTES de sair do telefone.
+ *
+ * POR QUE ISTO É O ITEM MAIS IMPORTANTE DESTE ARQUIVO
+ * O comprovante é gravado como `bytea` no Postgres, e o backup diário serializa
+ * a tabela inteira com `row_to_json` — que emite bytea em hex e DOBRA o
+ * tamanho. Com 14 dias de retenção, cada MB de anexo vira ~14 MB guardados.
+ * Foto de celular tem 3–5 MB e é JPEG, então nenhum gzip depois disso recupera
+ * nada: 193 comprovantes levariam o backup de 32 MB para ~8 GB.
+ *
+ * Reduzir para 1600px no lado maior e requantizar em JPEG 0.8 leva a mesma foto
+ * para ~250 KB — legível para conferir uma nota, e 12× menor. É o único ganho
+ * de uma ordem de grandeza disponível, e ele custa doze linhas.
+ *
+ * PDF e XML passam intactos: não são imagem, e um PDF de nota já é pequeno.
+ * Se qualquer passo falhar (navegador antigo, HEIC que o canvas não decodifica),
+ * devolve o arquivo original — anexo grande é melhor que anexo nenhum.
+ */
+const LADO_MAXIMO = 1600;
+const QUALIDADE = 0.8;
+
+async function encolherImagem(arquivo: File): Promise<File> {
+  if (!arquivo.type.startsWith("image/")) return arquivo;
+  // Abaixo de 400 KB não vale o reencode: o ganho é pequeno e a requantização
+  // sempre perde alguma nitidez do texto da nota.
+  if (arquivo.size <= 400 * 1024) return arquivo;
+
+  try {
+    const bitmap = await createImageBitmap(arquivo);
+    const escala = Math.min(1, LADO_MAXIMO / Math.max(bitmap.width, bitmap.height));
+    const largura = Math.round(bitmap.width * escala);
+    const altura = Math.round(bitmap.height * escala);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = largura;
+    canvas.height = altura;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return arquivo;
+    ctx.drawImage(bitmap, 0, 0, largura, altura);
+    bitmap.close();
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", QUALIDADE));
+    if (!blob || blob.size >= arquivo.size) return arquivo;
+
+    const nome = arquivo.name.replace(/\.[^.]+$/, "") + ".jpg";
+    return new File([blob], nome, { type: "image/jpeg", lastModified: arquivo.lastModified });
+  } catch {
+    return arquivo;
+  }
+}
+
 async function postar(url: string, dados: Record<string, unknown>, arquivo: File | null) {
   let resposta: Response;
   if (arquivo) {
@@ -329,7 +533,7 @@ async function postar(url: string, dados: Record<string, unknown>, arquivo: File
       if (v === null || v === undefined || v === "") continue;
       form.append(k, typeof v === "object" ? JSON.stringify(v) : String(v));
     }
-    form.append("arquivo", arquivo);
+    form.append("arquivo", await encolherImagem(arquivo));
     resposta = await fetch(url, { method: "POST", body: form });
   } else {
     resposta = await fetch(url, {

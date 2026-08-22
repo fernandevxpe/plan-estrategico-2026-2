@@ -65,6 +65,27 @@ export type AbaTime = "inicio" | "reembolso" | "custo" | "nota" | "compra" | "en
 
 const HOJE = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * Máscara de dinheiro que preenche a partir dos CENTAVOS.
+ *
+ * Digitar 1 9 3 8 3 vira R$ 193,83 — é como a maquininha, o caixa eletrônico e
+ * todo app de banco funcionam, e é o único jeito que não exige a pessoa
+ * lembrar de digitar a vírgula. Um `<input type="number">` no celular abre o
+ * teclado errado, aceita ponto e vírgula misturados, e deixa "193.8" virar
+ * R$ 193,80 sem ninguém perceber.
+ *
+ * `inputMode="numeric"` garante o teclado de números; o valor exibido é sempre
+ * formatado, e o que vai para o servidor é o total em reais com vírgula.
+ */
+function mascaraDinheiro(bruto: string): string {
+  const digitos = bruto.replace(/\D/g, "").slice(0, 11);
+  if (!digitos) return "";
+  const n = Number(digitos) / 100;
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+const centavosDoTexto = (v: string) => Number(v.replace(/\D/g, "") || 0);
+
 /** O vocabulário de estado do time — três palavras, não sete status de banco. */
 const ESTADO_ROTULO: Record<Envio["estado"], { texto: string; camada: Parameters<typeof SeloCamada>[0]["camada"] }> = {
   rascunho: { texto: "rascunho", camada: "indeterminado" },
@@ -926,8 +947,12 @@ function FormEnvio({
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [data, setData] = useState(HOJE());
-  const [vencimento, setVencimento] = useState("");
   const [pagamento, setPagamento] = useState(nota ? "boleto" : "a_definir");
+  const [parcelas, setParcelas] = useState("");
+  const [final, setFinal] = useState("");
+  // Só a tela de NOTA ainda precisa de quem emitiu: numa nota fiscal o emitente
+  // é o fato central. Num custo, ele já vem da foto quando existe, e pedir de
+  // novo é um campo a mais entre a pessoa e o botão de enviar.
   const [fornecedor, setFornecedor] = useState("");
   const [nfeKey, setNfeKey] = useState("");
   const [nfeNumero, setNfeNumero] = useState("");
@@ -1020,7 +1045,8 @@ function FormEnvio({
           descricao,
           valor,
           data,
-          vencimento,
+          parcelas,
+          final,
           pagamento,
           fornecedor,
           nfeKey,
@@ -1043,6 +1069,8 @@ function FormEnvio({
       setDescricao("");
       setNfeKey("");
       setNfeNumero("");
+      setParcelas("");
+      setFinal("");
       setCentro("");
       setLinha("");
       setBanco("");
@@ -1072,8 +1100,7 @@ function FormEnvio({
           </>
         ) : (
           <>
-            Uma despesa que a <strong>empresa</strong> pagou ou vai pagar. Se você pagou do seu bolso, o caminho é o
-            reembolso — é ele que te devolve o dinheiro.
+            Se você pagou do <strong>seu bolso</strong>, o caminho é o reembolso — é ele que te devolve o dinheiro.
           </>
         )}
       </p>
@@ -1083,32 +1110,85 @@ function FormEnvio({
         <input value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
       </label>
 
-      <div className="campo-par">
-        <label className="campo">
-          <span>{nota ? "Emissão" : "Data"}</span>
-          <input type="date" value={data} onChange={(e) => setData(e.target.value)} required />
-        </label>
-        <label className="campo">
-          <span>Valor</span>
-          <input value={valor} onChange={(e) => setValor(e.target.value)} inputMode="decimal" placeholder="0,00" required />
-        </label>
-      </div>
+      {/* O valor é o campo mais importante da tela, então ganha a tela inteira
+          e o tamanho de um número que se lê de longe. */}
+      <label className="campo valor-campo">
+        <span>Valor total</span>
+        <div className="valor-caixa">
+          <em>R$</em>
+          <input
+            value={valor}
+            onChange={(e) => setValor(mascaraDinheiro(e.target.value))}
+            inputMode="numeric"
+            placeholder="0,00"
+            required
+          />
+        </div>
+      </label>
 
-      <div className="campo-par">
-        <label className="campo">
-          <span>Vencimento (se houver)</span>
-          <input type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} />
-        </label>
-        <label className="campo">
-          <span>Como é pago</span>
-          <select value={pagamento} onChange={(e) => setPagamento(e.target.value)}>
-            <option value="a_definir">ainda não sei</option>
-            <option value="boleto">boleto</option>
-            <option value="pix_da_empresa">PIX da empresa</option>
-            <option value="cartao_da_empresa">cartão da empresa</option>
-            <option value="debito_automatico">débito automático</option>
-          </select>
-        </label>
+      {/* Parcelamento: chips, não um campo numérico. "Em quantas vezes" tem
+          quatro ou cinco respostas prováveis, e um teclado para escolher entre
+          elas é mais trabalho do que tocar. O total continua sendo o total —
+          a parcela é mostrada, não digitada. */}
+      {!nota ? (
+        <div className="campo">
+          <span className="campo-rotulo">Parcelado?</span>
+          <div className="chips">
+            {["", "2", "3", "4", "6", "10", "12"].map((n) => (
+              <button
+                key={n || "avista"}
+                type="button"
+                className={parcelas === n ? "chip ativo" : "chip"}
+                onClick={() => setParcelas(n)}
+              >
+                {n === "" ? "à vista" : `${n}×`}
+              </button>
+            ))}
+          </div>
+          {parcelas && centavosDoTexto(valor) > 0 ? (
+            <small className="parcela-conta">
+              {parcelas}× de <strong>{brl(Math.round(centavosDoTexto(valor) / Number(parcelas)))}</strong> — o total
+              lançado é {brl(centavosDoTexto(valor))}
+            </small>
+          ) : null}
+        </div>
+      ) : null}
+
+      <label className="campo">
+        <span>{nota ? "Emissão" : "Data da compra"}</span>
+        <input type="date" value={data} onChange={(e) => setData(e.target.value)} required />
+      </label>
+
+      {/* Forma de pagamento em chips: são cinco opções, todas curtas, e um
+          `select` esconde as outras quatro atrás de um toque e de uma folha
+          nativa que cobre a tela. */}
+      <div className="campo">
+        <span className="campo-rotulo">Como foi pago</span>
+        <div className="chips">
+          {[
+            ["cartao_da_empresa", "Cartão"],
+            ["pix_da_empresa", "PIX"],
+            ["boleto", "Boleto"],
+            ["debito_automatico", "Débito automático"],
+            ["a_definir", "Não sei"]
+          ].map(([v, r]) => (
+            <button
+              key={v}
+              type="button"
+              className={pagamento === v ? "chip ativo" : "chip"}
+              onClick={() => {
+                setPagamento(v);
+                if (v !== "cartao_da_empresa") {
+                  setBanco("");
+                  setCartao("");
+                  setFinal("");
+                }
+              }}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/*
@@ -1117,47 +1197,68 @@ function FormEnvio({
         795 itens de fatura, contra 37,5% de cobertura de contraparte. É o
         sinal que quase sempre casa.
       */}
+      {/*
+        O CARTÃO, e a regra é a mesma para os dois bancos.
+        Antes, escolher Nubank mostrava os finais e escolher Inter não mostrava
+        nada — porque o Inter tem zero plásticos cadastrados. Do lado de quem
+        usa isso é incompreensível: o cartão do Inter existe na carteira dela.
+
+        Agora o final é sempre digitável. Se casar com um plástico registrado, o
+        vínculo acontece sozinho e a tela avisa. Se não casar, os quatro dígitos
+        ficam guardados assim mesmo — é o dado que ela tem na mão, e é ele que
+        vai casar com a fatura.
+      */}
       {pagamento === "cartao_da_empresa" && opcoes.bancos.length > 0
         ? (() => {
             const escolhido = opcoes.bancos.find((b) => String(b.id) === banco);
+            const casa = escolhido?.plasticos.find((p) => p.nome.endsWith(final)) && final.length === 4;
             return (
               <>
-                <label className="campo">
-                  <span>Qual banco</span>
-                  <select
-                    value={banco}
-                    onChange={(e) => {
-                      setBanco(e.target.value);
-                      setCartao("");
-                    }}
-                  >
-                    <option value="">— não lembro —</option>
+                <div className="campo">
+                  <span className="campo-rotulo">Qual banco</span>
+                  <div className="chips">
                     {opcoes.bancos.map((b) => (
-                      <option key={b.id} value={b.id}>
+                      <button
+                        key={b.id}
+                        type="button"
+                        className={banco === String(b.id) ? "chip ativo" : "chip"}
+                        onClick={() => {
+                          setBanco(String(b.id));
+                          setCartao("");
+                        }}
+                      >
                         {b.nome}
-                      </option>
+                      </button>
                     ))}
-                  </select>
-                  <small>É o que vai casar este custo com a fatura quando ela fechar.</small>
-                </label>
+                  </div>
+                </div>
 
-                {/*
-                  O plástico só aparece quando o banco tem mais de um. Perguntar
-                  "qual dos nove finais" a quem já disse "Nubank" é pedir um dado
-                  que a pessoa muitas vezes não tem na cabeça — e campo que ela
-                  não sabe responder é campo que ela deixa em branco ou erra.
-                */}
-                {escolhido && escolhido.plasticos.length > 1 ? (
+                {banco ? (
                   <label className="campo">
-                    <span>Qual cartão do {escolhido.nome}</span>
-                    <select value={cartao} onChange={(e) => setCartao(e.target.value)}>
-                      <option value="">— não sei o final —</option>
-                      {escolhido.plasticos.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.nome}
-                        </option>
-                      ))}
-                    </select>
+                    <span>Final do cartão</span>
+                    <input
+                      value={final}
+                      onChange={(e) => setFinal(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="4 últimos dígitos"
+                      className="campo-final"
+                    />
+                    {casa ? (
+                      <small className="reemb-leitura ok">
+                        Reconheci este cartão — vai casar sozinho com a fatura.
+                      </small>
+                    ) : final.length === 4 ? (
+                      <small className="reemb-leitura aviso">
+                        Este final ainda não está cadastrado. Guardo assim mesmo — serve para casar com a fatura.
+                      </small>
+                    ) : escolhido && escolhido.plasticos.length > 0 ? (
+                      <small>
+                        Cadastrados: {escolhido.plasticos.map((p) => p.nome.replace("final ", "")).join(" · ")}
+                      </small>
+                    ) : (
+                      <small>Se não lembrar, pode deixar em branco.</small>
+                    )}
                   </label>
                 ) : null}
               </>
@@ -1165,10 +1266,15 @@ function FormEnvio({
           })()
         : null}
 
-      <label className="campo">
-        <span>Quem cobrou / emitiu</span>
-        <input value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} placeholder="nome do fornecedor" />
-      </label>
+      {/* Só na NOTA. Numa nota fiscal o emitente é o fato central; num custo
+          ele já vem da foto quando existe, e perguntar de novo é mais um campo
+          entre a pessoa e o botão de enviar. */}
+      {nota ? (
+        <label className="campo">
+          <span>Quem emitiu</span>
+          <input value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} placeholder="nome do fornecedor" />
+        </label>
+      ) : null}
 
       {nota ? (
         <div className="campo-par">
@@ -1231,19 +1337,29 @@ function FormEnvio({
         no mesmo dia — aí não há obra para escolher, e a linha de serviço é a
         resposta possível.
       */}
+      {/*
+        A linha de serviço fica RECOLHIDA. Ela responde um caso real —
+        combustível para rodar um laudo que ainda não virou contrato — mas é
+        minoria, e um select aberto no meio do formulário fazia todo mundo parar
+        para ler uma pergunta que quase nunca é a sua. Some de vez quando há
+        obra: aí o destino já está respondido.
+      */}
       {!centro ? (
-        <label className="campo">
-          <span>Foi para qual serviço? (se souber)</span>
-          <select value={linha} onChange={(e) => setLinha(e.target.value)}>
-            <option value="">— não sei / não é de um serviço —</option>
-            {opcoes.linhas.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.nome}
-              </option>
-            ))}
-          </select>
-          <small>Ex.: combustível para rodar um laudo que ainda não virou contrato.</small>
-        </label>
+        <details className="campo-extra">
+          <summary>Foi para um serviço específico?</summary>
+          <label className="campo">
+            <span>Qual serviço</span>
+            <select value={linha} onChange={(e) => setLinha(e.target.value)}>
+              <option value="">— não é de um serviço —</option>
+              {opcoes.linhas.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.nome}
+                </option>
+              ))}
+            </select>
+            <small>Ex.: combustível para rodar um laudo que ainda não virou contrato.</small>
+          </label>
+        </details>
       ) : null}
 
       <label className="campo">

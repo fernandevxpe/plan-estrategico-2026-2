@@ -868,6 +868,8 @@ export type NovoEnvio = {
   linhaServico?: unknown;
   cartao?: unknown;
   banco?: unknown;
+  final?: unknown;
+  parcelas?: unknown;
   nfeKey?: unknown;
   nfeNumero?: unknown;
   nfeSerie?: unknown;
@@ -899,6 +901,11 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
   if (corpo.kind === "custo" && pagamento === "ja_paguei_do_meu") {
     throw new TimeError("você pagou do seu bolso — use a tela de reembolso, que é a que te devolve o dinheiro");
   }
+
+  // Parcelas: NULL é à vista. O CHECK da 0141 recusa 1 de propósito — "uma
+  // parcela" e "à vista" são fatos diferentes na fatura.
+  const nParcelas = Number(corpo.parcelas);
+  const parcelas = Number.isInteger(nParcelas) && nParcelas >= 2 && nParcelas <= 48 ? nParcelas : null;
 
   const nfeBruta = typeof corpo.nfeKey === "string" ? corpo.nfeKey.replace(/\D/g, "") : "";
   if (nfeBruta && nfeBruta.length !== 44) throw new TimeError("a chave da NF-e tem 44 dígitos");
@@ -934,6 +941,7 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
     // isso perderia o lançamento. Descarta o cartão e mantém o resto.
     let cartaoId: number | null = null;
     let bancoId: number | null = null;
+    let last4: string | null = null;
     if (pagamento === "cartao_da_empresa" || pagamento === "ja_paguei_do_meu") {
       const idPlastico = Number(corpo.cartao);
       if (Number.isInteger(idPlastico) && idPlastico > 0) {
@@ -956,6 +964,34 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
           bancoId = a.rows[0] ? Number(a.rows[0].id) : null;
         }
       }
+
+      // O FINAL DIGITADO. Casando com um plástico registrado, o vínculo é feito
+      // sozinho — a pessoa digita quatro dígitos e ganha o cartão certo sem
+      // escolher de lista nenhuma. Não casando, o final fica guardado assim
+      // mesmo: é o dado que ela tem na mão, e perdê-lo por falta de cadastro
+      // prévio seria jogar fora justamente o que casa com a fatura depois.
+      const digitado = String(corpo.final ?? "").replace(/\D/g, "").slice(-4);
+      if (digitado.length === 4) {
+        last4 = digitado;
+        if (!cartaoId) {
+          const achado = await client.query(
+            `SELECT id, card_account_id FROM fin_card
+              WHERE last4 = $1 AND status = 'registrado'
+                AND ($2::bigint IS NULL OR card_account_id = $2)
+              LIMIT 2`,
+            [digitado, bancoId]
+          );
+          // Dois plásticos com o mesmo final é improvável; se acontecer, não dá
+          // para escolher. Fica só o final, e o vínculo espera um humano.
+          if (achado.rows.length === 1) {
+            cartaoId = Number(achado.rows[0].id);
+            bancoId = Number(achado.rows[0].card_account_id);
+          }
+        }
+      } else if (cartaoId) {
+        const c = await client.query(`SELECT last4 FROM fin_card WHERE id = $1`, [cartaoId]);
+        last4 = (c.rows[0]?.last4 as string | null) ?? null;
+      }
     }
 
     // AINDA NÃO SE DERIVA A LINHA DO PROJETO, e isso é uma lacuna declarada, não
@@ -973,10 +1009,10 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
       `INSERT INTO fin_time_envio
          (entity_id, kind, person_id, identidade_prova, titulo, descricao, amount_cents,
           incurred_on, due_on, pagamento, ja_pago, categoria_sugerida_id,
-          cost_center_id, product_line_id, card_id, card_account_id,
+          cost_center_id, product_line_id, card_id, card_account_id, card_last4, parcelas,
           fornecedor_nome, fornecedor_documento, nfe_key, nfe_numero, nfe_serie, nfe_emissao,
           status, enviado_em)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12, $18, $19, $20, $21,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12, $18, $19, $20, $21, $22, $23,
                $13, $14, $15, $16, $17,
                CASE WHEN $2 = 'nota_entrada' THEN $8::date ELSE NULL END,
                'enviado', now())
@@ -1002,7 +1038,9 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
         centroCustoId,
         linhaServicoId,
         cartaoId,
-        bancoId
+        bancoId,
+        last4,
+        parcelas
       ]
     );
 

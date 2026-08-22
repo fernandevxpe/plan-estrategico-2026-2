@@ -13561,3 +13561,84 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 body:has(.time-page) .theme-toggle {
   bottom: calc(80px + env(safe-area-inset-bottom));
 }
+
+/* ===========================================================================
+   FORMULÁRIO DE CUSTO — o que o Fernando apontou usando no aparelho
+   =========================================================================== */
+
+/* O valor é o campo mais importante da tela. Número grande, prefixo fixo, e
+   máscara que preenche pelos centavos — como maquininha e app de banco. */
+.valor-campo .valor-caixa {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-input, 10px);
+  background: var(--card);
+}
+.valor-campo .valor-caixa:focus-within { border-color: var(--purple); box-shadow: 0 0 0 3px var(--tint-purple-soft); }
+.valor-campo em { font-style: normal; font-size: 15px; font-weight: 600; color: var(--muted); }
+.valor-campo input {
+  flex: 1; min-width: 0; padding: 0; border: 0; background: none; outline: none;
+  font: inherit; font-size: 30px; font-weight: 700; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.valor-campo input::placeholder { color: var(--muted); font-weight: 600; }
+
+/* Chips no lugar de select para escolhas curtas e poucas. Um `select` no
+   celular esconde as opções atrás de um toque e de uma folha que cobre a tela;
+   o chip mostra tudo e responde no primeiro toque. */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+}
+.chip:active { background: var(--surface-2); }
+.chip.ativo {
+  border-color: var(--purple);
+  background: var(--purple);
+  color: #fff;
+  font-weight: 650;
+}
+
+.campo-rotulo { display: block; margin-bottom: 7px; font-size: 12.5px; color: var(--muted); }
+
+.parcela-conta { display: block; margin-top: 8px; color: var(--ink-green); }
+.parcela-conta strong { font-variant-numeric: tabular-nums; }
+
+/* Quatro dígitos não precisam de um campo de largura inteira, e um campo largo
+   sugere que cabe mais coisa. */
+.campo-final {
+  max-width: 150px;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: .16em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* O que é minoria fica recolhido: aberto, faz todo mundo parar para ler uma
+   pergunta que quase nunca é a sua. */
+.campo-extra { border-top: 1px solid var(--line); padding-top: 14px; }
+.campo-extra > summary {
+  cursor: pointer;
+  color: var(--purple-text);
+  font-size: 13px;
+  list-style: none;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+}
+.campo-extra > summary::-webkit-details-marker { display: none; }
+.campo-extra > summary::before { content: "+ "; font-weight: 700; margin-right: 4px; }
+.campo-extra[open] > summary::before { content: "– "; }
+.campo-extra > .campo { margin-top: 10px; }

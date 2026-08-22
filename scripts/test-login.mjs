@@ -372,6 +372,55 @@ try {
     'o CHECK recusaria a linha inteira e a pessoa perderia o lançamento'
   );
 
+  console.log('\n=== 5b2. PARCELAS E FINAL DIGITADO ===');
+  const parcelado = await c('/api/time/envio', {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'custo', titulo: 'teste automatizado — parcelado', valor: '193,83',
+      data: new Date().toISOString().slice(0, 10),
+      pagamento: 'cartao_da_empresa', banco: nubank?.id, final: '0343', parcelas: 12
+    })
+  });
+  afirma(parcelado.status === 201, 'custo parcelado é aceito', `status ${parcelado.status}`);
+  const gp = await db.query(
+    `SELECT amount_cents, parcelas, card_last4, card_id FROM fin_time_envio
+      WHERE person_id = $1 ORDER BY id DESC LIMIT 1`, [cobaia.id]);
+  afirma(Number(gp.rows[0]?.amount_cents) === 19383, 'grava o TOTAL, não a parcela',
+    `${gp.rows[0]?.amount_cents} centavos — derivar a parcela é divisão; o contrário perde centavo`);
+  afirma(gp.rows[0]?.parcelas === 12, 'as parcelas ficam', `${gp.rows[0]?.parcelas}×`);
+  afirma(gp.rows[0]?.card_last4 === '0343', 'o final digitado fica', gp.rows[0]?.card_last4);
+  afirma(gp.rows[0]?.card_id !== null, 'e casou sozinho com o plástico cadastrado', `card_id=${gp.rows[0]?.card_id}`);
+
+  const finalNovo = await c('/api/time/envio', {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'custo', titulo: 'teste automatizado — final não cadastrado', valor: '30,00',
+      data: new Date().toISOString().slice(0, 10),
+      pagamento: 'cartao_da_empresa', banco: inter?.id, final: '9999'
+    })
+  });
+  const gn = await db.query(
+    `SELECT card_last4, card_id, card_account_id FROM fin_time_envio
+      WHERE person_id = $1 ORDER BY id DESC LIMIT 1`, [cobaia.id]);
+  afirma(
+    finalNovo.status === 201 && gn.rows[0]?.card_last4 === '9999' && gn.rows[0]?.card_id === null,
+    'final não cadastrado é guardado mesmo assim',
+    'é o dado que a pessoa tem na mão, e é ele que casa com a fatura'
+  );
+
+  const aVista = await c('/api/time/envio', {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'custo', titulo: 'teste automatizado — à vista', valor: '10,00',
+      data: new Date().toISOString().slice(0, 10), parcelas: 1
+    })
+  });
+  const ga = await db.query(
+    `SELECT parcelas FROM fin_time_envio WHERE person_id = $1 ORDER BY id DESC LIMIT 1`, [cobaia.id]);
+  afirma(aVista.status === 201 && ga.rows[0]?.parcelas === null,
+    'parcelas=1 vira à vista (NULL), não recusa o envio',
+    'o CHECK do banco recusaria a linha inteira');
+
   const lixo = await c('/api/time/envio', {
     method: 'POST',
     body: JSON.stringify({

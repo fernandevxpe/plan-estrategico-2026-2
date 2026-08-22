@@ -822,7 +822,74 @@ function FormEnvio({
   const [linha, setLinha] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [lendo, setLendo] = useState(false);
+  const [leitura, setLeitura] = useState<{ tom: "ok" | "aviso" | "erro"; texto: string } | null>(null);
   const arquivoRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Lê o comprovante e PREENCHE — nunca envia.
+   *
+   * Roda sozinha quando a pessoa escolhe o arquivo: pedir para ela tocar num
+   * segundo botão depois de já ter escolhido a foto é pedir duas vezes a mesma
+   * coisa, e metade não toca.
+   *
+   * Campo que já tem conteúdo digitado NÃO é sobrescrito. Quem digitou sabe
+   * mais que a foto, e ver o próprio texto ser trocado por um automático é o
+   * jeito mais rápido de perder a confiança na ferramenta.
+   */
+  const lerArquivo = useCallback(
+    async (f: File) => {
+      if (!f.type.startsWith("image/") && f.type !== "application/pdf") return;
+      setLendo(true);
+      setLeitura(null);
+      try {
+        const form = new FormData();
+        form.append("arquivo", await encolherImagem(f));
+        const r = await fetch("/api/time/ler-comprovante", { method: "POST", body: form });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          setLeitura({ tom: "erro", texto: j.error ?? "não consegui ler o comprovante" });
+          return;
+        }
+        const l = j.lido as {
+          valorTotal: number | null; data: string | null; estabelecimento: string | null;
+          documento: string | null; chaveNfe: string | null; resumo: string;
+          legibilidade: "boa" | "parcial" | "ruim";
+        };
+
+        const preenchidos: string[] = [];
+        const por = (atual: string, valor: string | null | undefined, set: (v: string) => void, rotulo: string) => {
+          if (atual.trim() || !valor) return;
+          set(valor);
+          preenchidos.push(rotulo);
+        };
+        por(titulo, l.resumo, setTitulo, "descrição");
+        por(valor, l.valorTotal != null ? l.valorTotal.toFixed(2).replace(".", ",") : null, setValor, "valor");
+        por(data === HOJE() ? "" : data, l.data, setData, "data");
+        por(fornecedor, l.estabelecimento, setFornecedor, "fornecedor");
+        por(nfeKey, l.chaveNfe, setNfeKey, "chave da NF-e");
+
+        if (l.legibilidade === "ruim") {
+          setLeitura({
+            tom: "aviso",
+            texto:
+              preenchidos.length > 0
+                ? `Li com dificuldade — preenchi ${preenchidos.join(", ")}. Confira tudo antes de enviar.`
+                : "A imagem está difícil de ler. Preencha à mão, ou tire outra foto com mais luz."
+          });
+        } else if (preenchidos.length === 0) {
+          setLeitura({ tom: "aviso", texto: "Não achei nada novo para preencher — o que você digitou foi mantido." });
+        } else {
+          setLeitura({ tom: "ok", texto: `Preenchi ${preenchidos.join(", ")}. Confira antes de enviar.` });
+        }
+      } catch {
+        setLeitura({ tom: "erro", texto: "não consegui ler o comprovante" });
+      } finally {
+        setLendo(false);
+      }
+    },
+    [titulo, valor, data, fornecedor, nfeKey]
+  );
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -1014,8 +1081,22 @@ function FormEnvio({
           ref={arquivoRef}
           type="file"
           accept="image/*,application/pdf,.xml"
-          onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+          // `capture` não é obrigatório: sem ele o Android e o iPhone abrem a
+          // folha "Câmera / Fototeca / Arquivos", que é o que a pessoa quer —
+          // forçar a câmera impediria escolher um print que já está na galeria,
+          // que é metade dos casos.
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            setArquivo(f);
+            setLeitura(null);
+            if (f) void lerArquivo(f);
+          }}
         />
+        {lendo ? <small className="reemb-lendo">lendo o comprovante…</small> : null}
+        {leitura ? <small className={`reemb-leitura ${leitura.tom}`}>{leitura.texto}</small> : null}
+        {!lendo && !leitura ? (
+          <small>Escolha a foto e eu preencho o que der. Você confere antes de enviar.</small>
+        ) : null}
       </label>
 
       <button className="time-botao" disabled={enviando}>

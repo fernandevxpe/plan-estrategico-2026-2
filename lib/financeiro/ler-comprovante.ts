@@ -64,7 +64,10 @@ const Extracao = z.object({
     .describe("Itens comprados, se estiverem discriminados. Lista vazia quando não estiverem."),
   resumo: z
     .string()
-    .describe("Uma frase curta descrevendo a compra, para servir de título do lançamento."),
+    .describe(
+      "Título curto do lançamento: no máximo 8 palavras, sem valor e sem data. " +
+        'Ex.: "Cabo flexível 10mm — Dimensional". Não é uma frase explicativa.'
+    ),
   legibilidade: z
     .enum(["boa", "parcial", "ruim"])
     .describe("'ruim' quando a imagem está borrada, cortada ou escura demais para confiar.")
@@ -164,5 +167,31 @@ export async function lerComprovante(bytes: Buffer, mime: string): Promise<Compr
   if (!lido) {
     throw new ComprovanteIndisponivel("não consegui interpretar este arquivo");
   }
-  return lido;
+
+  // NORMALIZA NO SERVIDOR, em vez de confiar na instrução.
+  // Medido: mesmo pedindo "só os dígitos", o modelo devolve o CNPJ formatado
+  // ("11.222.333/0001-44"). Regra de formato é coisa de código — pedir ao
+  // modelo e torcer é o tipo de acordo que falha silenciosamente na centésima
+  // nota, quando ninguém está mais olhando.
+  const digitos = (v: string | null) => {
+    const d = (v ?? "").replace(/\D/g, "");
+    return d.length === 11 || d.length === 14 ? d : null;
+  };
+  const chave = (lido.chaveNfe ?? "").replace(/\D/g, "");
+
+  return {
+    ...lido,
+    documento: digitos(lido.documento),
+    // 44 dígitos ou nada: chave truncada é pior que chave ausente, porque
+    // parece preenchida.
+    chaveNfe: chave.length === 44 ? chave : null,
+    // O título do envio tem teto de 200; e um título longo demais some no
+    // celular. Corta aqui em vez de deixar a tela cortar no meio da palavra.
+    resumo: lido.resumo.trim().slice(0, 90),
+    // Data só passa se for uma data de verdade — o modelo pode devolver
+    // "2026-13-45" e o formulário aceitaria como texto.
+    data: /^\d{4}-\d{2}-\d{2}$/.test(lido.data ?? "") && !Number.isNaN(Date.parse(lido.data!))
+      ? lido.data
+      : null
+  };
 }

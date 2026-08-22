@@ -35,6 +35,9 @@ const nok = (t, d) => {
 const afirma = (cond, t, d) => (cond ? ok(t, d) : nok(t, d));
 
 /** Guarda o cookie entre as chamadas, como um navegador faria. */
+let cookieCompartilhado = null;
+const cookieAtual = () => cookieCompartilhado ?? '';
+
 function criarCliente() {
   let cookie = null;
   return async function chamar(caminho, opcoes = {}) {
@@ -57,6 +60,7 @@ function criarCliente() {
       const par = set.split(';')[0];
       if (par.endsWith('=')) cookie = null;
       else cookie = par;
+      cookieCompartilhado = cookie;
     }
     let corpo = null;
     try {
@@ -364,6 +368,32 @@ try {
     afirma(decrescente, 'a projeção dos próximos meses só decresce', `${projecao.length} meses à frente`);
   } else {
     ok('sem parcela em aberto para projetar', 'esta pessoa não tem saldo');
+  }
+
+  console.log('\n=== 5d. A FOTO VIRA CAMPOS (leitura do comprovante) ===');
+  const { readFileSync, existsSync } = await import('node:fs');
+  const amostra = process.env.XPE_COMPROVANTE_TESTE;
+  const estado = await c('/api/time/ler-comprovante');
+  afirma(estado.corpo?.disponivel === true, 'a leitura automática está configurada', 'ANTHROPIC_API_KEY presente');
+
+  if (amostra && existsSync(amostra)) {
+    const form = new FormData();
+    form.append('arquivo', new Blob([readFileSync(amostra)], { type: 'image/png' }), 'comprovante.png');
+    const r2 = await fetch(BASE + '/api/time/ler-comprovante', { method: 'POST', body: form, headers: { cookie: cookieAtual() } });
+    const j2 = await r2.json().catch(() => ({}));
+    afirma(r2.status === 200, 'a rota lê o comprovante', `status ${r2.status} ${j2.error ?? ''}`);
+    const l = j2.lido ?? {};
+    afirma(typeof l.valorTotal === 'number' && l.valorTotal > 0, 'extraiu o valor', `R$ ${l.valorTotal}`);
+    afirma(/^\d{4}-\d{2}-\d{2}$/.test(l.data ?? ''), 'a data volta em AAAA-MM-DD', l.data);
+    afirma(
+      l.documento === null || /^\d{11}$|^\d{14}$/.test(l.documento),
+      'o documento volta só com dígitos, ou null',
+      `documento=${l.documento} — o modelo devolve formatado, quem normaliza é o servidor`
+    );
+    afirma((l.resumo ?? '').length <= 90, 'o resumo cabe num título', `${(l.resumo ?? '').length} caracteres`);
+    afirma(l.chaveNfe === null || l.chaveNfe.length === 44, 'chave de NF-e tem 44 dígitos ou é null', String(l.chaveNfe));
+  } else {
+    ok('sem imagem de amostra', 'passe XPE_COMPROVANTE_TESTE=<caminho.png> para exercitar a extração');
   }
 
   console.log('\n=== 6. A SENHA ANTIGA MORREU ===');

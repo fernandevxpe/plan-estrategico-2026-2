@@ -13408,3 +13408,11 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+
+/* Leitura automática do comprovante — o estado precisa ser visível sem tirar
+   o olho do campo, então mora dentro do próprio label. */
+.reemb-lendo { color: var(--purple-text); }
+.reemb-leitura.ok { color: var(--ink-green); }
+.reemb-leitura.aviso { color: var(--ink-amber); }
+.reemb-leitura.erro { color: var(--ink-red); }
+.reemb-leitura { line-height: 1.45; }

@@ -1,0 +1,40 @@
+---
+description: Regras do repo XPE — banco de produção, migrations congeladas, deploy por push
+alwaysApply: true
+---
+
+Leia `AGENTS.md` na raiz antes de mexer em qualquer coisa. Ele tem o contexto
+completo. O que está aqui é o subconjunto que não pode faltar em nenhuma
+janela de contexto, porque errar qualquer um destes custa caro:
+
+1. **`node scripts/db-migrate.mjs` escreve em PRODUÇÃO.** `FINANCE_DATABASE_URL`
+   é o Postgres do Railway que a produção lê. Não existe banco de dev. E são
+   dois bancos: `DATABASE_URL` (plataforma) e `FINANCE_DATABASE_URL`
+   (financeiro, tabelas `fin_*`). Apontar para o errado não dá erro — responde
+   com o dado de outro sistema.
+
+2. **Migration aplicada é congelada por hash.** Nunca edite um arquivo em
+   `db/migrations/` que já rodou; escreva um novo. Toda migration termina com
+   um bloco `DO $$ ... END $$` de pós-condições que levanta exceção se o
+   resultado não bater.
+
+3. **`git push origin main` É o deploy.** O Railway builda do GitHub. Não rode
+   `railway up`.
+
+4. **`npm run test:perfil-guard` precisa continuar em 2 falhas** (as duas de
+   `/obras`, pré-existentes). Três significa que algo quebrou. As regras: nenhuma
+   função exportada de `lib/financeiro/time.ts` aceita pessoa como parâmetro, e
+   `/api/time/*` não menciona tabela do ledger — quando precisa de um número de
+   lá, cria-se uma view estreita.
+
+5. **`tsc` não valida SQL.** Rota nova sem teste que a chame já passou semanas
+   quebrada em produção com o TypeScript limpo. O lugar do teste é
+   `scripts/test-login.mjs`.
+
+6. **`lib/financeiro/ler-cartao.ts` não guarda a imagem.** A foto do cartão tem
+   o número completo; ela é lida em memória e descartada. Essa regra não cai.
+
+Convenções: português em nomes novos; comentário explica o porquê com número
+medido; campo que o modelo não leu volta `null`, nunca chutado; nunca somar
+`fin_gasto_descrito_v` (o que gente contou) com `fin_transaction` ou
+`fin_card_*_v` (o que aconteceu na conta).

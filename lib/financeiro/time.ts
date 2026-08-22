@@ -866,6 +866,7 @@ export type NovoEnvio = {
   categoriaSugerida?: unknown;
   centroCusto?: unknown;
   linhaServico?: unknown;
+  cartao?: unknown;
   nfeKey?: unknown;
   nfeNumero?: unknown;
   nfeSerie?: unknown;
@@ -927,6 +928,18 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
     const centroCustoId = await refValida(client, "fin_cost_center", corpo.centroCusto, entityId);
     const linhaServicoId = await refValida(client, "fin_product_line", corpo.linhaServico, entityId);
 
+    // O plástico. Só faz sentido quando a forma de pagamento é cartão — o CHECK
+    // da 0138 recusaria a combinação incoerente, e recusar o envio inteiro por
+    // isso perderia o lançamento. Descarta o cartão e mantém o resto.
+    let cartaoId: number | null = null;
+    if (pagamento === "cartao_da_empresa" || pagamento === "ja_paguei_do_meu") {
+      const id = Number(corpo.cartao);
+      if (Number.isInteger(id) && id > 0) {
+        const c = await client.query(`SELECT id FROM fin_card WHERE id = $1 AND status = 'registrado'`, [id]);
+        cartaoId = c.rows[0] ? Number(c.rows[0].id) : null;
+      }
+    }
+
     // AINDA NÃO SE DERIVA A LINHA DO PROJETO, e isso é uma lacuna declarada, não
     // um esquecimento. O plano diz que escolher a obra deveria responder "é LDC
     // ou LIE?" sozinho — e responderia, porque o ERP sabe o tipo de serviço de
@@ -942,10 +955,10 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
       `INSERT INTO fin_time_envio
          (entity_id, kind, person_id, identidade_prova, titulo, descricao, amount_cents,
           incurred_on, due_on, pagamento, ja_pago, categoria_sugerida_id,
-          cost_center_id, product_line_id,
+          cost_center_id, product_line_id, card_id,
           fornecedor_nome, fornecedor_documento, nfe_key, nfe_numero, nfe_serie, nfe_emissao,
           status, enviado_em)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12, $18, $19,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12, $18, $19, $20,
                $13, $14, $15, $16, $17,
                CASE WHEN $2 = 'nota_entrada' THEN $8::date ELSE NULL END,
                'enviado', now())
@@ -969,7 +982,8 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
         nfeNumero,
         opcionalTexto(corpo.nfeSerie, 10),
         centroCustoId,
-        linhaServicoId
+        linhaServicoId,
+        cartaoId
       ]
     );
 
@@ -1338,7 +1352,7 @@ async function refValida(
  * de campo cai, e são eles que a pessoa procura.
  */
 export async function opcoesDoTime() {
-  const [tipos, categorias, centros, linhas] = await Promise.all([
+  const [tipos, categorias, centros, linhas, cartoes] = await Promise.all([
     query<{ slug: string; name: string; requires_nfe: boolean }>(
       `SELECT slug, name, requires_nfe FROM fin_reimbursement_type WHERE is_active ORDER BY sort_order, name`
     ),
@@ -1362,6 +1376,16 @@ export async function opcoesDoTime() {
         WHERE pl.is_active
         ORDER BY pl.sort_order, pl.name`,
       [ENTITY]
+    ),
+    // Só os plásticos VIVOS. Cartão histórico ou cancelado na lista faria
+    // alguém escolher um cartão que não existe mais, e a fatura nunca casaria.
+    query<{ id: number; last4: string | null; label: string | null; emissor: string | null }>(
+      `SELECT c.id, c.last4, c.label, i.name AS emissor
+         FROM fin_card c
+         JOIN fin_card_account a ON a.id = c.card_account_id
+         LEFT JOIN fin_card_issuer i ON i.id = a.issuer_id
+        WHERE c.status = 'registrado'
+        ORDER BY (c.label IS NULL), c.label, c.last4`
     )
   ]);
   return {
@@ -1373,6 +1397,14 @@ export async function opcoesDoTime() {
       ehProjeto: c.kind === "projeto",
       nucleo: c.nucleo
     })),
-    linhas: linhas.map((l) => ({ id: Number(l.id), slug: l.slug, nome: l.name }))
+    linhas: linhas.map((l) => ({ id: Number(l.id), slug: l.slug, nome: l.name })),
+    cartoes: cartoes.map((c) => ({
+      id: Number(c.id),
+      // Sem apelido cadastrado, o final é o que existe. Melhor "final 7626" que
+      // um nome inventado que ninguém reconhece.
+      nome: c.label ?? `final ${c.last4 ?? "????"}`,
+      final: c.last4,
+      emissor: c.emissor
+    }))
   };
 }

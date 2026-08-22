@@ -42,6 +42,7 @@ type Opcoes = {
   categorias: { id: number; rotulo: string }[];
   centros: { id: number; nome: string; ehProjeto: boolean; nucleo: string | null }[];
   linhas: { id: number; slug: string; nome: string }[];
+  cartoes: { id: number; nome: string; final: string | null; emissor: string | null }[];
 };
 type Envio = {
   origem: string;
@@ -85,7 +86,7 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
   const [sessao, setSessao] = useState<Sessao | null>(null);
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [porta, setPorta] = useState<Porta>("sessao");
-  const [opcoes, setOpcoes] = useState<Opcoes>({ tipos: [], categorias: [], centros: [], linhas: [] });
+  const [opcoes, setOpcoes] = useState<Opcoes>({ tipos: [], categorias: [], centros: [], linhas: [], cartoes: [] });
   const [envios, setEnvios] = useState<Envio[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [recado, setRecado] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
@@ -820,6 +821,7 @@ function FormEnvio({
   const [categoria, setCategoria] = useState("");
   const [centro, setCentro] = useState("");
   const [linha, setLinha] = useState("");
+  const [cartao, setCartao] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [lendo, setLendo] = useState(false);
@@ -910,7 +912,8 @@ function FormEnvio({
           nfeNumero,
           categoriaSugerida: categoria,
           centroCusto: centro,
-          linhaServico: centro ? "" : linha
+          linhaServico: centro ? "" : linha,
+          cartao
         },
         arquivo
       );
@@ -922,6 +925,7 @@ function FormEnvio({
       setNfeNumero("");
       setCentro("");
       setLinha("");
+      setCartao("");
       setArquivo(null);
       if (arquivoRef.current) arquivoRef.current.value = "";
     } catch (erro) {
@@ -980,6 +984,28 @@ function FormEnvio({
           </select>
         </label>
       </div>
+
+      {/*
+        Qual plástico. Só aparece quando a forma é cartão — e é o campo que a
+        conciliação futura mais vai usar: o final do cartão existe em 793 dos
+        795 itens de fatura, contra 37,5% de cobertura de contraparte. É o
+        sinal que quase sempre casa.
+      */}
+      {pagamento === "cartao_da_empresa" && opcoes.cartoes.length > 0 ? (
+        <label className="campo">
+          <span>Qual cartão</span>
+          <select value={cartao} onChange={(e) => setCartao(e.target.value)}>
+            <option value="">— não lembro qual —</option>
+            {opcoes.cartoes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.emissor ? `${c.emissor} · ` : ""}
+                {c.nome}
+              </option>
+            ))}
+          </select>
+          <small>É o que vai casar este custo com a fatura quando ela fechar.</small>
+        </label>
+      ) : null}
 
       <label className="campo">
         <span>Quem cobrou / emitiu</span>

@@ -306,6 +306,40 @@ try {
     );
   }
 
+  const cartoes = (await c('/api/time/envios')).corpo?.opcoes?.cartoes ?? [];
+  afirma(cartoes.length > 0, 'os cartões chegam no formulário', `${cartoes.length} plásticos registrados`);
+  if (cartoes.length) {
+    const comCartao = await c('/api/time/envio', {
+      method: 'POST',
+      body: JSON.stringify({
+        kind: 'custo', titulo: 'teste automatizado — compra no cartão', valor: '55,00',
+        data: new Date().toISOString().slice(0, 10),
+        pagamento: 'cartao_da_empresa', cartao: cartoes[0].id
+      })
+    });
+    afirma(comCartao.status === 201, 'custo com cartão é aceito', `status ${comCartao.status}`);
+    const g = await db.query(
+      `SELECT card_id, pagamento FROM fin_time_envio WHERE person_id = $1 ORDER BY id DESC LIMIT 1`, [cobaia.id]);
+    afirma(Number(g.rows[0]?.card_id) === cartoes[0].id, 'o cartão FICOU gravado', `card_id=${g.rows[0]?.card_id}`);
+
+    // A trava da 0138: cartão declarado com pagamento que não é cartão.
+    const incoerente = await c('/api/time/envio', {
+      method: 'POST',
+      body: JSON.stringify({
+        kind: 'custo', titulo: 'teste automatizado — cartão incoerente', valor: '10,00',
+        data: new Date().toISOString().slice(0, 10),
+        pagamento: 'pix_da_empresa', cartao: cartoes[0].id
+      })
+    });
+    const gi = await db.query(
+      `SELECT card_id FROM fin_time_envio WHERE person_id = $1 ORDER BY id DESC LIMIT 1`, [cobaia.id]);
+    afirma(
+      incoerente.status === 201 && gi.rows[0]?.card_id === null,
+      'cartão com PIX é descartado, não recusa o envio',
+      'o CHECK do banco recusaria a linha inteira e a pessoa perderia o lançamento'
+    );
+  }
+
   const lixo = await c('/api/time/envio', {
     method: 'POST',
     body: JSON.stringify({

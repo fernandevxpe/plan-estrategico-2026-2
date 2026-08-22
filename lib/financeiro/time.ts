@@ -74,15 +74,33 @@ const sha256 = (v: string | Buffer) => createHash("sha256").update(v).digest("he
  * apareceria como "o app do time está quebrado".
  */
 export async function schemaTimeDisponivel(): Promise<boolean> {
+  return (await estadoDoTime()).disponivel;
+}
+
+/**
+ * Por que o app não está de pé — e a distinção não é preciosismo.
+ *
+ * `schemaTimeDisponivel` devolvia `false` tanto para "a migration não foi
+ * aplicada" quanto para "o banco não respondeu", e a tela dizia sempre a
+ * primeira. O proxy TCP do Railway derruba conexão sem avisar, então uma queda
+ * de dois segundos aparecia para a pessoa como "migration 0105 não aplicada" —
+ * uma frase que manda procurar o problema no lugar errado, e que num app do
+ * time nem faz sentido para quem lê.
+ */
+export async function estadoDoTime(): Promise<{ disponivel: boolean; motivo: string | null }> {
   try {
     const r = await queryOne<{ ok: boolean }>(
       `SELECT (to_regclass('fin_time_envio') IS NOT NULL
            AND to_regclass('fin_time_sessao') IS NOT NULL
            AND to_regclass('fin_notificacao') IS NOT NULL) AS ok`
     );
-    return r?.ok === true;
+    return r?.ok === true
+      ? { disponivel: true, motivo: null }
+      : { disponivel: false, motivo: "o schema do app do time ainda não foi aplicado neste banco" };
   } catch (erro) {
-    if (erro instanceof FinanceUnavailableError) return false;
+    if (erro instanceof FinanceUnavailableError) {
+      return { disponivel: false, motivo: "o banco não respondeu agora — tente de novo em alguns segundos" };
+    }
     throw erro;
   }
 }
@@ -1149,6 +1167,111 @@ export async function listarMeusEnvios(sessao: Sessao): Promise<EnvioDoTime[]> {
     itens: Number(l.itens ?? 0),
     itensComAnexo: Number(l.itens_com_anexo ?? 0)
   }));
+}
+
+/**
+ * O reembolso da PESSOA da sessão: o histórico mensal, o que ainda falta receber
+ * e como isso se distribui pelos próximos meses.
+ *
+ * ---------------------------------------------------------------------------
+ * DUAS FONTES, E A DIVERGÊNCIA DITA EM VOZ ALTA
+ * ---------------------------------------------------------------------------
+ * Existem DOIS modelos de reembolso carregados no mesmo banco, importados da
+ * mesma planilha por scripts diferentes com meses de distância:
+ *
+ *   fin_reimbursement (0012)  o FLUXO — pedir, aprovar, pagar. É o que a tela do
+ *                             admin usa. Total por mês e status.
+ *   fin_reembolso_item (0129) a CONTA — parcela correta, saldo por item. Tem o
+ *                             tratamento do "2x*" que o outro não tem.
+ *
+ * Eles divergem em R$ 40,21 no acervo (dois casos: o `2x*` do Decézaris em maio
+ * e um item de fevereiro que só existe num deles). Enquanto o Fernando não
+ * decidir qual é a verdade, esta função **não escolhe por ele**: usa cada uma
+ * para o que ela sabe, e devolve `fonte` em cada bloco para a tela poder dizer
+ * de onde veio o número. Escolher em silêncio seria inventar a resposta que
+ * falta.
+ *
+ * Nenhuma consulta aqui aceita pessoa como parâmetro — o escopo é a `Sessao`.
+ */
+export async function meuReembolso(sessao: Sessao) {
+  const [meses, saldo] = await Promise.all([
+    // O histórico: o que já foi pago e o que está aprovado esperando.
+    query<{ mes: string; total_cents: string; status: string; itens: number }>(
+      `SELECT to_char(r.reference_month, 'YYYY-MM') AS mes,
+              sum(i.amount_cents)::text AS total_cents,
+              r.status,
+              count(i.id)::int AS itens
+         FROM fin_reimbursement r
+         JOIN fin_reimbursement_item i ON i.reimbursement_id = r.id
+        WHERE r.person_id = $1
+        GROUP BY 1, r.status
+        ORDER BY 1`,
+      [sessao.personId]
+    ),
+    // O que falta: parcela a parcela, do modelo que sabe contar parcela.
+    query<{
+      descricao: string;
+      parcela: number;
+      parcelas_total: number;
+      valor_parcela_cents: string;
+      parcelas_restantes: number;
+      saldo_cents: string;
+    }>(
+      `SELECT descricao, parcela, parcelas_total, valor_parcela_cents::text,
+              parcelas_restantes, saldo_cents::text
+         FROM fin_reembolso_saldo_v
+        WHERE person_id = $1 AND NOT quitado
+        ORDER BY saldo_cents DESC`,
+      [sessao.personId]
+    )
+  ]);
+
+  const restantes = saldo.map((l) => ({
+    descricao: l.descricao,
+    parcela: l.parcela,
+    parcelasTotal: l.parcelas_total,
+    parcelaCents: Number(l.valor_parcela_cents),
+    parcelasRestantes: l.parcelas_restantes,
+    saldoCents: Number(l.saldo_cents)
+  }));
+
+  // A projeção é aritmética simples e declarada: cada item em aberto contribui
+  // com uma parcela por mês até acabar. Não há previsão estatística aqui — o
+  // que se sabe é o contratado, e é só isso que se mostra.
+  const horizonte = Math.min(12, Math.max(0, ...restantes.map((r) => r.parcelasRestantes)));
+  const proximos = Array.from({ length: horizonte }, (_, i) => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + i + 1);
+    return {
+      mes: d.toISOString().slice(0, 7),
+      cents: restantes.filter((r) => r.parcelasRestantes > i).reduce((soma, r) => soma + r.parcelaCents, 0)
+    };
+  });
+
+  return {
+    historico: {
+      fonte: "fin_reimbursement (0012) — o fluxo de pedido, aprovação e pagamento",
+      meses: meses.map((m) => ({
+        mes: m.mes,
+        totalCents: Number(m.total_cents),
+        status: m.status,
+        itens: m.itens
+      }))
+    },
+    aReceber: {
+      fonte: "fin_reembolso_saldo_v (0129) — o modelo que trata o 2x* da planilha",
+      totalCents: restantes.reduce((s, r) => s + r.saldoCents, 0),
+      itens: restantes,
+      proximosMeses: proximos
+    },
+    // A tela mostra isto. Esconder que há duas contagens seria escolher uma
+    // sem dizer, e a diferença aparece na primeira conferência que alguém fizer.
+    ressalva:
+      restantes.length > 0
+        ? "O histórico e o saldo saem de dois registros diferentes da mesma planilha, e eles divergem em alguns centavos no acervo. A unificação está pendente de decisão."
+        : null
+  };
 }
 
 /**

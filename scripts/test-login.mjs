@@ -130,11 +130,16 @@ try {
     process.exit(1);
   }
 
+  // Prefere quem TEM reembolso: sem isso o bloco do "meu reembolso" só
+  // conseguiria afirmar sobre lista vazia, que é o caso que menos importa.
+  // Fora Fernando e Igor, cujas contas o admin vai criar de verdade.
   const { rows } = await db.query(
-    `SELECT p.id, p.name, p.email, p.is_admin
+    `SELECT p.id, p.name, p.email, p.is_admin,
+            (SELECT count(*) FROM fin_reimbursement r WHERE r.person_id = p.id)::int AS reembolsos
        FROM fin_person p JOIN fin_entity e ON e.id = p.entity_id AND e.slug = 'xpe'
-      WHERE p.status = 'ativo' AND p.email IS NULL
-      ORDER BY p.id DESC LIMIT 1`
+      WHERE p.status = 'ativo' AND p.email IS NULL AND p.name NOT IN ('Fernando', 'Igor')
+      ORDER BY (SELECT count(*) FROM fin_reimbursement r WHERE r.person_id = p.id) DESC, p.id DESC
+      LIMIT 1`
   );
   cobaia = rows[0];
   if (!cobaia) {
@@ -317,6 +322,49 @@ try {
     [cobaia.id]
   );
   afirma(comLixo.rows[0]?.cost_center_id === null, 'e ele vira vazio declarado, não um id inventado');
+
+  console.log('\n=== 5c. CADA UM VÊ O PRÓPRIO REEMBOLSO (Onda 4) ===');
+  const meu = await c('/api/time/meu-reembolso');
+  afirma(meu.status === 200, 'a rota responde para quem está logado', `status ${meu.status}`);
+  const r = meu.corpo?.reembolso;
+
+  const doBanco = await db.query(
+    `SELECT coalesce(sum(i.amount_cents), 0)::text AS total
+       FROM fin_reimbursement rb JOIN fin_reimbursement_item i ON i.reimbursement_id = rb.id
+      WHERE rb.person_id = $1`,
+    [cobaia.id]
+  );
+  const somaTela = (r?.historico?.meses ?? []).reduce((s2, m) => s2 + m.totalCents, 0);
+  afirma(
+    somaTela === Number(doBanco.rows[0].total),
+    'o histórico bate centavo a centavo com o banco',
+    `tela ${somaTela} · banco ${doBanco.rows[0].total}`
+  );
+
+  const saldoBanco = await db.query(
+    `SELECT coalesce(sum(saldo_cents), 0)::text AS total FROM fin_reembolso_saldo_v
+      WHERE person_id = $1 AND NOT quitado`,
+    [cobaia.id]
+  );
+  afirma(
+    r?.aReceber?.totalCents === Number(saldoBanco.rows[0].total),
+    'o "quanto falta" bate com a view de saldo',
+    `tela ${r?.aReceber?.totalCents} · view ${saldoBanco.rows[0].total}`
+  );
+
+  afirma(
+    typeof r?.historico?.fonte === 'string' && typeof r?.aReceber?.fonte === 'string',
+    'cada bloco declara de qual dos dois modelos veio',
+    'os dois divergem em R$ 40,21 no acervo e a tela não pode esconder isso'
+  );
+
+  const projecao = r?.aReceber?.proximosMeses ?? [];
+  if (projecao.length) {
+    const decrescente = projecao.every((m, i2) => i2 === 0 || m.cents <= projecao[i2 - 1].cents);
+    afirma(decrescente, 'a projeção dos próximos meses só decresce', `${projecao.length} meses à frente`);
+  } else {
+    ok('sem parcela em aberto para projetar', 'esta pessoa não tem saldo');
+  }
 
   console.log('\n=== 6. A SENHA ANTIGA MORREU ===');
   const c2 = criarCliente();

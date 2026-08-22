@@ -152,6 +152,7 @@ const SUPERFICIE_DO_TIME = [
   'app/api/time/compra/route.ts',
   'app/api/time/envios/route.ts',
   'app/api/time/senha/route.ts',
+  'app/api/time/meu-reembolso/route.ts',
   'app/api/time/anexo/[...chave]/route.ts',
   'app/api/notificacoes/route.ts',
   'app/api/notificacoes/[id]/route.ts'

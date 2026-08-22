@@ -19,7 +19,8 @@ const TABS = [
   { href: "/time/custo", label: "Lançar custo" },
   { href: "/time/nota", label: "Enviar nota" },
   { href: "/time/compra", label: "Pedir compra" },
-  { href: "/time/envios", label: "O que eu enviei" }
+  { href: "/time/envios", label: "O que eu enviei" },
+  { href: "/time/meu-reembolso", label: "Meu reembolso" }
 ];
 
 export function TimeShell({ children }: { children: React.ReactNode }) {
@@ -29,7 +30,14 @@ export function TimeShell({ children }: { children: React.ReactNode }) {
     <div className="fin-shell">
       <nav className="fin-tabs" aria-label="Seções do app do time">
         {TABS.map((tab) => {
-          const active = tab.href === "/time" ? pathname === tab.href : pathname.startsWith(tab.href);
+          // Comparação por SEGMENTO, não `startsWith` cru. Com o prefixo,
+          // `/time/meu-reembolso` acendia a aba `/time/reembolso` junto —
+          // duas abas ativas ao mesmo tempo. É o mesmo cuidado que
+          // `lib/auth/perfis.ts` toma com `/financeiro` × `/financeiro-publico`.
+          const active =
+            tab.href === "/time"
+              ? pathname === tab.href
+              : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
           return (
             <Link key={tab.href} href={tab.href} className={active ? "fin-tab active" : "fin-tab"}>
               {tab.label}

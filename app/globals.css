@@ -13357,3 +13357,54 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .time-declarar > summary:hover {
   color: var(--purple-text);
 }
+
+/* ---- Meu reembolso: o dinheiro que a empresa deve à pessoa ---------------- */
+.reemb { display: grid; gap: 22px; }
+.reemb h3 { margin: 0 0 10px; font-size: 15px; font-weight: 650; }
+
+.reemb-destaques {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.reemb-bloco { display: grid; gap: 4px; }
+
+/* Doze barras de um valor só não justificam trazer uma biblioteca de gráfico
+   para o bundle de um app de celular. SVG puro, e o `aria-label` carrega os
+   números por extenso — barra sem leitura alternativa é decoração, não dado. */
+.reemb-grafico { width: 100%; height: auto; max-height: 150px; overflow: visible; }
+.reemb-barra { fill: var(--neon-green); }
+.reemb-rotulo { fill: var(--muted); font-size: 9px; text-anchor: middle; }
+
+.reemb-itens, .reemb-meses { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+.reemb-itens li {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card);
+}
+.reemb-itens li > div { display: grid; gap: 2px; min-width: 0; }
+.reemb-itens strong { font-size: 13.5px; }
+.reemb-saldo { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink-green); }
+
+.reemb-meses li {
+  display: grid; grid-template-columns: 62px 1fr auto; align-items: center; gap: 10px;
+  padding: 9px 12px; border-bottom: 1px solid var(--line);
+}
+.reemb-meses li:last-child { border-bottom: 0; }
+.reemb-meses strong { font-variant-numeric: tabular-nums; }
+
+.reemb-ressalva {
+  margin: 0; padding: 12px 14px; border-radius: 12px;
+  background: var(--tint-amber-soft); border: 1px solid var(--tint-green-line);
+  color: var(--ink); font-size: 12.5px; line-height: 1.5;
+}
+
+/* O valor do reembolso passa de R$ 10 mil e estourava a largura do card num
+   celular de 393px. `clamp` encolhe só quando precisa; `tabular-nums` mantém as
+   colunas alinhadas entre os dois cards. */
+.reemb-destaques .kpi-valor {
+  font-size: clamp(19px, 6.2vw, 26px);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}

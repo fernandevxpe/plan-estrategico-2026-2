@@ -60,7 +60,7 @@ type Envio = {
   itensComAnexo: number;
 };
 
-export type AbaTime = "inicio" | "reembolso" | "custo" | "nota" | "compra" | "envios";
+export type AbaTime = "inicio" | "reembolso" | "custo" | "nota" | "compra" | "envios" | "meu-reembolso";
 
 const HOJE = () => new Date().toISOString().slice(0, 10);
 
@@ -177,6 +177,7 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
       {aba === "nota" ? <FormEnvio kind="nota_entrada" opcoes={opcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
       {aba === "compra" ? <FormCompra aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
       {aba === "envios" ? <ListaEnvios envios={envios} /> : null}
+      {aba === "meu-reembolso" ? <MeuReembolso /> : null}
     </div>
   );
 }
@@ -384,6 +385,156 @@ function TrocarSenha({ nome, aoTrocar }: { nome: string; aoTrocar: () => Promise
           {enviando ? "trocando…" : "trocar e continuar"}
         </button>
       </form>
+    </div>
+  );
+}
+
+type Reembolso = {
+  historico: { fonte: string; meses: { mes: string; totalCents: number; status: string; itens: number }[] };
+  aReceber: {
+    fonte: string;
+    totalCents: number;
+    itens: { descricao: string; parcela: number; parcelasTotal: number; parcelaCents: number; parcelasRestantes: number; saldoCents: number }[];
+    proximosMeses: { mes: string; cents: number }[];
+  };
+  ressalva: string | null;
+};
+
+const MES_CURTO = (iso: string) => {
+  const [ano, mes] = iso.split("-");
+  return `${["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"][Number(mes) - 1]}/${ano.slice(2)}`;
+};
+
+/**
+ * O dinheiro que a empresa deve a esta pessoa.
+ *
+ * Três perguntas, nesta ordem, porque é a ordem em que elas doem: quanto falta,
+ * quando cai, e o que já foi pago. A pessoa abre isto para saber se o dinheiro
+ * dela está vindo — não para auditar o histórico.
+ *
+ * O gráfico é SVG puro e sem biblioteca: são no máximo doze barras de um valor
+ * só, e trazer Recharts para o bundle do app de celular por causa disso seria
+ * pagar caro por pouco.
+ */
+function MeuReembolso() {
+  const [dados, setDados] = useState<Reembolso | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const r = await fetch("/api/time/meu-reembolso", { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return setErro(j.error ?? "não consegui carregar");
+      setDados(j.reembolso as Reembolso);
+    })();
+  }, []);
+
+  if (erro) return <p className="time-erro">{erro}</p>;
+  if (!dados) return <div className="time-aviso">carregando…</div>;
+
+  const { aReceber, historico } = dados;
+  const pico = Math.max(1, ...aReceber.proximosMeses.map((m) => m.cents));
+  const proximo = aReceber.proximosMeses[0];
+
+  return (
+    <div className="reemb">
+      <h2>Meu reembolso</h2>
+
+      <div className="reemb-destaques">
+        <article className="kpi-card">
+          <span className="kpi-rotulo">Ainda a receber</span>
+          <strong className="kpi-valor">{brl(aReceber.totalCents)}</strong>
+          <span className="kpi-detalhe">
+            {aReceber.itens.length === 0
+              ? "nada em aberto"
+              : `${aReceber.itens.length} ${aReceber.itens.length === 1 ? "item" : "itens"} em aberto`}
+          </span>
+        </article>
+        <article className="kpi-card">
+          <span className="kpi-rotulo">Mês que vem</span>
+          <strong className="kpi-valor">{brl(proximo?.cents ?? 0)}</strong>
+          <span className="kpi-detalhe">{proximo ? MES_CURTO(proximo.mes) : "sem parcela prevista"}</span>
+        </article>
+      </div>
+
+      {aReceber.proximosMeses.length > 0 ? (
+        <section className="reemb-bloco">
+          <h3>Como isso cai nos próximos meses</h3>
+          <svg
+            className="reemb-grafico"
+            viewBox={`0 0 ${aReceber.proximosMeses.length * 34} 120`}
+            role="img"
+            aria-label={`Parcelas previstas: ${aReceber.proximosMeses
+              .map((m) => `${MES_CURTO(m.mes)} ${brl(m.cents)}`)
+              .join(", ")}`}
+          >
+            {aReceber.proximosMeses.map((m, i) => {
+              const altura = Math.round((m.cents / pico) * 88);
+              return (
+                <g key={m.mes}>
+                  <rect x={i * 34 + 5} y={96 - altura} width={22} height={altura} rx={3} className="reemb-barra" />
+                  <text x={i * 34 + 16} y={112} className="reemb-rotulo">
+                    {MES_CURTO(m.mes).slice(0, 3)}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+          <p className="time-sub">
+            É aritmética do que já está contratado: cada item em aberto contribui com uma parcela por mês até acabar.
+            Não é estimativa.
+          </p>
+        </section>
+      ) : null}
+
+      {aReceber.itens.length > 0 ? (
+        <section className="reemb-bloco">
+          <h3>O que está em aberto</h3>
+          <ul className="reemb-itens">
+            {aReceber.itens.map((i) => (
+              <li key={i.descricao}>
+                <div>
+                  <strong>{i.descricao}</strong>
+                  <span className="time-sub">
+                    parcela {i.parcela} de {i.parcelasTotal} · faltam {i.parcelasRestantes} ×{" "}
+                    {brl(i.parcelaCents)}
+                  </span>
+                </div>
+                <span className="reemb-saldo">{brl(i.saldoCents)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="reemb-bloco">
+        <h3>O que já passou</h3>
+        {historico.meses.length === 0 ? (
+          <p className="time-sub">Você ainda não tem reembolso lançado.</p>
+        ) : (
+          <ul className="reemb-meses">
+            {[...historico.meses].reverse().map((m) => (
+              <li key={`${m.mes}-${m.status}`}>
+                <span>{MES_CURTO(m.mes)}</span>
+                <span className="time-sub">
+                  {m.itens} {m.itens === 1 ? "item" : "itens"} · {m.status}
+                </span>
+                <strong>{brl(m.totalCents)}</strong>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {dados.ressalva ? (
+        <p className="reemb-ressalva">
+          {dados.ressalva}
+          <br />
+          <span className="time-sub">
+            histórico: {historico.fonte} · saldo: {aReceber.fonte}
+          </span>
+        </p>
+      ) : null}
     </div>
   );
 }

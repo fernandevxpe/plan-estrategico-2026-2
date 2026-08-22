@@ -19,6 +19,7 @@ const TABS = [
   { href: "/time/custo", label: "Lançar custo" },
   { href: "/time/nota", label: "Enviar nota" },
   { href: "/time/compra", label: "Pedir compra" },
+  { href: "/time/comprar", label: "Comprar" },
   { href: "/time/envios", label: "O que eu enviei" },
   { href: "/time/meu-reembolso", label: "Meu reembolso" }
 ];

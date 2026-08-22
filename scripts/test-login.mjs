@@ -430,6 +430,87 @@ try {
     ok('sem imagem de amostra', 'passe XPE_COMPROVANTE_TESTE=<caminho.png> para exercitar a extração');
   }
 
+  console.log('\n=== 5e. O CICLO DA COMPRA: pedir → aprovar → comprar ===');
+  const pedido = await c('/api/time/compra', {
+    method: 'POST',
+    body: JSON.stringify({
+      titulo: 'teste automatizado — 3 rolos de fita 3M',
+      justificativa: 'teste', valor: '240,00',
+      links: [{ url: 'https://exemplo.invalido/fita', loja: 'Exemplo', preco: '80,00' }]
+    })
+  });
+  afirma(pedido.status === 201, 'a solicitação de compra é aceita', `status ${pedido.status}`);
+
+  const idCompra = (await db.query(
+    `SELECT id FROM fin_purchase_request WHERE requested_person_id = $1 ORDER BY id DESC LIMIT 1`,
+    [cobaia.id])).rows[0]?.id;
+
+  const antesDeAprovar = await c('/api/time/compra/realizar');
+  afirma(
+    (antesDeAprovar.corpo?.compras ?? []).length === 0,
+    'compra ainda não aprovada NÃO aparece para comprar',
+    'só o estado aprovada libera'
+  );
+
+  await db.query(
+    `UPDATE fin_purchase_request SET status='aprovada', decided_by='teste', decided_at=now() WHERE id=$1`,
+    [idCompra]);
+
+  const paraComprar = await c('/api/time/compra/realizar');
+  const lista = paraComprar.corpo?.compras ?? [];
+  afirma(lista.length === 1 && Number(lista[0].id) === Number(idCompra),
+    'aprovada, ela aparece na lista de comprar', `${lista.length} na fila`);
+
+  const realizou = await c('/api/time/compra/realizar', {
+    method: 'POST',
+    body: JSON.stringify({
+      compraId: idCompra, titulo: 'teste automatizado — fita 3M comprada',
+      valor: '267,90', data: new Date().toISOString().slice(0, 10), pagamento: 'cartao_da_empresa'
+    })
+  });
+  afirma(realizou.status === 201, 'registrar a compra é aceito', `status ${realizou.status}`);
+
+  const depois = await db.query(
+    `SELECT c.status, e.amount_cents, e.purchase_request_id, c.amount_cents AS pedido
+       FROM fin_purchase_request c
+       LEFT JOIN fin_time_envio e ON e.purchase_request_id = c.id
+      WHERE c.id = $1`, [idCompra]);
+  afirma(depois.rows[0]?.status === 'atendida', 'a solicitação vira atendida', depois.rows[0]?.status);
+  afirma(
+    Number(depois.rows[0]?.amount_cents) === 26790 && Number(depois.rows[0]?.pedido) === 24000,
+    'pedido e gasto ficam AMBOS guardados',
+    `pediu R$ ${(Number(depois.rows[0]?.pedido)/100).toFixed(2)} · gastou R$ ${(Number(depois.rows[0]?.amount_cents)/100).toFixed(2)}`
+  );
+
+  const duasVezes = await c('/api/time/compra/realizar', {
+    method: 'POST',
+    body: JSON.stringify({ compraId: idCompra, titulo: 'teste automatizado — dobrada', valor: '10,00',
+                           data: new Date().toISOString().slice(0, 10) })
+  });
+  afirma(duasVezes.status === 409, 'a mesma compra não é registrada duas vezes', `status ${duasVezes.status}`);
+
+  console.log('\n=== 5f. APROVAR PASSA A CRIAR PREVISTO ===');
+  const idEnvio = (await db.query(
+    `SELECT id FROM fin_time_envio WHERE person_id = $1 AND kind='custo' ORDER BY id DESC LIMIT 1`,
+    [cobaia.id])).rows[0]?.id;
+  const { decidirEnvioDoTime } = await import('../lib/financeiro/time-admin.ts').catch(() => ({}));
+  if (!decidirEnvioDoTime) {
+    // O módulo é server-only e não importa fora do Next; exercita pela rota admin.
+    const r = await fetch(BASE + '/api/financeiro/time', {
+      method: 'POST', headers: { 'content-type': 'application/json', cookie: cookieAtual() },
+      body: JSON.stringify({ origem: 'envio', id: idEnvio, decisao: 'aprovar' })
+    });
+    afirma(r.status === 200, 'o admin aprova o custo', `status ${r.status}`);
+  }
+  const previsto = await db.query(
+    `SELECT estado, valor_previsto_cents, cost_center_id, origem_ref FROM fin_custo_previsto
+      WHERE origem_ref = $1`, [`fin_time_envio:${idEnvio}`]);
+  afirma(
+    previsto.rows.length === 1 && previsto.rows[0].estado === 'previsto',
+    'aprovar CRIOU o previsto — antes não criava nada',
+    previsto.rows[0] ? `R$ ${(Number(previsto.rows[0].valor_previsto_cents)/100).toFixed(2)} · ${previsto.rows[0].origem_ref}` : 'nenhum'
+  );
+
   console.log('\n=== 6. A SENHA ANTIGA MORREU ===');
   const c2 = criarCliente();
   const velha = await c2('/api/time/sessao', {
@@ -479,9 +560,20 @@ try {
     await db.query(`DELETE FROM fin_notificacao WHERE person_id = $1 AND criado_em > now() - interval '10 minutes'`, [
       cobaia.id
     ]).catch(() => {});
+    await db.query(
+      `DELETE FROM fin_custo_previsto WHERE origem_ref IN (
+         SELECT 'fin_time_envio:' || id FROM fin_time_envio
+          WHERE person_id = $1 AND titulo LIKE 'teste automatizado —%')`, [cobaia.id]).catch(() => {});
+    await db.query(
+      `DELETE FROM fin_purchase_request_link WHERE purchase_request_id IN (
+         SELECT id FROM fin_purchase_request WHERE requested_person_id = $1 AND title LIKE 'teste automatizado —%')`,
+      [cobaia.id]).catch(() => {});
     await db.query(`DELETE FROM fin_time_envio WHERE person_id = $1 AND titulo LIKE 'teste automatizado —%'`, [
       cobaia.id
     ]);
+    await db.query(
+      `DELETE FROM fin_purchase_request WHERE requested_person_id = $1 AND title LIKE 'teste automatizado —%'`,
+      [cobaia.id]).catch(() => {});
     await db.query(`DELETE FROM fin_time_sessao WHERE person_id = $1 AND criada_em > now() - interval '10 minutes'`, [
       cobaia.id
     ]);

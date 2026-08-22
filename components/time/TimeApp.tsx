@@ -61,7 +61,7 @@ type Envio = {
   itensComAnexo: number;
 };
 
-export type AbaTime = "inicio" | "reembolso" | "custo" | "nota" | "compra" | "envios" | "meu-reembolso";
+export type AbaTime = "inicio" | "reembolso" | "custo" | "nota" | "compra" | "envios" | "meu-reembolso" | "comprar";
 
 const HOJE = () => new Date().toISOString().slice(0, 10);
 
@@ -179,6 +179,7 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
       {aba === "compra" ? <FormCompra aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
       {aba === "envios" ? <ListaEnvios envios={envios} /> : null}
       {aba === "meu-reembolso" ? <MeuReembolso /> : null}
+      {aba === "comprar" ? <Comprar opcoes={opcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
     </div>
   );
 }
@@ -540,6 +541,113 @@ function MeuReembolso() {
   );
 }
 
+type CompraAprovada = {
+  id: number; code: string; titulo: string; pedidoCents: number;
+  precisaAte: string | null; aprovadaEm: string | null; links: number;
+};
+
+/**
+ * As compras aprovadas que ainda não foram feitas — e o registro do que foi.
+ *
+ * O ciclo fecha aqui: pediu, aprovaram, comprou, registra o que GASTOU. O valor
+ * pedido continua guardado do lado da solicitação; os dois juntos são a única
+ * medida de quanto a estimativa da casa erra.
+ *
+ * Reusa o mesmo formulário de custo, com a compra pré-selecionada. Um segundo
+ * formulário "parecido com o de custo" divergiria dele na primeira mudança —
+ * foi assim que a barra do financeiro divergiu entre telas antes do FinShell.
+ */
+function Comprar({ opcoes, aoEnviar, aoFalhar }: { opcoes: Opcoes; aoEnviar: AoEnviar; aoFalhar: AoFalhar }) {
+  const [compras, setCompras] = useState<CompraAprovada[] | null>(null);
+  const [escolhida, setEscolhida] = useState<CompraAprovada | null>(null);
+
+  const carregar = useCallback(async () => {
+    const r = await fetch("/api/time/compra/realizar", { cache: "no-store" });
+    if (!r.ok) return setCompras([]);
+    const j = await r.json();
+    setCompras(j.compras ?? []);
+  }, []);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  if (compras === null) return <div className="time-aviso">carregando…</div>;
+
+  if (escolhida) {
+    return (
+      <div className="comprar">
+        <button type="button" className="comprar-voltar" onClick={() => setEscolhida(null)}>
+          ← outras compras
+        </button>
+        <div className="comprar-alvo">
+          <strong>{escolhida.titulo}</strong>
+          <span className="time-sub">
+            {escolhida.code} · pedido de {brl(escolhida.pedidoCents)}
+          </span>
+        </div>
+        <FormEnvio
+          kind="custo"
+          opcoes={opcoes}
+          compra={escolhida}
+          aoEnviar={async (t) => {
+            setEscolhida(null);
+            await carregar();
+            await aoEnviar(t);
+          }}
+          aoFalhar={aoFalhar}
+        />
+      </div>
+    );
+  }
+
+  if (compras.length === 0) {
+    return (
+      <div className="comprar">
+        <h2>Nada para comprar agora</h2>
+        <p className="time-sub">
+          Quando um pedido seu for aprovado, ele aparece aqui esperando você comprar. Depois é só registrar
+          quanto gastou de verdade.
+        </p>
+      </div>
+    );
+  }
+
+  const hoje = HOJE();
+  return (
+    <div className="comprar">
+      <h2>Aprovadas, esperando você comprar</h2>
+      <ul className="comprar-lista">
+        {compras.map((c) => {
+          const atrasada = c.precisaAte !== null && c.precisaAte < hoje;
+          return (
+            <li key={c.id}>
+              <button type="button" onClick={() => setEscolhida(c)}>
+                <div>
+                  <strong>{c.titulo}</strong>
+                  <span className="time-sub">
+                    {c.code} · pedido de {brl(c.pedidoCents)}
+                    {c.links > 0 ? ` · ${c.links} ${c.links === 1 ? "link" : "links"}` : ""}
+                  </span>
+                </div>
+                {c.precisaAte ? (
+                  <span className={atrasada ? "comprar-prazo atrasado" : "comprar-prazo"}>
+                    {atrasada ? "atrasada" : `até ${c.precisaAte.slice(8, 10)}/${c.precisaAte.slice(5, 7)}`}
+                  </span>
+                ) : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="time-nota">
+        Registrar a compra não mexe em saldo. Ela vira um custo aguardando o financeiro, e o valor pedido fica
+        guardado do lado — é assim que a casa aprende quanto a estimativa erra.
+      </p>
+    </div>
+  );
+}
+
 function CabecalhoPessoa({ sessao, aoSair }: { sessao: Sessao; aoSair: () => Promise<void> }) {
   return (
     <div className="time-quem">
@@ -800,16 +908,21 @@ function FormReembolso({ opcoes, aoEnviar, aoFalhar }: { opcoes: Opcoes; aoEnvia
 function FormEnvio({
   kind,
   opcoes,
+  compra,
   aoEnviar,
   aoFalhar
 }: {
   kind: "custo" | "nota_entrada";
   opcoes: Opcoes;
+  /** Quando vem preenchido, este custo FECHA a solicitação de compra. */
+  compra?: CompraAprovada;
   aoEnviar: AoEnviar;
   aoFalhar: AoFalhar;
 }) {
   const nota = kind === "nota_entrada";
-  const [titulo, setTitulo] = useState("");
+  // O título vem da solicitação quando é uma compra: reescrever o que já foi
+  // aprovado desliga o pedido do gasto na hora de conferir os dois.
+  const [titulo, setTitulo] = useState(compra?.titulo ?? "");
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [data, setData] = useState(HOJE());
@@ -898,9 +1011,10 @@ function FormEnvio({
     setEnviando(true);
     try {
       const r = await postar(
-        "/api/time/envio",
+        compra ? "/api/time/compra/realizar" : "/api/time/envio",
         {
           kind,
+          compraId: compra?.id,
           titulo,
           descricao,
           valor,
@@ -917,7 +1031,11 @@ function FormEnvio({
         },
         arquivo
       );
-      await aoEnviar(`${nota ? "Nota" : "Custo"} ${r.code} enviado para análise.`);
+      await aoEnviar(
+        compra
+          ? `Compra ${compra.code} registrada — o custo ${r.code} foi para análise.`
+          : `${nota ? "Nota" : "Custo"} ${r.code} enviado para análise.`
+      );
       setTitulo("");
       setValor("");
       setDescricao("");

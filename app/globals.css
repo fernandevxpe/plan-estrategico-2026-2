@@ -13416,3 +13416,28 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .reemb-leitura.aviso { color: var(--ink-amber); }
 .reemb-leitura.erro { color: var(--ink-red); }
 .reemb-leitura { line-height: 1.45; }
+
+/* ---- Comprar: o que foi aprovado e ainda não foi comprado ---------------- */
+.comprar { display: grid; gap: 16px; }
+.comprar h2 { margin: 0; }
+.comprar-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.comprar-lista button {
+  width: 100%; min-height: 62px; display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 13px 15px; text-align: left; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: inherit; font: inherit;
+}
+.comprar-lista button:hover { border-color: var(--purple); background: var(--elev-1-hover); }
+.comprar-lista button > div { display: grid; gap: 3px; min-width: 0; }
+.comprar-prazo {
+  flex: none; font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
+  background: var(--tint-green); color: var(--ink-green); white-space: nowrap;
+}
+.comprar-prazo.atrasado { background: var(--tint-red); color: var(--ink-red); }
+.comprar-voltar {
+  justify-self: start; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--purple-text); font: inherit; font-size: 13px;
+}
+.comprar-alvo {
+  display: grid; gap: 3px; padding: 13px 15px; border-radius: 12px;
+  background: var(--tint-purple-soft); border: 1px solid var(--line);
+}

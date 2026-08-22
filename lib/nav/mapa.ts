@@ -129,9 +129,9 @@ export const FINANCEIRO_GRUPOS: Grupo[] = [
       { href: "/financeiro/pessoas", label: "Custo com pessoas" },
       { href: "/financeiro/reembolsos", label: "Reembolsos" },
       // "Fila do time" é a caixa de entrada do ADMIN. O oposto dela, o que a
-      // pessoa envia, chama-se "Enviar ao financeiro" em Meu espaço — os dois
+      // pessoa envia, chama-se "Minhas solicitações" — os dois
       // nomes antigos ("Fila do time" e "Meus envios") pareciam a mesma coisa.
-      { href: "/financeiro/time", label: "Fila do time" }
+      { href: "/financeiro/time", label: "Solicitações" }
     ]
   },
   {
@@ -266,13 +266,13 @@ export const SECOES: Secao[] = [
     ]
   },
   {
-    label: "Meu espaço",
+    label: "Solicitações",
     href: "/time",
     rotas: [
       // Renomeado. "Meus envios" e "Fila do time" pareciam a mesma coisa e são
       // opostos: um é o que EU mando, o outro é o que o admin recebe de todos.
       // O verbo desfaz o empate, e é o vocabulário que o `TimeShell` já usa.
-      { href: "/time", label: "Enviar ao financeiro" },
+      { href: "/time", label: "Minhas solicitações" },
       { href: "/notificacoes", label: "Notificações" }
     ]
   }

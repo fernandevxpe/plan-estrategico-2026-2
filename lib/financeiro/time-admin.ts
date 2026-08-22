@@ -235,6 +235,44 @@ export async function decidirEnvioDoTime(entrada: {
          FROM fin_time_envio WHERE id = $1`,
       [id, JSON.stringify({ status: alvo, decision_reason: motivo }), ator]
     );
+
+    // APROVAR PASSA A PRODUZIR ALGO.
+    //
+    // Até aqui, aprovar mudava `status` e escrevia auditoria — e parava. O custo
+    // aprovado era uma decisão registrada que não chegava na DRE, não entrava na
+    // previsão de caixa e não tinha como ser confrontada com o extrato. O app
+    // inteiro parava de valer nesse ponto.
+    //
+    // Agora nasce um `fin_custo_previsto`, que é a tabela desenhada exatamente
+    // para isso na 0100 e que estava com zero linhas: ela guarda o previsto, e
+    // tem `realizado_transaction_id` para receber o lançamento do extrato quando
+    // ele chegar. É o outro lado da ponte que a conciliação vai atravessar.
+    //
+    // NÃO cria fin_transaction, e isso é regra: registro de pessoa não vira
+    // caixa. Caixa é o que o banco diz. O previsto espera o realizado; nunca o
+    // substitui.
+    if (alvo === "aprovado") {
+      await client.query(
+        `INSERT INTO fin_custo_previsto
+           (entity_id, origem, origem_ref, person_id, competencia, descricao,
+            category_id, nucleo, cost_center_id, dia_esperado, valor_previsto_cents,
+            estado, created_by)
+         SELECT e.entity_id, 'derivado', 'fin_time_envio:' || e.id, e.person_id,
+                date_trunc('month', e.incurred_on)::date,
+                left(e.titulo, 200),
+                e.categoria_sugerida_id,
+                (SELECT c.default_nucleo FROM fin_category c WHERE c.id = e.categoria_sugerida_id),
+                e.cost_center_id,
+                coalesce(e.due_on, e.incurred_on),
+                e.amount_cents,
+                'previsto', $2
+           FROM fin_time_envio e
+          WHERE e.id = $1 AND e.kind = 'custo' AND e.amount_cents > 0
+         ON CONFLICT DO NOTHING`,
+        [id, `aprovacao:${ator}`]
+      );
+    }
+
     return r.rows[0];
   });
 }

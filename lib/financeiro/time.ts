@@ -1337,6 +1337,86 @@ async function refValida(
 }
 
 /**
+ * As compras aprovadas que ainda não foram feitas.
+ *
+ * `aprovada` é "pode comprar"; `atendida` é "comprei". Entre os dois mora esta
+ * lista — e ela é de quem PEDIU, resolvida pela sessão como todo o resto deste
+ * módulo. Uma assinatura com `personId` aqui seria a porta pela qual, um dia,
+ * alguém veria a fila de compras de outra pessoa.
+ */
+export async function minhasComprasAprovadas(sessao: Sessao) {
+  const linhas = await query<{
+    id: number;
+    code: string;
+    title: string;
+    amount_cents: string;
+    needed_by: Date | null;
+    decided_at: Date | null;
+    links: number;
+  }>(
+    `SELECT c.id, c.code, c.title, c.amount_cents::text, c.needed_by, c.decided_at,
+            (SELECT count(*) FROM fin_purchase_request_link l WHERE l.purchase_request_id = c.id)::int AS links
+       FROM fin_purchase_request c
+      WHERE c.requested_person_id = $1 AND c.status = 'aprovada'
+      ORDER BY c.needed_by NULLS LAST, c.decided_at`,
+    [sessao.personId]
+  );
+  return linhas.map((l) => ({
+    id: Number(l.id),
+    code: l.code,
+    titulo: l.title,
+    pedidoCents: Number(l.amount_cents),
+    precisaAte: l.needed_by ? l.needed_by.toISOString().slice(0, 10) : null,
+    aprovadaEm: l.decided_at ? l.decided_at.toISOString() : null,
+    links: l.links
+  }));
+}
+
+/**
+ * Fecha a compra: registra o que REALMENTE foi gasto.
+ *
+ * Cria um custo normal — com obra, cartão, comprovante, tudo — e o amarra à
+ * solicitação, que passa a `atendida`. Os dois valores ficam: o pedido em
+ * `fin_purchase_request.amount_cents`, o gasto no custo. A diferença entre eles
+ * é a única medida de quanto a estimativa erra, e sobrescrever o pedido
+ * apagaria isso.
+ *
+ * O índice único da 0139 garante que dois cliques não criem dois custos para a
+ * mesma compra. Aqui a checagem vem antes, para a mensagem ser legível em vez
+ * de um erro de constraint.
+ */
+export async function realizarCompra(sessao: Sessao, compraId: number, corpo: NovoEnvio) {
+  const id = Number(compraId);
+  if (!Number.isInteger(id) || id <= 0) throw new TimeError("qual compra?", 400);
+
+  const compra = await queryOne<{ id: number; status: string }>(
+    `SELECT id, status FROM fin_purchase_request WHERE id = $1 AND requested_person_id = $2`,
+    [id, sessao.personId]
+  );
+  if (!compra) throw new TimeError("compra não encontrada", 404);
+  if (compra.status === "atendida") throw new TimeError("esta compra já foi registrada", 409);
+  if (compra.status !== "aprovada") throw new TimeError("esta compra ainda não foi aprovada", 409);
+
+  const envio = await criarEnvioDoTime(sessao, { ...corpo, kind: "custo" });
+
+  await transaction(async (client) => {
+    await client.query(`UPDATE fin_time_envio SET purchase_request_id = $2 WHERE id = $1`, [envio.id, id]);
+    await client.query(
+      `UPDATE fin_purchase_request SET status = 'atendida', updated_at = now() WHERE id = $1`,
+      [id]
+    );
+    await client.query(
+      `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, after, fields, actor)
+       SELECT entity_id, 'fin_purchase_request', $1, 'update', $2::jsonb, ARRAY['status'], $3
+         FROM fin_purchase_request WHERE id = $1`,
+      [id, JSON.stringify({ status: "atendida", envio: envio.code }), `time:${sessao.personId}`]
+    );
+  });
+
+  return envio;
+}
+
+/**
  * O que os formulários oferecem. Nada de dinheiro aqui.
  *
  * Além dos tipos e das categorias, vêm os dois níveis do eixo DESTINO:

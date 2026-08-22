@@ -941,7 +941,22 @@ function CadastrarCartao({
   const [natureza, setNatureza] = useState<"empresa" | "pessoal">("empresa");
   /** Vazio é "meu". Preenchido é o colega cujo plástico apareceu na foto. */
   const [titular, setTitular] = useState("");
-  const [banco, setBanco] = useState(inicial?.banco || (bancos[0] ? String(bancos[0].id) : ""));
+  /*
+   * O BANCO NÃO VEM PRÉ-ESCOLHIDO, e isso custou um cartão errado em produção.
+   *
+   * Era `inicial?.banco || bancos[0]`: sem banco herdado da foto — e a foto
+   * NUNCA diz o banco —, o primeiro da lista vinha marcado sozinho. Quem não
+   * tocasse nos chips salvava no Nubank sem ter escolhido nada.
+   *
+   * Aconteceu: o Fernando cadastrou o final 5585 e escreveu "Inter xpe igor"
+   * no apelido. O cartão foi para o Nubank. O apelido dizia Inter, o banco
+   * dizia Nubank, e um plástico no banco errado nunca casa com a fatura —
+   * que é a única coisa que ele existe para fazer.
+   *
+   * Vazio obriga a escolher. Um passo a mais, e é o passo que decide se o
+   * cadastro serve para alguma coisa.
+   */
+  const [banco, setBanco] = useState(inicial?.banco ?? "");
   const [final, setFinal] = useState(inicial?.final ?? "");
   const [apelido, setApelido] = useState("");
   const [bandeira, setBandeira] = useState(inicial?.bandeira ?? "");
@@ -985,7 +1000,7 @@ function CadastrarCartao({
               ? titular
                 ? (pessoas.find((p) => String(p.id) === titular)?.nome ?? "Pessoal")
                 : "Meu cartão"
-              : bancos.find((b) => String(b.id) === banco)?.nome ?? "Cartão"
+              : (bancos.find((b) => String(b.id) === banco)?.nome ?? "qual banco?")
           }
           nome={apelido || "sem apelido"}
           final={final.padEnd(4, "•")}
@@ -1098,8 +1113,17 @@ function CadastrarCartao({
 
       {erro ? <p className="time-erro">{erro}</p> : null}
 
-      <button type="button" className="time-botao" onClick={salvar} disabled={salvando || final.length !== 4}>
-        {salvando ? "salvando…" : "salvar cartão"}
+      <button
+        type="button"
+        className="time-botao"
+        onClick={salvar}
+        disabled={salvando || final.length !== 4 || (natureza === "empresa" && !banco)}
+      >
+        {salvando
+          ? "salvando…"
+          : natureza === "empresa" && !banco
+            ? "escolha o banco"
+            : "salvar cartão"}
       </button>
     </div>
   );

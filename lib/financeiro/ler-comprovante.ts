@@ -177,8 +177,21 @@ afirmar o que não dá para sustentar.
 
 - Escolha SEMPRE de dentro das listas que vêm abaixo. Um código fora do catálogo é
   descartado pelo servidor, então inventar não ajuda ninguém — só some.
-- A categoria sai do QUE FOI COMPRADO. Um cabo HDMI é material; um banner é material de
-  evento; um almoço com cliente é representação.
+- A categoria sai do QUE FOI COMPRADO. Um almoço com cliente é representação; uma anuidade
+  de conselho é taxa.
+- MATERIAL, EQUIPAMENTOS E INSUMOS tem QUATRO contas, uma por destino, e escolher entre elas
+  é escolher para que serviu — não o que é o objeto:
+    Obras        material que entra numa obra ou adequação física.
+    Consultoria  material para rodar laudo e inspeção: EPI, instrumento, consumível de campo.
+    Comercial    material para VENDER: banner de estande, brinde, cabo comprado para uma
+                 apresentação, amostra levada ao cliente.
+    Marketing    material para ser encontrado e lembrado: impresso, papelaria, produção
+                 gráfica, brinde de campanha.
+  Comercial e Marketing se confundem: a régua é quem consome. Se foi para uma reunião ou
+  visita a cliente específico, é Comercial; se foi para campanha e público em geral, é
+  Marketing. Sem elemento para separar, devolva null e deixe a pessoa escolher.
+- Equipamento DURÁVEL — notebook, veículo, bancada, o que serve por anos — é 8.01, não a
+  família de material. A família é o que se consome ou se gasta no uso.
 - A área sai de PARA QUEM FOI, e quase nunca está escrita no comprovante. Sugira só quando
   o próprio produto denunciar: banner de estande e brinde denunciam Comercial; toner e café
   denunciam Administrativo; cabo de campo e EPI denunciam Operações. Na dúvida, null.

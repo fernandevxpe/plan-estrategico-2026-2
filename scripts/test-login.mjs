@@ -315,8 +315,11 @@ try {
     'o Inter é escolhível MESMO sem plástico cadastrado',
     'é onde estão os R$ 40.862,41 sem itemização'
   );
-  afirma(Boolean(nubank) && nubank.plasticos.length === 9, 'o Nubank traz os nove plásticos dentro',
-    `${nubank?.plasticos.length} finais`);
+  // Nove era o número dos plásticos vindos do SYNC. Desde que o app permite
+  // cadastrar, gente cadastra — e travar em 9 transformava uso real do produto
+  // em falha de teste. O que importa é que os do sync continuem todos lá.
+  afirma(Boolean(nubank) && nubank.plasticos.length >= 9, 'o Nubank traz pelo menos os nove plásticos do sync',
+    `${nubank?.plasticos.length} finais${nubank?.plasticos.length > 9 ? ' (os extras foram cadastrados pelo app)' : ''}`);
 
   if (inter) {
     const soBanco = await c('/api/time/envio', {

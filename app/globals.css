@@ -73,6 +73,7 @@
   --tint-green-line: #b8e6d4;
   --ink-green: #08704f;
   --tint-amber: #fbefd9;
+  --tint-amber-line: #eccf95;
   --tint-amber-soft: #fdf6e7;
   --ink-amber: #8a540d;
   --tint-red: #fae7e7;
@@ -152,6 +153,8 @@
     --tint-green-line: rgba(43, 231, 164, 0.35);
     --ink-green: #6dffce;
     --tint-amber: rgba(224, 165, 63, 0.16);
+  --tint-amber-line: rgba(224, 165, 63, 0.38);
+    --tint-amber-line: rgba(224, 165, 63, 0.38);
     --tint-amber-soft: rgba(224, 165, 63, 0.10);
     --ink-amber: #f0c46a;
     --tint-red: rgba(255, 107, 107, 0.16);
@@ -14014,3 +14017,91 @@ body:has(.time-page) .theme-toggle {
    altura do flutuante mais o respiro; a barra inferior continua coberta pelo
    padding de `.time-conteudo`. */
 .time-form:has(> .anexar) { padding-bottom: 104px; }
+
+/* ===========================================================================
+   O CARTÃO QUE A FOTO REVELOU, E A DECISÃO QUE ELE FORÇA
+   ---------------------------------------------------------------------------
+   Três estados, três cores, porque significam três coisas diferentes:
+   verde  = da empresa, reconhecido, vai casar com a fatura sozinho;
+   âmbar  = pessoal, e pessoal quase sempre quer dizer reembolso;
+   roxo   = desconhecido, e é o único que EXIGE uma ação agora.
+   =========================================================================== */
+.cartao-lido {
+  display: grid;
+  gap: 4px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-2);
+}
+.cartao-lido strong { font-size: 13.5px; font-weight: 660; }
+.cartao-lido .time-sub { font-size: 12.5px; line-height: 1.45; }
+
+.cartao-lido.ok { border-color: var(--tint-green-line); background: var(--tint-green-soft); }
+.cartao-lido.ok strong { color: var(--ink-green); }
+
+.cartao-lido.pessoal { border-color: var(--tint-amber-line); background: var(--tint-amber-soft); }
+.cartao-lido.pessoal strong { color: var(--ink-amber); }
+
+.cartao-lido.novo { border-color: var(--tint-purple-line); background: var(--tint-purple-soft); }
+.cartao-lido.novo strong { color: var(--ink-purple); }
+.cartao-lido.novo button {
+  justify-self: start;
+  margin-top: 5px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink-purple);
+  color: var(--bg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 680;
+  cursor: pointer;
+}
+
+.decisao {
+  display: grid;
+  gap: 5px;
+  padding: 14px 15px;
+  border: 1px solid var(--tint-amber-line);
+  border-radius: 13px;
+  background: var(--tint-amber-soft);
+}
+.decisao strong { font-size: 13.5px; font-weight: 660; color: var(--ink-amber); }
+.decisao .time-sub { font-size: 12.5px; line-height: 1.45; }
+.decisao.escolhido { border-color: var(--tint-green-line); background: var(--tint-green-soft); }
+.decisao.escolhido strong { color: var(--ink-green); }
+
+/* Os dois caminhos com o MESMO peso visual. Um botão grande e colorido ao lado
+   de um link discreto não é uma pergunta, é uma sugestão disfarçada — e aqui as
+   duas respostas são igualmente legítimas. */
+.decisao-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.decisao-acoes button {
+  flex: 1 1 auto;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 1px solid var(--ink-amber);
+  border-radius: 999px;
+  background: var(--ink-amber);
+  color: var(--bg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 680;
+  cursor: pointer;
+}
+.decisao-acoes button:disabled { opacity: .45; cursor: not-allowed; }
+.decisao .decisao-alt { background: none; color: var(--ink); border-color: var(--line); }
+.decisao > .decisao-alt {
+  justify-self: start;
+  margin-top: 6px;
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}

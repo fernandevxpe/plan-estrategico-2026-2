@@ -391,6 +391,56 @@ try {
   afirma(gp.rows[0]?.card_last4 === '0343', 'o final digitado fica', gp.rows[0]?.card_last4);
   afirma(gp.rows[0]?.card_id !== null, 'e casou sozinho com o plástico cadastrado', `card_id=${gp.rows[0]?.card_id}`);
 
+  console.log('\n=== 5b2b. CADASTRAR CARTÃO, E RECONHECER O FINAL ===');
+  // Esta rota NUNCA funcionou: o INSERT de auditoria passava 5 valores e o SQL
+  // usava 4, e o Postgres morria em "could not determine data type of
+  // parameter $4". Ninguém viu porque nenhum teste a chamava — o `tsc` não
+  // olha dentro de string de SQL. É o buraco que este bloco fecha.
+  {
+    const desconhecido = await c('/api/time/cartao?final=7431');
+    afirma(desconhecido.corpo?.conhecido === false, 'final não cadastrado volta como desconhecido',
+      `conhecido=${desconhecido.corpo?.conhecido} — é o que dispara "diga de quem é" na tela`);
+
+    const novo = await c('/api/time/cartao', {
+      method: 'POST',
+      body: JSON.stringify({ natureza: 'pessoal', final: '7431', bandeira: 'mastercard', tipo: 'fisico' })
+    });
+    afirma(novo.status === 201, 'cadastrar cartão pessoal funciona',
+      `status ${novo.status} ${JSON.stringify(novo.corpo?.error ?? '')}`);
+    // Number() dos dois lados: `fin_person.id` é bigint e o driver devolve
+    // string, enquanto a rota devolve número. Comparar cru dá falso negativo.
+    afirma(Number(novo.corpo?.cartao?.titularId) === Number(cobaia.id),
+      'e nasce no nome de quem está logado',
+      `titular=${novo.corpo?.cartao?.titularId} · cobaia=${cobaia.id}`);
+
+    const agora = await c('/api/time/cartao?final=7431');
+    afirma(agora.corpo?.conhecido === true && agora.corpo?.cartao?.natureza === 'pessoal',
+      'depois de cadastrado o final é reconhecido como PESSOAL',
+      `natureza=${agora.corpo?.cartao?.natureza} — é isto que manda o lançamento para o reembolso`);
+
+    const repetido = await c('/api/time/cartao', {
+      method: 'POST',
+      body: JSON.stringify({ natureza: 'pessoal', final: '7431', tipo: 'fisico' })
+    });
+    afirma(repetido.status === 409, 'o mesmo cartão duas vezes é recusado com explicação',
+      `status ${repetido.status} — o índice único barraria, mas com erro de constraint`);
+
+    // Cartão da empresa: o reconhecimento tem de dizer o BANCO, que é o campo
+    // que a foto nunca informa e que a pessoa teria de adivinhar.
+    const contaId = (await db.query(`SELECT id FROM fin_card_account WHERE is_active ORDER BY id LIMIT 1`)).rows[0]?.id;
+    const daEmpresa = await c('/api/time/cartao', {
+      method: 'POST',
+      body: JSON.stringify({ natureza: 'empresa', banco: contaId, final: '7432', tipo: 'virtual' })
+    });
+    afirma(daEmpresa.status === 201, 'cadastrar cartão da empresa funciona', `status ${daEmpresa.status}`);
+    const empresaLido = await c('/api/time/cartao?final=7432');
+    afirma(empresaLido.corpo?.cartao?.natureza === 'empresa' && empresaLido.corpo?.cartao?.bancoId,
+      'e o reconhecimento traz o banco junto',
+      `${empresaLido.corpo?.cartao?.banco} — é o campo que a foto não informa`);
+
+    await db.query(`DELETE FROM fin_card WHERE last4 IN ('7431','7432') AND origem = 'app_time'`);
+  }
+
   console.log('\n=== 5b2c. FOTO E NOTA NO MESMO ENVIO ===');
   // Antes o laço de `lerCorpo` sobrescrevia o arquivo a cada campo: mandar dois
   // guardava só o último, EM SILÊNCIO. A pessoa anexava o print e a nota, via

@@ -239,12 +239,20 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
       {aba === "inicio" ? <Inicio envios={envios} /> : null}
       {aba === "reembolso" ? <FormReembolso opcoes={opcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
       {aba === "custo" ? (
-        <FormEnvio kind="custo" opcoes={opcoes} aoAtualizarOpcoes={setOpcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} />
+        <FormEnvio
+          kind="custo"
+          opcoes={opcoes}
+          pessoas={pessoas}
+          aoAtualizarOpcoes={setOpcoes}
+          aoEnviar={aoEnviar}
+          aoFalhar={setRecado}
+        />
       ) : null}
       {aba === "nota" ? (
         <FormEnvio
           kind="nota_entrada"
           opcoes={opcoes}
+          pessoas={pessoas}
           aoAtualizarOpcoes={setOpcoes}
           aoEnviar={aoEnviar}
           aoFalhar={setRecado}
@@ -253,7 +261,9 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
       {aba === "compra" ? <FormCompra aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
       {aba === "envios" ? <ListaEnvios envios={envios} /> : null}
       {aba === "meu-reembolso" ? <MeuReembolso /> : null}
-      {aba === "comprar" ? <Comprar opcoes={opcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
+      {aba === "comprar" ? (
+        <Comprar opcoes={opcoes} pessoas={pessoas} aoEnviar={aoEnviar} aoFalhar={setRecado} />
+      ) : null}
     </div>
   );
 }
@@ -631,7 +641,17 @@ type CompraAprovada = {
  * formulário "parecido com o de custo" divergiria dele na primeira mudança —
  * foi assim que a barra do financeiro divergiu entre telas antes do FinShell.
  */
-function Comprar({ opcoes, aoEnviar, aoFalhar }: { opcoes: Opcoes; aoEnviar: AoEnviar; aoFalhar: AoFalhar }) {
+function Comprar({
+  opcoes,
+  pessoas,
+  aoEnviar,
+  aoFalhar
+}: {
+  opcoes: Opcoes;
+  pessoas: Pessoa[];
+  aoEnviar: AoEnviar;
+  aoFalhar: AoFalhar;
+}) {
   const [compras, setCompras] = useState<CompraAprovada[] | null>(null);
   const [escolhida, setEscolhida] = useState<CompraAprovada | null>(null);
 
@@ -663,6 +683,7 @@ function Comprar({ opcoes, aoEnviar, aoFalhar }: { opcoes: Opcoes; aoEnviar: AoE
         <FormEnvio
           kind="custo"
           opcoes={opcoes}
+          pessoas={pessoas}
           compra={escolhida}
           aoAtualizarOpcoes={() => {}}
           aoEnviar={async (t) => {
@@ -904,17 +925,22 @@ function Miniatura({
  */
 function CadastrarCartao({
   bancos,
+  pessoas,
   inicial,
   aoCadastrar,
   aoFechar
 }: {
   bancos: Opcoes["bancos"];
+  pessoas: Pessoa[];
   /** O que a foto já revelou: banco escolhido, final lido, bandeira lida. */
   inicial?: { banco?: string; final?: string; bandeira?: string };
-  aoCadastrar: (opcoes: Opcoes, cartaoId: number) => void;
+  /** Devolve também DE QUEM é: é isso que decide custo × reembolso. */
+  aoCadastrar: (opcoes: Opcoes, cartaoId: number, dono: { natureza: "empresa" | "pessoal"; titular: string }) => void;
   aoFechar: () => void;
 }) {
   const [natureza, setNatureza] = useState<"empresa" | "pessoal">("empresa");
+  /** Vazio é "meu". Preenchido é o colega cujo plástico apareceu na foto. */
+  const [titular, setTitular] = useState("");
   const [banco, setBanco] = useState(inicial?.banco || (bancos[0] ? String(bancos[0].id) : ""));
   const [final, setFinal] = useState(inicial?.final ?? "");
   const [apelido, setApelido] = useState("");
@@ -930,12 +956,15 @@ function CadastrarCartao({
     const r = await fetch("/api/time/cartao", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ natureza, banco, final, apelido, bandeira, tipo })
+      body: JSON.stringify({ natureza, banco, final, apelido, bandeira, tipo, titular })
     });
     const j = await r.json().catch(() => ({}));
     setSalvando(false);
     if (!r.ok) return setErro(j.error ?? "não consegui cadastrar");
-    aoCadastrar(j.opcoes as Opcoes, j.cartao.id as number);
+    aoCadastrar(j.opcoes as Opcoes, j.cartao.id as number, {
+      natureza,
+      titular: titular ? (pessoas.find((p) => String(p.id) === titular)?.nome ?? "outra pessoa") : "você"
+    });
   }
 
   return (
@@ -951,7 +980,13 @@ function CadastrarCartao({
           para ele, não relendo campos. */}
       <div className="cartao-previa">
         <Miniatura
-          emissor={natureza === "pessoal" ? "Meu cartão" : bancos.find((b) => String(b.id) === banco)?.nome ?? "Cartão"}
+          emissor={
+            natureza === "pessoal"
+              ? titular
+                ? (pessoas.find((p) => String(p.id) === titular)?.nome ?? "Pessoal")
+                : "Meu cartão"
+              : bancos.find((b) => String(b.id) === banco)?.nome ?? "Cartão"
+          }
           nome={apelido || "sem apelido"}
           final={final.padEnd(4, "•")}
           bandeira={bandeira || null}
@@ -966,16 +1001,47 @@ function CadastrarCartao({
           <button type="button" aria-pressed={natureza === "empresa"} className={natureza === "empresa" ? "chip ativo" : "chip"} onClick={() => setNatureza("empresa")}>
             Da empresa
           </button>
-          <button type="button" aria-pressed={natureza === "pessoal"} className={natureza === "pessoal" ? "chip ativo" : "chip"} onClick={() => setNatureza("pessoal")}>
+          <button type="button" aria-pressed={natureza === "pessoal" && !titular} className={natureza === "pessoal" && !titular ? "chip ativo" : "chip"} onClick={() => { setNatureza("pessoal"); setTitular(""); }}>
             Meu, pessoal
           </button>
+          {pessoas.length > 0 ? (
+            <button
+              type="button"
+              aria-pressed={natureza === "pessoal" && Boolean(titular)}
+              className={natureza === "pessoal" && titular ? "chip ativo" : "chip"}
+              onClick={() => {
+                setNatureza("pessoal");
+                // Já entra com alguém selecionado: um chip que abre um select
+                // vazio faz a pessoa tocar duas vezes para dizer uma coisa só.
+                if (!titular) setTitular(String(pessoas[0].id));
+              }}
+            >
+              De outra pessoa
+            </button>
+          ) : null}
         </div>
         <small>
           {natureza === "empresa"
-            ? "O gasto entra na fatura da empresa."
-            : "O gasto vira reembolso — é dinheiro do seu bolso que a empresa te devolve."}
+            ? "O gasto entra na fatura da empresa — é uma compra, não um reembolso."
+            : titular
+              ? "O gasto saiu do bolso de outra pessoa. O reembolso é pedido por quem gastou."
+              : "O gasto vira reembolso — é dinheiro do seu bolso que a empresa te devolve."}
         </small>
       </div>
+
+      {natureza === "pessoal" && titular ? (
+        <label className="campo">
+          <span>De quem é o cartão</span>
+          <select value={titular} onChange={(e) => setTitular(e.target.value)}>
+            {pessoas.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome}
+              </option>
+            ))}
+          </select>
+          <small>Cadastrar o plástico já ajuda: da próxima vez o app reconhece o final sozinho.</small>
+        </label>
+      ) : null}
 
       {natureza === "empresa" ? (
         <div className="campo">
@@ -1327,6 +1393,7 @@ function FormReembolso({ opcoes, aoEnviar, aoFalhar }: { opcoes: Opcoes; aoEnvia
 function FormEnvio({
   kind,
   opcoes,
+  pessoas,
   compra,
   aoAtualizarOpcoes,
   aoEnviar,
@@ -1334,6 +1401,8 @@ function FormEnvio({
 }: {
   kind: "custo" | "nota_entrada";
   opcoes: Opcoes;
+  /** O time, para dizer de quem é um cartão pessoal que não é o seu. */
+  pessoas: Pessoa[];
   /** Quando vem preenchido, este custo FECHA a solicitação de compra. */
   compra?: CompraAprovada;
   /** Chamado quando um cartão novo é cadastrado sem sair da tela. */
@@ -1404,6 +1473,38 @@ function FormEnvio({
 
   /** A NF-e, quando vem junto do print. */
   const [arquivoNota, setArquivoNota] = useState<File | null>(null);
+
+  /**
+   * O CARTÃO QUE A FOTO REVELOU — e se o sistema o conhece.
+   *
+   * A leitura já extraía "Mastercard **** 5585" e guardava o final num estado
+   * que ninguém mostrava: o campo do final só renderizava depois de escolher o
+   * banco, e a foto não diz o banco. O dado mais chato de digitar chegava e
+   * desaparecia.
+   *
+   * Agora a resposta chega junto com a leitura, e ela decide o caminho:
+   * cartão da EMPRESA é compra da empresa; cartão PESSOAL é dinheiro do bolso
+   * de alguém, e isso é reembolso — não custo.
+   */
+  const [cartaoLido, setCartaoLido] = useState<{
+    final: string;
+    conhecido: boolean;
+    natureza?: "empresa" | "pessoal";
+    banco?: string | null;
+    apelido?: string | null;
+  } | null>(null);
+
+  /**
+   * Para onde este lançamento vai, depois que o cartão respondeu.
+   *
+   * `null` é "ainda não perguntei". O `pendente` existe para a pergunta ficar
+   * na tela até ser respondida: um cartão pessoal recém-cadastrado significa
+   * reembolso, mas quem decide é a pessoa — o cartão pode ser pessoal e a
+   * compra ter sido a empresa quem reembolsa por outro caminho.
+   */
+  const [destino, setDestino] = useState<"custo" | "reembolso">("custo");
+  const [decisaoPendente, setDecisaoPendente] = useState<{ titular: string } | null>(null);
+  const [tipoReembolso, setTipoReembolso] = useState("");
   const tentativaRef = useRef<string | null>(null);
 
   /**
@@ -1466,6 +1567,38 @@ function FormEnvio({
           setFinal(l.cartaoFinal);
           preenchidos.push("cartão");
           setBandeiraLida(l.cartaoBandeira !== "indeterminado" ? l.cartaoBandeira : "");
+
+          // E PERGUNTA NA HORA se este final é conhecido. Antes o final ficava
+          // guardado sem ninguém ver, porque o campo dependia de um banco que
+          // a foto não informa. Aqui a resposta vem sem depender de nada.
+          try {
+            const cr = await fetch(`/api/time/cartao?final=${encodeURIComponent(l.cartaoFinal)}`);
+            const cj = await cr.json().catch(() => ({}));
+            if (cj.conhecido && cj.cartao) {
+              setCartaoLido({
+                final: l.cartaoFinal,
+                conhecido: true,
+                natureza: cj.cartao.natureza,
+                banco: cj.cartao.banco,
+                apelido: cj.cartao.apelido
+              });
+              // Cartão da empresa reconhecido: o banco se preenche sozinho, que
+              // era o passo manual que ninguém tinha como adivinhar da foto.
+              if (cj.cartao.natureza === "empresa" && cj.cartao.bancoId) {
+                setBanco(String(cj.cartao.bancoId));
+                setCartao(String(cj.cartao.id));
+              } else {
+                // Pessoal e já cadastrado: o caminho é reembolso, e a pergunta
+                // fica na tela em vez de o envio falhar lá no fim.
+                setDecisaoPendente({ titular: "você" });
+              }
+            } else {
+              setCartaoLido({ final: l.cartaoFinal, conhecido: false });
+            }
+          } catch {
+            // Consulta é conveniência: se ela falhar, o final continua digitado
+            // e o fluxo antigo segue. Não é motivo para perder a leitura toda.
+          }
         }
         if (l.parcelas && !parcelas) {
           setParcelas(String(l.parcelas));
@@ -1574,6 +1707,51 @@ function FormEnvio({
     if (!tentativaRef.current) tentativaRef.current = crypto.randomUUID();
 
     try {
+      /*
+       * O DESTINO DECIDE O ENDPOINT, e é o cartão que decide o destino.
+       *
+       * Antes, um gasto do bolso da pessoa só descobria que estava na tela
+       * errada no fim: o servidor recusava com "use a tela de reembolso" e ela
+       * refazia tudo — foto, valor, itens. Agora a pergunta acontece no
+       * instante em que o cartão pessoal aparece, e o mesmo formulário sabe
+       * para onde mandar.
+       *
+       * O reembolso continua amarrado à SESSÃO: `criarReembolsoDoTime` não
+       * aceita pessoa como parâmetro, de propósito. Por isso o botão "é
+       * reembolso" fica desabilitado quando o cartão é de outra pessoa — quem
+       * recebe o dinheiro é quem pede.
+       */
+      if (destino === "reembolso") {
+        if (!tipoReembolso) throw new Error("escolha o tipo do reembolso");
+        const rr = await postar(
+          "/api/time/reembolso",
+          {
+            tipo: tipoReembolso,
+            descricao: [titulo, descricao].filter(Boolean).join(" — "),
+            expenseDate: data,
+            valor,
+            nfeKey: nfeKey,
+            idempotencyKey: tentativaRef.current
+          },
+          arquivo,
+          arquivoNota
+        );
+        tentativaRef.current = null;
+        await aoEnviar(`Reembolso ${rr.code ?? ""} enviado — a empresa te devolve este valor.`.replace("  ", " "));
+        setTitulo("");
+        setValor("");
+        setDescricao("");
+        setNfeKey("");
+        setArquivo(null);
+        setArquivoNota(null);
+        setCartaoLido(null);
+        setDestino("custo");
+        setTipoReembolso("");
+        setPalpite(null);
+        setLeitura(null);
+        return;
+      }
+
       const r = await postar(
         compra ? "/api/time/compra/realizar" : "/api/time/envio",
         {
@@ -1610,6 +1788,8 @@ function FormEnvio({
       setArquivoNota(null);
       setPalpite(null);
       setLeitura(null);
+      setCartaoLido(null);
+      setDecisaoPendente(null);
       setValor("");
       setDescricao("");
       setNfeKey("");
@@ -1787,23 +1967,6 @@ function FormEnvio({
                   </div>
                 </div>
 
-                {/* O cartão que a foto revelou e o sistema não conhece. Este é
-                    o instante em que a pessoa tem o plástico na mão e sabe a
-                    bandeira e o final — mandá-la "falar com o admin" agora é
-                    garantir que o cartão nunca seja cadastrado. */}
-                {cadastrando ? (
-                  <CadastrarCartao
-                    bancos={opcoes.bancos}
-                    inicial={{ banco, final, bandeira: bandeiraLida }}
-                    aoCadastrar={(novasOpcoes, id) => {
-                      aoAtualizarOpcoes(novasOpcoes);
-                      setCartao(String(id));
-                      setCadastrando(false);
-                    }}
-                    aoFechar={() => setCadastrando(false)}
-                  />
-                ) : null}
-
                 {banco && !cadastrando ? (
                   <label className="campo">
                     <span>Final do cartão</span>
@@ -1905,6 +2068,130 @@ function FormEnvio({
             <small>Ex.: combustível para rodar um laudo que ainda não virou contrato.</small>
           </label>
         </details>
+      ) : null}
+
+      {/*
+        O CADASTRO DO CARTÃO, no nível do formulário.
+        Ele morava DENTRO do bloco que só renderiza depois de escolher o banco
+        — e a foto não diz o banco. Ou seja: o único caminho para cadastrar o
+        cartão que a leitura acabou de revelar exigia adivinhar antes de qual
+        banco ele era. Aqui ele é alcançável de onde a pergunta nasce.
+      */}
+      {cadastrando ? (
+        <CadastrarCartao
+          bancos={opcoes.bancos}
+          pessoas={pessoas}
+          inicial={{ banco, final, bandeira: bandeiraLida }}
+          aoCadastrar={(novasOpcoes, id, dono) => {
+            aoAtualizarOpcoes(novasOpcoes);
+            setCartao(String(id));
+            setCadastrando(false);
+            setCartaoLido({ final, conhecido: true, natureza: dono.natureza, apelido: null, banco: null });
+            // AQUI FECHA O CICLO que o Fernando descreveu: dito de quem é o
+            // cartão, sobra uma pergunta só — compra da empresa ou reembolso.
+            if (dono.natureza === "pessoal") setDecisaoPendente({ titular: dono.titular });
+          }}
+          aoFechar={() => setCadastrando(false)}
+        />
+      ) : null}
+
+      {/*
+        O CARTÃO QUE A FOTO REVELOU.
+        Fica ANTES de tudo que depende dele, porque a resposta muda o destino do
+        lançamento inteiro: cartão da empresa é compra; cartão pessoal é
+        dinheiro do bolso de alguém, e isso é reembolso.
+      */}
+      {cartaoLido && !cadastrando ? (
+        cartaoLido.conhecido ? (
+          <div className={cartaoLido.natureza === "empresa" ? "cartao-lido ok" : "cartao-lido pessoal"}>
+            <strong>
+              Cartão final {cartaoLido.final} — {cartaoLido.natureza === "empresa" ? "da empresa" : "pessoal"}
+            </strong>
+            <span className="time-sub">
+              {cartaoLido.natureza === "empresa"
+                ? `${cartaoLido.banco ?? "banco reconhecido"}${cartaoLido.apelido ? ` · ${cartaoLido.apelido}` : ""} — vai casar sozinho com a fatura.`
+                : "Você pagou do seu bolso, então o caminho é o reembolso — é ele que te devolve o dinheiro."}
+            </span>
+          </div>
+        ) : (
+          <div className="cartao-lido novo">
+            <strong>Não conheço o cartão final {cartaoLido.final}</strong>
+            <span className="time-sub">
+              Li os quatro dígitos da foto, mas ele não está cadastrado. Diga de quem é — é isso que decide
+              se esta compra entra como gasto da empresa ou como reembolso para alguém.
+            </span>
+            <button type="button" onClick={() => setCadastrando(true)}>
+              dizer de quem é
+            </button>
+          </div>
+        )
+      ) : null}
+
+      {/*
+        A CONFIRMAÇÃO que o cartão pessoal exige.
+        Cartão pessoal quase sempre significa reembolso, mas "quase sempre" não
+        é sempre — e gravar o caminho errado aqui manda a pessoa refazer tudo.
+        Por isso pergunta, com os dois botões do mesmo tamanho.
+      */}
+      {decisaoPendente ? (
+        <div className="decisao">
+          <strong>Cartão pessoal {decisaoPendente.titular === "você" ? "seu" : `de ${decisaoPendente.titular}`}</strong>
+          <span className="time-sub">
+            O dinheiro saiu do bolso de uma pessoa. Isto normalmente é um reembolso — a empresa devolve.
+            Mas se a empresa já pagou por outro caminho, é uma compra.
+          </span>
+          <div className="decisao-acoes">
+            <button
+              type="button"
+              onClick={() => {
+                setDestino("reembolso");
+                setDecisaoPendente(null);
+              }}
+              disabled={decisaoPendente.titular !== "você"}
+            >
+              é reembolso
+            </button>
+            <button
+              type="button"
+              className="decisao-alt"
+              onClick={() => {
+                setDestino("custo");
+                setDecisaoPendente(null);
+              }}
+            >
+              foi compra da empresa
+            </button>
+          </div>
+          {decisaoPendente.titular !== "você" ? (
+            <small className="reemb-leitura aviso">
+              O reembolso é pedido por quem gastou — peça para {decisaoPendente.titular} lançar, ou registre
+              como compra da empresa se é a empresa que vai pagar.
+            </small>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* O tipo do reembolso, que só existe neste caminho. */}
+      {destino === "reembolso" ? (
+        <div className="decisao escolhido">
+          <strong>Isto vai como REEMBOLSO</strong>
+          <span className="time-sub">A empresa te devolve este valor. Escolha o tipo para o financeiro conferir.</span>
+          <label className="campo">
+            <span>Tipo do reembolso</span>
+            <select value={tipoReembolso} onChange={(e) => setTipoReembolso(e.target.value)}>
+              <option value="">— escolha —</option>
+              {opcoes.tipos.map((t) => (
+                <option key={t.slug} value={t.slug}>
+                  {t.nome}
+                  {t.exigeNfe ? " (exige NF-e)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="decisao-alt" onClick={() => setDestino("custo")}>
+            não, voltar para custo da empresa
+          </button>
+        </div>
       ) : null}
 
       {/*
@@ -2014,10 +2301,18 @@ function FormEnvio({
       </div>
 
       <button className="time-botao" disabled={enviando}>
-        {enviando ? "enviando…" : nota ? "enviar nota" : "enviar custo"}
+        {enviando
+          ? "enviando…"
+          : destino === "reembolso"
+            ? "pedir reembolso"
+            : nota
+              ? "enviar nota"
+              : "enviar custo"}
       </button>
       <p className="time-nota">
-        Isto não vira lançamento nem mexe em saldo. Vira um pedido aguardando decisão de quem cuida do financeiro.
+        {destino === "reembolso"
+          ? "Isto entra no SEU reembolso do mês. Não vira lançamento nem mexe em saldo até o financeiro conferir."
+          : "Isto não vira lançamento nem mexe em saldo. Vira um pedido aguardando decisão de quem cuida do financeiro."}
       </p>
 
       {/*

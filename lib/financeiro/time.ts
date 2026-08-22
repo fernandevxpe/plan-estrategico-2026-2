@@ -1587,7 +1587,75 @@ export type NovoCartao = {
   apelido?: unknown;
   bandeira?: unknown;
   tipo?: unknown;
+  /** Quem carrega o plástico, quando é pessoal e não é de quem está logado. */
+  titular?: unknown;
 };
+
+/**
+ * O final que a foto revelou já é um cartão conhecido?
+ *
+ * ---------------------------------------------------------------------------
+ * A PERGUNTA QUE A TELA NÃO FAZIA
+ * ---------------------------------------------------------------------------
+ * A leitura extraía "Mastercard **** 5585" e guardava o final num estado que
+ * ninguém mostrava: o campo do final só renderizava DEPOIS de escolher o
+ * banco, e a foto não diz o banco. O dado mais difícil de digitar chegava e
+ * sumia, e a pessoa não tinha como saber que o cartão era desconhecido.
+ *
+ * Esta consulta responde na hora, sem depender de banco escolhido. E o que ela
+ * devolve decide o caminho inteiro: cartão da EMPRESA é compra da empresa;
+ * cartão PESSOAL é dinheiro do bolso de alguém, e isso é reembolso.
+ *
+ * O ESCOPO CONTINUA NA SESSÃO. Os cartões da empresa são de todos — o time
+ * inteiro compra com eles. Os pessoais que aparecem aqui são só os de quem
+ * está logado: saber que existe um cartão final 4321 e que ele é do Igor não é
+ * assunto de quem não é o Igor.
+ */
+export async function procurarCartaoPeloFinal(sessao: Sessao, finalBruto: unknown) {
+  const final = String(finalBruto ?? "").replace(/\D/g, "").slice(-4);
+  if (final.length !== 4) return { final: null, conhecido: false as const, cartao: null };
+
+  const achado = await queryOne<{
+    id: number;
+    last4: string;
+    label: string | null;
+    brand: string | null;
+    conta_id: number | null;
+    banco: string | null;
+    holder_person_id: number | null;
+  }>(
+    `SELECT c.id, c.last4, c.label, c.brand,
+            a.id AS conta_id, coalesce(i.name, a.name) AS banco, c.holder_person_id
+       FROM fin_card c
+       LEFT JOIN fin_card_account a ON a.id = c.card_account_id
+       LEFT JOIN fin_card_issuer i ON i.id = a.issuer_id
+      WHERE c.last4 = $1
+        AND c.status <> 'cancelado'
+        -- Da empresa (qualquer conta ativa) OU meu. O de outra pessoa não
+        -- aparece, e a tela trata isso como "não conheço": o pior que
+        -- acontece é oferecer cadastro de um cartão que já existe, e o
+        -- INSERT devolve 409 dizendo isso.
+        AND (a.id IS NOT NULL OR c.holder_person_id = $2)
+      ORDER BY (a.id IS NULL)
+      LIMIT 1`,
+    [final, sessao.personId]
+  );
+
+  if (!achado) return { final, conhecido: false as const, cartao: null };
+  return {
+    final,
+    conhecido: true as const,
+    cartao: {
+      id: Number(achado.id),
+      final: achado.last4,
+      apelido: achado.label,
+      bandeira: achado.brand,
+      bancoId: achado.conta_id ? Number(achado.conta_id) : null,
+      banco: achado.banco,
+      natureza: achado.conta_id ? ("empresa" as const) : ("pessoal" as const)
+    }
+  };
+}
 
 const BANDEIRAS = new Set(["visa", "mastercard", "elo", "amex", "hipercard", "outra"]);
 const TIPOS_DE_PLASTICO = new Set(["fisico", "virtual", "adicional"]);
@@ -1602,6 +1670,29 @@ export async function cadastrarCartao(sessao: Sessao, corpo: NovoCartao) {
   const tipo = TIPOS_DE_PLASTICO.has(String(corpo.tipo)) ? String(corpo.tipo) : "desconhecido";
 
   return transaction(async (client) => {
+    /*
+     * DE QUEM É O PLÁSTICO, quando é pessoal.
+     *
+     * O padrão é quem está logado. Mas o caso real é outro: alguém registra a
+     * compra que um colega fez no cartão dele, e o final aparece na foto. Sem
+     * poder dizer "é do Igor", esse cartão ou fica sem dono ou vira "meu" —
+     * e no segundo caso o reembolso nasceria na pessoa errada.
+     *
+     * ISTO NÃO FURA O ESCOPO DO PERFIL, e vale dizer por quê: cadastrar um
+     * plástico é ESCREVER num registro compartilhado, não LER o que outra
+     * pessoa gastou. Nenhuma função aqui aceita pessoa como parâmetro para
+     * consultar — a regra que `test-perfil-guard` protege continua de pé, e
+     * mais abaixo o pedido de reembolso segue amarrado à sessão.
+     */
+    let titularId = sessao.personId;
+    if (natureza === "pessoal" && corpo.titular != null && corpo.titular !== "") {
+      const id = Number(corpo.titular);
+      if (!Number.isInteger(id) || id <= 0) throw new TimeError("titular inválido");
+      const p = await client.query(`SELECT id FROM fin_person WHERE id = $1 AND is_active`, [id]);
+      if (!p.rows[0]) throw new TimeError("pessoa não encontrada", 404);
+      titularId = id;
+    }
+
     let contaId: number | null = null;
     if (natureza === "empresa") {
       const id = Number(corpo.banco);
@@ -1618,7 +1709,7 @@ export async function cadastrarCartao(sessao: Sessao, corpo: NovoCartao) {
       natureza === "empresa"
         ? `SELECT id, label FROM fin_card WHERE card_account_id = $1 AND last4 = $2`
         : `SELECT id, label FROM fin_card WHERE holder_person_id = $1 AND last4 = $2 AND card_account_id IS NULL`,
-      [natureza === "empresa" ? contaId : sessao.personId, final]
+      [natureza === "empresa" ? contaId : titularId, final]
     );
     if (existe.rows[0]) {
       throw new TimeError(
@@ -1638,7 +1729,7 @@ export async function cadastrarCartao(sessao: Sessao, corpo: NovoCartao) {
         // Cartão da empresa também guarda quem cadastrou como titular quando é
         // pessoal; no da empresa o titular fica em aberto, porque quem cadastra
         // não é necessariamente quem carrega o plástico.
-        natureza === "pessoal" ? sessao.personId : null,
+        natureza === "pessoal" ? titularId : null,
         final,
         apelido,
         bandeira,
@@ -1647,20 +1738,25 @@ export async function cadastrarCartao(sessao: Sessao, corpo: NovoCartao) {
       ]
     );
 
+    // O $4 existia na lista de valores e NÃO no SQL: um `null` solto que o
+    // Postgres não conseguia tipar, e a transação inteira morria com "could
+    // not determine data type of parameter $4". Ou seja, cadastrar cartão
+    // nunca funcionou desde que foi escrito — a tela abria, preenchia e dava
+    // 500 no fim. Passou despercebido porque nenhum teste chamava esta rota,
+    // e a única prova que existia era o `tsc`, que não olha SQL.
     await client.query(
       `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, after, fields, actor)
-       VALUES ((SELECT id FROM fin_entity WHERE slug = $5), 'fin_card', $1, 'insert', $2::jsonb,
+       VALUES ((SELECT id FROM fin_entity WHERE slug = $4), 'fin_card', $1, 'insert', $2::jsonb,
                ARRAY['last4','label','brand','kind'], $3)`,
       [
         r.rows[0].id,
         JSON.stringify({ last4: final, label: apelido, brand: bandeira, kind: tipo, natureza }),
         `time:${sessao.personId}`,
-        null,
         ENTITY
       ]
     );
 
-    return { id: Number(r.rows[0].id), final, apelido, bandeira, natureza };
+    return { id: Number(r.rows[0].id), final, apelido, bandeira, natureza, titularId };
   });
 }
 

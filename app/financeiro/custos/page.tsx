@@ -1,7 +1,9 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { FinCustos } from "@/components/financeiro/FinCustos";
+import { FinGastoDescrito } from "@/components/financeiro/FinGastoDescrito";
 import { FinShell } from "@/components/financeiro/FinShell";
 import { getOpcoesContas } from "@/lib/financeiro/contas";
+import { getPainelDescrito } from "@/lib/financeiro/gasto-descrito";
 
 export const metadata = {
   title: "Previsão de custos do mês — Financeiro XPE"
@@ -36,7 +38,9 @@ export const revalidate = 0;
  */
 export default async function CustosPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   const { mes } = await searchParams;
-  const opcoes = await getOpcoesContas();
+  // Sem filtro de forma: aqui entra tudo que foi descrito — cartão, PIX,
+  // boleto, débito e o que saiu do bolso de alguém e virou reembolso.
+  const [opcoes, painel] = await Promise.all([getOpcoesContas(), getPainelDescrito()]);
 
   return (
     <AppShell>
@@ -51,6 +55,19 @@ export default async function CustosPage({ searchParams }: { searchParams: Promi
       </div>
       <FinShell>
         <FinCustos mesInicial={mesValido(mes)} opcoes={opcoes} />
+
+        {/*
+          O DESCRITO fica abaixo do PREVISTO, e os dois não se somam.
+          Em cima está o que a base sabe que vai sair — projeção de caixa. Aqui
+          está o que gente contou ter gasto, por qualquer meio. Um custo
+          descrito e aprovado vira previsto; enquanto não vira, ele existe só
+          aqui. Misturar os dois contaria a mesma saída duas vezes.
+        */}
+        <FinGastoDescrito
+          painel={painel}
+          titulo="Descrito pelo time — todo o gasto"
+          explicacao="Cartão, PIX, boleto, débito e reembolso, num lugar só: o que foi comprado, por onde saiu, para qual área e quem gastou. Não somar com a previsão acima — lá é o que a base projeta sair, aqui é o que pessoas contaram ter gasto."
+        />
       </FinShell>
     </AppShell>
   );

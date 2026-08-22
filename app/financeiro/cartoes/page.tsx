@@ -1,8 +1,10 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { FinCartaoDescrito } from "@/components/financeiro/FinCartaoDescrito";
+import { FinGastoDescrito } from "@/components/financeiro/FinGastoDescrito";
 import { FinCartoes } from "@/components/financeiro/FinCartoes";
 import { FinShell } from "@/components/financeiro/FinShell";
 import { getCartoesDescritos } from "@/lib/financeiro/cartao-descrito";
+import { getPainelDescrito } from "@/lib/financeiro/gasto-descrito";
 import { getCartaoDetalhe } from "@/lib/financeiro/contratos";
 
 export const metadata = {
@@ -50,7 +52,12 @@ export default async function CartoesPage() {
   // (o que o time contou). São perguntas independentes, e uma não espera a
   // outra — nem uma falha derruba a outra, porque `getCartoesDescritos` já
   // degrada sozinha quando a view da 0150 não existe.
-  const [contrato, descrito] = await Promise.all([getCartaoDetalhe(), getCartoesDescritos()]);
+  const [contrato, descrito, painel] = await Promise.all([
+    getCartaoDetalhe(),
+    getCartoesDescritos(),
+    // Só cartão nesta tela. A de custos vê tudo, inclusive reembolso.
+    getPainelDescrito(["cartao"])
+  ]);
 
   return (
     <AppShell>
@@ -89,6 +96,12 @@ export default async function CartoesPage() {
           esconder essa seção junto com a outra tiraria da tela justamente o
           dado que já existe.
         */}
+        <FinGastoDescrito
+          painel={painel}
+          titulo="Cartão em números"
+          explicacao="Só o que foi pago em cartão da empresa e descrito pelo time. Histórico, área, categoria e quem gastou — o mesmo dado da lista abaixo, somado."
+        />
+
         <FinCartaoDescrito cartoes={descrito.cartoes} totalCents={descrito.totalCents} />
       </FinShell>
     </AppShell>

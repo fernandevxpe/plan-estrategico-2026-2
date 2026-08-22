@@ -239,9 +239,28 @@ Cada onda diz o indicador que move. Ordem por dependência.
 
 - [ ] **3.1 `fin_card.holder_person_id`** nos 11 plásticos do Nubank. É ato
       humano, não código — R$ 87.206,95 sem dono. → *`cartao_sem_titular` zera*
-- [ ] **3.2 `due_day` e `ownership` do `inter-cartao`.** Sem `due_day` o Inter
-      projeta **zero**, e ele pagou **R$ 40.862,41 em 2026**. A previsão de
-      cartão hoje erra por ~metade. → *previsão de cartão deixa de mentir*
+- [x] **3.2a `due_day` do `inter-cartao` — FEITO (0137), e NÃO bastou.**
+      Derivado do extrato: nove pagamentos em 2026 nos dias 4, 6, 4, 7, 11, 5,
+      2, 6 e 4; o dia 7 cobre oito dos nove. Observado, não declarado — ninguém
+      leu a fatura do banco.
+
+      **A migration 0137 afirma que isto conserta a previsão. Está errado.**
+      Medido depois de aplicar: o Inter continua fora. `cartao_mes` (0079:488)
+      parte de `fin_card_compromisso_mensal_v` e só então junta `cartao_base`,
+      e o Inter **não tem nenhuma linha lá** — ele é `somente_pagamento` e não
+      itemiza. O `due_day` removeu um dos dois bloqueios; o outro é que não
+      existe compromisso nenhum para projetar.
+
+      O que de fato fecharia: (a) um `fin_recurring` declarado para a fatura do
+      Inter, com a mediana observada (~R$ 4.540/mês em 9 faturas), rotulado como
+      estimativa; ou (b) itemização, que depende de fonte que o Inter não expõe.
+      A (a) é honesta e barata, e é o caminho.
+
+- [ ] **3.2b `ownership` do `inter-cartao`.** Continua `indeterminado`, e
+      continua sendo decisão humana: `pj` faz o pagamento da fatura ser 9.01
+      (transferência neutra), `pf_socio` faz ser 9.05 (retirada de sócio, que
+      não é despesa). São R$ 40.862,41 e muda o resultado do ano. Registrado
+      como pendência do tipo `card_sem_titular`, que já existia no vocabulário.
 - [ ] **3.3 Cartão pessoal usado para a empresa.** `ownership='pf_socio'` +
       `holder_person_id`, e um `card_transaction_id` em
       `fin_reimbursement_item`. É o terceiro caso que hoje não existe. → *cartão
@@ -254,9 +273,23 @@ Cada onda diz o indicador que move. Ordem por dependência.
 
 ### Onda 4 — reembolso de verdade
 
-- [ ] **4.1 Escolher UM modelo.** A 0129 tem a parcela correta e a view de
-      saldo; a 0012 tem o workflow. Mantê-los carregados garante que as telas
-      divirjam. → *uma verdade*
+- [x] **4.1 RESOLVIDO POR EVIDÊNCIA — e os dois estavam certos.**
+      A planilha responde sozinha. Maio26, Decézaris: "Notebook parc 2/21 2x*"
+      = 314,40, total do mês 834,24 escrito na própria planilha, e a nota logo
+      abaixo: *"2x* devido a ser dia 28 a fatura"*. Junho26 traz "parc 3/21" =
+      157,20 e Julho26 "parc 4/21" = 157,20.
+
+      Junho segue na parcela 3, não na 4 — logo o `2x*` **dobrou o valor sem
+      pular parcela**. Portanto: o valor PAGO é 314,40 (o 0012 acerta, e o total
+      dele bate com o da planilha) e a PARCELA é 157,20 (o 0129 acerta, e o
+      saldo sai dela). Não há modelo errado: há duas perguntas diferentes, e
+      `meuReembolso` já lê cada uma na fonte certa.
+
+      **Sobra um caso, e ele não é de importador:** em Fevereiro26 o Fernando
+      aparece DUAS vezes na planilha — bloco em C11 (soma 765,61, o total
+      escrito) e bloco em C2 (com "Notebooks part 2 - 8/24"). Os dois
+      importadores leram blocos diferentes. É duplicação na origem, e nenhum
+      dado do banco resolve. Registrado como `pessoa_duplicada_na_planilha`.
 - [ ] **4.2 Amarrar item↔plano.** `installment_plan_id` é NULL nos 193 itens,
       e por isso `parcelas_futuras = 0` e o painel do admin mostra
       "faltam 0" para plano com 4 a vencer. → *previsão de reembolso deixa de

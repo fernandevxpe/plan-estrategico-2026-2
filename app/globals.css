@@ -13308,3 +13308,52 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
     min-height: 44px;
   }
 }
+
+/* O casco próprio do app do time — ele não usa mais o AppShell da plataforma
+   (ver o comentário em app/time/layout.tsx: o indicador de frescor embutia a
+   mensagem de erro do sync no HTML de uma página que passou a responder sem
+   credencial). */
+.time-page {
+  min-height: 100dvh;
+  padding-top: max(14px, env(safe-area-inset-top));
+}
+
+.time-voltar {
+  margin: 28px 0 0;
+  font-size: 12.5px;
+}
+
+.time-voltar a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.time-voltar a:hover {
+  color: var(--purple-text);
+  text-decoration: underline;
+}
+
+/* Instalado não há para onde voltar: fora do escopo do manifest o link abriria
+   o navegador por cima do app. */
+@media (display-mode: standalone) {
+  .time-voltar {
+    display: none;
+  }
+}
+
+/* O bloco do login declarado fica recolhido: ele é a exceção, não o caminho. */
+.time-declarar {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.time-declarar > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.time-declarar > summary:hover {
+  color: var(--purple-text);
+}

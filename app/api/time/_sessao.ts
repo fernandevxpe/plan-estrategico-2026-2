@@ -62,12 +62,25 @@ export async function sessaoAtual(): Promise<Sessao | null> {
  * dizer quem é. 403 sugeriria "você não tem direito", quando o certo é "eu
  * ainda não sei quem você é".
  */
-export async function exigirContexto(): Promise<ContextoTime> {
-  if (!(await schemaTimeDisponivel())) {
-    throw new TimeError("o app do time ainda não foi liberado neste ambiente (migration 0105 não aplicada)", 503);
-  }
+export async function exigirContexto(opcoes?: { senhaPendenteOk?: boolean }): Promise<ContextoTime> {
+  // A SESSÃO VEM PRIMEIRO, e a ordem importa desde que `/api/time` deixou de
+  // exigir Basic. Checar o schema antes fazia toda requisição anônima disparar
+  // uma consulta no Postgres financeiro, e o 503 devolvia o número da migration
+  // — dois presentes para quem só quer sondar: amplificação de banco de graça e
+  // o estado interno do deploy. Sem cookie, 401 seco e nada acontece no banco.
   const sessao = await sessaoAtual();
   if (!sessao) throw new TimeError("identifique-se para continuar", 401);
+  if (!(await schemaTimeDisponivel())) {
+    throw new TimeError("o app do time ainda não está disponível", 503);
+  }
+  // A senha de entrega tem de morrer na primeira sessão — e isso precisa valer
+  // no SERVIDOR. Antes, a única barreira era uma tela: quem entrasse com a
+  // senha que o admin digitou (e conhece) podia ignorá-la e usar as rotas por
+  // 30 dias via `curl`. A rota de troca é a única exceção, senão a pessoa fica
+  // presa sem caminho para sair.
+  if (sessao.trocarSenha && !opcoes?.senhaPendenteOk) {
+    throw new TimeError("troque a senha de entrega antes de continuar", 403);
+  }
   return { sessao };
 }
 

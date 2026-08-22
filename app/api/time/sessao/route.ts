@@ -48,8 +48,14 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Falha para o lado FECHADO. `basic` é privilégio (libera o login declarado e a
+ * lista de pessoas), então ele só existe quando o middleware afirmou que a
+ * credencial compartilhada foi conferida. Ausência de cabeçalho — middleware
+ * que não rodou, chamada interna, adaptador futuro — vale `sessao`.
+ */
 async function porta(): Promise<Porta> {
-  return (await headers()).get(CABECALHO_PORTA) === "sessao" ? "sessao" : "basic";
+  return (await headers()).get(CABECALHO_PORTA) === "basic" ? "basic" : "sessao";
 }
 
 export async function GET() {
@@ -60,7 +66,7 @@ export async function GET() {
         motivo: "migration 0105 não aplicada neste ambiente",
         sessao: null,
         pessoas: [],
-        porta: "sessao" satisfies Porta
+        porta: await porta()
       });
     }
     const via = await porta();

@@ -1,6 +1,7 @@
 import "server-only";
 
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 import { gzipSync } from "node:zlib";
 
 import { FinanceUnavailableError, query, queryOne, transaction } from "@/lib/financeiro/db";
@@ -118,13 +119,36 @@ export type Sessao = {
  */
 const SCRYPT = { N: 16384, r: 8, p: 1, tamanho: 32 } as const;
 
-export function hashDeSenha(senha: string): string {
+/**
+ * Memória de sobra sobre o pior caso previsto.
+ *
+ * scrypt consome ~128 · N · r bytes. Com N=16384 e r=8 são 16 MiB; o teto de
+ * 256 MiB acomoda N=262144 sem que endurecer o custo passe a LANÇAR — e lançar
+ * aqui é pior que ser lento, porque `conferirSenha` engoliria a exceção e
+ * devolveria `false`, trancando a pessoa com a mensagem "senha incorreta".
+ */
+const MAXMEM = 256 * 1024 * 1024;
+
+/**
+ * scrypt ASSÍNCRONO. A versão síncrona bloqueia o event loop inteiro por ~80ms
+ * por tentativa — e como `/api/time/sessao` é alcançável sem credencial
+ * nenhuma, um laço de `curl` anônimo travaria todas as rotas do processo,
+ * inclusive o financeiro. Não é hipótese: o pool tem 5 conexões e é o mesmo.
+ */
+const scryptAsync = promisify(scrypt) as (
+  senha: string | Buffer,
+  salt: string | Buffer,
+  tamanho: number,
+  opcoes: { N: number; r: number; p: number; maxmem: number }
+) => Promise<Buffer>;
+
+export async function hashDeSenha(senha: string): Promise<string> {
   const salt = randomBytes(16);
-  const hash = scryptSync(senha.normalize("NFKC"), salt, SCRYPT.tamanho, {
+  const hash = await scryptAsync(senha.normalize("NFKC"), salt, SCRYPT.tamanho, {
     N: SCRYPT.N,
     r: SCRYPT.r,
     p: SCRYPT.p,
-    maxmem: 64 * 1024 * 1024
+    maxmem: MAXMEM
   });
   return `scrypt$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString("hex")}$${hash.toString("hex")}`;
 }
@@ -135,20 +159,35 @@ export function hashDeSenha(senha: string): string {
  * `timingSafeEqual` estoura se os buffers tiverem tamanhos diferentes — o que
  * por si só já vazaria o comprimento. Por isso o tamanho esperado sai dos
  * parâmetros guardados, nunca do que está sendo comparado.
+ *
+ * A GUARDA DE COMPRIMENTO NÃO É PARANOIA. Sem ela, um `senha_hash` cujo último
+ * segmento fosse um único caractere hex daria `esperado.length === 0`, scrypt
+ * devolveria um buffer vazio, e `timingSafeEqual(<0>, <0>)` é **true** — senha
+ * universal para aquela pessoa. `hashDeSenha` nunca produz essa forma, e o
+ * CHECK do banco (`[0-9a-f]+`) a aceita: é exatamente o formato que um backdoor
+ * teria. Tamanho errado é hash inválido, não hash fraco.
  */
-export function conferirSenha(senha: string, guardado: string | null): boolean {
+export async function conferirSenha(senha: string, guardado: string | null): Promise<boolean> {
   if (!guardado) return false;
   const partes = guardado.split("$");
   if (partes.length !== 6 || partes[0] !== "scrypt") return false;
   const [, n, r, p, saltHex, hashHex] = partes;
+
+  const N = Number(n);
+  const R = Number(r);
+  const P = Number(p);
+  if (!Number.isInteger(N) || !Number.isInteger(R) || !Number.isInteger(P)) return false;
+  if (N < 2 || (N & (N - 1)) !== 0 || R < 1 || P < 1) return false;
+
   let esperado: Buffer;
   try {
     esperado = Buffer.from(hashHex, "hex");
-    const calculado = scryptSync(senha.normalize("NFKC"), Buffer.from(saltHex, "hex"), esperado.length, {
-      N: Number(n),
-      r: Number(r),
-      p: Number(p),
-      maxmem: 64 * 1024 * 1024
+    if (esperado.length !== SCRYPT.tamanho) return false;
+    const calculado = await scryptAsync(senha.normalize("NFKC"), Buffer.from(saltHex, "hex"), esperado.length, {
+      N,
+      r: R,
+      p: P,
+      maxmem: MAXMEM
     });
     return timingSafeEqual(calculado, esperado);
   } catch {
@@ -167,7 +206,7 @@ export function conferirSenha(senha: string, guardado: string | null): boolean {
 export async function listarPessoas(): Promise<Pessoa[]> {
   const linhas = await query<{ id: number; name: string; area: string | null; exige_pin: boolean }>(
     `SELECT p.id, p.name, p.area,
-            (a.person_id IS NOT NULL AND a.status = 'ativo') AS exige_pin
+            (a.pin_sha256 IS NOT NULL AND a.status = 'ativo') AS exige_pin
        FROM fin_person p
        JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $1
        LEFT JOIN fin_person_acesso a ON a.person_id = p.id
@@ -198,8 +237,12 @@ export async function abrirSessao(personId: number, pin: string | null, userAgen
     );
     if (!pessoa.rows[0]) throw new TimeError("pessoa não encontrada ou inativa", 404);
 
-    const acesso = await client.query<{ pin_sha256: string; pin_salt: string; status: string }>(
-      `SELECT pin_sha256, pin_salt, status FROM fin_person_acesso WHERE person_id = $1`,
+    // `pin_sha256 IS NOT NULL`, não "existe linha". Depois da 0134 uma linha
+    // pode existir só com SENHA, e tratar isso como "tem PIN" trancava a pessoa
+    // com a mensagem "PIN incorreto" — sobre um PIN que ela nunca teve.
+    const acesso = await client.query<{ pin_sha256: string | null; pin_salt: string | null; status: string }>(
+      `SELECT pin_sha256, pin_salt, status FROM fin_person_acesso
+        WHERE person_id = $1 AND pin_sha256 IS NOT NULL AND pin_salt IS NOT NULL`,
       [personId]
     );
 
@@ -256,91 +299,124 @@ export async function abrirSessao(personId: number, pin: string | null, userAgen
  *    para sempre por tentativa alheia é negação de serviço contra a própria
  *    pessoa — o inverso do que a trava deveria proteger.
  */
-const SENHA_FALSA = hashDeSenha(randomBytes(24).toString("hex"));
+/**
+ * Um hash real, de uma senha que ninguém sabe, para conferir contra quando o
+ * e-mail não existe. Sem isto, "não achei o e-mail" responde em 1ms e "senha
+ * errada" em ~80ms, e o relógio entrega a lista de endereços válidos sem que o
+ * atacante jamais acerte uma senha.
+ *
+ * Preguiçoso e memorizado: calcular no import custaria ~80ms de scrypt em todo
+ * cold start de qualquer rota que importe este módulo, inclusive as que nunca
+ * autenticam.
+ */
+let senhaFalsa: Promise<string> | null = null;
+function hashInexistente(): Promise<string> {
+  senhaFalsa ??= hashDeSenha(randomBytes(24).toString("hex"));
+  return senhaFalsa;
+}
+
+/** 1–4 sem espera; da 5ª em diante dobra, teto de 15 min. */
+function esperaPorFalhas(falhas: number): number {
+  return falhas < 5 ? 0 : Math.min(15 * 60, 30 * 2 ** (falhas - 5));
+}
 
 export async function autenticar(email: string, senha: string, userAgent: string | null) {
   const alvo = String(email ?? "").trim().toLowerCase();
   const segredo = String(senha ?? "");
   if (!alvo || !segredo) throw new TimeError("informe e-mail e senha", 400);
 
-  return transaction(async (client) => {
-    const linha = await client.query<{
-      id: number;
-      name: string;
-      is_admin: boolean;
-      senha_hash: string | null;
-      status: string | null;
-      senha_trocar: boolean | null;
-      falhas: number | null;
-      bloqueado_ate: Date | null;
-    }>(
-      `SELECT p.id, p.name, p.is_admin,
-              a.senha_hash, a.status, a.senha_trocar, a.falhas, a.bloqueado_ate
-         FROM fin_person p
-         JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $2
-         LEFT JOIN fin_person_acesso a ON a.person_id = p.id
-        WHERE lower(p.email) = $1 AND p.status = 'ativo'`,
-      [alvo, ENTITY]
-    );
-    const p = linha.rows[0];
+  // FORA DE TRANSAÇÃO, e isto é deliberado. A primeira versão fazia tudo dentro
+  // de `transaction()` e dava `throw` no caminho de erro — o que fazia o
+  // ROLLBACK apagar o contador de falhas que acabara de ser gravado. O rate
+  // limit existia no código e não existia no banco: força bruta ilimitada,
+  // porque o único registro do erro morria junto com ele.
+  //
+  // O segundo motivo é o pool: são 5 conexões compartilhadas com o financeiro
+  // inteiro, e segurar uma delas durante o scrypt transformaria um endpoint
+  // anônimo em derrubada do módulo financeiro.
+  const p = await queryOne<{
+    id: number;
+    name: string;
+    is_admin: boolean;
+    senha_hash: string | null;
+    status: string | null;
+    senha_trocar: boolean | null;
+    falhas: number | null;
+    bloqueado_ate: Date | null;
+  }>(
+    `SELECT p.id, p.name, p.is_admin,
+            a.senha_hash, a.status, a.senha_trocar, a.falhas, a.bloqueado_ate
+       FROM fin_person p
+       JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $2
+       LEFT JOIN fin_person_acesso a ON a.person_id = p.id
+      WHERE lower(p.email) = $1 AND p.status = 'ativo'`,
+    [alvo, ENTITY]
+  );
 
-    // Roda sempre, inclusive sem pessoa: é o que iguala o tempo de resposta.
-    const senhaConfere = conferirSenha(segredo, p?.senha_hash ?? SENHA_FALSA);
+  // O bloqueio é checado ANTES do hash: não adianta gastar 80ms de CPU numa
+  // tentativa que já vai ser recusada — seria o próprio rate limit virando
+  // amplificador de carga.
+  const travado = Boolean(p?.bloqueado_ate && p.bloqueado_ate > new Date());
 
-    if (!p || !p.senha_hash) throw new TimeError("e-mail ou senha incorretos", 401);
-    if (p.status === "bloqueado") throw new TimeError("acesso bloqueado — fale com o admin", 403);
-    if (p.bloqueado_ate && p.bloqueado_ate > new Date()) {
-      throw new TimeError("muitas tentativas — espere um pouco antes de tentar de novo", 429);
-    }
+  // Roda SEMPRE, inclusive sem pessoa e inclusive travado: é o que iguala o
+  // tempo de resposta entre "e-mail não existe" e "senha errada".
+  const confere = await conferirSenha(segredo, p?.senha_hash ?? (await hashInexistente()));
 
-    if (!senhaConfere) {
-      const falhas = (p.falhas ?? 0) + 1;
-      // 1–4 sem espera; da 5ª em diante o atraso dobra a cada erro, teto de 15min.
-      const esperaSegundos = falhas < 5 ? 0 : Math.min(15 * 60, 30 * 2 ** (falhas - 5));
-      await client.query(
-        `UPDATE fin_person_acesso
-            SET falhas = $2,
-                bloqueado_ate = CASE WHEN $3::int > 0 THEN now() + ($3 || ' seconds')::interval ELSE NULL END
-          WHERE person_id = $1`,
-        [p.id, falhas, esperaSegundos]
-      );
-      throw new TimeError("e-mail ou senha incorretos", 401);
-    }
+  if (!p || !p.senha_hash) throw new TimeError("e-mail ou senha incorretos", 401);
+  if (p.status === "bloqueado") throw new TimeError("e-mail ou senha incorretos", 401);
+  if (travado) throw new TimeError("e-mail ou senha incorretos", 401);
 
-    await client.query(
+  if (!confere) {
+    const falhas = (p.falhas ?? 0) + 1;
+    const espera = esperaPorFalhas(falhas);
+    // Query própria, fora de qualquer transação que possa reverter: é a única
+    // memória que o sistema tem de que alguém está tentando.
+    await query(
       `UPDATE fin_person_acesso
-          SET falhas = 0, bloqueado_ate = NULL, last_seen_at = now()
+          SET falhas = $2,
+              bloqueado_ate = CASE WHEN $3::int > 0 THEN now() + ($3 || ' seconds')::interval ELSE NULL END
         WHERE person_id = $1`,
-      [p.id]
+      [p.id, falhas, espera]
     );
+    throw new TimeError("e-mail ou senha incorretos", 401);
+  }
 
-    const token = randomBytes(32).toString("base64url");
-    const criada = await client.query<{ expira_em: Date }>(
-      `INSERT INTO fin_time_sessao (token_sha256, person_id, prova, expira_em, user_agent)
-       VALUES ($1, $2, 'senha', now() + ($3 || ' days')::interval, $4)
-       RETURNING expira_em`,
-      [sha256(token), p.id, String(DIAS_DE_SESSAO), userAgent?.slice(0, 300) ?? null]
-    );
+  const token = randomBytes(32).toString("base64url");
+  const criada = await queryOne<{ expira_em: Date }>(
+    `INSERT INTO fin_time_sessao (token_sha256, person_id, prova, expira_em, user_agent)
+     VALUES ($1, $2, 'senha', now() + ($3 || ' days')::interval, $4)
+     RETURNING expira_em`,
+    [sha256(token), p.id, String(DIAS_DE_SESSAO), userAgent?.slice(0, 300) ?? null]
+  );
+  await query(
+    `UPDATE fin_person_acesso SET falhas = 0, bloqueado_ate = NULL, last_seen_at = now() WHERE person_id = $1`,
+    [p.id]
+  );
 
-    return {
-      token,
-      sessao: {
-        personId: Number(p.id),
-        nome: p.name,
-        prova: "senha",
-        admin: p.is_admin === true,
-        trocarSenha: p.senha_trocar === true,
-        expiraEm: criada.rows[0].expira_em.toISOString()
-      } satisfies Sessao
-    };
-  });
+  return {
+    token,
+    sessao: {
+      personId: Number(p.id),
+      nome: p.name,
+      prova: "senha",
+      admin: p.is_admin === true,
+      trocarSenha: p.senha_trocar === true,
+      expiraEm: criada!.expira_em.toISOString()
+    } satisfies Sessao
+  };
 }
 
 /**
- * Trocar a própria senha. A sessão diz de quem é — nunca um parâmetro.
+ * Trocar a própria senha. De quem é vem da sessão — nunca de um parâmetro.
  *
- * Exige a senha atual mesmo com sessão válida: sessão de 30 dias num celular
- * que ficou na mesa não pode virar troca de senha.
+ * A senha atual é exigida mesmo com sessão válida: a sessão dura 30 dias de
+ * propósito (o app é usado com a mão suja, no meio da rua), e um celular
+ * esquecido na mesa não pode virar troca de senha.
+ *
+ * O token é VALIDADO contra uma sessão viva desta pessoa antes de qualquer
+ * coisa. A primeira versão só o usava como `<>` para poupar a sessão corrente,
+ * e um token errado passava batido derrubando todas as sessões — inclusive a
+ * de quem estava trocando — sem erro nenhum.
  */
 export async function trocarSenha(
   sessao: Sessao,
@@ -348,31 +424,61 @@ export async function trocarSenha(
   atual: string,
   nova: string
 ): Promise<void> {
-  if (String(nova ?? "").length < 8) throw new TimeError("a nova senha precisa de pelo menos 8 caracteres", 422);
-  if (atual === nova) throw new TimeError("a nova senha tem de ser diferente da atual", 422);
+  const senhaNova = String(nova ?? "");
+  if (senhaNova.length < 8) throw new TimeError("a nova senha precisa de pelo menos 8 caracteres", 422);
+  if (String(atual ?? "") === senhaNova) throw new TimeError("a nova senha tem de ser diferente da atual", 422);
+  // Só quem entrou POR senha troca senha. Sessão declarada não tem o que trocar,
+  // e deixar o caminho aberto seria confiar em falhar fechado por acidente.
+  if (sessao.prova !== "senha") throw new TimeError("entre com e-mail e senha para trocar a senha", 403);
 
-  await transaction(async (client) => {
-    const linha = await client.query<{ senha_hash: string | null }>(
-      `SELECT senha_hash FROM fin_person_acesso WHERE person_id = $1 FOR UPDATE`,
-      [sessao.personId]
+  const tokenSha = sha256(String(tokenCorrente ?? ""));
+  const viva = await queryOne<{ id: number }>(
+    `SELECT id FROM fin_time_sessao
+      WHERE token_sha256 = $1 AND person_id = $2 AND expira_em > now() AND encerrada_em IS NULL`,
+    [tokenSha, sessao.personId]
+  );
+  if (!viva) throw new TimeError("identifique-se para continuar", 401);
+
+  const acesso = await queryOne<{ senha_hash: string | null; falhas: number | null; bloqueado_ate: Date | null }>(
+    `SELECT senha_hash, falhas, bloqueado_ate FROM fin_person_acesso WHERE person_id = $1`,
+    [sessao.personId]
+  );
+  if (acesso?.bloqueado_ate && acesso.bloqueado_ate > new Date()) {
+    throw new TimeError("muitas tentativas — espere um pouco antes de tentar de novo", 429);
+  }
+
+  // Este é o SEGUNDO oráculo de senha do sistema: com o cookie em mãos dá para
+  // adivinhar a senha atual sem limite. Ele conta as falhas na mesma tabela que
+  // o login, então a trava é compartilhada.
+  if (!(await conferirSenha(String(atual ?? ""), acesso?.senha_hash ?? (await hashInexistente())))) {
+    const falhas = (acesso?.falhas ?? 0) + 1;
+    const espera = esperaPorFalhas(falhas);
+    await query(
+      `UPDATE fin_person_acesso
+          SET falhas = $2,
+              bloqueado_ate = CASE WHEN $3::int > 0 THEN now() + ($3 || ' seconds')::interval ELSE NULL END
+        WHERE person_id = $1`,
+      [sessao.personId, falhas, espera]
     );
-    if (!conferirSenha(String(atual ?? ""), linha.rows[0]?.senha_hash ?? SENHA_FALSA)) {
-      throw new TimeError("senha atual incorreta", 401);
-    }
+    throw new TimeError("senha atual incorreta", 401);
+  }
+
+  const hashNovo = await hashDeSenha(senhaNova);
+  await transaction(async (client) => {
     await client.query(
       `UPDATE fin_person_acesso
           SET senha_hash = $2, senha_set_at = now(), senha_set_by = 'a própria pessoa',
               senha_trocar = false, falhas = 0, bloqueado_ate = NULL
         WHERE person_id = $1`,
-      [sessao.personId, hashDeSenha(nova)]
+      [sessao.personId, hashNovo]
     );
     // As outras sessões caem: trocar senha porque desconfiou de algo tem de
-    // expulsar quem estiver dentro, e a sessão corrente é preservada para a
-    // pessoa não ser deslogada pelo próprio acerto.
+    // expulsar quem estiver dentro. A corrente é poupada para a pessoa não ser
+    // deslogada pelo próprio acerto.
     await client.query(
       `UPDATE fin_time_sessao SET encerrada_em = now()
-        WHERE person_id = $1 AND encerrada_em IS NULL AND token_sha256 <> $2`,
-      [sessao.personId, sha256(tokenCorrente ?? "")]
+        WHERE person_id = $1 AND encerrada_em IS NULL AND id <> $2`,
+      [sessao.personId, viva.id]
     );
   });
 }
@@ -396,6 +502,10 @@ export async function lerSessao(token: string | null | undefined): Promise<Sessa
         AND s.expira_em > now()
         AND s.encerrada_em IS NULL
         AND p.status = 'ativo'
+        -- Bloquear o acesso de alguém tem de derrubar a sessão viva também.
+        -- Sem isto o admin bloqueia, acredita que revogou, e o cookie de 30
+        -- dias continua valendo em todas as rotas.
+        AND COALESCE(a.status, 'ativo') <> 'bloqueado'
       RETURNING s.person_id, p.name, s.prova, p.is_admin, a.senha_trocar, s.expira_em`,
     [sha256(token)]
   );

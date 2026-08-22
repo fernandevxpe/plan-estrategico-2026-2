@@ -22,7 +22,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const { sessao } = await exigirContexto();
+    // A única rota que aceita sessão com senha de entrega pendente: é a saída.
+    const { sessao } = await exigirContexto({ senhaPendenteOk: true });
     const token = (await cookies()).get(COOKIE_SESSAO)?.value;
     if (!token) throw new TimeError("identifique-se para continuar", 401);
 

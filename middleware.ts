@@ -110,35 +110,50 @@ export function middleware(request: NextRequest) {
   //
   // `x-xpe-porta` distingue as duas portas: o login DECLARADO (clicar no próprio
   // nome numa lista) só é aceito quando veio por Basic, porque ali a credencial
-  // compartilhada já provou "alguém do time". Por esta porta, só e-mail e senha.
+  // compartilhada já provou "alguém do time". Pela porta do app, só e-mail e senha.
+  //
+  // A ORDEM AQUI JÁ ESTEVE ERRADA, E O ERRO ERA UM LOCKOUT.
+  // A primeira versão devolvia `seguir(..., "sessao")` para toda rota do time
+  // ANTES de olhar o cabeçalho Basic. Como o navegador da plataforma manda a
+  // credencial em toda requisição, isso não mudava nada em desenvolvimento (que
+  // sai antes) mas em produção a porta era SEMPRE `sessao` — o caminho declarado
+  // morria, e como ninguém tem senha cadastrada ainda, o time inteiro ficaria
+  // sem acesso no primeiro deploy. Basic primeiro; a isenção é o que sobra
+  // quando não há credencial válida.
+  const perfil = perfilDoCabecalho(request.headers.get("authorization"));
+
+  if (perfil) {
+    // Credencial válida e rota fora do alcance: 404, não 403.
+    //
+    // 403 confirma que a rota existe e que a pessoa não tem nível — é um mapa do
+    // que ela ainda não pode ver. 404 devolve o mesmo que uma URL inventada. Para
+    // quem tem acesso legítimo nada muda; para quem está tateando, não há sinal.
+    if (exigeAdmin(pathname) && perfil !== "admin") {
+      return new NextResponse("Not found", { status: 404 });
+    }
+    return seguir(request, perfil, "basic");
+  }
+
+  // Sem credencial compartilhada válida: só passam as rotas que se autoprotegem
+  // por sessão de pessoa. Um `Authorization` inválido cai aqui do mesmo jeito —
+  // a rota vai pedir e-mail e senha, que é a resposta certa.
   if (ehRotaDoTime(pathname)) return seguir(request, "comum", "sessao");
 
-  const header = request.headers.get("authorization");
-  if (!header?.startsWith("Basic ")) return unauthorized();
+  return unauthorized();
+}
 
+/** O perfil que o cabeçalho abre, ou `null` — sem lançar em entrada malformada. */
+function perfilDoCabecalho(header: string | null): Perfil | null {
+  if (!header?.startsWith("Basic ")) return null;
   let decoded: string;
   try {
     decoded = atob(header.slice("Basic ".length));
   } catch {
-    return unauthorized();
+    return null;
   }
-
   const separator = decoded.indexOf(":");
-  if (separator === -1) return unauthorized();
-
-  const perfil = perfilDaCredencial(decoded.slice(0, separator), decoded.slice(separator + 1));
-  if (!perfil) return unauthorized();
-
-  // Credencial válida e rota fora do alcance: 404, não 403.
-  //
-  // 403 confirma que a rota existe e que a pessoa não tem nível — é um mapa do
-  // que ela ainda não pode ver. 404 devolve o mesmo que uma URL inventada. Para
-  // quem tem acesso legítimo nada muda; para quem está tateando, não há sinal.
-  if (!perfil || (exigeAdmin(pathname) && perfil !== "admin")) {
-    return new NextResponse("Not found", { status: 404 });
-  }
-
-  return seguir(request, perfil);
+  if (separator === -1) return null;
+  return perfilDaCredencial(decoded.slice(0, separator), decoded.slice(separator + 1));
 }
 
 /**
@@ -171,10 +186,30 @@ function seguir(request: NextRequest, perfil: Perfil, porta: Porta = "basic") {
  * arquivos estáticos sem dado nenhum dentro.
  */
 const POR_SESSAO = ["/time", "/api/time"];
-const PUBLICOS = ["/manifest.webmanifest", "/icone-192.png", "/icone-512.png", "/icone-maskable.png"];
+const PUBLICOS = ["/manifest.webmanifest", "/icone-192.png", "/icone-512.png", "/icone-maskable.png", "/favicon.ico"];
+
+/**
+ * O BUNDLE PRECISA SER ANÔNIMO, E ISSO TEM UM PREÇO DECLARADO.
+ *
+ * `/_next/static/**` também passa pelo middleware (o roteador do Next resolve
+ * middleware ANTES de servir arquivo). Sem isentar, a página `/time` sai para
+ * quem não tem credencial e todos os chunks JS voltam 401: o app carrega o
+ * HTML, nunca hidrata, e nada nunca chama `/api/time/sessao`. A isenção não
+ * entregaria app nenhum.
+ *
+ * O preço: o bundle do cliente da plataforma inteira passa a ser público. Ele
+ * não carrega segredo — o que é secreto é servidor, e as rotas de dado
+ * continuam todas atrás de Basic ou de sessão —, mas revela nomes de rota e
+ * estrutura de tela. É o custo de servir o app instalável do mesmo domínio.
+ *
+ * A saída definitiva é a F1 do backlog: o app do time num projeto próprio,
+ * apontando para o mesmo banco. Aí o bundle público é só o dele.
+ */
+const ESTATICOS = ["/_next/static"];
 
 function ehRotaDoTime(pathname: string): boolean {
   if (PUBLICOS.includes(pathname)) return true;
+  if (ESTATICOS.some((p) => pathname.startsWith(`${p}/`))) return true;
   return POR_SESSAO.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 

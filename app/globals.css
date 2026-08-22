@@ -13642,3 +13642,77 @@ body:has(.time-page) .theme-toggle {
 .campo-extra > summary::before { content: "+ "; font-weight: 700; margin-right: 4px; }
 .campo-extra[open] > summary::before { content: "– "; }
 .campo-extra > .campo { margin-top: 10px; }
+
+/* ---- Busca do destino: obra, projeto ou área ------------------------------
+   Era um select com 28 itens, que no celular abre uma folha cobrindo a tela e
+   obriga a rolar. Quem não acha rápido escolhe "não é de uma obra específica" —
+   o valor que deixa o indicador de centro de custo em 0%. */
+.destino { position: relative; }
+
+.destino-lista {
+  display: grid;
+  gap: 1px;
+  margin-top: 8px;
+  padding: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.destino-lista > button {
+  min-height: 46px;
+  padding: 11px 12px;
+  text-align: left;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.destino-lista > button:hover,
+.destino-lista > button:active { background: var(--tint-purple-soft); color: var(--purple-text); }
+
+.destino-grupo {
+  margin: 8px 0 2px;
+  padding: 0 12px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.destino-grupo:first-child { margin-top: 2px; }
+
+.destino-vazio { margin: 10px 12px; font-size: 13px; color: var(--muted); }
+
+.destino-nenhum {
+  margin-top: 4px;
+  border-top: 1px solid var(--line) !important;
+  border-radius: 0 0 8px 8px !important;
+  color: var(--muted) !important;
+  font-size: 12.5px !important;
+}
+
+/* Escolhido: some a busca e fica o fato, com um jeito de trocar. Manter o campo
+   de busca cheio depois da escolha convida a apagar sem querer. */
+.destino-escolhido {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--tint-green-line);
+  border-radius: 12px;
+  background: var(--tint-green-soft);
+}
+.destino-escolhido > div { display: grid; gap: 2px; min-width: 0; }
+.destino-escolhido strong { font-size: 14px; }
+.destino-escolhido button {
+  flex: none; min-height: 40px; padding: 0 12px; border: 0; border-radius: 8px;
+  background: none; color: var(--purple-text); font: inherit; font-size: 13px; cursor: pointer;
+}

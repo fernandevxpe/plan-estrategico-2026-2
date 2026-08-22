@@ -669,6 +669,114 @@ function Comprar({ opcoes, aoEnviar, aoFalhar }: { opcoes: Opcoes; aoEnviar: AoE
   );
 }
 
+/**
+ * Busca do destino do custo: obra, projeto ou área.
+ *
+ * Era um `<select>` com 28 itens. Num celular isso abre uma folha nativa que
+ * cobre a tela e obriga a rolar até achar — e quem não acha rápido escolhe
+ * "não é de uma obra específica", que é o valor que deixa o indicador em 0%.
+ *
+ * Aqui a pessoa escreve. "leparc" acha "Edf. Le Parc"; "comer" acha
+ * "Comercial". A busca ignora acento e maiúscula, porque quem digita no
+ * celular não coloca acento.
+ *
+ * DUAS FAMÍLIAS, e a separação importa: obra é um cliente específico e o custo
+ * vira margem daquele contrato; área é a estrutura da casa. Misturadas numa
+ * lista só, "Comercial" aparecia entre dois condomínios e ninguém entendia a
+ * diferença.
+ */
+const semAcento = (v: string) =>
+  v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+function BuscaDestino({
+  centros,
+  valor,
+  aoEscolher
+}: {
+  centros: Opcoes["centros"];
+  valor: string;
+  aoEscolher: (id: string) => void;
+}) {
+  const [termo, setTermo] = useState("");
+  const [aberto, setAberto] = useState(false);
+  const escolhido = centros.find((c) => String(c.id) === valor);
+
+  const achados = useMemo(() => {
+    const t = semAcento(termo.trim());
+    const base = t ? centros.filter((c) => semAcento(c.nome).includes(t)) : centros;
+    return {
+      obras: base.filter((c) => c.ehProjeto),
+      areas: base.filter((c) => !c.ehProjeto)
+    };
+  }, [centros, termo]);
+
+  if (escolhido) {
+    return (
+      <div className="campo">
+        <span className="campo-rotulo">Para qual obra ou projeto</span>
+        <div className="destino-escolhido">
+          <div>
+            <strong>{escolhido.nome}</strong>
+            <span className="time-sub">{escolhido.ehProjeto ? "obra ou projeto" : "área da empresa"}</span>
+          </div>
+          <button type="button" onClick={() => { aoEscolher(""); setTermo(""); setAberto(true); }}>
+            trocar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const total = achados.obras.length + achados.areas.length;
+
+  return (
+    <div className="campo destino">
+      <label className="campo-rotulo" htmlFor="busca-destino">
+        Para qual obra ou projeto
+      </label>
+      <input
+        id="busca-destino"
+        value={termo}
+        onChange={(e) => { setTermo(e.target.value); setAberto(true); }}
+        onFocus={() => setAberto(true)}
+        placeholder="escreva o cliente, a obra ou a área"
+        autoComplete="off"
+      />
+
+      {aberto ? (
+        <div className="destino-lista">
+          {achados.obras.length > 0 ? (
+            <>
+              <p className="destino-grupo">Obras e projetos</p>
+              {achados.obras.slice(0, 8).map((c) => (
+                <button key={c.id} type="button" onClick={() => { aoEscolher(String(c.id)); setAberto(false); }}>
+                  {c.nome}
+                </button>
+              ))}
+            </>
+          ) : null}
+          {achados.areas.length > 0 ? (
+            <>
+              <p className="destino-grupo">Áreas da empresa</p>
+              {achados.areas.slice(0, 8).map((c) => (
+                <button key={c.id} type="button" onClick={() => { aoEscolher(String(c.id)); setAberto(false); }}>
+                  {c.nome}
+                </button>
+              ))}
+            </>
+          ) : null}
+          {total === 0 ? <p className="destino-vazio">Nada com “{termo}”.</p> : null}
+          <button type="button" className="destino-nenhum" onClick={() => { aoEscolher(""); setAberto(false); }}>
+            Não é de uma obra específica
+          </button>
+        </div>
+      ) : (
+        <small>É o campo que mais ajuda. Escreva o cliente e escolha — o custo já sabe de quem é.</small>
+      )}
+    </div>
+  );
+}
+
 function CabecalhoPessoa({ sessao, aoSair }: { sessao: Sessao; aoSair: () => Promise<void> }) {
   return (
     <div className="time-quem">
@@ -1134,7 +1242,7 @@ function FormEnvio({
         <div className="campo">
           <span className="campo-rotulo">Parcelado?</span>
           <div className="chips">
-            {["", "2", "3", "4", "6", "10", "12"].map((n) => (
+            {["", "2", "3", "4", "6", "10", "12", "18", "21"].map((n) => (
               <button
                 key={n || "avista"}
                 type="button"
@@ -1299,44 +1407,15 @@ function FormEnvio({
         financeiro sabe. Pedir a difícil primeiro é o que faz as duas ficarem
         vazias.
       */}
-      <label className="campo">
-        <span>Para qual obra ou projeto</span>
-        <select
-          value={centro}
-          onChange={(e) => {
-            setCentro(e.target.value);
-            if (e.target.value) setLinha("");
-          }}
-        >
-          <option value="">— não é de uma obra específica —</option>
-          <optgroup label="Obras e projetos">
-            {opcoes.centros
-              .filter((c) => c.ehProjeto)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-          </optgroup>
-          <optgroup label="Áreas da empresa">
-            {opcoes.centros
-              .filter((c) => !c.ehProjeto)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-          </optgroup>
-        </select>
-        <small>É o campo que mais ajuda. Um toque aqui e o custo já sabe de quem é.</small>
-      </label>
+      <BuscaDestino
+        centros={opcoes.centros}
+        valor={centro}
+        aoEscolher={(id) => {
+          setCentro(id);
+          if (id) setLinha("");
+        }}
+      />
 
-      {/*
-        Só aparece quando NÃO há obra. Combustível para rodar um LIE acontece
-        antes do contrato existir, ou cobre três laudos de clientes diferentes
-        no mesmo dia — aí não há obra para escolher, e a linha de serviço é a
-        resposta possível.
-      */}
       {/*
         A linha de serviço fica RECOLHIDA. Ela responde um caso real —
         combustível para rodar um laudo que ainda não virou contrato — mas é

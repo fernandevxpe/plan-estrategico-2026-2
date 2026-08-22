@@ -39,6 +39,7 @@
     "test:integridade": "node scripts/test-integridade.mjs",
     "test:time": "node scripts/test-time-notificacoes.mjs",
     "test:perfil-guard": "node scripts/test-perfil-guard.mjs",
+    "test:login": "node scripts/test-login.mjs",
     "notificar": "node scripts/notificar.mjs",
     "notificar:aplicar": "node scripts/notificar.mjs --aplicar",
     "test:import-guard": "node scripts/test-import-guard.mjs",

@@ -1,13 +1,13 @@
 # Clientes e recorrência
 
-Gerado em: 17/08/2026, 00:04:54
+Gerado em: 22/08/2026, 15:16:22
 
 ## Recorrência
 
 - Contas com mais de um fechamento (CNPJ): **33**
 - Contas repetidas (organização): **52**
-- Receita de repetição: **R$ 1.069.971**
-- Confiança CNPJ: **33** contas · R$ 575.446 (high)
+- Receita de repetição: **R$ 1.109.471**
+- Confiança CNPJ: **33** contas · R$ 614.946 (high)
 - Por nome de organização: **19** contas · R$ 494.525 (medium)
 
 ## Origem da receita (novo vs repetido)
@@ -21,13 +21,13 @@ Gerado em: 17/08/2026, 00:04:54
 | 2026-05 | R$ 130.800 | R$ 119.800 | R$ 11.000 | 91,6% | 8,4% |
 | 2026-06 | R$ 333.210 | R$ 92.450 | R$ 240.760 | 27,7% | 72,3% |
 | 2026-07 | R$ 311.100 | R$ 135.200 | R$ 175.900 | 43,5% | 56,5% |
-| 2026-08 | R$ 83.400 | R$ 62.500 | R$ 20.900 | 74,9% | 25,1% |
+| 2026-08 | R$ 144.600 | R$ 84.200 | R$ 60.400 | 58,2% | 41,8% |
 
 ## Top 30 clientes por receita (organizações com fechamento)
 
 | Organização | CNPJ | Fechamentos | Receita | Repetida | Primeiro | Último | Tipos |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Cond. João Heráclio | 11419309000137 | 5 | R$ 126.200 | R$ 110.000 | 2025-02 | 2026-03 | LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular, PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA |
+| Cond. João Heráclio | 11419309000137 | 6 | R$ 162.200 | R$ 146.000 | 2025-02 | 2026-08 | LIE - Laudo de Instalações Elétricas, LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular, PIE - Projeto infra.  Eletrocalha e Emergência, PROJETOS, OBRA |
 | Edificio Le Parc | - | 2 | R$ 115.800 | R$ 102.000 | 2025-02 | 2026-02 | LSPDA, LDC - Laudo de disponibilidade de carga |
 | Edf Novo Jardim | 18561736000102 | 3 | R$ 79.100 | R$ 69.200 | 2025-12 | 2026-06 | LDC - Laudo de disponibilidade de carga, ICV - Inspeção de carregador veicular, PIE - Projeto infra.  Eletrocalha e Emergência, OBRA |
 | Edf Madalena Colonial | 10383770000114 | 2 | R$ 53.300 | R$ 45.000 | 2025-10 | 2026-04 | LDC - Laudo de disponibilidade de carga, OBRA |
@@ -60,10 +60,10 @@ Gerado em: 17/08/2026, 00:04:54
 
 ## Organizações no CRM
 
-- Total cadastradas: **1682**
-- Com pelo menos 1 fechamento: **172**
+- Total cadastradas: **1696**
+- Com pelo menos 1 fechamento: **174**
 - Com repetição (2+ fechamentos): **51**
-- Com negócios abertos agora: **639**
+- Com negócios abertos agora: **637**
 
 ### Top 20 organizações com pipeline aberto
 
@@ -82,12 +82,12 @@ Gerado em: 17/08/2026, 00:04:54
 | Edf Maria Regina | 2 | 1 | 1 |
 | Edf Reserva do Poço | 2 | 3 | 0 |
 | Edf Porto dos Corais | 2 | 2 | 0 |
+| Edf Muçambê | 2 | 1 | 0 |
 | Edf.Maria Nice | 2 | 1 | 0 |
 | Maria Tereza Coelho | 2 | 1 | 1 |
 | Edificio Belize | 2 | 1 | 0 |
 | Condominio do Edificio Lucilo Maranhao | 2 | 2 | 0 |
 | Edf Nazaré | 2 | 1 | 0 |
 | Condomínio Jardins da Ilha | 2 | 1 | 0 |
-| Edf Santorini Aflitos | 2 | 0 | 0 |
 
 > Lista completa: `anexos/clientes-organizacoes.csv`

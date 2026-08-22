@@ -1,6 +1,6 @@
 # Investigação e alertas
 
-Gerado em: 17/08/2026, 00:04:54
+Gerado em: 22/08/2026, 15:16:22
 
 ## Alertas de performance
 
@@ -44,7 +44,7 @@ Gerado em: 17/08/2026, 00:04:54
 | 2026-05 | 14 | 84 | 40 | R$ 130.800 |
 | 2026-06 | 23 | 49 | 29 | R$ 319.290 |
 | 2026-07 | 27 | 52 | 44 | R$ 299.714 |
-| 2026-08 | 10 | 38 | 23 | R$ 83.400 |
+| 2026-08 | 14 | 38 | 23 | R$ 144.600 |
 
 ## Padrões de mix em picos
 
@@ -54,7 +54,7 @@ Gerado em: 17/08/2026, 00:04:54
 
 ## Alertas de qualidade de dados
 
-- **Cobertura de CNPJ parcial** (high): 276/1682 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
-- **Negócios ganhos sem etiqueta comercial explícita** (medium): 3/242 ganhos usam fallback de serviço/funil como tipo principal.
+- **Cobertura de CNPJ parcial** (high): 279/1696 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
+- **Negócios ganhos sem etiqueta comercial explícita** (medium): 3/246 ganhos usam fallback de serviço/funil como tipo principal.
 - **Negócios com múltiplas etiquetas** (medium): 47 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
-- **Base aberta contém negócios antigos** (high): 181 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.
+- **Base aberta contém negócios antigos** (high): 176 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.

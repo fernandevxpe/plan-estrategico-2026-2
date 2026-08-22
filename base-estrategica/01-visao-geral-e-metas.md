@@ -1,27 +1,27 @@
 # Visão geral e metas — XPE Consultoria
 
-Gerado em: 17/08/2026, 00:04:54
+Gerado em: 22/08/2026, 15:16:22
 
 ## Escopo dos dados
 
 - Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus
-- Negócios analisados: **1113**
-- Negócios ganhos no período: **242**
-- Foco 2026: **583** negócios
-- Pipedrive total: **1775** negócios
-- ClickUp: **1827** tarefas
-- Organizações no CRM: **1682**
+- Negócios analisados: **1128**
+- Negócios ganhos no período: **246**
+- Foco 2026: **598** negócios
+- Pipedrive total: **1790** negócios
+- ClickUp: **1791** tarefas
+- Organizações no CRM: **1696**
 
 ## Receita e volume
 
 | Período | Receita | Fechamentos | Novos negócios | Ticket médio |
 | --- | ---: | ---: | ---: | ---: |
 | 2025 (ano) | R$ 890.413 | 101 | 466 | R$ 8.816 |
-| 2026 YTD (parcial) | R$ 1.614.856 | 141 | 560 | R$ 11.453 |
+| 2026 YTD (parcial) | R$ 1.676.056 | 145 | 575 | R$ 11.559 |
 | H1/2025 realizado | R$ 283.360 | 32 | 225 | R$ 8.855 |
 | H2/2025 realizado | R$ 607.053 | 69 | 241 | R$ 8.798 |
-| H1/2026 realizado | R$ 1.220.357 | 102 | 456 | R$ 11.964 |
-| 2026-01 a 2026-07 fechado + 2026-08 projetado | R$ 1.750.236 | 150 | 523 | R$ 11.668 |
+| H1/2026 realizado | R$ 1.220.357 | 102 | 455 | R$ 11.964 |
+| 2026-01 a 2026-07 fechado + 2026-08 projetado | R$ 1.750.236 | 150 | 522 | R$ 11.668 |
 
 ## Run rate (2026-01 a 2026-07)
 
@@ -59,9 +59,9 @@ Gerado em: 17/08/2026, 00:04:54
 | 2025-Q2 | R$ 216.960 | 25 | 78 | R$ 8.678 |
 | 2025-Q3 | R$ 257.154 | 35 | 124 | R$ 7.347 |
 | 2025-Q4 | R$ 349.899 | 34 | 117 | R$ 10.291 |
-| 2026-Q1 | R$ 600.747 | 48 | 201 | R$ 12.516 |
+| 2026-Q1 | R$ 600.747 | 48 | 200 | R$ 12.516 |
 | 2026-Q2 | R$ 619.610 | 54 | 255 | R$ 11.474 |
-| 2026-Q3 | R$ 394.500 | 39 | 104 | R$ 10.115 |
+| 2026-Q3 | R$ 455.700 | 43 | 120 | R$ 10.598 |
 
 ## Timeline 2026 (mês a mês)
 
@@ -69,12 +69,12 @@ Gerado em: 17/08/2026, 00:04:54
 | --- | --- | --- | --- | --- | --- |
 | 2026-01 | actual | R$ 180.132 | 14 | 59 | - |
 | 2026-02 | actual | R$ 198.165 | 15 | 59 | - |
-| 2026-03 | actual | R$ 222.450 | 19 | 83 | - |
+| 2026-03 | actual | R$ 222.450 | 19 | 82 | - |
 | 2026-04 | actual | R$ 155.600 | 15 | 74 | - |
 | 2026-05 | actual | R$ 130.800 | 14 | 90 | - |
 | 2026-06 | actual | R$ 333.210 | 25 | 91 | - |
 | 2026-07 | actual | R$ 311.100 | 29 | 67 | - |
-| 2026-08 | partial | R$ 83.400 | 10 | 37 | R$ 218.779 |
+| 2026-08 | partial | R$ 144.600 | 14 | 53 | R$ 218.779 |
 | 2026-09 | projected | R$ 0 | 0 | 0 | R$ 192.681 |
 | 2026-10 | projected | R$ 0 | 0 | 0 | R$ 262.522 |
 | 2026-11 | projected | R$ 0 | 0 | 0 | R$ 232.817 |
@@ -99,7 +99,7 @@ Gerado em: 17/08/2026, 00:04:54
 | Mai | R$ 64.160 | R$ 130.800 | +103,9% | 7 | 14 | -15,9% |
 | Jun | R$ 77.000 | R$ 333.210 | +332,7% | 12 | 25 | +154,7% |
 | Jul | R$ 69.640 | R$ 311.100 | +346,7% | 10 | 29 | -6,6% |
-| Ago | R$ 105.200 | R$ 83.400 | -20,7% | 14 | 10 | -73,2% |
+| Ago | R$ 105.200 | R$ 144.600 | +37,5% | 14 | 14 | -53,5% |
 | Set | R$ 82.314 | - | -100% | 11 | - | n/a |
 | Out | R$ 112.150 | - | -100% | 10 | - | n/a |
 | Nov | R$ 99.460 | - | -100% | 13 | - | n/a |
@@ -107,12 +107,12 @@ Gerado em: 17/08/2026, 00:04:54
 
 ## Qualidade de dados
 
-- **Cobertura de CNPJ parcial**: 276/1682 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
-- **Negócios ganhos sem etiqueta comercial explícita**: 3/242 ganhos usam fallback de serviço/funil como tipo principal.
+- **Cobertura de CNPJ parcial**: 279/1696 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
+- **Negócios ganhos sem etiqueta comercial explícita**: 3/246 ganhos usam fallback de serviço/funil como tipo principal.
 - **Negócios com múltiplas etiquetas**: 47 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
-- **Base aberta contém negócios antigos**: 181 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.
+- **Base aberta contém negócios antigos**: 176 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.
 
 ## Cobertura CNPJ
 
-- Organizações com CNPJ: **276/1682**
-- Ganhos com CNPJ: **136/242**
+- Organizações com CNPJ: **279/1696**
+- Ganhos com CNPJ: **139/246**

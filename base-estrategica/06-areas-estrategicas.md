@@ -1,6 +1,6 @@
 # Áreas estratégicas — XPE Consultoria
 
-Gerado em: 17/08/2026, 00:04:54
+Gerado em: 22/08/2026, 15:16:22
 
 Todas as 11 áreas em um único documento. Para conversar sobre uma área específica, referencie a seção pelo nome.
 
@@ -12,13 +12,13 @@ Funil comercial, fechamentos, conversão e capacidade da equipe de 2 comerciais.
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 1.614.856** (100% do total)
-- Contratos fechados: **141**
-- Ticket médio: **R$ 11.453**
+- Receita: **R$ 1.676.056** (100% do total)
+- Contratos fechados: **145**
+- Ticket médio: **R$ 11.559**
 
 ### Destaques
 - 2 comerciais · 9.0 fech./pessoa meta H2
-- Pipeline aberto: 672 negócios (R$ 3.414.441)
+- Pipeline aberto: 672 negócios (R$ 3.370.886)
 - Recomendado: 3 comerciais no cenário 2x
 
 ## Notas estratégicas
@@ -80,14 +80,14 @@ Hub de entrega técnica — projetos de engenharia e laudos regulatórios.
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 885.384** (54,8% do total)
-- Contratos fechados: **129**
-- Ticket médio: **R$ 6.863**
+- Receita: **R$ 899.584** (53,7% do total)
+- Contratos fechados: **130**
+- Ticket médio: **R$ 6.920**
 
 ### Destaques
-- Projetos: 30 contratos · Laudos: 99 contratos
+- Projetos: 30 contratos · Laudos: 100 contratos
 - 5 projetistas (era 3) + automação
-- 55% da receita 2026 YTD
+- 54% da receita 2026 YTD
 
 ## Notas estratégicas
 
@@ -114,7 +114,7 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 168.151** (10,4% do total)
+- Receita: **R$ 168.151** (10% do total)
 - Contratos fechados: **30**
 - Ticket médio: **R$ 5.605**
 
@@ -197,12 +197,12 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 717.233** (44,4% do total)
-- Contratos fechados: **99**
-- Ticket médio: **R$ 7.245**
+- Receita: **R$ 731.433** (43,6% do total)
+- Contratos fechados: **100**
+- Ticket médio: **R$ 7.314**
 
 ### Destaques
-- Principal tipo: LDC (R$ 453.317)
+- Principal tipo: LDC (R$ 467.517)
 
 ## Notas estratégicas
 
@@ -273,7 +273,7 @@ _Nenhum risco cadastrado._
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| LDC | 51 | R$ 453.317 |
+| LDC | 52 | R$ 467.517 |
 | LIE | 39 | R$ 224.267 |
 | LCC | 5 | R$ 27.300 |
 | LGR | 4 | R$ 12.350 |
@@ -287,12 +287,12 @@ _Nenhum risco cadastrado._
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 1.228.355** (76,1% do total)
-- Contratos fechados: **60**
-- Ticket médio: **R$ 20.473**
+- Receita: **R$ 1.307.355** (78% do total)
+- Contratos fechados: **64**
+- Ticket médio: **R$ 20.427**
 
 ### Destaques
-- Principal tipo: OBRA (R$ 601.969)
+- Principal tipo: OBRA (R$ 641.469)
 
 ## Notas estratégicas
 
@@ -338,7 +338,7 @@ _Nenhum risco cadastrado._
 
 | Tipo | Fechamentos | Receita |
 | --- | --- | --- |
-| OBRA | 29 | R$ 601.969 |
+| OBRA | 31 | R$ 641.469 |
 
 ---
 
@@ -443,7 +443,7 @@ Presença em feiras, networking e geração de pipeline presencial.
 
 ## Métricas 2026 (YTD)
 
-- Receita: **R$ 98.803** (6,1% do total)
+- Receita: **R$ 98.803** (5,9% do total)
 - Contratos fechados: **17**
 - Ticket médio: **R$ 5.812**
 
@@ -509,8 +509,8 @@ CRM, ClickUp, automações internas e produtividade da operação.
 
 
 ### Destaques
-- 1.827 tarefas ClickUp
-- 1.775 negócios no Pipedrive
+- 1.791 tarefas ClickUp
+- 1.790 negócios no Pipedrive
 - 4 alerta(s) de qualidade de dados
 
 ## Notas estratégicas

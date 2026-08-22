@@ -678,6 +678,7 @@ async function entidadeId(client: { query: (t: string, p?: unknown[]) => Promise
 // ---------------------------------------------------------------------------
 
 const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function exigirTexto(v: unknown, campo: string, max = 500): string {
   const s = typeof v === "string" ? v.trim() : "";
@@ -874,6 +875,14 @@ export type NovoEnvio = {
   nfeNumero?: unknown;
   nfeSerie?: unknown;
   anexo?: AnexoEntrada | null;
+  /** Chave de um blob já guardado — veio pela folha de compartilhamento. */
+  anexoChave?: unknown;
+  /**
+   * UUID gerado pelo cliente por TENTATIVA (0145). Reenviado igual em cada
+   * retentativa, é o que distingue "a resposta se perdeu" de "são duas
+   * compras iguais" — distinção que só o cliente consegue fazer.
+   */
+  idempotencyKey?: unknown;
 };
 
 const PAGAMENTOS = new Set([
@@ -914,6 +923,25 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
 
   if (corpo.kind === "nota_entrada" && !nfeBruta && !nfeNumero && !fornecedor) {
     throw new TimeError("uma nota precisa de pelo menos a chave, o número ou o nome de quem emitiu");
+  }
+
+  // A chave de idempotência (0145). Formato conferido aqui porque um texto
+  // qualquer viraria erro de tipo do Postgres no meio da transação, e o que a
+  // pessoa leria seria "invalid input syntax for type uuid" em vez de qualquer
+  // coisa útil. Ausente é aceito: um cliente antigo continua enviando.
+  const chaveEnvio = typeof corpo.idempotencyKey === "string" && UUID.test(corpo.idempotencyKey.trim())
+    ? corpo.idempotencyKey.trim()
+    : null;
+
+  // Antes de abrir a transação: se esta tentativa já gravou, devolve o que ela
+  // gravou. É o caso da resposta perdida na volta — a compra entrou, a pessoa
+  // não soube, e tocou de novo. Ela merece ver "enviado", não um segundo custo.
+  if (chaveEnvio) {
+    const jaFoi = await queryOne<{ id: number; code: string }>(
+      `SELECT id, code FROM fin_time_envio WHERE idempotency_key = $1 AND person_id = $2`,
+      [chaveEnvio, sessao.personId]
+    );
+    if (jaFoi) return { id: jaFoi.id, code: jaFoi.code, anexo: null, repetido: true };
   }
 
   return transaction(async (client) => {
@@ -1011,11 +1039,11 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
           incurred_on, due_on, pagamento, ja_pago, categoria_sugerida_id,
           cost_center_id, product_line_id, card_id, card_account_id, card_last4, parcelas,
           fornecedor_nome, fornecedor_documento, nfe_key, nfe_numero, nfe_serie, nfe_emissao,
-          status, enviado_em)
+          idempotency_key, status, enviado_em)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12, $18, $19, $20, $21, $22, $23,
                $13, $14, $15, $16, $17,
                CASE WHEN $2 = 'nota_entrada' THEN $8::date ELSE NULL END,
-               'enviado', now())
+               $24::uuid, 'enviado', now())
        RETURNING id, code`,
       [
         entityId,
@@ -1040,11 +1068,31 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
         cartaoId,
         bancoId,
         last4,
-        parcelas
+        parcelas,
+        chaveEnvio
       ]
     );
 
     let chave: string | null = null;
+
+    // O arquivo que veio compartilhado já está em `fin_anexo_blob`; falta só
+    // prendê-lo a este envio. Sem isto o blob fica órfão e a pessoa acha que o
+    // comprovante se perdeu — e da segunda vez ela não compartilha mais.
+    const jaGuardado = typeof corpo.anexoChave === "string" ? corpo.anexoChave.trim() : "";
+    if (!corpo.anexo && jaGuardado) {
+      const existe = await client.query(`SELECT storage_key FROM fin_anexo_blob WHERE storage_key = $1`, [jaGuardado]);
+      if (existe.rows[0]) {
+        chave = jaGuardado;
+        await client.query(
+          `INSERT INTO fin_payment_attachment
+             (entity_id, target_table, target_id, kind, storage_key, uploaded_by)
+           VALUES ($1, 'fin_time_envio', $2, 'comprovante', $3, $4)
+           ON CONFLICT DO NOTHING`,
+          [entityId, envio.rows[0].id, jaGuardado, `time:${sessao.personId}`]
+        );
+      }
+    }
+
     if (corpo.anexo) {
       chave = await registrarAnexo(
         client,
@@ -1075,7 +1123,7 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
       ]
     );
 
-    return { id: envio.rows[0].id, code: envio.rows[0].code, anexo: chave };
+    return { id: envio.rows[0].id, code: envio.rows[0].code, anexo: chave, repetido: false };
   });
 }
 
@@ -1474,6 +1522,166 @@ export async function realizarCompra(sessao: Sessao, compraId: number, corpo: No
 }
 
 /**
+ * Cadastra um cartão pelo app.
+ *
+ * Não existia caminho de escrita para cartão na aplicação: um grep por
+ * `insert into fin_card` em `.ts` devolvia zero. Cartão só nascia por migration
+ * ou por script de sync — e quem está no caixa com um plástico que o sistema
+ * não conhece não tinha o que fazer.
+ *
+ * DUAS NATUREZAS, e elas se comportam diferente:
+ *
+ *   `empresa` — pertence a uma linha de crédito existente (Nubank, Inter). O
+ *               gasto vira dívida da fatura, e o pagamento dela é que é caixa.
+ *   `pessoal` — pertence a UMA PESSOA, sem linha de crédito. O gasto nele vira
+ *               reembolso: é dinheiro do bolso de alguém que a empresa deve.
+ *
+ * Cartão pessoal é sempre da pessoa da SESSÃO. Deixar cadastrar cartão em nome
+ * de outro abriria a porta para alguém apontar reembolso para o cartão errado —
+ * e a única pessoa que sabe o final do cartão dela é ela.
+ */
+export type NovoCartao = {
+  natureza?: unknown;
+  banco?: unknown;
+  final?: unknown;
+  apelido?: unknown;
+  bandeira?: unknown;
+  tipo?: unknown;
+};
+
+const BANDEIRAS = new Set(["visa", "mastercard", "elo", "amex", "hipercard", "outra"]);
+const TIPOS_DE_PLASTICO = new Set(["fisico", "virtual", "adicional"]);
+
+export async function cadastrarCartao(sessao: Sessao, corpo: NovoCartao) {
+  const natureza = corpo.natureza === "pessoal" ? "pessoal" : "empresa";
+  const final = String(corpo.final ?? "").replace(/\D/g, "").slice(-4);
+  if (final.length !== 4) throw new TimeError("preciso dos 4 últimos dígitos do cartão");
+
+  const apelido = opcionalTexto(corpo.apelido, 60);
+  const bandeira = BANDEIRAS.has(String(corpo.bandeira)) ? String(corpo.bandeira) : null;
+  const tipo = TIPOS_DE_PLASTICO.has(String(corpo.tipo)) ? String(corpo.tipo) : "desconhecido";
+
+  return transaction(async (client) => {
+    let contaId: number | null = null;
+    if (natureza === "empresa") {
+      const id = Number(corpo.banco);
+      if (!Number.isInteger(id) || id <= 0) throw new TimeError("diga de qual banco é o cartão");
+      const a = await client.query(`SELECT id FROM fin_card_account WHERE id = $1 AND is_active`, [id]);
+      if (!a.rows[0]) throw new TimeError("banco não encontrado", 404);
+      contaId = Number(a.rows[0].id);
+    }
+
+    // O índice único da 0142 já barraria, mas a mensagem dele seria um erro de
+    // constraint. Aqui a pessoa entende o que aconteceu — e o mais provável é
+    // que o cartão dela JÁ esteja cadastrado, o que é uma boa notícia.
+    const existe = await client.query<{ id: number; label: string | null }>(
+      natureza === "empresa"
+        ? `SELECT id, label FROM fin_card WHERE card_account_id = $1 AND last4 = $2`
+        : `SELECT id, label FROM fin_card WHERE holder_person_id = $1 AND last4 = $2 AND card_account_id IS NULL`,
+      [natureza === "empresa" ? contaId : sessao.personId, final]
+    );
+    if (existe.rows[0]) {
+      throw new TimeError(
+        `este cartão já está cadastrado${existe.rows[0].label ? ` como "${existe.rows[0].label}"` : ""}`,
+        409
+      );
+    }
+
+    const r = await client.query<{ id: number }>(
+      `INSERT INTO fin_card
+         (card_account_id, holder_person_id, last4, label, brand, kind, status,
+          origem, cadastrado_por_person_id, cadastrado_em)
+       VALUES ($1, $2, $3, $4, $5, $6, 'registrado', 'app_time', $7, now())
+       RETURNING id`,
+      [
+        contaId,
+        // Cartão da empresa também guarda quem cadastrou como titular quando é
+        // pessoal; no da empresa o titular fica em aberto, porque quem cadastra
+        // não é necessariamente quem carrega o plástico.
+        natureza === "pessoal" ? sessao.personId : null,
+        final,
+        apelido,
+        bandeira,
+        tipo,
+        sessao.personId
+      ]
+    );
+
+    await client.query(
+      `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, after, fields, actor)
+       VALUES ((SELECT id FROM fin_entity WHERE slug = $5), 'fin_card', $1, 'insert', $2::jsonb,
+               ARRAY['last4','label','brand','kind'], $3)`,
+      [
+        r.rows[0].id,
+        JSON.stringify({ last4: final, label: apelido, brand: bandeira, kind: tipo, natureza }),
+        `time:${sessao.personId}`,
+        null,
+        ENTITY
+      ]
+    );
+
+    return { id: Number(r.rows[0].id), final, apelido, bandeira, natureza };
+  });
+}
+
+/**
+ * Sugere a categoria a partir de QUEM recebeu o dinheiro.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE PELA CONTRAPARTE, E NUNCA PELO TEXTO
+ * ---------------------------------------------------------------------------
+ * Medido no acervo: buscar "posto" devolve 261 receitas somando R$ 103.755,62
+ * contra 842 despesas de R$ 6.351,14 — dezesseis vezes mais receita que
+ * despesa, porque a XPE tem clientes chamados "Posto Quarto de Milha". Palavra
+ * do título é o sinal mais fraco que existe aqui.
+ *
+ * O CNPJ é o mais forte, e ele já vem da foto: a extração lê o documento do
+ * comprovante e até agora o descartava. Medido por backtest prospectivo, só
+ * sobre lançamentos rotulados por HUMANO (os rotulados por regra de contraparte
+ * seriam circulares — a regra medindo a si mesma):
+ *
+ *   contraparte com ≥5 lançamentos anteriores ....... 76,4% de acerto
+ *   chute cego (categoria mais comum) ............... 26,7%
+ *
+ * Um em quatro vem errado, e é por isso que isto SUGERE e mostra a razão. A
+ * pessoa lê "você já classificou isto como X, 7 vezes" e decide. Preencher em
+ * silêncio com 76% seria transformar um em cada quatro custos num erro que
+ * ninguém confere, porque já veio preenchido.
+ */
+export async function sugerirCategoria(documento: string) {
+  const digitos = String(documento ?? "").replace(/\D/g, "");
+  if (digitos.length !== 11 && digitos.length !== 14) return null;
+
+  // Lê a VIEW, não o ledger. `test-perfil-guard` proíbe este módulo de tocar a
+  // tabela de lançamentos, e a regra está certa: o prefixo /api/time é o único
+  // caminho de escrita do perfil comum, e o que o sustenta é ele não alcançar o
+  // ledger. A view expõe documento, categoria e contagem — nunca valor.
+  const linha = await queryOne<{
+    category_id: number;
+    categoria_code: string;
+    categoria_nome: string;
+    contraparte: string;
+    vezes: number;
+    total: number;
+    forte: boolean;
+  }>(
+    `SELECT category_id, categoria_code, categoria_nome, contraparte, vezes, total, forte
+       FROM fin_sugestao_categoria_v WHERE documento = $1`,
+    [digitos]
+  );
+  if (!linha) return null;
+
+  return {
+    categoriaId: Number(linha.category_id),
+    rotulo: `${linha.categoria_code} ${linha.categoria_nome}`,
+    contraparte: linha.contraparte,
+    vezes: Number(linha.vezes),
+    total: Number(linha.total),
+    forte: linha.forte === true
+  };
+}
+
+/**
  * O que os formulários oferecem. Nada de dinheiro aqui.
  *
  * Além dos tipos e das categorias, vêm os dois níveis do eixo DESTINO:
@@ -1500,11 +1708,24 @@ export async function opcoesDoTime() {
         ORDER BY c.code`,
       [ENTITY]
     ),
-    query<{ id: number; name: string; kind: string; nucleo: string | null }>(
-      `SELECT cc.id, cc.name, cc.kind, cc.nucleo FROM fin_cost_center cc
+    // Ordenadas por USO RECENTE, não por nome — a contagem vem de
+    // `fin_centro_uso_recente_v` (0144), e não de `fin_transaction`: o app do
+    // time não alcança o ledger, e ordenar uma lista não é motivo para abrir
+    // exceção nessa regra.
+    //
+    // Medido: os cinco centros mais usados nos últimos 90 dias cobrem 61,2% dos
+    // lançamentos que têm centro de custo. Ordenar por eles transforma uma
+    // busca entre 28 opções em cinco toques prováveis — e NÃO decide nada, que
+    // é a diferença entre ajudar e chutar. Pré-selecionar a obra seria um
+    // palpite gravado com cara de fato, num campo cuja função é justamente
+    // tirar o indicador de destino dos 0,0%.
+    query<{ id: number; name: string; kind: string; nucleo: string | null; recentes: number }>(
+      `SELECT cc.id, cc.name, cc.kind, cc.nucleo, u.recentes
+         FROM fin_cost_center cc
          JOIN fin_entity e ON e.id = cc.entity_id AND e.slug = $1
+         JOIN fin_centro_uso_recente_v u ON u.cost_center_id = cc.id
         WHERE cc.is_active
-        ORDER BY (cc.kind <> 'projeto'), cc.name`,
+        ORDER BY (cc.kind <> 'projeto'), u.recentes DESC, cc.name`,
       [ENTITY]
     ),
     query<{ id: number; slug: string; name: string }>(
@@ -1530,9 +1751,10 @@ export async function opcoesDoTime() {
       card_id: number | null;
       last4: string | null;
       label: string | null;
+      brand: string | null;
     }>(
       `SELECT a.id AS conta_id, coalesce(i.name, a.name) AS conta, i.name AS emissor,
-              c.id AS card_id, c.last4, c.label
+              c.id AS card_id, c.last4, c.label, c.brand
          FROM fin_card_account a
          LEFT JOIN fin_card_issuer i ON i.id = a.issuer_id
          LEFT JOIN fin_card c ON c.card_account_id = a.id AND c.status = 'registrado'
@@ -1547,11 +1769,17 @@ export async function opcoesDoTime() {
       id: Number(c.id),
       nome: c.name,
       ehProjeto: c.kind === "projeto",
-      nucleo: c.nucleo
+      nucleo: c.nucleo,
+      recentes: Number(c.recentes ?? 0)
     })),
     linhas: linhas.map((l) => ({ id: Number(l.id), slug: l.slug, nome: l.name })),
     bancos: Object.values(
-      cartoes.reduce<Record<number, { id: number; nome: string; plasticos: { id: number; nome: string }[] }>>(
+      cartoes.reduce<
+        Record<
+          number,
+          { id: number; nome: string; plasticos: { id: number; nome: string; final: string | null; bandeira: string | null }[] }
+        >
+      >(
         (acc, l) => {
           const id = Number(l.conta_id);
           acc[id] ??= { id, nome: l.conta, plasticos: [] };
@@ -1560,7 +1788,9 @@ export async function opcoesDoTime() {
               id: Number(l.card_id),
               // Sem apelido cadastrado, o final é o que existe. Melhor
               // "final 7626" que um nome inventado que ninguém reconhece.
-              nome: l.label ?? `final ${l.last4 ?? "????"}`
+              nome: l.label ?? `final ${l.last4 ?? "????"}`,
+              final: l.last4,
+              bandeira: l.brand
             });
           }
           return acc;

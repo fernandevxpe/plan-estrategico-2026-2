@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useDetalhesFechavel } from "./useDetalhesFechavel";
+
 /**
  * A navegação do app do time.
  *
@@ -82,6 +84,7 @@ function Icone({ nome }: { nome: string }) {
 
 export function TimeShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const mais = useDetalhesFechavel<HTMLDetailsElement>();
 
   // Comparação por SEGMENTO, não `startsWith` cru: com o prefixo,
   // `/time/meu-reembolso` acendia a aba `/time/reembolso` junto — duas ativas
@@ -107,9 +110,11 @@ export function TimeShell({ children }: { children: React.ReactNode }) {
         {/*
           `details` em vez de estado no React: abre e fecha sem JavaScript, sem
           hidratação e sem o piscar de um menu que aparece depois que a página
-          já pintou.
+          já pintou. O `useDetalhesFechavel` só acrescenta o que falta ao
+          elemento nativo — sair com Esc e com toque fora, sem os quais este
+          menu ficava por cima do botão de enviar e sem gesto de saída.
         */}
-        <details className="time-mais">
+        <details className="time-mais" ref={mais}>
           <summary className={secundarioAtivo ? "time-item ativo" : "time-item"}>
             <svg width={21} height={21} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <circle cx="5" cy="12" r="1.9" />

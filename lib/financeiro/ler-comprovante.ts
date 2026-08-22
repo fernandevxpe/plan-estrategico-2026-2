@@ -47,7 +47,10 @@ const Extracao = z.object({
   estabelecimento: z
     .string()
     .nullable()
-    .describe("Nome de quem recebeu o dinheiro, como está escrito. null se não houver."),
+    .describe(
+      "A LOJA ou prestador que recebeu o dinheiro, como está escrito. Nunca o endereço de " +
+        "entrega nem quem assinou o recebimento. null se não estiver escrito."
+    ),
   documento: z
     .string()
     .nullable()
@@ -59,6 +62,24 @@ const Extracao = z.object({
   formaPagamento: z
     .enum(["pix", "cartao_credito", "cartao_debito", "boleto", "dinheiro", "indeterminado"])
     .describe("Como foi pago. 'indeterminado' quando o comprovante não diz."),
+  cartaoFinal: z
+    .string()
+    .nullable()
+    .describe(
+      "Os 4 últimos dígitos do cartão, quando aparecerem. Comprovantes escrevem " +
+        '"**** 5585", "final 5585" ou "•••• 5585". Só os dígitos. null se não houver.'
+    ),
+  cartaoBandeira: z
+    .enum(["visa", "mastercard", "elo", "amex", "hipercard", "outra", "indeterminado"])
+    .describe("Bandeira do cartão, quando aparecer escrita ou pelo logotipo. 'indeterminado' se não der."),
+  parcelas: z
+    .number()
+    .int()
+    .nullable()
+    .describe(
+      'Em quantas vezes. Comprovantes escrevem "1x R$ 193,83" ou "12x de R$ 16,15". ' +
+        "Devolva 1 quando estiver escrito 1x, e null quando não houver parcelamento indicado."
+    ),
   itens: z
     .array(z.string())
     .describe("Itens comprados, se estiverem discriminados. Lista vazia quando não estiverem."),
@@ -83,9 +104,18 @@ Extraia só o que estiver VISÍVEL. A regra mais importante:
 
 - Campo ilegível, cortado ou ausente volta null. NUNCA infira, complete ou arredonde.
 - Valor total é o que foi efetivamente pago. Se houver subtotal, desconto e total, use o TOTAL.
-- Em print de PIX, quem recebeu é o estabelecimento — não quem enviou.
+- O estabelecimento é QUEM RECEBEU O DINHEIRO: a loja, o prestador, o posto. NUNCA é o
+  endereço de entrega, nem quem assinou o recebimento do pacote, nem quem pagou.
+  Em print de PIX, é quem recebeu — não quem enviou.
+  Em tela de e-commerce (Mercado Livre, Amazon, Shopee), o estabelecimento é a PLATAFORMA
+  ou o vendedor. Se nenhum dos dois estiver escrito, volte null — endereço não é loja.
 - Chave de NF-e tem exatamente 44 dígitos. Se contar diferente disso, volte null.
 - Data no formato AAAA-MM-DD. Comprovante brasileiro escreve DD/MM/AAAA: converta.
+  Quando o ano não aparecer ("12 de agosto"), use o ano corrente.
+- Cartão: "Mastercard **** 5585" dá bandeira mastercard e final 5585. O logotipo da bandeira
+  também conta, mesmo sem o nome escrito.
+- "1x R$ 193,83" é uma parcela só — devolva 1, não null. Parcela e total são coisas diferentes:
+  em "12x de R$ 16,15" o TOTAL é 12 × 16,15, e é o total que vai em valorTotal.
 - Se a imagem estiver borrada ou escura a ponto de você não ter certeza dos números,
   marque legibilidade como "ruim" e volte null nos campos que dependem de leitura precisa.
 
@@ -179,8 +209,16 @@ export async function lerComprovante(bytes: Buffer, mime: string): Promise<Compr
   };
   const chave = (lido.chaveNfe ?? "").replace(/\D/g, "");
 
+  const finalCartao = (lido.cartaoFinal ?? "").replace(/\D/g, "").slice(-4);
+
   return {
     ...lido,
+    // Quatro dígitos ou nada. Três é leitura parcial, e um final errado é pior
+    // que nenhum: ele casaria com o cartão de outra pessoa.
+    cartaoFinal: finalCartao.length === 4 ? finalCartao : null,
+    // Parcela 1 é à vista, e a base guarda isso como NULL — a conversão mora
+    // aqui para a tela não precisar conhecer a regra do banco.
+    parcelas: lido.parcelas && lido.parcelas >= 2 && lido.parcelas <= 48 ? lido.parcelas : null,
     documento: digitos(lido.documento),
     // 44 dígitos ou nada: chave truncada é pior que chave ausente, porque
     // parece preenchida.

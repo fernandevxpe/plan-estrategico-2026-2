@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SeloCamada, brl } from "@/components/financeiro/Certeza";
@@ -40,9 +41,13 @@ type Pessoa = { id: number; nome: string; area: string | null; exigePin: boolean
 type Opcoes = {
   tipos: { slug: string; nome: string; exigeNfe: boolean }[];
   categorias: { id: number; rotulo: string }[];
-  centros: { id: number; nome: string; ehProjeto: boolean; nucleo: string | null }[];
+  centros: { id: number; nome: string; ehProjeto: boolean; nucleo: string | null; recentes: number }[];
   linhas: { id: number; slug: string; nome: string }[];
-  bancos: { id: number; nome: string; plasticos: { id: number; nome: string }[] }[];
+  bancos: {
+    id: number;
+    nome: string;
+    plasticos: { id: number; nome: string; final: string | null; bandeira: string | null }[];
+  }[];
 };
 type Envio = {
   origem: string;
@@ -110,7 +115,38 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
   const [opcoes, setOpcoes] = useState<Opcoes>({ tipos: [], categorias: [], centros: [], linhas: [], bancos: [] });
   const [envios, setEnvios] = useState<Envio[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [recado, setRecado] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
+  const [recado, definirRecado] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
+
+  /*
+   * POR QUE O RECADO TEM CONTADOR E FOCO
+   *
+   * Ele vive no topo de `.time-app`, e o botão de enviar fica no fim de um
+   * formulário longo. Medido com a página rolada até o botão: o recado
+   * renderizava 415px ACIMA da viewport. A pessoa tocava em "enviar custo",
+   * nada visível acontecia, e o custo não tinha entrado — o app parecia
+   * quebrado quando na verdade estava explicando o erro fora da tela.
+   *
+   * O contador existe porque `role="alert"` não reanuncia texto idêntico: quem
+   * errasse o mesmo campo duas vezes ouviria o problema uma vez só. Trocar a
+   * `key` recria o nó e força o segundo anúncio.
+   */
+  const [selo, setSelo] = useState(0);
+  const recadoRef = useRef<HTMLDivElement | null>(null);
+
+  const setRecado = useCallback((r: { tom: "ok" | "erro"; texto: string } | null) => {
+    definirRecado(r);
+    setSelo((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    const no = recadoRef.current;
+    if (!no || !recado) return;
+    no.scrollIntoView({ block: "center", behavior: "smooth" });
+    // O foco só se move no ERRO. Num "enviado com sucesso" a pessoa segue para
+    // o próximo lançamento, e roubar o foco atrapalharia; num erro ela precisa
+    // ler o que falta antes de qualquer outra coisa.
+    if (recado.tom === "erro") no.focus({ preventScroll: true });
+  }, [recado, selo]);
 
   const carregarSessao = useCallback(async () => {
     const r = await fetch("/api/time/sessao", { cache: "no-store" });
@@ -188,15 +224,31 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
       />
 
       {recado ? (
-        <div className={recado.tom === "ok" ? "time-recado ok" : "time-recado erro"} role="status">
+        <div
+          key={selo}
+          ref={recadoRef}
+          tabIndex={-1}
+          className={recado.tom === "ok" ? "time-recado ok" : "time-recado erro"}
+          role={recado.tom === "erro" ? "alert" : "status"}
+        >
           {recado.texto}
         </div>
       ) : null}
 
       {aba === "inicio" ? <Inicio envios={envios} /> : null}
       {aba === "reembolso" ? <FormReembolso opcoes={opcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
-      {aba === "custo" ? <FormEnvio kind="custo" opcoes={opcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
-      {aba === "nota" ? <FormEnvio kind="nota_entrada" opcoes={opcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
+      {aba === "custo" ? (
+        <FormEnvio kind="custo" opcoes={opcoes} aoAtualizarOpcoes={setOpcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} />
+      ) : null}
+      {aba === "nota" ? (
+        <FormEnvio
+          kind="nota_entrada"
+          opcoes={opcoes}
+          aoAtualizarOpcoes={setOpcoes}
+          aoEnviar={aoEnviar}
+          aoFalhar={setRecado}
+        />
+      ) : null}
       {aba === "compra" ? <FormCompra aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
       {aba === "envios" ? <ListaEnvios envios={envios} /> : null}
       {aba === "meu-reembolso" ? <MeuReembolso /> : null}
@@ -611,6 +663,7 @@ function Comprar({ opcoes, aoEnviar, aoFalhar }: { opcoes: Opcoes; aoEnviar: AoE
           kind="custo"
           opcoes={opcoes}
           compra={escolhida}
+          aoAtualizarOpcoes={() => {}}
           aoEnviar={async (t) => {
             setEscolhida(null);
             await carregar();
@@ -773,6 +826,214 @@ function BuscaDestino({
       ) : (
         <small>É o campo que mais ajuda. Escreva o cliente e escolha — o custo já sabe de quem é.</small>
       )}
+    </div>
+  );
+}
+
+/**
+ * A miniatura do cartão.
+ *
+ * Um `<select>` com "final 7626" é um dado; um retângulo com o gradiente do
+ * emissor, a bandeira e os quatro dígitos é o objeto que está na carteira. A
+ * pessoa reconhece pela COR antes de ler o número — é assim que ela acha o
+ * cartão certo na mão, e é assim que ela deve achar na tela.
+ *
+ * As cores são as das marcas dos emissores, e NÃO as de `XpeChart.conta` —
+ * aquelas são de gráfico, validadas para daltonismo e para não repetir entre
+ * séries. Aqui a cor é identidade, não dado: usar âmbar para o Nubank (como o
+ * gráfico faz, de propósito, para não colidir com o roxo da XPE) tornaria a
+ * miniatura irreconhecível.
+ */
+const CORES_EMISSOR: Record<string, string> = {
+  nubank: "linear-gradient(135deg, #820ad1, #5f0a99)",
+  inter: "linear-gradient(135deg, #ff7a00, #e05e00)",
+  asaas: "linear-gradient(135deg, #1e40af, #1e3a8a)"
+};
+
+const BANDEIRA_ROTULO: Record<string, string> = {
+  visa: "VISA",
+  mastercard: "Mastercard",
+  elo: "elo",
+  amex: "AMEX",
+  hipercard: "Hipercard",
+  outra: ""
+};
+
+function Miniatura({
+  emissor,
+  nome,
+  final,
+  bandeira,
+  ativo,
+  aoTocar
+}: {
+  emissor: string;
+  nome: string;
+  final: string | null;
+  bandeira: string | null;
+  ativo: boolean;
+  aoTocar: () => void;
+}) {
+  const chave = Object.keys(CORES_EMISSOR).find((k) => emissor.toLowerCase().includes(k));
+  return (
+    <button
+      type="button"
+      className={ativo ? "cartao ativo" : "cartao"}
+      style={{ background: chave ? CORES_EMISSOR[chave] : "linear-gradient(135deg, #3f3d56, #2a2839)" }}
+      onClick={aoTocar}
+      aria-pressed={ativo}
+    >
+      <span className="cartao-emissor">{emissor}</span>
+      <span className="cartao-apelido">{nome}</span>
+      <span className="cartao-rodape">
+        <em>•••• {final ?? "????"}</em>
+        {bandeira && BANDEIRA_ROTULO[bandeira] ? <i>{BANDEIRA_ROTULO[bandeira]}</i> : null}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Cadastrar um cartão sem sair do lançamento.
+ *
+ * O momento em que a pessoa descobre que o cartão não está cadastrado é o
+ * momento em que ela está no caixa com ele na mão — é o único instante em que
+ * ela sabe o final, a bandeira e se é físico ou virtual. Mandá-la "falar com o
+ * admin" é garantir que o cartão nunca seja cadastrado.
+ */
+function CadastrarCartao({
+  bancos,
+  inicial,
+  aoCadastrar,
+  aoFechar
+}: {
+  bancos: Opcoes["bancos"];
+  /** O que a foto já revelou: banco escolhido, final lido, bandeira lida. */
+  inicial?: { banco?: string; final?: string; bandeira?: string };
+  aoCadastrar: (opcoes: Opcoes, cartaoId: number) => void;
+  aoFechar: () => void;
+}) {
+  const [natureza, setNatureza] = useState<"empresa" | "pessoal">("empresa");
+  const [banco, setBanco] = useState(inicial?.banco || (bancos[0] ? String(bancos[0].id) : ""));
+  const [final, setFinal] = useState(inicial?.final ?? "");
+  const [apelido, setApelido] = useState("");
+  const [bandeira, setBandeira] = useState(inicial?.bandeira ?? "");
+  const [tipo, setTipo] = useState("fisico");
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+
+  async function salvar() {
+    if (final.length !== 4) return setErro("preciso dos 4 últimos dígitos");
+    setSalvando(true);
+    setErro(null);
+    const r = await fetch("/api/time/cartao", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ natureza, banco, final, apelido, bandeira, tipo })
+    });
+    const j = await r.json().catch(() => ({}));
+    setSalvando(false);
+    if (!r.ok) return setErro(j.error ?? "não consegui cadastrar");
+    aoCadastrar(j.opcoes as Opcoes, j.cartao.id as number);
+  }
+
+  return (
+    <div className="cartao-novo">
+      <div className="cartao-novo-topo">
+        <strong>Cadastrar cartão</strong>
+        <button type="button" onClick={aoFechar}>
+          cancelar
+        </button>
+      </div>
+
+      {/* A prévia muda enquanto se digita: a pessoa confere o cartão olhando
+          para ele, não relendo campos. */}
+      <div className="cartao-previa">
+        <Miniatura
+          emissor={natureza === "pessoal" ? "Meu cartão" : bancos.find((b) => String(b.id) === banco)?.nome ?? "Cartão"}
+          nome={apelido || "sem apelido"}
+          final={final.padEnd(4, "•")}
+          bandeira={bandeira || null}
+          ativo
+          aoTocar={() => {}}
+        />
+      </div>
+
+      <div className="campo">
+        <span className="campo-rotulo" id="grupo-de-quem-e">De quem é</span>
+        <div className="chips" role="group" aria-labelledby="grupo-de-quem-e">
+          <button type="button" aria-pressed={natureza === "empresa"} className={natureza === "empresa" ? "chip ativo" : "chip"} onClick={() => setNatureza("empresa")}>
+            Da empresa
+          </button>
+          <button type="button" aria-pressed={natureza === "pessoal"} className={natureza === "pessoal" ? "chip ativo" : "chip"} onClick={() => setNatureza("pessoal")}>
+            Meu, pessoal
+          </button>
+        </div>
+        <small>
+          {natureza === "empresa"
+            ? "O gasto entra na fatura da empresa."
+            : "O gasto vira reembolso — é dinheiro do seu bolso que a empresa te devolve."}
+        </small>
+      </div>
+
+      {natureza === "empresa" ? (
+        <div className="campo">
+          <span className="campo-rotulo" id="grupo-banco">Banco</span>
+          <div className="chips" role="group" aria-labelledby="grupo-banco">
+            {bancos.map((b) => (
+              <button key={b.id} type="button" aria-pressed={banco === String(b.id)} className={banco === String(b.id) ? "chip ativo" : "chip"} onClick={() => setBanco(String(b.id))}>
+                {b.nome}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="campo-par">
+        <label className="campo">
+          <span>4 últimos dígitos</span>
+          <input
+            value={final}
+            onChange={(e) => setFinal(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="0000"
+            className="campo-final"
+          />
+        </label>
+        <label className="campo">
+          <span>Apelido (opcional)</span>
+          <input value={apelido} onChange={(e) => setApelido(e.target.value)} placeholder="ex.: cartão da obra" />
+        </label>
+      </div>
+
+      <div className="campo">
+        <span className="campo-rotulo" id="grupo-bandeira">Bandeira</span>
+        <div className="chips" role="group" aria-labelledby="grupo-bandeira">
+          {[["visa", "Visa"], ["mastercard", "Mastercard"], ["elo", "Elo"], ["amex", "Amex"], ["", "não sei"]].map(([v, r]) => (
+            <button key={v || "na"} type="button" aria-pressed={bandeira === v} className={bandeira === v ? "chip ativo" : "chip"} onClick={() => setBandeira(v)}>
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="campo">
+        <span className="campo-rotulo" id="grupo-fisico-ou-virtual">Físico ou virtual</span>
+        <div className="chips" role="group" aria-labelledby="grupo-fisico-ou-virtual">
+          {[["fisico", "Físico"], ["virtual", "Virtual"], ["adicional", "Adicional"]].map(([v, r]) => (
+            <button key={v} type="button" aria-pressed={tipo === v} className={tipo === v ? "chip ativo" : "chip"} onClick={() => setTipo(v)}>
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {erro ? <p className="time-erro">{erro}</p> : null}
+
+      <button type="button" className="time-botao" onClick={salvar} disabled={salvando || final.length !== 4}>
+        {salvando ? "salvando…" : "salvar cartão"}
+      </button>
     </div>
   );
 }
@@ -1038,6 +1299,7 @@ function FormEnvio({
   kind,
   opcoes,
   compra,
+  aoAtualizarOpcoes,
   aoEnviar,
   aoFalhar
 }: {
@@ -1045,6 +1307,8 @@ function FormEnvio({
   opcoes: Opcoes;
   /** Quando vem preenchido, este custo FECHA a solicitação de compra. */
   compra?: CompraAprovada;
+  /** Chamado quando um cartão novo é cadastrado sem sair da tela. */
+  aoAtualizarOpcoes: (opcoes: Opcoes) => void;
   aoEnviar: AoEnviar;
   aoFalhar: AoFalhar;
 }) {
@@ -1069,11 +1333,31 @@ function FormEnvio({
   const [linha, setLinha] = useState("");
   const [banco, setBanco] = useState("");
   const [cartao, setCartao] = useState("");
+  // A bandeira que a foto revelou, para o cadastro do cartão já nascer preenchido.
+  const [bandeiraLida, setBandeiraLida] = useState("");
+  const [sugestao, setSugestao] = useState<{
+    categoriaId: number; rotulo: string; contraparte: string; vezes: number; forte: boolean;
+  } | null>(null);
+
+  /**
+   * O arquivo que chegou pela folha de compartilhamento do sistema.
+   *
+   * `/api/time/compartilhado` guarda o arquivo e redireciona para cá com
+   * `?anexo=<chave>&nome=<nome>`. Até agora NINGUÉM lia esses parâmetros: o
+   * arquivo era gravado, ficava órfão para sempre, e a pessoa caía num
+   * formulário vazio sem entender por quê — que é exatamente o atrito que o
+   * compartilhamento existe para eliminar.
+   */
+  const params = useSearchParams();
+  const anexoCompartilhado = params.get("anexo");
+  const nomeCompartilhado = params.get("nome");
+  const [cadastrando, setCadastrando] = useState(false);
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [lendo, setLendo] = useState(false);
   const [leitura, setLeitura] = useState<{ tom: "ok" | "aviso" | "erro"; texto: string } | null>(null);
   const arquivoRef = useRef<HTMLInputElement>(null);
+  const tentativaRef = useRef<string | null>(null);
 
   /**
    * Lê o comprovante e PREENCHE — nunca envia.
@@ -1103,6 +1387,7 @@ function FormEnvio({
         const l = j.lido as {
           valorTotal: number | null; data: string | null; estabelecimento: string | null;
           documento: string | null; chaveNfe: string | null; resumo: string;
+          cartaoFinal: string | null; cartaoBandeira: string; parcelas: number | null;
           legibilidade: "boa" | "parcial" | "ruim";
         };
 
@@ -1117,6 +1402,30 @@ function FormEnvio({
         por(data === HOJE() ? "" : data, l.data, setData, "data");
         por(fornecedor, l.estabelecimento, setFornecedor, "fornecedor");
         por(nfeKey, l.chaveNfe, setNfeKey, "chave da NF-e");
+
+        // O CARTÃO SAI DA FOTO. "Mastercard **** 5585" é o dado mais chato de
+        // digitar e o mais fácil de ler — e é ele que casa com a fatura depois.
+        if (l.cartaoFinal && !final) {
+          setPagamento("cartao_da_empresa");
+          setFinal(l.cartaoFinal);
+          preenchidos.push("cartão");
+          setBandeiraLida(l.cartaoBandeira !== "indeterminado" ? l.cartaoBandeira : "");
+        }
+        if (l.parcelas && !parcelas) {
+          setParcelas(String(l.parcelas));
+          preenchidos.push("parcelas");
+        }
+
+        // O CNPJ da foto vira sugestão de categoria — ele era extraído e
+        // descartado. Medido: quando a contraparte já apareceu antes, o
+        // histórico acerta 76,4% contra 26,7% do chute cego. SUGERE, não
+        // preenche: um em quatro vem errado, e campo preenchido em silêncio é
+        // campo que ninguém confere.
+        if (l.documento && !categoria) {
+          const sr = await fetch(`/api/time/sugerir-categoria?documento=${encodeURIComponent(l.documento)}`);
+          const sj = await sr.json().catch(() => ({}));
+          if (sj.sugestao) setSugestao(sj.sugestao);
+        }
 
         if (l.legibilidade === "ruim") {
           setLeitura({
@@ -1137,17 +1446,32 @@ function FormEnvio({
         setLendo(false);
       }
     },
-    [titulo, valor, data, fornecedor, nfeKey]
+    [titulo, valor, data, fornecedor, nfeKey, final, parcelas]
   );
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setEnviando(true);
+
+    // A CHAVE DA TENTATIVA (0145).
+    //
+    // Gerada uma vez e guardada num ref, ela sobrevive à retentativa: se a
+    // resposta se perder na volta — 4G que cai, aba que dorme —, a pessoa toca
+    // de novo e o servidor devolve o envio que JÁ existe em vez de criar um
+    // segundo custo idêntico. Só zera depois do sucesso, porque aí a próxima
+    // compra é mesmo outra compra.
+    //
+    // Isto é diferente do `disabled` do botão, que só protege contra o dedo. É
+    // um app usado na rua, com sinal ruim: a resposta perdida não é o caso
+    // raro.
+    if (!tentativaRef.current) tentativaRef.current = crypto.randomUUID();
+
     try {
       const r = await postar(
         compra ? "/api/time/compra/realizar" : "/api/time/envio",
         {
           kind,
+          idempotencyKey: tentativaRef.current,
           compraId: compra?.id,
           titulo,
           descricao,
@@ -1163,7 +1487,8 @@ function FormEnvio({
           centroCusto: centro,
           linhaServico: centro ? "" : linha,
           banco,
-          cartao
+          cartao,
+          anexoChave: anexoCompartilhado ?? undefined
         },
         arquivo
       );
@@ -1172,6 +1497,7 @@ function FormEnvio({
           ? `Compra ${compra.code} registrada — o custo ${r.code} foi para análise.`
           : `${nota ? "Nota" : "Custo"} ${r.code} enviado para análise.`
       );
+      tentativaRef.current = null;
       setTitulo("");
       setValor("");
       setDescricao("");
@@ -1218,6 +1544,15 @@ function FormEnvio({
         <input value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
       </label>
 
+      {anexoCompartilhado && !arquivo ? (
+        <div className="compartilhado">
+          <strong>Comprovante recebido</strong>
+          <span className="time-sub">
+            {nomeCompartilhado || "arquivo"} chegou pelo compartilhamento e vai junto com este lançamento.
+          </span>
+        </div>
+      ) : null}
+
       {/* O valor é o campo mais importante da tela, então ganha a tela inteira
           e o tamanho de um número que se lê de longe. */}
       <label className="campo valor-campo">
@@ -1240,13 +1575,13 @@ function FormEnvio({
           a parcela é mostrada, não digitada. */}
       {!nota ? (
         <div className="campo">
-          <span className="campo-rotulo">Parcelado?</span>
-          <div className="chips">
+          <span className="campo-rotulo" id="grupo-parcelado">Parcelado?</span>
+          <div className="chips" role="group" aria-labelledby="grupo-parcelado">
             {["", "2", "3", "4", "6", "10", "12", "18", "21"].map((n) => (
               <button
                 key={n || "avista"}
                 type="button"
-                className={parcelas === n ? "chip ativo" : "chip"}
+                aria-pressed={parcelas === n} className={parcelas === n ? "chip ativo" : "chip"}
                 onClick={() => setParcelas(n)}
               >
                 {n === "" ? "à vista" : `${n}×`}
@@ -1271,8 +1606,8 @@ function FormEnvio({
           `select` esconde as outras quatro atrás de um toque e de uma folha
           nativa que cobre a tela. */}
       <div className="campo">
-        <span className="campo-rotulo">Como foi pago</span>
-        <div className="chips">
+        <span className="campo-rotulo" id="grupo-como-foi-pago">Como foi pago</span>
+        <div className="chips" role="group" aria-labelledby="grupo-como-foi-pago">
           {[
             ["cartao_da_empresa", "Cartão"],
             ["pix_da_empresa", "PIX"],
@@ -1283,7 +1618,7 @@ function FormEnvio({
             <button
               key={v}
               type="button"
-              className={pagamento === v ? "chip ativo" : "chip"}
+              aria-pressed={pagamento === v} className={pagamento === v ? "chip ativo" : "chip"}
               onClick={() => {
                 setPagamento(v);
                 if (v !== "cartao_da_empresa") {
@@ -1323,13 +1658,13 @@ function FormEnvio({
             return (
               <>
                 <div className="campo">
-                  <span className="campo-rotulo">Qual banco</span>
-                  <div className="chips">
+                  <span className="campo-rotulo" id="grupo-qual-banco">Qual banco</span>
+                  <div className="chips" role="group" aria-labelledby="grupo-qual-banco">
                     {opcoes.bancos.map((b) => (
                       <button
                         key={b.id}
                         type="button"
-                        className={banco === String(b.id) ? "chip ativo" : "chip"}
+                        aria-pressed={banco === String(b.id)} className={banco === String(b.id) ? "chip ativo" : "chip"}
                         onClick={() => {
                           setBanco(String(b.id));
                           setCartao("");
@@ -1341,7 +1676,24 @@ function FormEnvio({
                   </div>
                 </div>
 
-                {banco ? (
+                {/* O cartão que a foto revelou e o sistema não conhece. Este é
+                    o instante em que a pessoa tem o plástico na mão e sabe a
+                    bandeira e o final — mandá-la "falar com o admin" agora é
+                    garantir que o cartão nunca seja cadastrado. */}
+                {cadastrando ? (
+                  <CadastrarCartao
+                    bancos={opcoes.bancos}
+                    inicial={{ banco, final, bandeira: bandeiraLida }}
+                    aoCadastrar={(novasOpcoes, id) => {
+                      aoAtualizarOpcoes(novasOpcoes);
+                      setCartao(String(id));
+                      setCadastrando(false);
+                    }}
+                    aoFechar={() => setCadastrando(false)}
+                  />
+                ) : null}
+
+                {banco && !cadastrando ? (
                   <label className="campo">
                     <span>Final do cartão</span>
                     <input
@@ -1357,9 +1709,12 @@ function FormEnvio({
                         Reconheci este cartão — vai casar sozinho com a fatura.
                       </small>
                     ) : final.length === 4 ? (
-                      <small className="reemb-leitura aviso">
-                        Este final ainda não está cadastrado. Guardo assim mesmo — serve para casar com a fatura.
-                      </small>
+                      <span className="final-novo">
+                        <small className="reemb-leitura aviso">Este cartão ainda não está cadastrado.</small>
+                        <button type="button" onClick={() => setCadastrando(true)}>
+                          cadastrar agora
+                        </button>
+                      </span>
                     ) : escolhido && escolhido.plasticos.length > 0 ? (
                       <small>
                         Cadastrados: {escolhido.plasticos.map((p) => p.nome.replace("final ", "")).join(" · ")}
@@ -1439,6 +1794,22 @@ function FormEnvio({
             <small>Ex.: combustível para rodar um laudo que ainda não virou contrato.</small>
           </label>
         </details>
+      ) : null}
+
+      {sugestao && !categoria ? (
+        <div className="sugestao">
+          <div>
+            <strong>{sugestao.rotulo}</strong>
+            <span className="time-sub">
+              Você já classificou {sugestao.contraparte} assim {sugestao.vezes}{" "}
+              {sugestao.vezes === 1 ? "vez" : "vezes"}
+              {sugestao.forte ? "" : " — mas nem sempre"}.
+            </span>
+          </div>
+          <button type="button" onClick={() => { setCategoria(String(sugestao.categoriaId)); setSugestao(null); }}>
+            usar
+          </button>
+        </div>
       ) : null}
 
       <label className="campo">

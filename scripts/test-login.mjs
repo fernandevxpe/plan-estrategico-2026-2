@@ -391,6 +391,47 @@ try {
   afirma(gp.rows[0]?.card_last4 === '0343', 'o final digitado fica', gp.rows[0]?.card_last4);
   afirma(gp.rows[0]?.card_id !== null, 'e casou sozinho com o plástico cadastrado', `card_id=${gp.rows[0]?.card_id}`);
 
+  console.log('\n=== 5b3. A RESPOSTA QUE SE PERDE NA VOLTA (0145) ===');
+  // O cenário: COMMIT feito, resposta perdida no 4G, pessoa toca de novo. Sem a
+  // chave nasciam dois custos idênticos — e quem conciliasse com a fatura
+  // encontraria dois lançamentos para uma linha do extrato.
+  const chave = crypto.randomUUID();
+  const tentativa = () => c('/api/time/envio', {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'custo', titulo: 'teste automatizado — tentativa repetida', valor: '77,00',
+      data: new Date().toISOString().slice(0, 10), pagamento: 'a_definir', idempotencyKey: chave
+    })
+  });
+  const primeira = await tentativa();
+  const segunda = await tentativa();
+  afirma(primeira.status === 201, 'a primeira tentativa cria', `status ${primeira.status}`);
+  afirma(segunda.status === 201, 'a segunda responde ok, não erro',
+    `status ${segunda.status} — a pessoa precisa ver "enviado", não uma falha`);
+  afirma(primeira.corpo?.code === segunda.corpo?.code, 'e devolve O MESMO envio',
+    `${primeira.corpo?.code} vs ${segunda.corpo?.code}`);
+  afirma(segunda.corpo?.repetido === true, 'dizendo que já tinha entrado', `repetido=${segunda.corpo?.repetido}`);
+  const gr = await db.query(
+    `SELECT count(*)::int AS n FROM fin_time_envio WHERE person_id = $1 AND titulo LIKE '%tentativa repetida%'`,
+    [cobaia.id]);
+  afirma(gr.rows[0]?.n === 1, 'um custo no banco, não dois', `${gr.rows[0]?.n} linha(s)`);
+
+  // E duas compras iguais de verdade continuam sendo duas: a trava é sobre a
+  // TENTATIVA, não sobre o conteúdo. Dois cafés de R$ 12 no mesmo dia existem.
+  const outroCafe = await c('/api/time/envio', {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'custo', titulo: 'teste automatizado — tentativa repetida', valor: '77,00',
+      data: new Date().toISOString().slice(0, 10), pagamento: 'a_definir', idempotencyKey: crypto.randomUUID()
+    })
+  });
+  const gr2 = await db.query(
+    `SELECT count(*)::int AS n FROM fin_time_envio WHERE person_id = $1 AND titulo LIKE '%tentativa repetida%'`,
+    [cobaia.id]);
+  afirma(outroCafe.status === 201 && gr2.rows[0]?.n === 2,
+    'mas compra idêntica com chave nova entra',
+    `${gr2.rows[0]?.n} linhas — deduplicar por conteúdo recusaria dois cafés iguais no mesmo dia`);
+
   const finalNovo = await c('/api/time/envio', {
     method: 'POST',
     body: JSON.stringify({

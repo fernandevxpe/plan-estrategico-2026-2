@@ -11853,7 +11853,7 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .time-botao.secundario { background: var(--surface-2); color: var(--ink); }
 .time-botao.perigo { background: var(--cert-atrasado); }
 .time-link {
-  border: 0; background: none; padding: 4px 2px; color: var(--muted); font: inherit; font-size: 12.5px;
+  border: 0; background: none; padding: 4px 2px; color: var(--ink); font: inherit; font-size: 12.5px;
   text-decoration: underline; cursor: pointer;
 }
 
@@ -13580,11 +13580,23 @@ body:has(.time-page) .theme-toggle {
 .valor-campo .valor-caixa:focus-within { border-color: var(--purple); box-shadow: 0 0 0 3px var(--tint-purple-soft); }
 .valor-campo em { font-style: normal; font-size: 15px; font-weight: 600; color: var(--muted); }
 .valor-campo input {
-  flex: 1; min-width: 0; padding: 0; border: 0; background: none; outline: none;
+  flex: 1; min-width: 0; padding: 0; border: 0; background: none;
   font: inherit; font-size: 30px; font-weight: 700; letter-spacing: -.02em;
   font-variant-numeric: tabular-nums; color: var(--ink);
 }
 .valor-campo input::placeholder { color: var(--muted); font-weight: 600; }
+/* O anel some SÓ quando a caixa inteira já o está mostrando: o `:focus-within`
+   acima desenha a borda roxa em volta do conjunto "R$ + número", que é a moldura
+   que a pessoa vê. Sem esta regra o campo ficava sem indicação nenhuma. */
+.valor-campo .valor-caixa:focus-within { box-shadow: 0 0 0 3px var(--tint-purple); }
+.valor-campo input:focus-visible { outline: none; }
+
+/* O placeholder dos campos comuns caía no padrão do Chrome — rgb(117,117,117),
+   que no tema escuro dá 4.0:1 contra o mínimo de 4.5. Atingia "almoço com o
+   cliente X", "escreva o cliente, a obra ou a área" e "4 últimos dígitos": as
+   dicas que dizem o que escrever em cada campo. */
+.campo input::placeholder,
+.campo textarea::placeholder { color: var(--muted); opacity: 1; }
 
 /* Chips no lugar de select para escolhas curtas e poucas. Um `select` no
    celular esconde as opções atrás de um toque e de uma folha que cobre a tela;
@@ -13716,3 +13728,86 @@ body:has(.time-page) .theme-toggle {
   flex: none; min-height: 40px; padding: 0 12px; border: 0; border-radius: 8px;
   background: none; color: var(--purple-text); font: inherit; font-size: 13px; cursor: pointer;
 }
+
+/* ---- Miniatura de cartão --------------------------------------------------
+   Um select com "final 7626" é um dado; um retângulo com a cor do emissor, a
+   bandeira e os quatro dígitos é o objeto que está na carteira. A pessoa
+   reconhece pela COR antes de ler o número.
+
+   As cores são as das MARCAS dos emissores, e não as de XpeChart.conta —
+   aquelas são de gráfico, validadas para daltonismo e para não colidir com o
+   roxo da XPE (por isso lá o Nubank é âmbar). Aqui a cor é identidade: um
+   Nubank âmbar seria irreconhecível. */
+.cartao {
+  position: relative;
+  display: grid;
+  align-content: space-between;
+  gap: 10px;
+  width: 168px;
+  min-height: 104px;
+  padding: 13px 15px;
+  border: 0;
+  border-radius: 13px;
+  color: #fff;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.cartao:active { transform: scale(.98); }
+.cartao.ativo { box-shadow: 0 0 0 2px var(--purple), 0 6px 18px rgba(0, 0, 0, .3); }
+
+.cartao-emissor { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.cartao-apelido { font-size: 14px; font-weight: 650; line-height: 1.2; }
+.cartao-rodape { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.cartao-rodape em { font-style: normal; font-size: 13.5px; font-variant-numeric: tabular-nums; letter-spacing: .06em; }
+.cartao-rodape i { font-style: normal; font-size: 10px; font-weight: 700; opacity: .85; }
+
+.cartao-previa { display: flex; justify-content: center; padding: 6px 0 14px; }
+
+.cartao-novo {
+  display: grid;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--purple);
+  border-radius: 14px;
+  background: var(--tint-purple-soft);
+}
+.cartao-novo-topo { display: flex; align-items: center; justify-content: space-between; }
+.cartao-novo-topo button {
+  border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer;
+  min-height: 40px; padding: 0 4px;
+}
+
+/* O convite para cadastrar fica colado no aviso, não numa tela adiante: é aqui
+   que a pessoa está com o cartão na mão. */
+.final-novo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; }
+.final-novo button {
+  min-height: 40px; padding: 0 14px; border: 1px solid var(--purple); border-radius: 999px;
+  background: var(--purple); color: #fff; font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
+}
+
+/* A sugestão de categoria mostra a RAZÃO, e é isso que a torna aceitável: 76,4%
+   de acerto medido significa um em quatro errado, e um palpite sem justificativa
+   nessa taxa vira campo preenchido que ninguém confere. */
+.sugestao {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border: 1px solid var(--tint-green-line); border-radius: 12px;
+  background: var(--tint-green-soft);
+}
+.sugestao > div { display: grid; gap: 2px; min-width: 0; }
+.sugestao strong { font-size: 13.5px; color: var(--ink-green); }
+.sugestao button {
+  flex: none; min-height: 40px; padding: 0 16px; border: 0; border-radius: 999px;
+  background: var(--ink-green); color: var(--bg); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+
+/* O arquivo que chegou pela folha de compartilhamento precisa aparecer, senão a
+   pessoa acha que ele se perdeu e da segunda vez não compartilha mais. */
+.compartilhado {
+  display: grid; gap: 3px; padding: 12px 14px;
+  border: 1px solid var(--tint-green-line); border-radius: 12px; background: var(--tint-green-soft);
+}
+.compartilhado strong { font-size: 13.5px; color: var(--ink-green); }

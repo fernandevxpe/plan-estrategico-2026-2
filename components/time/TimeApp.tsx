@@ -1058,7 +1058,12 @@ function FormEnvio({
 
   return (
     <form className="time-form" onSubmit={enviar}>
-      <h2>{nota ? "Enviar uma nota" : "Lançar um custo"}</h2>
+      {/*
+        Sem <h2> aqui: a página já tem o <h1> com o mesmo texto, e os dois
+        juntos repetiam "Lançar um custo" a dois centímetros de distância —
+        ocupando a dobra do celular com a mesma informação duas vezes. A
+        explicação abaixo continua, porque ela diz algo que o título não diz.
+      */}
       <p className="time-sub">
         {nota ? (
           <>

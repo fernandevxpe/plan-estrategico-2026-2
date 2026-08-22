@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { TimeShell } from "@/components/time/TimeShell";
 
 /**
@@ -21,9 +19,11 @@ import { TimeShell } from "@/components/time/TimeShell";
  * quebra, é o que o Fernando pediu — "desacoplado na interface, backend 100%
  * integrado".
  *
- * O link de volta existe para quem chegou pelo navegador da plataforma; no app
- * instalado ele fica escondido (`display-mode: standalone` no globals.css),
- * porque lá fora do escopo não há para onde voltar.
+ * NÃO HÁ LINK DE VOLTA PARA A PLATAFORMA, e a ausência é deliberada. `/` é
+ * protegida por Basic Auth, então esse link era o único caminho de dentro do
+ * app para uma URL que responde 401 — e um 401 no Android faz o Chrome abrir a
+ * caixa de usuário e senha do navegador, que é exatamente o que não pode
+ * acontecer num app instalado. Quem quiser a plataforma digita o endereço.
  */
 export const dynamic = "force-dynamic";
 
@@ -32,9 +32,6 @@ export default function TimeLayout({ children }: { children: React.ReactNode }) 
     <main className="page time-page">
       <div className="shell" id="conteudo">
         <TimeShell>{children}</TimeShell>
-        <p className="time-voltar">
-          <Link href="/">← voltar à plataforma</Link>
-        </p>
       </div>
     </main>
   );

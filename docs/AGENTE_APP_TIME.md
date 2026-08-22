@@ -231,6 +231,66 @@ Cada onda diz o indicador que move. Ordem por dependência.
 - [ ] **5.4 Frete e parcelamento no pedido de compra.** `freight_cents` no
       *link* (o frete varia por loja) + `installments` no pedido.
 
+### Onda 5b — busca, cartão nomeado e assinaturas
+
+- [ ] **5b.1 Busca "tipo Algolia" — em Postgres, não em serviço externo.**
+      `pg_trgm` **já está instalado** e os índices GIN já existem em
+      `fin_counterparty.normalized_name`, `fin_transaction.description_norm`,
+      `fin_document.description_norm`, `fin_card_transaction.description_norm` e
+      `fin_payment_request.description_norm`. Falta só a camada de ranqueamento.
+      Não contrate Algolia: manda descrição de lançamento financeiro para fora,
+      cobra por registro e cria uma segunda cópia do dado para sincronizar.
+      Disponíveis e não instaladas, se precisar: `unaccent`, `fuzzystrmatch`,
+      `btree_gin` e `vector` 0.8.6 (busca semântica).
+
+      O escore de sugestão pesa, **nesta ordem**:
+      | sinal | por quê |
+      |---|---|
+      | direção do dinheiro | "posto" aponta para receita 3× mais que para combustível |
+      | contraparte (CNPJ, depois nome por trigrama) | 37,5% de cobertura, mas é o sinal mais forte quando existe |
+      | histórico da mesma contraparte | unanimidade + volume + direção conferidos |
+      | MCC, quando for item de cartão | `mcc_iso` decide; `mcc_indicio` nunca decide sozinho |
+      | proximidade de valor com o típico daquela contraparte | separa a taxa de R$ 0,89 da compra |
+      | trigrama sobre a descrição | último, nunca primeiro |
+      Toda sugestão mostra **por que** sugeriu e o que ficou em segundo lugar —
+      `rationale.tambem_casaram` já existe.
+
+- [ ] **5b.2 Nomear os cartões.** `fin_card` **não tem coluna de apelido** —
+      só `holder_name_raw`, NULL em 12 de 12. Acrescente `label text` e preencha
+      os 11 finais do Nubank junto com `holder_person_id`. É o que faz
+      `fin_card_item_v.titular` acender e a lacuna `cartao_sem_titular`
+      (R$ 87.206,95) zerar.
+
+- [ ] **5b.3 Limite por plástico.** `fin_card` **não tem coluna de limite**;
+      só `fin_card_account` tem, e com `limit_is_consolidated`. O Polp devolve
+      `disaggregatedCreditLimits[]` **por final** e hoje isso é descartado na
+      ingestão. Duas coisas distintas, não confunda:
+      - **limite do emissor** (fato externo) → capturar do Polp;
+      - **teto de gasto por mês** (política da casa) → campo declarado, com
+        alerta quando o mês projetado passar. Nunca bloqueie: o app registra,
+        não autoriza.
+
+- [ ] **5b.4 Assinaturas em BRL e USD.** `fin_recurring` tem **189 linhas**, mas
+      é um **detector** (69 de contrato, 120 propostas por detecção de
+      histórico), não um cadastro: uma busca por `openai|anthropic|cursor|
+      clickup|google|railway|supabase` devolve **zero**. As assinaturas de
+      software existem só como item de cartão em 5.03.
+      Falta: cadastro manual de assinatura, e **moeda**. Hoje `currency` existe
+      só em `fin_account`, e as 7 contas são todas `BRL`.
+
+      **A conversão é estimativa até a fatura fechar — e isso precisa aparecer
+      na tela.** Compra em dólar no cartão vira reais pela taxa do emissor no
+      fechamento, mais IOF. Converter pela cotação do dia e apresentar como
+      valor final é criar um número que vai divergir do extrato. O desenho
+      honesto:
+      | campo | o quê |
+      |---|---|
+      | `amount_original_cents` + `currency` | o que foi contratado (ex.: USD 20,00) |
+      | `amount_cents` | o realizado em BRL, **só quando a fatura fecha** |
+      | estimativa | calculada na hora, marcada como estimativa, com data e fonte da cotação |
+      O selo de confiança já existe no vocabulário `--cert-*`
+      (`firme`/`provavel`/`observado`/`estimado`) — reuse, não invente outro.
+
 ### Onda 6 — leitura
 
 - [ ] Percentual por categoria, custo por obra, "a pagar no cartão nos próximos

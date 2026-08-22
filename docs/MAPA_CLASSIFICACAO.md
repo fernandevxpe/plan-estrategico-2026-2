@@ -178,6 +178,56 @@ campos. Não é o desenho. **O app pergunta duas coisas e deriva o resto.**
 A derivação da linha de produto a partir do projeto é o que dispensa perguntar
 "isto é LDC ou LIE?". Quem escolheu a obra já respondeu.
 
+### Quando não há projeto: o custo do serviço
+
+Nem todo custo de serviço tem projeto no momento em que acontece. **Combustível
+para rodar um LIE** é o caso exemplar: a viagem acontece antes do contrato
+existir, ou cobre três laudos de clientes diferentes no mesmo dia.
+
+Por isso a regra "nunca pergunte linha de produto" é forte demais. A correta é:
+
+> **A linha de produto deriva do projeto quando há projeto. Quando não há, ela é
+> escolhível diretamente — e é o único caso em que se pergunta.**
+
+O destino, então, tem três formas de ser preenchido, em ordem de preferência:
+
+1. **projeto/obra** → preenche núcleo e linha de produto de uma vez;
+2. **linha de serviço direta** (LIE, LDC, ICV…) → quando o gasto serve ao
+   serviço mas não a um contrato específico;
+3. **só núcleo** (obras / consultoria / tecnologia / corporativo) → quando nem
+   isso se sabe. É o piso, nunca o vazio.
+
+### A prova de que isto está faltando
+
+A categoria **4.04 chama-se literalmente "Deslocamento atribuível a serviço"** —
+e tem `default_nucleo = NULL`. Ela existe para dizer que o deslocamento pertence
+a um serviço, e não consegue dizer a qual.
+
+Combustível medido no acervo (só saídas, `\m(posto|combustivel|gasolina|shell|
+ipiranga|petrobras)\M`):
+
+| onde | lançamentos | valor |
+|---|---|---|
+| 4.04 Deslocamento atribuível a serviço | 30 | R$ 4.014,48 |
+| 5.06 Viagens e representação | 12 | R$ 2.063,18 |
+| itens de cartão em 5.06 | 16 | R$ 2.059,20 |
+| **total** | **58** | **R$ 8.136,86** |
+
+**Nenhum deles tem centro de custo.** Não dá para responder "quanto custou rodar
+os LIEs deste mês".
+
+### A armadilha que este mesmo dado revela
+
+A mesma busca por "posto" traz **R$ 104.221,98 de ENTRADA** — são clientes
+chamados *Posto Quarto de Milha* e *Auto Posto Pioneiro*. E traz 801 linhas em
+4.05 somando R$ 1.006,89: taxas de mensageria de R$ 0,89 cobradas sobre as
+faturas desses clientes.
+
+Ou seja: **o texto "posto" aponta para receita três vezes mais do que para
+combustível.** Qualquer sugestão que olhe só a palavra vai errar. A sugestão
+tem de pesar, no mínimo, **direção do dinheiro + contraparte + histórico**, e
+nunca só o texto.
+
 ### A regra de ouro
 
 > **Escolher a obra é um toque e preenche dois eixos. É o único campo que vale

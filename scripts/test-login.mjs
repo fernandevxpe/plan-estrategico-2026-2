@@ -244,6 +244,80 @@ try {
   );
   afirma(sessaoDepois.corpo?.sessao?.trocarSenha === false, 'a cobrança de troca some depois de trocar');
 
+  console.log('\n=== 5b. O EIXO DESTINO CHEGA NO BANCO (Onda 2) ===');
+  const opcoes = (await c('/api/time/envios')).corpo?.opcoes ?? {};
+  const projeto = (opcoes.centros ?? []).find((x) => x.ehProjeto);
+  const linhaLdc = (opcoes.linhas ?? []).find((x) => x.slug === 'ldc');
+  afirma(Boolean(projeto), 'a lista de obras chega no formulário', `${(opcoes.centros ?? []).length} centros`);
+  afirma(Boolean(linhaLdc), 'as linhas de serviço chegam no formulário', `${(opcoes.linhas ?? []).length} linhas`);
+
+  if (projeto) {
+    const comObra = await c('/api/time/envio', {
+      method: 'POST',
+      body: JSON.stringify({
+        kind: 'custo',
+        titulo: 'teste automatizado — fita 3M',
+        valor: '12,34',
+        data: new Date().toISOString().slice(0, 10),
+        centroCusto: projeto.id
+      })
+    });
+    afirma(comObra.status === 201, 'custo com obra é aceito (201 Created)', `status ${comObra.status}`);
+    const gravado = await db.query(
+      `SELECT cost_center_id, product_line_id FROM fin_time_envio WHERE person_id = $1 ORDER BY id DESC LIMIT 1`,
+      [cobaia.id]
+    );
+    afirma(
+      Number(gravado.rows[0]?.cost_center_id) === projeto.id,
+      'o centro de custo FICOU gravado no envio',
+      `cost_center_id=${gravado.rows[0]?.cost_center_id} — é o indicador que está em 0,0%`
+    );
+  }
+
+  if (linhaLdc) {
+    const semObra = await c('/api/time/envio', {
+      method: 'POST',
+      body: JSON.stringify({
+        kind: 'custo',
+        titulo: 'teste automatizado — combustível para rodar LDC',
+        valor: '80,00',
+        data: new Date().toISOString().slice(0, 10),
+        linhaServico: linhaLdc.id
+      })
+    });
+    afirma(semObra.status === 201, 'custo sem obra, com linha de serviço, é aceito', `status ${semObra.status}`);
+    const gravado = await db.query(
+      `SELECT cost_center_id, product_line_id FROM fin_time_envio WHERE person_id = $1 ORDER BY id DESC LIMIT 1`,
+      [cobaia.id]
+    );
+    afirma(
+      Number(gravado.rows[0]?.product_line_id) === linhaLdc.id && gravado.rows[0]?.cost_center_id === null,
+      'a linha de serviço grava sem obra',
+      'é o caso do combustível que acontece antes do contrato existir'
+    );
+  }
+
+  const lixo = await c('/api/time/envio', {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'custo',
+      titulo: 'teste automatizado — id inexistente',
+      valor: '1,00',
+      data: new Date().toISOString().slice(0, 10),
+      centroCusto: 999999
+    })
+  });
+  afirma(
+    lixo.status === 201,
+    'id de obra inexistente não recusa o envio',
+    'select desatualizado no celular não pode fazer a pessoa perder o lançamento e a foto'
+  );
+  const comLixo = await db.query(
+    `SELECT cost_center_id FROM fin_time_envio WHERE person_id = $1 ORDER BY id DESC LIMIT 1`,
+    [cobaia.id]
+  );
+  afirma(comLixo.rows[0]?.cost_center_id === null, 'e ele vira vazio declarado, não um id inventado');
+
   console.log('\n=== 6. A SENHA ANTIGA MORREU ===');
   const c2 = criarCliente();
   const velha = await c2('/api/time/sessao', {
@@ -285,6 +359,17 @@ try {
 } finally {
   if (cobaia && antes) {
     console.log('\n=== 9. DESFAZENDO ===');
+    await db.query(
+      `DELETE FROM fin_payment_attachment WHERE target_table = 'fin_time_envio'
+         AND target_id IN (SELECT id FROM fin_time_envio WHERE person_id = $1 AND titulo LIKE 'teste automatizado —%')`,
+      [cobaia.id]
+    );
+    await db.query(`DELETE FROM fin_notificacao WHERE person_id = $1 AND criado_em > now() - interval '10 minutes'`, [
+      cobaia.id
+    ]).catch(() => {});
+    await db.query(`DELETE FROM fin_time_envio WHERE person_id = $1 AND titulo LIKE 'teste automatizado —%'`, [
+      cobaia.id
+    ]);
     await db.query(`DELETE FROM fin_time_sessao WHERE person_id = $1 AND criada_em > now() - interval '10 minutes'`, [
       cobaia.id
     ]);
@@ -296,6 +381,9 @@ try {
     ]);
 
     const depois = {
+      envios: (
+        await db.query(`SELECT count(*)::int AS n FROM fin_time_envio WHERE person_id = $1`, [cobaia.id])
+      ).rows[0].n,
       email: (await db.query(`SELECT email FROM fin_person WHERE id = $1`, [cobaia.id])).rows[0].email,
       acesso: (await db.query(`SELECT count(*)::int AS n FROM fin_person_acesso WHERE person_id = $1`, [cobaia.id]))
         .rows[0].n,
@@ -307,9 +395,12 @@ try {
       ).rows[0].n
     };
     afirma(
-      depois.email === antes.email && depois.acesso === antes.acesso && depois.sessoes === antes.sessoes,
+      depois.email === antes.email &&
+        depois.acesso === antes.acesso &&
+        depois.sessoes === antes.sessoes &&
+        depois.envios === 0,
       'o banco voltou ao estado anterior',
-      `e-mail=${depois.email ?? 'null'} · acesso=${depois.acesso} · sessões=${depois.sessoes}`
+      `e-mail=${depois.email ?? 'null'} · acesso=${depois.acesso} · sessões=${depois.sessoes} · envios=${depois.envios}`
     );
   }
   await db.end();

@@ -40,6 +40,8 @@ type Pessoa = { id: number; nome: string; area: string | null; exigePin: boolean
 type Opcoes = {
   tipos: { slug: string; nome: string; exigeNfe: boolean }[];
   categorias: { id: number; rotulo: string }[];
+  centros: { id: number; nome: string; ehProjeto: boolean; nucleo: string | null }[];
+  linhas: { id: number; slug: string; nome: string }[];
 };
 type Envio = {
   origem: string;
@@ -83,7 +85,7 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
   const [sessao, setSessao] = useState<Sessao | null>(null);
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [porta, setPorta] = useState<Porta>("sessao");
-  const [opcoes, setOpcoes] = useState<Opcoes>({ tipos: [], categorias: [] });
+  const [opcoes, setOpcoes] = useState<Opcoes>({ tipos: [], categorias: [], centros: [], linhas: [] });
   const [envios, setEnvios] = useState<Envio[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [recado, setRecado] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
@@ -665,6 +667,8 @@ function FormEnvio({
   const [nfeKey, setNfeKey] = useState("");
   const [nfeNumero, setNfeNumero] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [centro, setCentro] = useState("");
+  const [linha, setLinha] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
   const arquivoRef = useRef<HTMLInputElement>(null);
@@ -686,7 +690,9 @@ function FormEnvio({
           fornecedor,
           nfeKey,
           nfeNumero,
-          categoriaSugerida: categoria
+          categoriaSugerida: categoria,
+          centroCusto: centro,
+          linhaServico: centro ? "" : linha
         },
         arquivo
       );
@@ -696,6 +702,8 @@ function FormEnvio({
       setDescricao("");
       setNfeKey("");
       setNfeNumero("");
+      setCentro("");
+      setLinha("");
       setArquivo(null);
       if (arquivoRef.current) arquivoRef.current.value = "";
     } catch (erro) {
@@ -771,6 +779,69 @@ function FormEnvio({
             <input value={nfeNumero} onChange={(e) => setNfeNumero(e.target.value)} />
           </label>
         </div>
+      ) : null}
+
+      {/*
+        O EIXO DESTINO. Um toque aqui responde duas perguntas de uma vez: o
+        núcleo sai do centro de custo, e é este campo que tira o indicador de
+        centro de custo dos 0,0% em que está.
+
+        Vem ANTES da categoria de propósito. "Para qual obra" é a pergunta que
+        quem comprou sabe responder na hora; "qual linha da DRE" é a que o
+        financeiro sabe. Pedir a difícil primeiro é o que faz as duas ficarem
+        vazias.
+      */}
+      <label className="campo">
+        <span>Para qual obra ou projeto</span>
+        <select
+          value={centro}
+          onChange={(e) => {
+            setCentro(e.target.value);
+            if (e.target.value) setLinha("");
+          }}
+        >
+          <option value="">— não é de uma obra específica —</option>
+          <optgroup label="Obras e projetos">
+            {opcoes.centros
+              .filter((c) => c.ehProjeto)
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+          </optgroup>
+          <optgroup label="Áreas da empresa">
+            {opcoes.centros
+              .filter((c) => !c.ehProjeto)
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+          </optgroup>
+        </select>
+        <small>É o campo que mais ajuda. Um toque aqui e o custo já sabe de quem é.</small>
+      </label>
+
+      {/*
+        Só aparece quando NÃO há obra. Combustível para rodar um LIE acontece
+        antes do contrato existir, ou cobre três laudos de clientes diferentes
+        no mesmo dia — aí não há obra para escolher, e a linha de serviço é a
+        resposta possível.
+      */}
+      {!centro ? (
+        <label className="campo">
+          <span>Foi para qual serviço? (se souber)</span>
+          <select value={linha} onChange={(e) => setLinha(e.target.value)}>
+            <option value="">— não sei / não é de um serviço —</option>
+            {opcoes.linhas.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.nome}
+              </option>
+            ))}
+          </select>
+          <small>Ex.: combustível para rodar um laudo que ainda não virou contrato.</small>
+        </label>
       ) : null}
 
       <label className="campo">

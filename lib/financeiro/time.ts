@@ -825,6 +825,8 @@ export type NovoEnvio = {
   fornecedor?: unknown;
   fornecedorDocumento?: unknown;
   categoriaSugerida?: unknown;
+  centroCusto?: unknown;
+  linhaServico?: unknown;
   nfeKey?: unknown;
   nfeNumero?: unknown;
   nfeSerie?: unknown;
@@ -878,13 +880,34 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
       categoriaId = c.rows[0]?.id ?? null;
     }
 
+    // O eixo DESTINO. Os dois são opcionais de propósito: campo obrigatório num
+    // formulário preenchido na rua é campo preenchido com qualquer coisa, e
+    // qualquer coisa é pior que um vazio declarado. Id que não existe vira
+    // NULL em silêncio pelo mesmo motivo da categoria acima — o envio não pode
+    // ser recusado por causa de um select desatualizado no celular de alguém.
+    const centroCustoId = await refValida(client, "fin_cost_center", corpo.centroCusto, entityId);
+    const linhaServicoId = await refValida(client, "fin_product_line", corpo.linhaServico, entityId);
+
+    // AINDA NÃO SE DERIVA A LINHA DO PROJETO, e isso é uma lacuna declarada, não
+    // um esquecimento. O plano diz que escolher a obra deveria responder "é LDC
+    // ou LIE?" sozinho — e responderia, porque o ERP sabe o tipo de serviço de
+    // cada contrato. Só que `fin_cost_center` espelha o projeto SEM esse campo:
+    // não há de onde derivar. Inventar a derivação com o dado que existe seria
+    // gravar um palpite com cara de fato.
+    //
+    // Até o espelho do ERP trazer o tipo de serviço, os dois campos convivem: o
+    // projeto responde "para quem", a linha responde "para qual serviço", e
+    // quem preenche é a pessoa — quando souber.
+
     const envio = await client.query<{ id: number; code: string }>(
       `INSERT INTO fin_time_envio
          (entity_id, kind, person_id, identidade_prova, titulo, descricao, amount_cents,
           incurred_on, due_on, pagamento, ja_pago, categoria_sugerida_id,
+          cost_center_id, product_line_id,
           fornecedor_nome, fornecedor_documento, nfe_key, nfe_numero, nfe_serie, nfe_emissao,
           status, enviado_em)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12, $13, $14, $15, $16, $17,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12, $18, $19,
+               $13, $14, $15, $16, $17,
                CASE WHEN $2 = 'nota_entrada' THEN $8::date ELSE NULL END,
                'enviado', now())
        RETURNING id, code`,
@@ -905,7 +928,9 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
         opcionalTexto(corpo.fornecedorDocumento, 40),
         nfeBruta || null,
         nfeNumero,
-        opcionalTexto(corpo.nfeSerie, 10)
+        opcionalTexto(corpo.nfeSerie, 10),
+        centroCustoId,
+        linhaServicoId
       ]
     );
 
@@ -1126,9 +1151,50 @@ export async function listarMeusEnvios(sessao: Sessao): Promise<EnvioDoTime[]> {
   }));
 }
 
-/** Os tipos de reembolso e as categorias que a tela oferece. Nada de dinheiro aqui. */
+/**
+ * Resolve um id que veio do formulário, ou `null`.
+ *
+ * Id inexistente vira NULL em silêncio, e não erro: o select do celular pode
+ * estar desatualizado (obra encerrada, linha desativada), e recusar o envio
+ * inteiro por causa disso faria a pessoa perder o lançamento e a foto. O vazio
+ * é declarado e a fila do admin o enxerga; o envio perdido não volta.
+ *
+ * A tabela vem de uma união fechada, nunca de string do cliente — é o que
+ * impede este helper de virar uma via de injeção de nome de tabela.
+ */
+async function refValida(
+  client: { query: (t: string, p?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }> },
+  tabela: "fin_cost_center" | "fin_product_line",
+  valor: unknown,
+  entityId: number
+): Promise<number | null> {
+  if (valor === undefined || valor === null || valor === "") return null;
+  const id = Number(valor);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const r = await client.query(
+    `SELECT id FROM ${tabela} WHERE id = $1 AND entity_id = $2 AND is_active`,
+    [id, entityId]
+  );
+  return r.rows[0] ? Number(r.rows[0].id) : null;
+}
+
+/**
+ * O que os formulários oferecem. Nada de dinheiro aqui.
+ *
+ * Além dos tipos e das categorias, vêm os dois níveis do eixo DESTINO:
+ *
+ *   `centros`  a obra ou o projeto. UM TOQUE e preenche dois eixos — o núcleo
+ *              sai daqui, e a linha de produto sai do projeto. É o campo que
+ *              tira o centro de custo dos 0,0% em que está.
+ *   `linhas`   a linha de serviço (LDC, LIE, ICV…), para quando NÃO há projeto:
+ *              combustível para rodar um laudo acontece antes do contrato
+ *              existir, ou cobre três clientes no mesmo dia.
+ *
+ * Os projetos vêm antes dos funcionais na ordenação porque é neles que o custo
+ * de campo cai, e são eles que a pessoa procura.
+ */
 export async function opcoesDoTime() {
-  const [tipos, categorias] = await Promise.all([
+  const [tipos, categorias, centros, linhas] = await Promise.all([
     query<{ slug: string; name: string; requires_nfe: boolean }>(
       `SELECT slug, name, requires_nfe FROM fin_reimbursement_type WHERE is_active ORDER BY sort_order, name`
     ),
@@ -1138,10 +1204,31 @@ export async function opcoesDoTime() {
         WHERE c.code LIKE '4.%' OR c.code LIKE '5.%' OR c.code LIKE '8.%'
         ORDER BY c.code`,
       [ENTITY]
+    ),
+    query<{ id: number; name: string; kind: string; nucleo: string | null }>(
+      `SELECT cc.id, cc.name, cc.kind, cc.nucleo FROM fin_cost_center cc
+         JOIN fin_entity e ON e.id = cc.entity_id AND e.slug = $1
+        WHERE cc.is_active
+        ORDER BY (cc.kind <> 'projeto'), cc.name`,
+      [ENTITY]
+    ),
+    query<{ id: number; slug: string; name: string }>(
+      `SELECT pl.id, pl.slug, pl.name FROM fin_product_line pl
+         JOIN fin_entity e ON e.id = pl.entity_id AND e.slug = $1
+        WHERE pl.is_active
+        ORDER BY pl.sort_order, pl.name`,
+      [ENTITY]
     )
   ]);
   return {
     tipos: tipos.map((t) => ({ slug: t.slug, nome: t.name, exigeNfe: t.requires_nfe })),
-    categorias: categorias.map((c) => ({ id: Number(c.id), rotulo: `${c.code} ${c.name}` }))
+    categorias: categorias.map((c) => ({ id: Number(c.id), rotulo: `${c.code} ${c.name}` })),
+    centros: centros.map((c) => ({
+      id: Number(c.id),
+      nome: c.name,
+      ehProjeto: c.kind === "projeto",
+      nucleo: c.nucleo
+    })),
+    linhas: linhas.map((l) => ({ id: Number(l.id), slug: l.slug, nome: l.name }))
   };
 }

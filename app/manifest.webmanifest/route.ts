@@ -38,6 +38,38 @@ export function GET() {
       { src: "/icone-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/icone-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
     ],
+    /*
+     * COMPARTILHAR DO APP DO BANCO DIRETO PARA CÁ.
+     *
+     * Com isto instalado, o XPE aparece na folha de compartilhamento do Android
+     * junto com WhatsApp e Drive. A pessoa recebe o comprovante no app do banco,
+     * toca em compartilhar, escolhe XPE — e cai no formulário com o arquivo já
+     * anexado. Nada de salvar na galeria, abrir o app, achar o arquivo.
+     *
+     * `method: POST` + `enctype: multipart/form-data` é o que permite receber
+     * ARQUIVO; a forma GET só carrega texto e link. O navegador faz um POST de
+     * verdade para a `action`, então ela é uma rota de API, não uma página.
+     *
+     * LIMITE HONESTO: isto é Android (Chrome/Edge/Samsung). O iOS não implementa
+     * Web Share Target — no iPhone o caminho continua sendo abrir o app e
+     * escolher o arquivo. Não há como contornar pelo lado do site.
+     */
+    share_target: {
+      action: "/api/time/compartilhado",
+      method: "POST",
+      enctype: "multipart/form-data",
+      params: {
+        title: "titulo",
+        text: "texto",
+        url: "url",
+        files: [
+          {
+            name: "arquivo",
+            accept: ["image/*", "application/pdf", ".xml"]
+          }
+        ]
+      }
+    },
     shortcuts: [
       { name: "Lançar custo", short_name: "Custo", url: "/time/custo" },
       { name: "Pedir reembolso", short_name: "Reembolso", url: "/time/reembolso" },

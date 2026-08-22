@@ -585,6 +585,27 @@ export type AnexoEntrada = {
   bytes: Buffer;
 };
 
+/**
+ * Guarda um arquivo que chegou ANTES de existir lançamento para prendê-lo.
+ *
+ * É o caso do compartilhamento: a pessoa recebe o comprovante no app do banco e
+ * despacha para cá antes de preencher qualquer coisa. Se o arquivo não fosse
+ * guardado neste instante, ele se perderia no caminho até o formulário — e a
+ * pessoa não repete o gesto.
+ *
+ * O blob entra sem linha em `fin_payment_attachment`: o vínculo nasce quando o
+ * envio for criado. Fica órfão se ela desistir no meio, e é aceitável —
+ * comprovante encolhido pesa ~250 KB, e perder o arquivo de quem compartilhou
+ * custa mais que guardar alguns que ninguém usou. A chave leva o `person_id`
+ * para uma limpeza futura saber de quem é cada rascunho.
+ */
+export async function guardarAnexoAvulso(sessao: Sessao, anexo: AnexoEntrada, _token: string | null): Promise<string> {
+  return transaction(async (client) => {
+    const chave = await guardarAnexo(client, anexo, `time:${sessao.personId}`);
+    return chave;
+  });
+}
+
 export async function guardarAnexo(
   client: { query: (t: string, p?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }> },
   anexo: AnexoEntrada,

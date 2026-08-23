@@ -1466,6 +1466,20 @@ export type MeusRecebiveis = {
   mesAtualCents: number;
   /** Mediana do que se repete — a base honesta para "quanto costumo receber". */
   medianaRecorrenteCents: number;
+  /** O salário base contratado, quando existe — a procedência da banda. */
+  salarioBase: { valorCents: number; vigenteDesde: string; nota: string | null } | null;
+  /**
+   * O que ainda vai cair, mês a mês.
+   *
+   * Reembolso: as parcelas que faltam de cada série, distribuídas nos meses à
+   * frente — a série sabe quantas faltam e de quanto é cada uma.
+   * Salário: a base contratada, que se repete enquanto a vigência valer.
+   *
+   * Não projeto pró-labore: ele varia de R$ 0 a R$ 6.023 nos oito meses do
+   * Fernando e não há contrato que o fixe. Prever o que não tem regra é
+   * inventar, e a tela ficaria dizendo um número que ninguém prometeu.
+   */
+  previsao: { mes: string; salarioCents: number; reembolsoCents: number }[];
   /** O reembolso de cada competência, item a item — o que compõe a banda. */
   reembolsoPorCompetencia: {
     competencia: string;
@@ -1520,7 +1534,7 @@ const RECORRENTE = new Set(["salario", "prolabore", "estagio"]);
  * e para essa pergunta a mediana responde melhor.
  */
 export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
-  const [linhas, saldo, porNaturezaMes, itensReembolso] = await Promise.all([
+  const [linhas, saldo, porNaturezaMes, itensReembolso, base] = await Promise.all([
     query<Record<string, unknown>>(
       `SELECT data, to_char(mes, 'YYYY-MM') AS mes, valor_cents, natureza, categoria, conta, descricao
          FROM fin_time_recebivel_v
@@ -1581,6 +1595,22 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
          JOIN fin_reimbursement r ON r.id = i.reimbursement_id
         WHERE r.person_id = $1
         ORDER BY r.reference_month DESC, i.amount_cents DESC`,
+      [sessao.personId]
+    ).catch(() => []),
+    /*
+     * O SALÁRIO BASE, para a tela poder explicar de onde vem a banda.
+     *
+     * Sem isto, "Salário R$ 1.621,00" é um número sem procedência: o ledger
+     * não tem 6.01 para sócio nenhum, então quem abrisse a linha não teria
+     * como saber por que aquele valor e não outro. Com a base e a nota, a
+     * expansão responde — e a nota diz quem afirmou o número.
+     */
+    query<Record<string, unknown>>(
+      `SELECT valor_cents, to_char(vigente_desde, 'YYYY-MM-DD') AS vigente_desde, nota
+         FROM fin_pessoa_salario_base
+        WHERE person_id = $1 AND vigente_desde <= current_date
+        ORDER BY vigente_desde DESC
+        LIMIT 1`,
       [sessao.personId]
     ).catch(() => [])
   ]);
@@ -1666,6 +1696,33 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
     totalCents: itens.reduce((s, i) => s + i.valorCents, 0),
     mesAtualCents: meses.get(mesCorrente)?.totalCents ?? 0,
     medianaRecorrenteCents,
+    salarioBase: base[0]
+      ? {
+          valorCents: Number(base[0].valor_cents),
+          vigenteDesde: String(base[0].vigente_desde),
+          nota: (base[0].nota as string) ?? null
+        }
+      : null,
+    previsao: (() => {
+      const baseCents = base[0] ? Number(base[0].valor_cents) : 0;
+      // Quantos meses à frente vale projetar: até a última parcela em aberto,
+      // com teto de 12. Sem teto, uma série de 24 parcelas esticaria a tela
+      // por dois anos de meses idênticos.
+      const maiorRestante = saldo.reduce((n, r) => Math.max(n, Number(r.parcelas_restantes ?? 0)), 0);
+      const quantos = Math.min(12, Math.max(baseCents > 0 ? 3 : 0, maiorRestante));
+      const hoje = new Date();
+      const out: { mes: string; salarioCents: number; reembolsoCents: number }[] = [];
+      for (let k = 1; k <= quantos; k += 1) {
+        const d = new Date(hoje.getFullYear(), hoje.getMonth() + k, 1);
+        const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const reembolso = saldo.reduce(
+          (t, r) => t + (Number(r.parcelas_restantes ?? 0) >= k ? Number(r.valor_parcela_cents ?? 0) : 0),
+          0
+        );
+        out.push({ mes, salarioCents: baseCents, reembolsoCents: reembolso });
+      }
+      return out;
+    })(),
     reembolsoPorCompetencia: (() => {
       const m = new Map<string, { competencia: string; totalCents: number; itens: RecebivelReembolsoItem[] }>();
       for (const r of itensReembolso) {

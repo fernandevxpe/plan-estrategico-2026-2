@@ -16,6 +16,8 @@ export type Recebiveis = {
   totalCents: number;
   mesAtualCents: number;
   medianaRecorrenteCents: number;
+  salarioBase: { valorCents: number; vigenteDesde: string; nota: string | null } | null;
+  previsao: { mes: string; salarioCents: number; reembolsoCents: number }[];
   reembolsoPorCompetencia: {
     competencia: string;
     totalCents: number;
@@ -64,15 +66,23 @@ export const ROTULO: Record<string, string> = {
 };
 
 /*
- * Salário, pró-labore e estágio dividem a MESMA cor.
+ * SALÁRIO TEM COR PRÓPRIA; pró-labore e estágio dividem a outra.
  *
- * Conferido nas 28 pessoas com pagamento em 2026: ninguém tem duas delas — os
- * vínculos são mutuamente exclusivos. Com uma cor só, a banda roxa quer dizer
- * "o que se repete todo mês" no gráfico de qualquer pessoa, e a legenda diz o
- * nome certo do vínculo de cada uma.
+ * Este bloco dizia que os três compartilhavam a mesma cor "porque ninguém tem
+ * duas delas — os vínculos são mutuamente exclusivos". Era verdade enquanto
+ * quem classificava era a categoria do ledger. Deixou de ser quando
+ * `fin_pessoa_salario_base` (0164) passou a separar, nos sócios, o salário do
+ * pró-labore: o Fernando tem os dois TODO mês.
+ *
+ * Com a cor antiga, a divisão que a migration existe para fazer aparecia no
+ * gráfico como um bloco roxo único. A tela mostrava a separação nos números e
+ * a escondia no desenho.
+ *
+ * Estágio segue no roxo: nenhuma pessoa da base tem estágio junto com
+ * pró-labore, e ali a premissa continua valendo.
  */
 export const CLASSE: Record<string, string> = {
-  salario: "nat-recorrente",
+  salario: "nat-salario",
   prolabore: "nat-recorrente",
   estagio: "nat-recorrente",
   comissao: "nat-comissao",
@@ -132,9 +142,27 @@ export const mesCurto = (m: string) => MES_LONGO[Number(m.slice(5, 7)) - 1].slic
  */
 
 let cache: Promise<{ dado: Recebiveis | null; erro: string | null }> | null = null;
+let cacheEm = 0;
+
+/*
+ * O CACHE PRECISA DE PRAZO, e a falta dele apareceu na cara do dono.
+ *
+ * Cache sem expiração dedupa a requisição de duas telas que montam juntas — que
+ * era o objetivo — mas sobrevive a toda navegação de cliente. O Fernando abriu
+ * Recebíveis depois de uma correção no banco e viu os números ANTIGOS:
+ * "Pró-labore R$ 5.000,00" sem salário separado, que é exatamente a soma que a
+ * migration tinha acabado de dividir. A navegação dele foi interna, o módulo
+ * continuou vivo, e a tela mentiu com convicção.
+ *
+ * 60 segundos: longo o bastante para as três telas que montam juntas dividirem
+ * uma requisição, curto o bastante para ninguém decidir em cima de número
+ * velho.
+ */
+const VALIDADE_MS = 60_000;
 
 export function invalidarRecebiveis() {
   cache = null;
+  cacheEm = 0;
 }
 
 /**
@@ -148,7 +176,8 @@ export function carregarRecebiveis() {
 }
 
 function buscar() {
-  if (cache) return cache;
+  if (cache && Date.now() - cacheEm < VALIDADE_MS) return cache;
+  cacheEm = Date.now();
   cache = (async () => {
     const r = await fetch("/api/time/recebiveis", { cache: "no-store" });
     const j = await r.json().catch(() => ({}));
@@ -173,11 +202,36 @@ export function useRecebiveis() {
 
   useEffect(() => {
     let vivo = true;
-    void buscar().then((r) => {
-      if (vivo) setEstado({ ...r, carregando: false });
-    });
+    const puxar = () =>
+      void buscar().then((r) => {
+        if (vivo) setEstado({ ...r, carregando: false });
+      });
+    puxar();
+
+    /*
+     * REVALIDA AO VOLTAR PARA A ABA — e esta linha nasceu de um constrangimento.
+     *
+     * O prazo de 60s só é conferido quando alguém CHAMA `buscar()`, e isso só
+     * acontece na montagem do componente. Numa tela que fica aberta, o dado
+     * envelhece para sempre.
+     *
+     * Aconteceu três vezes seguidas com o Fernando: eu corrigia o banco, ele
+     * dava F5 — que na navegação do Next é interna, e não remonta nada — e via
+     * "Pró-labore R$ 5.000,00" sem o salário separado, que é exatamente a soma
+     * que a migration tinha acabado de dividir. Ele conferiu, e a tela mentiu.
+     *
+     * Voltar para a aba é o momento em que a pessoa reabre a pergunta. É onde
+     * a resposta deve ser reconferida.
+     */
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible") puxar();
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("focus", aoVoltar);
     return () => {
       vivo = false;
+      document.removeEventListener("visibilitychange", aoVoltar);
+      window.removeEventListener("focus", aoVoltar);
     };
   }, []);
 

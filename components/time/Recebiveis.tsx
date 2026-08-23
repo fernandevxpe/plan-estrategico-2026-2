@@ -78,6 +78,14 @@ function nomeDoItem(descricao: string, alternativa: string) {
   return descricao.replace(/[\s-]*\d+\s*\/\s*\d+\s*$/, "").replace(/[\s\-–—]+$/, "").trim() || alternativa;
 }
 
+function IconeSeta() {
+  return (
+    <svg className="rec-seta" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
 /** O mês anterior: gasto de M é reembolsado em M+1, então a competência do
  *  reembolso pago no mês M é M−1. Mesma regra da view 0163 e da folha. */
 function competenciaDe(mes: string) {
@@ -87,6 +95,9 @@ function competenciaDe(mes: string) {
 
 export function Recebiveis() {
   const { dado, erro, carregando } = useRecebiveis();
+  const [ocultas, setOcultas] = useState<Set<string>>(new Set());
+  const [mostrarPrevisao, setMostrarPrevisao] = useState(false);
+  const [aberto, setAberto] = useState<string | null>(null);
 
   if (carregando) return <div className="time-aviso">carregando…</div>;
   if (erro) return <p className="time-erro">{erro}</p>;
@@ -106,11 +117,62 @@ export function Recebiveis() {
     );
   }
 
+  /*
+   * O GRÁFICO PASSA A SER FILTRÁVEL, E A LEGENDA É O FILTRO.
+   *
+   * Pedido: "quero que no gráfico seja selecionado o que eu quero ver... tbm
+   * quero que consiga mostrar um ou outro". Duas listas — uma que explica as
+   * cores e outra que filtra — seriam a mesma informação duas vezes, e a
+   * segunda envelheceria primeiro. Aqui tocar na natureza tira e põe a banda.
+   *
+   * A última visível não desliga: um gráfico sem banda nenhuma não comunica
+   * nada e deixa a pessoa sem caminho de volta óbvio.
+   */
+  const naturezasExistentes = dado.porNatureza.map((n) => n.natureza);
+  const ligadas = naturezasExistentes.filter((n) => !ocultas.has(n));
+  const alternar = (nat: string) =>
+    setOcultas((antes) => {
+      const novo = new Set(antes);
+      if (novo.has(nat)) novo.delete(nat);
+      else if (naturezasExistentes.length - novo.size > 1) novo.add(nat);
+      return novo;
+    });
+
+  const soNatureza = (por: Record<string, number>) =>
+    Object.fromEntries(Object.entries(por).filter(([n]) => !ocultas.has(n)));
+
   // Os seis meses mais recentes no compacto. O resto vive na tela cheia — a
   // coluna fica com 55px em 361px, e abaixo disso o rótulo do mês some.
-  const meses = dado.porMes.slice(-6);
-  const teto = Math.max(...meses.map((m) => m.totalCents), 1);
-  const valores = meses.map((m) => m.totalCents);
+  const mesesBase = dado.porMes.slice(-6).map((m) => {
+    const por = soNatureza(m.porNatureza);
+    return { mes: m.mes, porNatureza: por, totalCents: Object.values(por).reduce((a, b) => a + b, 0), previsto: false };
+  });
+
+  /*
+   * A PREVISÃO ENTRA NO MESMO GRÁFICO, e não num segundo.
+   *
+   * Pedido: "tbm poder mostrar a previsão dos outros meses". Num gráfico à
+   * parte a comparação exige memória; na mesma régua ela é visual.
+   *
+   * O que se projeta tem contrato por trás: o salário base e as parcelas de
+   * reembolso que faltam (a série sabe quantas e de quanto). Pró-labore não
+   * entra — ele foi de R$ 0 a R$ 6.023 nos oito meses do Fernando, e projetar
+   * o que não tem regra é escrever um número que ninguém prometeu.
+   */
+  const mesesPrevistos = mostrarPrevisao
+    ? (dado.previsao ?? []).map((p) => {
+        const por = soNatureza({
+          ...(p.salarioCents > 0 ? { salario: p.salarioCents } : {}),
+          ...(p.reembolsoCents > 0 ? { reembolso: p.reembolsoCents } : {})
+        });
+        return { mes: p.mes, porNatureza: por, totalCents: Object.values(por).reduce((a, b) => a + b, 0), previsto: true };
+      }).filter((m) => m.totalCents > 0)
+    : [];
+
+  const meses = mesesBase;
+  const colunas = [...mesesBase, ...mesesPrevistos];
+  const teto = Math.max(...colunas.map((m) => m.totalCents), 1);
+  const valores = mesesBase.map((m) => m.totalCents);
   const menor = Math.min(...valores);
   const maior = Math.max(...valores);
 
@@ -209,8 +271,8 @@ export function Recebiveis() {
         </div>
         <div className="rec-plot-trilho">
           <div className="rec-grade" role="img" aria-label={`Recebido mês a mês. ${descricaoGrafico}`}>
-            {meses.map((m) => (
-              <div key={m.mes} className="rec-col">
+            {colunas.map((m) => (
+              <div key={m.mes} className={m.previsto ? "rec-col rec-col-previsto" : "rec-col"}>
                 <span className="rec-col-area">
                   <span className="rec-pilha" style={{ height: `${(m.totalCents / teto) * 100}%` }}>
                     {Object.entries(m.porNatureza)
@@ -220,7 +282,7 @@ export function Recebiveis() {
                           key={nat}
                           className={CLASSE[nat] ?? "nat-encargo"}
                           style={{ height: `${(v / m.totalCents) * 100}%` }}
-                          title={`${ROTULO[nat] ?? nat}: ${brl(v)}`}
+                          title={`${ROTULO[nat] ?? nat}: ${brl(v)}${m.previsto ? " (previsto)" : ""}`}
                         />
                       ))}
                   </span>
@@ -239,17 +301,37 @@ export function Recebiveis() {
             : `${meses.length === 1 ? "No único mês" : `Nos ${meses.length} meses`}: de ${brl(menor)} a ${brl(maior)}.`}
           {dado.porMes.length > meses.length ? ` Total de ${plural(dado.porMes.length, "mês", "meses")}: ${brl(dado.totalCents)}.` : ""}
         </p>
-        <ul className="rec-legenda">
-          {legenda.map((n) => (
-            <li key={n.natureza}>
-              <i className={`rec-ponto ${CLASSE[n.natureza] ?? "nat-encargo"}`} />
-              <span>{ROTULO[n.natureza] ?? n.natureza}</span>
-              <b>{brl(n.cents)}</b>
-              {/* meses, não lançamentos — ver o comentário em `meusRecebiveis` */}
-              <em>{plural(n.n, "mês", "meses")}</em>
-            </li>
-          ))}
+        {/* Marcado não é só cor: o ponto fica cheio e o desmarcado fica
+            vazado. Quem não distingue as duas cores ainda vê a diferença de
+            forma — mesmo motivo de `aria-pressed` estar em cada botão. */}
+        <ul className="rec-legenda rec-legenda-filtro">
+          {dado.porNatureza.map((n) => {
+            const dentro = legenda.find((l) => l.natureza === n.natureza);
+            const liga = !ocultas.has(n.natureza);
+            return (
+              <li key={n.natureza}>
+                <button type="button" aria-pressed={liga} onClick={() => alternar(n.natureza)}>
+                  <i className={`rec-ponto ${CLASSE[n.natureza] ?? "nat-encargo"}${liga ? "" : " vazado"}`} />
+                  <span>{ROTULO[n.natureza] ?? n.natureza}</span>
+                  <b>{liga ? brl(dentro?.cents ?? 0) : "—"}</b>
+                  <em>{liga ? plural(dentro?.n ?? 0, "mês", "meses") : "oculto"}</em>
+                </button>
+              </li>
+            );
+          })}
         </ul>
+        {(dado.previsao ?? []).length > 0 ? (
+          <button
+            type="button"
+            className={mostrarPrevisao ? "rec-previsao-botao ativo" : "rec-previsao-botao"}
+            aria-pressed={mostrarPrevisao}
+            onClick={() => setMostrarPrevisao((v) => !v)}
+          >
+            {mostrarPrevisao
+              ? `Escondendo o que ainda vai cair`
+              : `Mostrar o que ainda vai cair (${plural(dado.previsao.length, "mês", "meses")})`}
+          </button>
+        ) : null}
       </section>
 
       {dado.emAbertoCents > 0 ? (
@@ -267,7 +349,8 @@ export function Recebiveis() {
             uma. O total continua no topo — aqui ele é o rodapé da conta, não o
             título.
           */}
-          <h2>De onde vem o que falta</h2>
+          <h2>Previsões</h2>
+          <h3 className="rec-prev-sub">Reembolso — o que já está aprovado e ainda não caiu</h3>
           <ul className="rec-aberto-lista">
             {dado.emAberto.map((a) => (
               <li key={a.slug}>
@@ -300,6 +383,55 @@ export function Recebiveis() {
               em {plural(dado.emAberto.length, "série", "séries")} · aprovado, ainda não pago
             </span>
           </p>
+
+          {/*
+            A PREVISÃO DE SALÁRIO fica ao lado da de reembolso porque a pergunta
+            é a mesma — "com o que eu conto daqui para frente" — e as duas têm
+            contrato por trás. O pró-labore não entra: ele variou de R$ 0 a
+            R$ 6.023 nos oito meses do Fernando, e não há regra que o fixe.
+            Prever o que não tem regra é escrever um número que ninguém
+            prometeu, e num app de dinheiro isso é pior que o silêncio.
+          */}
+          {dado.salarioBase ? (
+            <>
+              <h3 className="rec-prev-sub">Salário — o que se repete todo mês</h3>
+              <p className="rec-prev-salario">
+                <strong>{brl(dado.salarioBase.valorCents)}</strong>
+                <span>por mês, base contratada desde {nomeMes(dado.salarioBase.vigenteDesde.slice(0, 7))}</span>
+                {dado.salarioBase.nota ? <small>{dado.salarioBase.nota}</small> : null}
+              </p>
+            </>
+          ) : null}
+
+          {(dado.previsao ?? []).length > 0 ? (
+            <>
+              <h3 className="rec-prev-sub">Mês a mês, o que está previsto</h3>
+              <ul className="rec-prev-meses">
+                {dado.previsao.map((p) => (
+                  <li key={p.mes}>
+                    <span className="rec-prev-mes">
+                      {nomeMes(p.mes).charAt(0).toUpperCase() + nomeMes(p.mes).slice(1)}
+                    </span>
+                    <span className="rec-prev-partes">
+                      {p.salarioCents > 0 ? (
+                        <span>
+                          <i className={`rec-ponto ${CLASSE.salario}`} />
+                          {brl(p.salarioCents)}
+                        </span>
+                      ) : null}
+                      {p.reembolsoCents > 0 ? (
+                        <span>
+                          <i className={`rec-ponto ${CLASSE.reembolso}`} />
+                          {brl(p.reembolsoCents)}
+                        </span>
+                      ) : null}
+                    </span>
+                    <b>{brl(p.salarioCents + p.reembolsoCents)}</b>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
         </section>
       ) : null}
 
@@ -336,99 +468,136 @@ export function Recebiveis() {
                 que é quem sabe que R$ 765,61 pagos em março eram o reembolso de
                 fevereiro, e não pró-labore, mesmo estando em 6.02 no ledger.
               */}
-              <ul className="rec-comp">
+              {/*
+                A EXPANSÃO É UMA SEQUÊNCIA: mês → natureza → o que sustenta.
+                
+                Pedido: "deveria ser uma sequência de expandir; pró-labore
+                expande e mostra os Pix recebidos e os valores; reembolso
+                expandir e mostrar o detalhamento dos reembolsos que compõem o
+                todo — isso por mês".
+                
+                Cada natureza é um `<details>` próprio. Fechadas, as três linhas
+                respondem "quanto de quê". Abertas, cada uma responde de onde
+                aquele número vem — e a resposta é diferente para cada:
+                
+                  Salário    a base contratada e desde quando vale
+                  Reembolso  os itens da competência, exatos, com parcela
+                  o resto    os Pix do mês, que é o que dá para conferir no
+                             extrato do banco
+                
+                Por que os Pix ficam sob a natureza e não atribuídos um a um:
+                medido na base inteira, em apenas 46% dos 156 pessoa×mês existe
+                casamento exato entre o valor de cada Pix e o de cada banda. Em
+                29% não casa nenhum. Dizer "este Pix é o pró-labore" seria certo
+                em menos da metade das vezes.
+              */}
+              <ul className="rec-naturezas">
                 {Object.entries(m.porNatureza)
                   .sort((a, b) => b[1] - a[1])
-                  .map(([nat, v]) => (
-                    <li key={nat}>
-                      <i className={`rec-ponto ${CLASSE[nat] ?? "nat-encargo"}`} />
-                      <span>{ROTULO[nat] ?? nat}</span>
-                      <b>{brl(v)}</b>
-                    </li>
-                  ))}
-              </ul>
+                  .map(([nat, v]) => {
+                    const reemb =
+                      nat === "reembolso"
+                        ? (dado.reembolsoPorCompetencia ?? []).find((c) => c.competencia === competenciaDe(m.mes))
+                        : null;
+                    return (
+                      <li key={nat}>
+                        <details className="rec-nat">
+                          <summary>
+                            <i className={`rec-ponto ${CLASSE[nat] ?? "nat-encargo"}`} />
+                            <span className="rec-nat-nome">
+                              {ROTULO[nat] ?? nat}
+                              {reemb ? (
+                                <small>competência {nomeMes(reemb.competencia)}</small>
+                              ) : null}
+                            </span>
+                            <b>{brl(v)}</b>
+                            <IconeSeta />
+                          </summary>
 
-              <p className="rec-mes-rotulo">
-                {plural(doMes.length, "Pix recebido", "Pix recebidos")}
-              </p>
-              {/* `rec-linhas-sem-ponto`: a linha perdeu o pontinho de natureza
-                  (a natureza dela não é conhecível), e a grade de 4 colunas
-                  jogava o texto na coluna de 9px — "Pix" renderizava como "P".
-                  Três filhos pedem três colunas. */}
-              <ul className="rec-linhas rec-linhas-sem-ponto">
-                {doMes.map((l, k) => (
-                  <li key={`${l.data}-${k}`} className={k > 0 && doMes[k - 1].data === l.data ? "rec-linha-mesmodia" : ""}>
-                    {/* A data da movimentação, sempre — é o que a pessoa cruza
-                        com o extrato do banco dela. Some só quando é o MESMO
-                        dia da linha de cima, para três Pix do mesmo dia não
-                        repetirem a data três vezes. */}
-                    <span className="rec-linha-dia">
-                      {k > 0 && doMes[k - 1].data === l.data ? "" : `${l.data.slice(8, 10)}/${l.data.slice(5, 7)}`}
-                    </span>
-                    {/*
-                      SEM RÓTULO DE NATUREZA NA LINHA, e a ausência é a parte
-                      honesta.
-                      
-                      Cada linha dizia "Pró-labore" ou "Reembolso" pela
-                      categoria do ledger, e a categoria erra quando os dois
-                      saem no mesmo dia: os R$ 765,61 de março apareciam como
-                      pró-labore. Testei se dava para descobrir qual PIX era
-                      qual — em 7 dos 8 meses do Fernando existe um subconjunto
-                      que soma exato o reembolso, mas em fevereiro não existe
-                      nenhum. Casar por valor é chute, e chute em pagamento de
-                      pessoa não entra.
-                      
-                      Então a linha diz o que se sabe: quando caiu, quanto, e
-                      em que conta. O que cada parte É está na composição, logo
-                      acima, onde a folha responde.
-                    */}
-                    <span className="rec-linha-nat">
-                      Pix
-                      {dado.linhas.some((x) => x.conta !== l.conta) ? (
-                        <span className="rec-linha-conta">{l.conta}</span>
-                      ) : null}
-                    </span>
-                    <span className="rec-linha-valor">{brl(l.valorCents)}</span>
-                  </li>
-                ))}
-              </ul>
+                          {nat === "salario" && dado.salarioBase ? (
+                            <p className="rec-nat-nota">
+                              Base contratada de <strong>{brl(dado.salarioBase.valorCents)}</strong> por mês, desde{" "}
+                              {nomeMes(dado.salarioBase.vigenteDesde.slice(0, 7))}.
+                              {v < dado.salarioBase.valorCents ? (
+                                <> Neste mês caiu menos que a base, então tudo que entrou entrou como salário.</>
+                              ) : null}
+                              {dado.salarioBase.nota ? <small>{dado.salarioBase.nota}</small> : null}
+                            </p>
+                          ) : null}
 
-              {/*
-                O REEMBOLSO, ITEM A ITEM. Era o pedido: "sabemos todo
-                detalhamento dos reembolsos, itens, parcelas — isso deve
-                aparecer". A competência é a do mês ANTERIOR, porque gasto de um
-                mês é reembolsado no seguinte — e por isso ela vem escrita, para
-                ninguém procurar em agosto o que gastou em agosto.
-              */}
-              {(() => {
-                const reemb = (dado.reembolsoPorCompetencia ?? []).find(
-                  (c) => c.competencia === competenciaDe(m.mes)
-                );
-                if (!reemb || !m.porNatureza.reembolso) return null;
-                return (
-                  <section className="rec-reemb">
-                    <h3>
-                      O reembolso de {nomeMes(reemb.competencia)}
-                      <b>{brl(reemb.totalCents)}</b>
-                    </h3>
-                    <ul>
-                      {reemb.itens.map((it, k) => (
-                        <li key={`${it.descricao}-${k}`}>
-                          <span className="rec-reemb-nome">
-                            {nomeDoItem(it.descricao, it.descricao)}
-                            {it.parcelasTotal && it.parcelasTotal > 1 ? (
-                              <span className="rec-reemb-parc">
-                                parcela {it.parcela} de {it.parcelasTotal}
-                              </span>
+                          {reemb ? (
+                            <ul className="rec-reemb-itens">
+                              {reemb.itens.map((it, k) => (
+                                <li key={`${it.descricao}-${k}`}>
+                                  <span className="rec-reemb-nome">
+                                    {nomeDoItem(it.descricao, it.descricao)}
+                                    {it.parcelasTotal && it.parcelasTotal > 1 ? (
+                                      <span className="rec-reemb-parc">
+                                        parcela {it.parcela} de {it.parcelasTotal}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                  <span className="rec-reemb-valor">{brl(it.valorCents)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+
+                          {nat === "prolabore" ? (
+                            <p className="rec-nat-nota">
+                              O que veio além do salário base neste mês. O valor é do mês inteiro: o app não sabe qual
+                              Pix foi qual, e não inventa.
+                            </p>
+                          ) : null}
+
+                        </details>
+                      </li>
+                    );
+                  })}
+
+                {/*
+                  OS PIX SÃO DO MÊS, NÃO DE UMA NATUREZA.
+
+                  Estiveram dentro de "Pró-labore", e o print do Fernando
+                  mostrou o custo: os três Pix de agosto listados ali incluem o
+                  de R$ 1.281,26, que é o REEMBOLSO. Sob aquele título, os três
+                  liam como se fossem todos pró-labore.
+
+                  Como linha irmã das naturezas a leitura fica certa: as
+                  naturezas dizem QUANTO de cada coisa, esta diz O QUE CAIU na
+                  conta. As duas somam o mesmo e nenhuma finge saber o que não
+                  sabe.
+                */}
+                <li>
+                  <details className="rec-nat rec-nat-pix">
+                    <summary>
+                      <i className="rec-ponto rec-ponto-neutro" />
+                      <span className="rec-nat-nome">
+                        {plural(doMes.length, "Pix recebido", "Pix recebidos")}
+                        <small>o que caiu na conta, para conferir no extrato</small>
+                      </span>
+                      <b>{brl(m.totalCents)}</b>
+                      <IconeSeta />
+                    </summary>
+                    <ul className="rec-linhas rec-linhas-sem-ponto">
+                      {doMes.map((l, k) => (
+                        <li key={`${l.data}-${k}`}>
+                          <span className="rec-linha-dia">
+                            {l.data.slice(8, 10)}/{l.data.slice(5, 7)}
+                          </span>
+                          <span className="rec-linha-nat">
+                            Pix
+                            {dado.linhas.some((x) => x.conta !== l.conta) ? (
+                              <span className="rec-linha-conta">{l.conta}</span>
                             ) : null}
                           </span>
-                          <span className="rec-reemb-valor">{brl(it.valorCents)}</span>
+                          <span className="rec-linha-valor">{brl(l.valorCents)}</span>
                         </li>
                       ))}
                     </ul>
-                  </section>
-                );
-              })()}
+                  </details>
+                </li>
+              </ul>
             </details>
           );
         })}

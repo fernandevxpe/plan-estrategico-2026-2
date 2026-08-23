@@ -16975,6 +16975,20 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
    O pior caso é o roxo no escuro, 3,15:1: passa, com pouca folga. */
 :root {
   --nat-recorrente: var(--purple);
+  /* SALÁRIO GANHOU COR PRÓPRIA em 23/08, e o motivo derruba a premissa acima.
+     O bloco dizia que salário, pró-labore e estágio dividiam a mesma cor
+     porque "ninguém tem duas delas — os vínculos são mutuamente exclusivos".
+     Era verdade enquanto o ledger classificava; deixou de ser no instante em
+     que `fin_pessoa_salario_base` passou a separar o salário do sócio do
+     pró-labore dele. O Fernando tem os dois TODO mês, e no gráfico eles saíam
+     como um bloco roxo só — a divisão que a migration 0164 existe para fazer
+     era invisível na tela.
+     `--ink-blue` (#1d4ed8 claro / #9dc0ff escuro): 6,70:1 e 9,93:1 sobre o
+     cartão, bem acima do mínimo de 3:1 para elemento gráfico. Contra o roxo a
+     luminância é parecida, e quem separa as bandas encostadas é o fio de 2px
+     que `.rec-pilha i + i` já desenha — a mesma solução que o arquivo usa para
+     roxo e âmbar no tema claro. */
+  --nat-salario: var(--ink-blue);
   --nat-comissao: var(--ink-amber);
   --nat-reembolso: var(--neon-green-ink);
   --nat-extra: var(--neon-pink-ink);
@@ -16984,7 +16998,8 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
    diz o QUE a cor significa ("o que se repete todo mês") em vez de nomear um
    dos três vínculos. Os três nomes específicos ficam porque o protótipo os
    usou e alguém pode escrever markup com eles. */
-.nat-recorrente, .nat-salario, .nat-prolabore, .nat-estagio { background: var(--nat-recorrente); }
+.nat-recorrente, .nat-prolabore, .nat-estagio { background: var(--nat-recorrente); }
+.nat-salario { background: var(--nat-salario); }
 .nat-comissao { background: var(--nat-comissao); }
 .nat-reembolso { background: var(--nat-reembolso); }
 .nat-extra { background: var(--nat-extra); }
@@ -17627,3 +17642,92 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 /* A lista de Pix do mês não tem pontinho de natureza — a natureza de cada Pix
    não é conhecível. Três filhos, três colunas. */
 .rec-linhas-sem-ponto li { grid-template-columns: 44px minmax(0, 1fr) auto; }
+
+/* ===========================================================================
+   RECEBÍVEIS — a sequência de expandir: mês → natureza → o que sustenta
+   =========================================================================== */
+.rec-naturezas { list-style: none; margin: 2px 0 4px; padding: 0; display: grid; gap: 6px; }
+.rec-nat { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.rec-nat > summary {
+  display: grid; grid-template-columns: 9px minmax(0, 1fr) auto 16px;
+  align-items: center; gap: 10px;
+  min-height: 46px; padding: 0 12px;
+  cursor: pointer; list-style: none;
+}
+.rec-nat > summary::-webkit-details-marker { display: none; }
+.rec-nat-nome { font-size: 13.5px; font-weight: 600; min-width: 0; }
+.rec-nat-nome small { display: block; font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 1px; }
+.rec-nat > summary b { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rec-seta { color: var(--muted); transition: transform .16s ease; }
+.rec-nat[open] > summary .rec-seta { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .rec-seta { transition: none; } }
+.rec-nat[open] > summary { border-bottom: 1px solid var(--line); }
+.rec-nat > :not(summary) { padding-left: 12px; padding-right: 12px; }
+.rec-nat > :first-of-type:not(summary) { padding-top: 9px; }
+.rec-nat > :last-child { padding-bottom: 10px; }
+
+.rec-nat-nota { margin: 0 0 6px; font-size: 12px; line-height: 1.55; color: var(--muted); }
+.rec-nat-nota strong { color: var(--ink); }
+.rec-nat-nota small { display: block; margin-top: 4px; font-size: 11px; }
+
+.rec-reemb-itens { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.rec-reemb-itens li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12.5px; }
+
+/* A coluna prevista: contornada em vez de preenchida — o olho separa "caiu" de
+   "vai cair" sem precisar de legenda para isso. */
+.rec-col-previsto .rec-pilha { opacity: .48; }
+.rec-col-previsto .rec-pilha i { border: 1px dashed var(--card); }
+.rec-col-previsto .rec-col-mes { font-style: italic; }
+
+.rec-previsao-botao {
+  width: 100%; min-height: 44px; margin-top: 8px;
+  border: 1px dashed var(--line); border-radius: 10px;
+  background: none; color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.rec-previsao-botao.ativo { border-style: solid; color: var(--ink); background: var(--surface-2); }
+
+/* A legenda-filtro: o botão ocupa a linha inteira e o ponto vazado marca o
+   desligado por FORMA, não só por cor. */
+/* A legenda-filtro é UMA POR LINHA. A `.rec-legenda` base é flex com wrap, e
+   ali o `<li>` fica do tamanho do conteúdo — o `minmax(0,1fr)` do nome colapsou
+   para largura ZERO e "Pró-labore" desapareceu, sobrando só o valor. Medido:
+   span com w=0 e `scrollWidth > clientWidth`. */
+/* O `<li>` da `.rec-legenda` base é uma GRADE DE 4 COLUNAS, e nesta variante
+   ele tem um filho só — o `<button>`. Resultado: o botão inteiro era colocado
+   na primeira coluna, de 9px, e o nome da natureza saía com largura ZERO.
+   Medido: span com w=0 e `scrollWidth > clientWidth` nos três.
+   
+   Aqui o `<li>` volta a ser bloco simples e quem monta a grade é o botão. */
+.rec-legenda-filtro { display: grid; grid-template-columns: 1fr; gap: 0; }
+.rec-legenda-filtro li { display: block; padding: 0; width: 100%; min-height: 0; }
+.rec-legenda-filtro button {
+  display: grid; grid-template-columns: 9px minmax(0, 1fr) auto auto;
+  align-items: center; gap: 9px; width: 100%; min-height: 44px;
+  padding: 0 4px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-align: left;
+}
+.rec-legenda-filtro button[aria-pressed="false"] { color: var(--muted); }
+.rec-ponto.vazado { background: transparent !important; box-shadow: inset 0 0 0 2px currentColor; }
+
+/* Previsões */
+.rec-prev-sub { margin: 14px 0 7px; font-size: 12px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
+.rec-prev-sub:first-of-type { margin-top: 2px; }
+.rec-prev-salario { display: grid; gap: 3px; margin: 0; padding: 11px 13px; border-radius: 10px; background: var(--surface-2); }
+.rec-prev-salario strong { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rec-prev-salario span { font-size: 12px; color: var(--muted); }
+.rec-prev-salario small { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.rec-prev-meses { list-style: none; margin: 0; padding: 0; }
+.rec-prev-meses li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+  min-height: 44px; padding: 6px 0; border-bottom: 1px solid var(--line);
+}
+/* Sem `text-transform: capitalize` — ele escreve "Setembro De 2026". A
+   maiúscula sai na fonte, como no cabeçalho de mês do Histórico. */
+.rec-prev-mes { font-size: 13px; }
+.rec-prev-partes { display: flex; gap: 10px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rec-prev-partes span { display: inline-flex; align-items: center; gap: 5px; }
+.rec-prev-meses b { font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* A linha dos Pix é irmã das naturezas, mas não é uma natureza: ponto neutro,
+   contorno em vez de preenchimento. */
+.rec-ponto-neutro { background: transparent; box-shadow: inset 0 0 0 2px var(--muted); }
+.rec-nat-pix { background: none; border-style: dashed; }

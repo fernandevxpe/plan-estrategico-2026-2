@@ -5018,15 +5018,30 @@ function TelaItemGasto({
             revisando CSS.
           */}
           {(() => {
+            /*
+             * SÓ VALE PARA SÉRIE PARCELADA. `parcelasTotal === 1` é despesa
+             * RECORRENTE mensal — Google Drive, transporte, alimentação — e ali
+             * "1/1" repetido sete vezes é o comportamento correto, não erro.
+             *
+             * Eu já sabia disso: está escrito na mensagem do commit que criou
+             * este aviso ("são falso positivo meu; só conta onde
+             * parcelas_total > 1"). Escrevi a regra e não a apliquei ao código.
+             * Medido: o Google Drive do Fernando acusava, com as 7 linhas
+             * marcadas, dizendo "aparece duas vezes".
+             */
+            if ((historico.parcelasTotal ?? 1) <= 1) return null;
             const vistos = new Map<number, number>();
             for (const p of historico.parcelas) vistos.set(p.parcela, (vistos.get(p.parcela) ?? 0) + 1);
-            const repetidas = [...vistos.entries()].filter(([, n]) => n > 1).map(([k]) => k);
+            const repetidas = [...vistos.entries()].filter(([, n]) => n > 1);
             if (repetidas.length === 0) return null;
+            const quantas = (n: number) => (n === 2 ? "duas vezes" : `${n} vezes`);
             return (
               <p className="item-gasto-parcela-repetida">
-                <strong>Confira com o financeiro.</strong> A parcela{" "}
-                {repetidas.map((n) => `${n}/${historico.parcelasTotal}`).join(" e a ")} aparece duas vezes nesta série.
-                Se você comprou só um, uma delas está cobrada a mais.
+                <strong>Confira com o financeiro.</strong>{" "}
+                {repetidas.length === 1
+                  ? `A parcela ${repetidas[0][0]}/${historico.parcelasTotal} aparece ${quantas(repetidas[0][1])} nesta série.`
+                  : `As parcelas ${repetidas.map(([k]) => `${k}/${historico.parcelasTotal}`).join(" e ")} aparecem repetidas nesta série.`}{" "}
+                Se você comprou só um, há cobrança a mais.
               </p>
             );
           })()}
@@ -5034,6 +5049,7 @@ function TelaItemGasto({
           <ul className="envios-detalhe-cronograma envios-item-parcelas">
             {historico.parcelas.map((parc) => {
               const repetida =
+                (historico.parcelasTotal ?? 1) > 1 &&
                 historico.parcelas.filter((o) => o.parcela === parc.parcela).length > 1;
               return (
               <li key={`${parc.id}-${parc.mes}-${parc.parcela}`} className={repetida ? "parcela-repetida" : undefined}>

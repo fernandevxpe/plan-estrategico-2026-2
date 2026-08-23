@@ -210,17 +210,69 @@ export function AnexarFlutuante({
    * sem tirar a função de ninguém.
    */
   const [chegouNoFim, setChegouNoFim] = useState(false);
+  const [rolou, setRolou] = useState(false);
+  const [tocou, setTocou] = useState(false);
+  useEffect(() => {
+    const form = document.querySelector(".time-form");
+    if (!form) return;
+    // `capture` porque o alvo pode parar o borbulhamento; `once` porque só
+    // interessa a PRIMEIRA interação — depois disso o estado não volta.
+    const marcar = () => setTocou(true);
+    form.addEventListener("pointerdown", marcar, { once: true, capture: true });
+    form.addEventListener("focusin", marcar, { once: true, capture: true });
+    return () => {
+      form.removeEventListener("pointerdown", marcar, { capture: true });
+      form.removeEventListener("focusin", marcar, { capture: true });
+    };
+  }, []);
   useEffect(() => {
     const rodape = document.querySelector(".time-form-rodape");
-    if (!rodape || typeof IntersectionObserver === "undefined") return;
-    const obs = new IntersectionObserver(([e]) => setChegouNoFim(e.isIntersecting), { threshold: 0 });
-    obs.observe(rodape);
-    return () => obs.disconnect();
+    if (rodape && typeof IntersectionObserver !== "undefined") {
+      const obs = new IntersectionObserver(([e]) => setChegouNoFim(e.isIntersecting), { threshold: 0 });
+      obs.observe(rodape);
+      const aoRolar = () => setRolou(window.scrollY > 0);
+      aoRolar();
+      window.addEventListener("scroll", aoRolar, { passive: true });
+      return () => {
+        obs.disconnect();
+        window.removeEventListener("scroll", aoRolar);
+      };
+    }
+    const aoRolar = () => setRolou(window.scrollY > 0);
+    aoRolar();
+    window.addEventListener("scroll", aoRolar, { passive: true });
+    return () => window.removeEventListener("scroll", aoRolar);
   }, []);
+
+  /*
+   * A PÍLULA É O CONVITE, E O CONVITE SE GASTA.
+   *
+   * Encolher só no rodapé resolvia a sobreposição com o botão de enviar e
+   * deixava as do meio do caminho: no topo da página a pílula de 197px cobre o
+   * rótulo "Tipo ou categoria" e um dos chips de MAIS USADOS; a 150px de
+   * rolagem, o campo "cliente, obra ou área" em /time/custo e "buscar tipo ou
+   * categoria" em /time/reembolso.
+   *
+   * A regra que cobre tudo é a mesma de antes, levada até o fim: o formato
+   * grande existe para CONVIDAR ("já começa anexando"). No instante em que a
+   * pessoa se mexe — qualquer rolagem, qualquer toque dentro do formulário — o
+   * convite já foi feito, e o botão vira disco no canto. Continua a um toque, e
+   * para de disputar espaço com o formulário inteiro em vez de só com o botão
+   * final.
+   *
+   * Medido varrendo a rolagem inteira de /time/custo e /time/reembolso em
+   * 393x852, 412x915 e 820x1180, perguntando ao `elementFromPoint` o centro de
+   * TODO input, botão, select e label do formulário: zero coberturas a partir
+   * do primeiro pixel de rolagem. Resta o repouso absoluto (scrollY 0, nada
+   * tocado), onde a pílula cobre um chip da primeira tela — e ali ela é
+   * exatamente o que deve ser vista primeiro. Um flick resolve, e o toque em
+   * qualquer campo também.
+   */
+  const encolhido = chegouNoFim || rolou || tocou;
 
   return (
     <div
-      className={`${centralizado ? "anexar anexar-centro" : "anexar"}${chegouNoFim ? " anexar-encolhido" : ""}`}
+      className={`${centralizado ? "anexar anexar-centro" : "anexar"}${encolhido ? " anexar-encolhido" : ""}`}
       ref={caixaRef}
     >
       {aberto ? (

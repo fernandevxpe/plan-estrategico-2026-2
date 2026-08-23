@@ -1367,8 +1367,20 @@ function BuscaClassificacaoGasto({
 
       {mostrarFrequentes ? (
         <div className="classif-atalhos">
-          <p className="destino-grupo">Mais usados</p>
-          <div className="chips chips-compactos">
+          {/*
+            O rótulo precisa NOMEAR o grupo, não só ficar acima dele. Os outros
+            oito grupos de chips do app já fazem isso; este entrou depois e
+            saiu sem — os botões chegavam avulsos na árvore de acessibilidade,
+            sem dizer de que pergunta eram resposta.
+
+            Aqui NÃO vai `aria-pressed`: estes chips são atalho de ação (tocar
+            escolhe e segue), não alternância. Marcar como "pressionado" algo
+            que não fica pressionado seria mentir sobre o estado.
+          */}
+          <p className="destino-grupo" id="grupo-mais-usados">
+            Mais usados
+          </p>
+          <div className="chips chips-compactos" role="group" aria-labelledby="grupo-mais-usados">
             {frequentes.map((t) => (
               <button
                 key={t.slug}
@@ -1866,6 +1878,22 @@ function CabecalhoPessoa({
 }) {
   const [perfil, setPerfil] = useState<{ nome: string; email: string | null; temFoto: boolean } | null>(null);
   const [folha, setFolha] = useState(false);
+  /*
+   * Toque fora já fechava; Esc, não — e o foco nunca entrava, então a
+   * primeira tabulação saía para o conteúdo atrás da folha. Mesma disciplina
+   * do diálogo de cancelar.
+   */
+  const folhaRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!folha) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFolha(false);
+    };
+    document.addEventListener("keydown", aoTeclar);
+    folhaRef.current?.focus();
+    return () => document.removeEventListener("keydown", aoTeclar);
+  }, [folha]);
+
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -1952,7 +1980,10 @@ function CabecalhoPessoa({
         <div className="time-perfil-casca" role="presentation" onClick={() => setFolha(false)}>
           <div
             className="time-perfil-folha"
+            ref={folhaRef}
+            tabIndex={-1}
             role="dialog"
+            aria-modal="true"
             aria-label="Meu perfil"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1964,7 +1995,18 @@ function CabecalhoPessoa({
             </div>
 
             <div className="time-perfil-foto-linha">
-              <button type="button" className="time-topo-foto time-topo-foto-grande" onClick={() => fotoRef.current?.click()}>
+              {/*
+                Sem `aria-label` o botão fica MUDO exatamente para quem usou o
+                recurso: sem foto ele contém as iniciais e ganha nome pelo
+                texto; com foto, contém só um `<img alt="">` e o leitor de tela
+                anuncia "botão".
+              */}
+              <button
+                type="button"
+                className="time-topo-foto time-topo-foto-grande"
+                aria-label={fotoSrc ? "Trocar a foto do perfil" : "Adicionar uma foto de perfil"}
+                onClick={() => fotoRef.current?.click()}
+              >
                 {fotoSrc ? (
                   <img src={fotoSrc} alt="" />
                 ) : (
@@ -2094,6 +2136,21 @@ function Inicio({ envios }: { envios: Envio[] }) {
             href="/time/compra"
             titulo="Solicitar compra"
             texto="Links, valores e por que precisa"
+            tipo="compra"
+          />
+          {/*
+            O PASSO QUE TINHA FICADO SEM PORTA.
+            `/time/comprar` fecha a solicitação aprovada com a compra que foi
+            realmente feita. Quando a barra passou de "4 + menu Mais" para 5
+            destinos fixos, o link dela saiu junto com o menu — a tela
+            continuou de pé, respondendo 200, e sem nenhum caminho no app
+            inteiro. O ciclo pedir → aprovar → comprar → registrar ficava
+            aberto no terceiro passo.
+          */}
+          <Atalho
+            href="/time/comprar"
+            titulo="Comprar o que foi aprovado"
+            texto="Fechar um pedido já aprovado"
             tipo="compra"
           />
         </nav>
@@ -3919,6 +3976,25 @@ function TelaItemGasto({
     parcelas: { id: number; mes: string; parcela: number; parcelasTotal: number; valorCents: number; situacao: StatusExtrato | "previsto" }[];
   } | null>(null);
   const [enviandoAnexo, setEnviandoAnexo] = useState(false);
+
+  /*
+   * O QUE A PESSOA VAI DEVOLVER — pela mesma regra que o servidor cobra.
+   *
+   * O diálogo dizia `historico.pagoCents`, que é a soma do SLUG inteiro. O
+   * servidor foi corrigido para cobrar o item; se a tela não acompanhar, ela
+   * anuncia R$ 5.409,26 e o PIX sai R$ 429,97 — e a pessoa confirma uma coisa
+   * e recebe outra, que é pior que qualquer um dos dois valores isolados.
+   *
+   * A regra tem um discriminador só, igual à do `estorno-reembolso.ts`:
+   * compra parcelada de verdade devolve as parcelas dela; linha avulsa
+   * devolve a própria linha.
+   */
+  const pagasDoItem = (historico?.parcelas ?? []).filter((p) => p.situacao === "pago");
+  const devolverCents =
+    (historico?.parcelasTotal ?? 1) > 1
+      ? pagasDoItem.reduce((soma, p) => soma + p.valorCents, 0)
+      : (pagasDoItem.find((p) => p.id === itemId)?.valorCents ?? 0);
+  const parcelasQueVoltam = (historico?.parcelasTotal ?? 1) > 1 ? pagasDoItem.length : devolverCents > 0 ? 1 : 0;
   /** Os arquivos presos a este item — para poder abrir e baixar. */
   const [anexos, setAnexos] = useState<
     { chave: string; nome: string; tipo: string; kind: string; bytes: number; em: string }[]
@@ -3926,6 +4002,7 @@ function TelaItemGasto({
 
   /** Confirmação da cópia junto do botão, e o payload à mão se ela falhar. */
   const [pixCopiado, setPixCopiado] = useState<"copiado" | "falhou" | null>(null);
+
   const [mostrarBrcode, setMostrarBrcode] = useState(false);
 
   const [estorno, setEstorno] = useState<{
@@ -3944,6 +4021,38 @@ function TelaItemGasto({
   const [motivoCategoria, setMotivoCategoria] = useState("devolucao");
   const [motivoTexto, setMotivoTexto] = useState("");
   const [cancelando, setCancelando] = useState(false);
+
+  /*
+   * O DIÁLOGO DE CANCELAR PRECISA TER SAÍDA.
+   *
+   * Medido antes: `Escape` não fechava, toque no véu não fechava, o foco nunca
+   * entrava (ficava no `<body>`), e a 7ª tabulação já estava na barra inferior
+   * ATRÁS do véu. A única saída era acertar "Voltar", 39x23px — o menor alvo
+   * do app, num diálogo que pergunta se pode cancelar uma compra.
+   *
+   * A disciplina é a mesma que o menu "Mais" tinha antes de sair: Esc fecha,
+   * toque no véu fecha, o foco entra ao abrir e volta para o botão que abriu.
+   */
+  const painelCancelarRef = useRef<HTMLDivElement | null>(null);
+  const abriuCancelarDe = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!cancelPasso) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !cancelando) setCancelPasso(null);
+    };
+    document.addEventListener("keydown", aoTeclar);
+    // Rolagem travada: um diálogo que cobre a tela e deixa o fundo rolar faz a
+    // pessoa perder a referência do que estava vendo.
+    const rolagemAntes = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    painelCancelarRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.body.style.overflow = rolagemAntes;
+      abriuCancelarDe.current?.focus();
+    };
+  }, [cancelPasso, cancelando]);
   const arquivoRef = useRef<HTMLInputElement>(null);
 
   const MOTIVOS_CANCELAR = [
@@ -4172,6 +4281,20 @@ function TelaItemGasto({
         />
       </label>
 
+      {/*
+        COM ESTORNO ABERTO, A TELA É DE LEITURA.
+        Antes só o campo "O que é" ficava desabilitado: os chips, a busca de
+        categoria e o anexo continuavam ativos, e o rodapé com o botão de
+        salvar sumia inteiro. A pessoa reclassificava um item cancelado, nada
+        persistia, e nada avisava. `fieldset disabled` desliga tudo que está
+        dentro de uma vez — inclusive o que alguém acrescentar aqui amanhã.
+      */}
+      <fieldset className="item-gasto-campos" disabled={Boolean(estorno)}>
+        {estorno ? (
+          <p className="item-gasto-travado" role="status">
+            Este item foi cancelado e está aguardando o estorno. A classificação não pode mais ser alterada.
+          </p>
+        ) : null}
       <section className="time-form-classificar">
         {fonte === "app" ? (
           <BuscaClassificacaoGasto
@@ -4340,6 +4463,7 @@ function TelaItemGasto({
                 : "—"}
             </span>
           </div>
+
           <ul className="envios-detalhe-cronograma envios-item-parcelas">
             {historico.parcelas.map((parc) => (
               <li key={`${parc.id}-${parc.mes}-${parc.parcela}`}>
@@ -4358,6 +4482,11 @@ function TelaItemGasto({
           </ul>
         </section>
       ) : null}
+
+      {/* O fieldset fecha AQUI, antes da seção do estorno: dentro dele o botão
+          "Copiar PIX" ficaria desabilitado — justamente na tela em que ele é a
+          única coisa que a pessoa precisa tocar. */}
+      </fieldset>
 
       {estorno ? (
         <section className="item-estorno-painel">
@@ -4451,7 +4580,12 @@ function TelaItemGasto({
               <button
                 type="button"
                 className="time-botao time-botao-largo perigo"
-                onClick={() => setCancelPasso("motivo")}
+                // Guarda quem abriu, para o foco voltar exatamente para cá
+                // quando o diálogo fechar — em vez de cair no <body>.
+                onClick={(e) => {
+                  abriuCancelarDe.current = e.currentTarget;
+                  setCancelPasso("motivo");
+                }}
               >
                 Cancelar compra
               </button>
@@ -4461,8 +4595,22 @@ function TelaItemGasto({
       </div>
 
       {cancelPasso && !estorno ? (
-        <div className="item-cancelar-folha" role="dialog" aria-labelledby="item-cancelar-titulo">
-          <div className="item-cancelar-painel">
+        <div
+          className="item-cancelar-folha"
+          // Fechar no véu, nunca num clique dentro do painel: `currentTarget`
+          // garante que só o fundo dispara.
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !cancelando) setCancelPasso(null);
+          }}
+        >
+          <div
+            className="item-cancelar-painel"
+            ref={painelCancelarRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="item-cancelar-titulo"
+          >
             {cancelPasso === "motivo" ? (
               <>
                 <h2 id="item-cancelar-titulo">Cancelar compra</h2>
@@ -4490,7 +4638,7 @@ function TelaItemGasto({
                   />
                 </label>
                 <div className="item-cancelar-acoes">
-                  <button type="button" className="time-link" onClick={() => setCancelPasso(null)}>
+                  <button type="button" className="time-botao secundario" onClick={() => setCancelPasso(null)}>
                     Voltar
                   </button>
                   <button
@@ -4507,11 +4655,11 @@ function TelaItemGasto({
               <>
                 <h2 id="item-cancelar-titulo">Confirmar cancelamento</h2>
                 <p className="item-cancelar-resumo">
-                  {historico && historico.pagoCents > 0 ? (
+                  {devolverCents > 0 ? (
                     <>
-                      A empresa já pagou <strong>{brl(historico.pagoCents)}</strong> em{" "}
-                      {historico.parcelas.filter((p) => p.situacao === "pago").length} parcela(s). Você vai devolver esse
-                      valor via PIX para o CNPJ da XPE no Inter. As parcelas futuras serão canceladas.
+                      Você vai devolver <strong>{brl(devolverCents)}</strong>
+                      {parcelasQueVoltam > 1 ? ` (${parcelasQueVoltam} parcelas)` : ""} via PIX para o CNPJ da XPE no
+                      Inter. As parcelas futuras serão canceladas.
                     </>
                   ) : (
                     <>As parcelas futuras serão canceladas. Não há valor a devolver porque nada foi pago ainda.</>
@@ -4519,7 +4667,7 @@ function TelaItemGasto({
                 </p>
                 <p className="time-sub">Esta ação não pode ser desfeita no app.</p>
                 <div className="item-cancelar-acoes">
-                  <button type="button" className="time-link" onClick={() => setCancelPasso("motivo")}>
+                  <button type="button" className="time-botao secundario" onClick={() => setCancelPasso("motivo")}>
                     Voltar
                   </button>
                   <button type="button" className="time-botao perigo" disabled={cancelando} onClick={() => void cancelarCompra()}>

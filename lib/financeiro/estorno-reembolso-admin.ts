@@ -111,7 +111,7 @@ export async function listarEstornosAdmin(): Promise<EstornoAdmin[]> {
        LEFT JOIN fin_account ct ON ct.id = e.conta_sugerida_id
       WHERE e.entity_id = (SELECT id FROM fin_entity WHERE slug = $1)
       ORDER BY
-        CASE e.status WHEN 'aberto' THEN 0 WHEN 'parcial' THEN 1 ELSE 2 END,
+        CASE e.status WHEN 'aberto' THEN 0 ELSE 1 END,
         e.criado_em DESC`,
     [ENTITY]
   );
@@ -167,8 +167,26 @@ export async function confirmarEstornoAdmin(
     );
 
     if (atual.document_id) {
+      /*
+       * `liquidado`, não `confirmado` — e a diferença é dinheiro contado duas
+       * vezes.
+       *
+       * Nesta base `confirmado` é recebível EM ABERTO: `lib/financeiro/contas.ts`
+       * o lista entre os abertos e `lib/financeiro/forecast.ts` o inclui na
+       * projeção de entrada. Quitar o estorno marcando `confirmado` deixava o
+       * documento aberto para sempre, e depois que o PIX caísse a devolução
+       * apareceria duas vezes no caixa projetado: a transação real mais o
+       * recebível que nunca fecha.
+       *
+       * `settled_cents` acompanha, porque é dele que `contas.ts` deriva o
+       * saldo em aberto (`amount_cents - settled_cents`). Sem isso o documento
+       * ficaria "liquidado" com saldo aberto — outro estado incoerente.
+       */
       await client.query(
-        `UPDATE fin_document SET status = 'confirmado' WHERE id = $1 AND status NOT IN ('cancelado', 'estornado')`,
+        `UPDATE fin_document
+            SET status = 'liquidado',
+                settled_cents = amount_cents
+          WHERE id = $1 AND status NOT IN ('cancelado', 'estornado')`,
         [atual.document_id]
       );
     }
@@ -186,7 +204,7 @@ export async function atualizarMatchesEstornosAbertos(): Promise<number> {
   const abertos = await query<{ id: number; person_id: number; valor_cents: number; criado_em: string }>(
     `SELECT id, person_id, valor_cents, criado_em::text
        FROM fin_reembolso_estorno
-      WHERE status IN ('aberto', 'parcial') AND valor_cents > 0`
+      WHERE status = 'aberto' AND valor_cents > 0`
   );
   let n = 0;
   for (const e of abertos) {
@@ -195,7 +213,7 @@ export async function atualizarMatchesEstornosAbertos(): Promise<number> {
       await query(
         `UPDATE fin_reembolso_estorno
             SET match_sugerido_id = $2, match_confianca = $3
-          WHERE id = $1 AND status IN ('aberto', 'parcial')`,
+          WHERE id = $1 AND status = 'aberto'`,
         [e.id, match.transactionId, match.confianca]
       );
       n++;

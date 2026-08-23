@@ -23,9 +23,7 @@ type EstornoLinha = {
 
 const ROTULO_STATUS: Record<string, string> = {
   aberto: "aguardando PIX",
-  parcial: "parcial",
-  quitado: "recebido",
-  cancelado_admin: "cancelado"
+  quitado: "recebido"
 };
 
 const ROTULO_CONFIANCA: Record<string, string> = {

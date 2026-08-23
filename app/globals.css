@@ -15779,41 +15779,9 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 
 /* O "Mais" abre uma folha de baixo para cima — o gesto que o polegar já espera
    nessa posição da tela. */
-.time-mais { position: relative; }
-.time-mais > summary { list-style: none; }
-.time-mais > summary::-webkit-details-marker { display: none; }
 
-.time-mais-lista {
-  position: absolute;
-  /* Acima do botão de tema (z-index 60), senão o sol flutua por cima do último
-     item do menu. */
-  z-index: 70;
-  right: 0;
-  bottom: calc(100% + 8px);
-  display: grid;
-  gap: 2px;
-  min-width: 190px;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--veil-1-forte);
-  backdrop-filter: blur(16px);
-  box-shadow: var(--shadow-strong);
-}
 
-.time-mais-item {
-  padding: 11px 13px;
-  border-radius: 9px;
-  color: var(--ink);
-  text-decoration: none;
-  font-size: 13.5px;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-}
 
-.time-mais-item:active { background: var(--surface-2); }
-.time-mais-item.ativo { color: var(--purple-text); background: var(--tint-purple-soft); font-weight: 600; }
 
 /* Instalado, a barra encosta na borda e o conteúdo ganha o topo de volta. */
 @media (display-mode: standalone) {
@@ -16119,8 +16087,9 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
    o polegar chega sem a segunda mão. Fica sobre o conteúdo de propósito: é a
    primeira coisa a fazer no formulário, não a última.
 
-   z-index 45: acima do conteúdo, ABAIXO do menu "Mais" (70). Se ficasse por
-   cima, o menu aberto teria um botão flutuando dentro dele.
+   z-index 45: acima do conteúdo e abaixo dos diálogos (que usam 70+). O
+   menu "Mais" que este comentário citava não existe mais desde que a barra
+   virou cinco destinos fixos.
    =========================================================================== */
 .anexar {
   position: fixed;
@@ -16740,3 +16709,28 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 }
 .anexo-lista-abrir { background: var(--purple); color: var(--on-bright); }
 .anexo-lista-baixar { border: 1px solid var(--line); color: var(--ink); }
+
+/* O diálogo de cancelar: saída real e distância da barra de gestos.
+   Ele era o único fixo sem `safe-area-inset-bottom` — no iPhone o botão
+   destrutivo terminava a 3px da faixa do sistema. */
+.item-cancelar-painel { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+.item-cancelar-painel:focus-visible { outline: 2px solid var(--neon-purple); outline-offset: -3px; }
+/* "Voltar" era um `.time-link` de 39x23px — a única saída de um diálogo que
+   pergunta sobre cancelar uma compra. Agora os dois botões têm o mesmo peso e
+   o mesmo alvo: recusar não pode ser mais difícil que confirmar. */
+.item-cancelar-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
+.item-cancelar-acoes > * { flex: 1 1 auto; min-height: 48px; }
+
+/* O formulário do item quando já há estorno: leitura, não edição. */
+.item-gasto-campos { border: 0; padding: 0; margin: 0; min-width: 0; }
+.item-gasto-campos:disabled { opacity: .72; }
+.item-gasto-travado {
+  margin: 0 0 12px; padding: 11px 13px; font-size: 12.5px; line-height: 1.45;
+  border: 1px solid var(--tint-amber-line); border-radius: 10px;
+  background: var(--tint-amber-soft); color: var(--ink-amber);
+}
+
+/* "Trocar foto" media 75x17px — o menor alvo do app, num controle que a pessoa
+   procura de dedo. */
+.time-perfil-foto-btn { min-height: 44px; padding: 0 14px; }
+.time-perfil-folha:focus-visible { outline: 2px solid var(--neon-purple); outline-offset: -3px; }

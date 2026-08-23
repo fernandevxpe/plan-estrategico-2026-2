@@ -73,7 +73,11 @@ export function GET() {
     shortcuts: [
       { name: "Lançar custo", short_name: "Custo", url: "/time/custo" },
       { name: "Pedir reembolso", short_name: "Reembolso", url: "/time/reembolso" },
-      { name: "Enviar nota", short_name: "Nota", url: "/time/nota" }
+      // Era "Enviar nota" → /time/nota. A rota virou `redirect("/time/custo")`,
+      // então o atalho do ícone instalado prometia uma tela e entregava outra,
+      // chamada "Registrar compra". Atalho que mente sobre o destino é pior
+      // que atalho que não existe.
+      { name: "Comprar o que foi aprovado", short_name: "Comprar", url: "/time/comprar" }
     ]
   };
 

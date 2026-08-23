@@ -16,7 +16,20 @@ export const MOTIVOS_ESTORNO = [
 ] as const;
 
 export type MotivoEstorno = (typeof MOTIVOS_ESTORNO)[number]["slug"];
-export type StatusEstorno = "aberto" | "parcial" | "quitado" | "cancelado_admin";
+/*
+ * Dois estados foram removidos daqui porque NINGUÉM os gravava.
+ *
+ * `parcial` aparecia em ORDER BY e em filtros e nunca casava — devolução
+ * parcial não existe no fluxo: ou a pessoa devolve o valor do item, ou não
+ * devolve. Quando existir, é uma funcionalidade com desenho próprio.
+ *
+ * `cancelado_admin` era pior que morto: a checagem de duplicidade deixava
+ * passar quem estivesse nesse estado, e o INSERT seguinte batia na UNIQUE
+ * (item_fonte, item_id). Um ramo inalcançável que, se fosse alcançado,
+ * quebraria. Desfazer um estorno é outra funcionalidade, e ela precisa
+ * remover ou suceder a linha, não inventar um estado que o INSERT recusa.
+ */
+export type StatusEstorno = "aberto" | "quitado";
 
 export type EstornoReembolso = {
   id: number;
@@ -158,9 +171,7 @@ export async function cancelarItemReembolsoInterno(
   if (!MOTIVOS_ESTORNO.some((m) => m.slug === cat)) throw new TimeError("motivo inválido", 400);
 
   const existente = await estornoPorItem(fonte, itemId, personId);
-  if (existente && existente.status !== "cancelado_admin") {
-    throw new TimeError("este item já foi cancelado", 409);
-  }
+  if (existente) throw new TimeError("este item já foi cancelado", 409);
 
   const sessaoStub = { personId, nome: "", prova: "declarada" as const, admin: false, trocarSenha: false, expiraEm: "" };
   const historico = await historicoParcelasItem(sessaoStub, fonte, itemId);
@@ -310,14 +321,20 @@ export async function cancelarItemReembolsoInterno(
     );
     const estornoId = ins.rows[0].id;
 
-    if (slug) {
-      await client.query(
-        `INSERT INTO fin_reembolso_slug_cancelado (entity_id, person_id, slug, estorno_id)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (person_id, slug) DO UPDATE SET estorno_id = EXCLUDED.estorno_id, cancelado_em = now()`,
-        [ent.id, personId, slug, estornoId]
-      );
-    }
+    /*
+     * `fin_reembolso_slug_cancelado` NÃO é mais escrita, e o motivo é a
+     * correção do valor.
+     *
+     * Ela existia para "a previsão de reembolso futuro ignorar estes slugs" —
+     * e nunca chegou a ser lida por ninguém. Pior: com o estorno passando a
+     * ser por ITEM, marcar o slug inteiro como cancelado é errado. Cancelar o
+     * transporte de janeiro suprimiria o transporte de fevereiro, que é uma
+     * despesa legítima e não tem nada a ver.
+     *
+     * O escopo certo da supressão, se um dia for implementada, é a compra
+     * parcelada — e essa informação já está em `fin_installment_plan`, que o
+     * cancelamento marca acima.
+     */
 
     let documentId: number | null = null;
     if (valorCents > 0) {

@@ -740,10 +740,18 @@ export function exigirCentavos(v: unknown, campo: string): number {
 
 export type NovoReembolso = {
   tipo?: unknown;
+  categoriaId?: unknown;
   descricao?: unknown;
   expenseDate?: unknown;
   valor?: unknown;
   nfeKey?: unknown;
+  nfeNumero?: unknown;
+  parcelas?: unknown;
+  pagamento?: unknown;
+  fornecedor?: unknown;
+  centroCusto?: unknown;
+  linhaServico?: unknown;
+  finalCartao?: unknown;
   comprovante?: AnexoEntrada | null;
 };
 
@@ -769,10 +777,27 @@ export async function criarReembolsoDoTime(sessao: Sessao, corpo: NovoReembolso)
   if (nfeBruta && nfeBruta.length !== 44) throw new TimeError("a chave da NF-e tem 44 dígitos");
   const mes = `${data.slice(0, 7)}-01`;
 
+  const categoriaDireta =
+    typeof corpo.categoriaId === "number" || (typeof corpo.categoriaId === "string" && /^\d+$/.test(corpo.categoriaId))
+      ? Number(corpo.categoriaId)
+      : null;
+
+  const parcelas =
+    typeof corpo.parcelas === "string" && /^\d+$/.test(corpo.parcelas) ? Number(corpo.parcelas) : null;
+  if (parcelas !== null && parcelas < 2) throw new TimeError("parcelas inválidas");
+
+  const contexto: string[] = [];
+  if (typeof corpo.pagamento === "string" && corpo.pagamento.trim()) contexto.push(`pago: ${corpo.pagamento.trim()}`);
+  if (parcelas) contexto.push(`${parcelas}×`);
+  if (typeof corpo.fornecedor === "string" && corpo.fornecedor.trim()) contexto.push(corpo.fornecedor.trim());
+  if (typeof corpo.finalCartao === "string" && corpo.finalCartao.trim()) contexto.push(`cartão ·${corpo.finalCartao.trim()}`);
+  const descricaoFinal =
+    contexto.length > 0 ? `${descricao} (${contexto.join(" · ")})` : descricao;
+
   return transaction(async (client) => {
     const entityId = await entidadeId(client);
 
-    let categoryId: number | null = null;
+    let categoryId: number | null = categoriaDireta;
     if (tipo) {
       const t = await client.query<{ category_id: number | null; requires_nfe: boolean }>(
         `SELECT category_id, requires_nfe FROM fin_reimbursement_type WHERE slug = $1 AND is_active`,
@@ -780,7 +805,17 @@ export async function criarReembolsoDoTime(sessao: Sessao, corpo: NovoReembolso)
       );
       if (!t.rows[0]) throw new TimeError(`tipo de reembolso desconhecido: ${tipo}`);
       if (t.rows[0].requires_nfe && !nfeBruta) throw new TimeError("este tipo exige a chave da NF-e (44 dígitos)");
-      categoryId = t.rows[0].category_id;
+      categoryId = t.rows[0].category_id ?? categoryId;
+    } else if (!categoryId) {
+      throw new TimeError("escolha o tipo ou a categoria do gasto");
+    } else {
+      const cat = await client.query<{ id: number }>(
+        `SELECT c.id FROM fin_category c
+           JOIN fin_entity e ON e.id = c.entity_id AND e.slug = $1
+          WHERE c.id = $2`,
+        [ENTITY, categoryId]
+      );
+      if (!cat.rows[0]) throw new TimeError("categoria inválida");
     }
 
     // O reembolso do mês da pessoa. Volta para 'rascunho' → 'enviado' abaixo;
@@ -809,9 +844,20 @@ export async function criarReembolsoDoTime(sessao: Sessao, corpo: NovoReembolso)
 
     const item = await client.query<{ id: number }>(
       `INSERT INTO fin_reimbursement_item
-         (reimbursement_id, category_id, reimbursement_type, description, expense_date, amount_cents, nfe_key)
-       VALUES ($1, $2, $3, $4, $5::date, $6, $7) RETURNING id`,
-      [reembolso.id, categoryId, tipo, descricao, data, valorCents, nfeBruta || null]
+         (reimbursement_id, category_id, reimbursement_type, description, expense_date, amount_cents, nfe_key,
+          installment_number, installment_total)
+       VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9) RETURNING id`,
+      [
+        reembolso.id,
+        categoryId,
+        tipo,
+        descricaoFinal,
+        data,
+        valorCents,
+        nfeBruta || null,
+        parcelas ? 1 : null,
+        parcelas
+      ]
     );
 
     let chave: string | null = null;
@@ -914,6 +960,7 @@ const PAGAMENTOS = new Set([
   "boleto",
   "pix_da_empresa",
   "debito_automatico",
+  "dinheiro",
   "a_definir"
 ]);
 
@@ -1296,6 +1343,8 @@ export async function criarCompraDoTime(sessao: Sessao, corpo: NovaCompra) {
 // 5. Acompanhar
 // ---------------------------------------------------------------------------
 
+export type StatusExtrato = "registrado" | "aguardando" | "pago" | "nao_pago";
+
 export type EnvioDoTime = {
   origem: string;
   origemId: number;
@@ -1311,6 +1360,80 @@ export type EnvioDoTime = {
   criadoEm: string;
   itens: number;
   itensComAnexo: number;
+  parcelasTotal: number | null;
+  parcelaAtual: number | null;
+  statusExtrato: StatusExtrato;
+  grupoChave: string;
+  /** Primeiros itens para miniaturas no extrato — sem precisar abrir o detalhe. */
+  itensPreview: { titulo: string; temComprovante: boolean }[];
+};
+
+export type ParteDetalheEnvio = {
+  id: number;
+  fonte: "app" | "planilha";
+  titulo: string;
+  slug: string | null;
+  valorCents: number;
+  parcela: number | null;
+  parcelasTotal: number | null;
+  mesRef: string | null;
+  temComprovante: boolean;
+  statusParte: StatusExtrato;
+  /** Rótulo curto da categoria/tipo — null quando ainda falta classificar. */
+  categoriaRotulo: string | null;
+};
+
+export type ParcelaHistoricoItem = {
+  id: number;
+  mes: string;
+  parcela: number;
+  parcelasTotal: number;
+  valorCents: number;
+  descricao: string;
+  situacao: StatusExtrato | "previsto";
+};
+
+export type HistoricoParcelaItem = {
+  titulo: string;
+  slug: string | null;
+  fonte: "planilha" | "app" | "estimado";
+  parcelasTotal: number;
+  parcelaAtual: number;
+  valorParcelaCents: number;
+  totalContratadoCents: number;
+  pagoCents: number;
+  saldoCents: number;
+  parcelasRestantes: number;
+  inicioMes: string | null;
+  ultimoMes: string | null;
+  parcelas: ParcelaHistoricoItem[];
+};
+
+export type MesParcelaDetalhe = {
+  mes: string;
+  parcela: number;
+  valorCents: number;
+  situacao: StatusExtrato | "previsto";
+};
+
+export type DetalheEnvioDoTime = {
+  origem: string;
+  origemId: number;
+  code: string;
+  titulo: string;
+  valorCents: number | null;
+  statusExtrato: StatusExtrato;
+  parcelasTotal: number | null;
+  partes: ParteDetalheEnvio[];
+  cronograma: MesParcelaDetalhe[];
+  relacionados: {
+    origem: string;
+    origemId: number;
+    code: string;
+    titulo: string;
+    valorCents: number | null;
+    statusExtrato: StatusExtrato;
+  }[];
 };
 
 /**
@@ -1320,33 +1443,780 @@ export type EnvioDoTime = {
  * aceite "sem pessoa = tudo" é a que alguém chama sem argumento numa refatoração
  * e ninguém percebe até o dia em que o time inteiro vê o reembolso do sócio.
  */
+function statusExtratoDeLinha(estado: string, status: string): StatusExtrato {
+  if (estado === "concluido") return "pago";
+  if (estado === "recusado" || estado === "devolvido") return "nao_pago";
+  if (estado === "rascunho") return "registrado";
+  if (estado === "aprovado") return "aguardando";
+  if (estado === "aguardando") {
+    if (["enviado", "em_analise", "enviada", "em_cotacao"].includes(status)) return "registrado";
+    return "aguardando";
+  }
+  return "aguardando";
+}
+
+function mapearLinhaEnvio(l: Record<string, unknown>): EnvioDoTime {
+  const estado = String(l.estado_simples ?? "aguardando") as EnvioDoTime["estado"];
+  const status = String(l.status ?? "");
+  const origem = String(l.origem);
+  const origemId = Number(l.origem_id);
+  return {
+    origem,
+    origemId,
+    code: String(l.code ?? ""),
+    titulo: String(l.titulo ?? ""),
+    valorCents: l.amount_cents === null ? null : Number(l.amount_cents),
+    dataRef: l.data_ref ? new Date(l.data_ref as string).toISOString().slice(0, 10) : null,
+    status,
+    estado,
+    resposta: (l.resposta as string) ?? null,
+    decididoEm: l.decidido_em ? new Date(l.decidido_em as string).toISOString() : null,
+    decididoPor: (l.decidido_por as string) ?? null,
+    criadoEm: new Date(l.created_at as string).toISOString(),
+    itens: Number(l.itens ?? 0),
+    itensComAnexo: Number(l.itens_com_anexo ?? 0),
+    parcelasTotal: l.parcelas_total === null || l.parcelas_total === undefined ? null : Number(l.parcelas_total),
+    parcelaAtual: l.parcela_atual === null || l.parcela_atual === undefined ? null : Number(l.parcela_atual),
+    statusExtrato:
+      l.status_extrato !== undefined && l.status_extrato !== null
+        ? (String(l.status_extrato) as StatusExtrato)
+        : statusExtratoDeLinha(estado, status),
+    grupoChave:
+      l.grupo_chave !== undefined && l.grupo_chave !== null
+        ? String(l.grupo_chave)
+        : `${origem}:${origemId}`,
+    itensPreview: []
+  };
+}
+
+/**
+ * Carrega os primeiros títulos de cada envio numa tacada — assim o extrato
+ * mostra miniaturas em todos os cards sem abrir o detalhe um a um.
+ */
+async function anexarPreviewsItens(sessao: Sessao, envios: EnvioDoTime[]): Promise<void> {
+  if (envios.length === 0) return;
+
+  const idsReembolso = envios.filter((e) => e.origem === "reembolso").map((e) => e.origemId);
+  const idsCompra = envios.filter((e) => e.origem === "compra").map((e) => e.origemId);
+  const porChave = new Map<string, { titulo: string; temComprovante: boolean }[]>();
+
+  if (idsReembolso.length > 0) {
+    const linhas = await query<{ origem_id: number; titulo: string; tem_comprovante: boolean; ord: number }>(
+      `SELECT r.id AS origem_id,
+              i.description AS titulo,
+              i.receipt_artifact_key IS NOT NULL AS tem_comprovante,
+              row_number() OVER (PARTITION BY r.id ORDER BY i.id) AS ord
+         FROM fin_reimbursement_item i
+         JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+        WHERE r.person_id = $1 AND r.id = ANY($2::bigint[])`,
+      [sessao.personId, idsReembolso]
+    );
+    for (const l of linhas) {
+      if (Number(l.ord) > 4) continue;
+      const k = `reembolso-${l.origem_id}`;
+      const arr = porChave.get(k) ?? [];
+      arr.push({ titulo: String(l.titulo), temComprovante: Boolean(l.tem_comprovante) });
+      porChave.set(k, arr);
+    }
+  }
+
+  if (idsCompra.length > 0) {
+    const linhas = await query<{ origem_id: number; titulo: string; ord: number }>(
+      `SELECT c.id AS origem_id,
+              coalesce(nullif(l.titulo, ''), nullif(l.loja, ''), l.url, 'Link') AS titulo,
+              row_number() OVER (PARTITION BY c.id ORDER BY l.id) AS ord
+         FROM fin_purchase_request_link l
+         JOIN fin_purchase_request c ON c.id = l.purchase_request_id
+        WHERE c.requested_person_id = $1 AND c.id = ANY($2::bigint[])`,
+      [sessao.personId, idsCompra]
+    );
+    for (const l of linhas) {
+      if (Number(l.ord) > 4) continue;
+      const k = `compra-${l.origem_id}`;
+      const arr = porChave.get(k) ?? [];
+      arr.push({ titulo: String(l.titulo), temComprovante: false });
+      porChave.set(k, arr);
+    }
+  }
+
+  for (const e of envios) {
+    if (e.origem === "custo" || e.origem === "nota_entrada") {
+      e.itensPreview = e.titulo ? [{ titulo: e.titulo, temComprovante: true }] : [];
+      if (e.itens < 1 && e.itensPreview.length > 0) e.itens = 1;
+      continue;
+    }
+    e.itensPreview = porChave.get(`${e.origem}-${e.origemId}`) ?? [];
+  }
+}
+
 export async function listarMeusEnvios(sessao: Sessao): Promise<EnvioDoTime[]> {
+  const [view] = await query<{ ok: boolean }>(
+    `SELECT to_regclass('fin_time_envio_lista_v') IS NOT NULL AS ok`
+  );
+  const tabela = view?.ok ? "fin_time_envio_lista_v" : "fin_time_envios_v";
+  const extras =
+    view?.ok
+      ? ", parcelas_total, parcela_atual, status_extrato, grupo_chave"
+      : ", NULL::smallint AS parcelas_total, NULL::integer AS parcela_atual, NULL::text AS status_extrato, NULL::text AS grupo_chave";
+
   const linhas = await query<Record<string, unknown>>(
     `SELECT origem, origem_id, code, titulo, amount_cents, data_ref, status, estado_simples,
             resposta, decidido_em, decidido_por, created_at, itens, itens_com_anexo
-       FROM fin_time_envios_v
+            ${extras}
+       FROM ${tabela}
       WHERE person_id = $1
       ORDER BY created_at DESC
       LIMIT 200`,
     [sessao.personId]
   );
 
-  return linhas.map((l) => ({
-    origem: String(l.origem),
-    origemId: Number(l.origem_id),
-    code: String(l.code ?? ""),
-    titulo: String(l.titulo ?? ""),
-    valorCents: l.amount_cents === null ? null : Number(l.amount_cents),
-    dataRef: l.data_ref ? new Date(l.data_ref as string).toISOString().slice(0, 10) : null,
-    status: String(l.status),
-    estado: String(l.estado_simples ?? "aguardando") as EnvioDoTime["estado"],
-    resposta: (l.resposta as string) ?? null,
-    decididoEm: l.decidido_em ? new Date(l.decidido_em as string).toISOString() : null,
-    decididoPor: (l.decidido_por as string) ?? null,
-    criadoEm: new Date(l.created_at as string).toISOString(),
-    itens: Number(l.itens ?? 0),
-    itensComAnexo: Number(l.itens_com_anexo ?? 0)
+  const envios = linhas.map(mapearLinhaEnvio);
+  await anexarPreviewsItens(sessao, envios);
+  return envios;
+}
+
+function statusItemReembolso(status: string, statusCabecalho: StatusExtrato): StatusExtrato {
+  if (status === "pago") return "pago";
+  if (status === "rejeitado") return "nao_pago";
+  if (statusCabecalho === "pago") return "pago";
+  if (statusCabecalho === "nao_pago") return "nao_pago";
+  if (status === "aprovado") return "aguardando";
+  return "registrado";
+}
+
+function montarCronogramaParcelas(
+  parcelas: number,
+  totalCents: number,
+  dataInicio: string,
+  statusCabecalho: StatusExtrato
+): MesParcelaDetalhe[] {
+  const base = Math.floor(totalCents / parcelas);
+  const resto = totalCents - base * parcelas;
+  const inicio = new Date(`${dataInicio.slice(0, 10)}T12:00:00`);
+  return Array.from({ length: parcelas }, (_, i) => {
+    const mes = new Date(inicio);
+    mes.setMonth(mes.getMonth() + i);
+    const valorCents = i === parcelas - 1 ? base + resto : base;
+    let situacao: MesParcelaDetalhe["situacao"] = "previsto";
+    if (statusCabecalho === "pago") situacao = "pago";
+    else if (statusCabecalho === "nao_pago") situacao = "nao_pago";
+    else if (i === 0) situacao = statusCabecalho === "registrado" ? "registrado" : "aguardando";
+    return {
+      mes: mes.toISOString().slice(0, 7),
+      parcela: i + 1,
+      valorCents,
+      situacao
+    };
+  });
+}
+
+/**
+ * Detalhe de um envio da sessão — partes, cronograma de parcelas e irmãos do
+ * mesmo grupo (ex.: custos de um pedido de compra aprovado).
+ */
+export async function detalharEnvioDoTime(
+  sessao: Sessao,
+  origem: string,
+  origemId: number
+): Promise<DetalheEnvioDoTime> {
+  const [view] = await query<{ ok: boolean }>(
+    `SELECT to_regclass('fin_time_envio_lista_v') IS NOT NULL AS ok`
+  );
+  if (!view?.ok) throw new TimeError("detalhe indisponível — atualize o sistema", 503);
+
+  const [cab] = await query<Record<string, unknown>>(
+    `SELECT origem, origem_id, code, titulo, amount_cents, status_extrato, parcelas_total,
+            grupo_chave, data_ref
+       FROM fin_time_envio_lista_v
+      WHERE person_id = $1 AND origem = $2 AND origem_id = $3`,
+    [sessao.personId, origem, origemId]
+  );
+  if (!cab) throw new TimeError("envio não encontrado", 404);
+
+  const statusExtrato = String(cab.status_extrato ?? "aguardando") as StatusExtrato;
+  const grupoChave = String(cab.grupo_chave ?? "");
+  const parcelasTotal = cab.parcelas_total === null ? null : Number(cab.parcelas_total);
+
+  const relacionados = grupoChave
+    ? (
+        await query<Record<string, unknown>>(
+          `SELECT origem, origem_id, code, titulo, amount_cents, status_extrato
+             FROM fin_time_envio_lista_v
+            WHERE person_id = $1 AND grupo_chave = $2
+              AND NOT (origem = $3 AND origem_id = $4)
+            ORDER BY created_at DESC`,
+          [sessao.personId, grupoChave, origem, origemId]
+        )
+      ).map((l) => ({
+        origem: String(l.origem),
+        origemId: Number(l.origem_id),
+        code: String(l.code ?? ""),
+        titulo: String(l.titulo ?? ""),
+        valorCents: l.amount_cents === null ? null : Number(l.amount_cents),
+        statusExtrato: String(l.status_extrato ?? "aguardando") as StatusExtrato
+      }))
+    : [];
+
+  let partes: ParteDetalheEnvio[] = [];
+  let cronograma: MesParcelaDetalhe[] = [];
+
+  if (origem === "reembolso") {
+    const itens = await query<Record<string, unknown>>(
+      `SELECT i.id, i.description, i.amount_cents, i.installment_number, i.installment_total,
+              i.expense_date, i.receipt_artifact_key IS NOT NULL AS tem_comprovante, i.status,
+              COALESCE(t.name, c.name) AS categoria_rotulo
+         FROM fin_reimbursement_item i
+         JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+         LEFT JOIN fin_reimbursement_type t ON t.slug = i.reimbursement_type
+         LEFT JOIN fin_category c ON c.id = i.category_id
+        WHERE r.id = $1 AND r.person_id = $2
+        ORDER BY i.id`,
+      [origemId, sessao.personId]
+    );
+    partes = itens.map((i) => ({
+      id: Number(i.id),
+      fonte: "app" as const,
+      titulo: String(i.description ?? ""),
+      slug: null,
+      valorCents: Number(i.amount_cents),
+      parcela: i.installment_number === null ? null : Number(i.installment_number),
+      parcelasTotal: i.installment_total === null ? null : Number(i.installment_total),
+      mesRef: i.expense_date ? new Date(i.expense_date as string).toISOString().slice(0, 10) : null,
+      temComprovante: Boolean(i.tem_comprovante),
+      statusParte: statusItemReembolso(String(i.status), statusExtrato),
+      categoriaRotulo: i.categoria_rotulo ? String(i.categoria_rotulo) : null
+    }));
+
+    const [mesRef] = await query<{ reference_month: string }>(
+      `SELECT reference_month::text FROM fin_reimbursement WHERE id = $1 AND person_id = $2`,
+      [origemId, sessao.personId]
+    );
+    if (mesRef?.reference_month) {
+      const competencia = mesRef.reference_month.slice(0, 10);
+      const planilha = await query<Record<string, unknown>>(
+        `SELECT id, slug, descricao, valor_parcela_cents, parcela, parcelas_total, competencia::text,
+                categoria_livre, (parcela >= parcelas_total) AS quitado
+           FROM fin_reembolso_item
+          WHERE person_id = $1 AND competencia = $2::date
+          ORDER BY descricao, parcela`,
+        [sessao.personId, competencia]
+      );
+      for (const p of planilha) {
+        partes.push({
+          id: Number(p.id),
+          fonte: "planilha",
+          titulo: String(p.descricao ?? ""),
+          slug: String(p.slug ?? ""),
+          valorCents: Number(p.valor_parcela_cents),
+          parcela: Number(p.parcela),
+          parcelasTotal: Number(p.parcelas_total),
+          mesRef: String(p.competencia).slice(0, 10),
+          temComprovante: false,
+          statusParte: Boolean(p.quitado) ? "pago" : statusExtrato === "pago" ? "pago" : "aguardando",
+          categoriaRotulo: p.categoria_livre ? String(p.categoria_livre) : null
+        });
+      }
+    }
+  } else if (origem === "compra") {
+    const links = await query<Record<string, unknown>>(
+      `SELECT l.id, l.url, l.loja, l.titulo, l.price_cents
+         FROM fin_purchase_request_link l
+         JOIN fin_purchase_request c ON c.id = l.purchase_request_id
+        WHERE c.id = $1 AND c.requested_person_id = $2
+        ORDER BY l.id`,
+      [origemId, sessao.personId]
+    );
+    partes = links.map((l) => ({
+      id: Number(l.id),
+      fonte: "app" as const,
+      titulo: String(l.titulo || l.loja || l.url || "Link"),
+      slug: null,
+      valorCents: l.price_cents === null ? 0 : Number(l.price_cents),
+      parcela: null,
+      parcelasTotal: null,
+      mesRef: null,
+      temComprovante: false,
+      statusParte: statusExtrato,
+      categoriaRotulo: null
+    }));
+  } else if (origem === "custo" || origem === "nota_entrada") {
+    const [envio] = await query<Record<string, unknown>>(
+      `SELECT e.id, e.titulo, e.amount_cents, e.parcelas, e.incurred_on::text, e.status,
+              c.name AS categoria_rotulo
+         FROM fin_time_envio e
+         LEFT JOIN fin_category c ON c.id = e.categoria_sugerida_id
+        WHERE e.id = $1 AND e.person_id = $2 AND e.kind = $3`,
+      [origemId, sessao.personId, origem]
+    );
+    if (envio) {
+      const parcelas = envio.parcelas === null ? null : Number(envio.parcelas);
+      partes = [
+        {
+          id: Number(envio.id),
+          fonte: "app",
+          titulo: String(envio.titulo ?? ""),
+          slug: null,
+          valorCents: Number(envio.amount_cents),
+          parcela: parcelas ? 1 : null,
+          parcelasTotal: parcelas,
+          mesRef: envio.incurred_on ? String(envio.incurred_on).slice(0, 10) : null,
+          temComprovante: true,
+          statusParte: statusExtrato,
+          categoriaRotulo: envio.categoria_rotulo ? String(envio.categoria_rotulo) : null
+        }
+      ];
+      if (parcelas && parcelas >= 2 && envio.incurred_on && envio.amount_cents) {
+        cronograma = montarCronogramaParcelas(
+          parcelas,
+          Number(envio.amount_cents),
+          String(envio.incurred_on),
+          statusExtrato
+        );
+      }
+    }
+  }
+
+  return {
+    origem,
+    origemId,
+    code: String(cab.code ?? ""),
+    titulo: String(cab.titulo ?? ""),
+    valorCents: cab.amount_cents === null ? null : Number(cab.amount_cents),
+    statusExtrato,
+    parcelasTotal,
+    partes,
+    cronograma,
+    relacionados
+  };
+}
+
+async function slugPlanilhaDoItemApp(
+  sessao: Sessao,
+  titulo: string,
+  parcelasTotal: number | null
+): Promise<string | null> {
+  const [porTitulo] = await query<{ slug: string }>(
+    `SELECT slug
+       FROM fin_reembolso_item
+      WHERE person_id = $1
+        AND ($2::int IS NULL OR parcelas_total = $2)
+        AND descricao ILIKE '%' || split_part($3, ' ', 1) || '%'
+      ORDER BY competencia DESC
+      LIMIT 1`,
+    [sessao.personId, parcelasTotal, titulo.trim()]
+  );
+  return porTitulo?.slug ?? null;
+}
+
+function mesDepois(isoMes: string, offset: number) {
+  const d = new Date(`${isoMes.slice(0, 10)}T12:00:00`);
+  d.setMonth(d.getMonth() + offset);
+  return d.toISOString().slice(0, 7);
+}
+
+/**
+ * Histórico de parcelas de um item — pagas (planilha) e previstas (restantes).
+ * A planilha registra uma linha por mês em que a parcela foi paga; o slug é a
+ * identidade estável do débito ao longo dos meses (0129).
+ */
+export async function historicoParcelasItem(
+  sessao: Sessao,
+  fonte: "planilha" | "app",
+  itemId: number
+): Promise<HistoricoParcelaItem> {
+  const [view] = await query<{ ok: boolean }>(
+    `SELECT to_regclass('fin_time_reembolso_parcela_v') IS NOT NULL AS ok`
+  );
+  if (!view?.ok) throw new TimeError("histórico indisponível — atualize o sistema", 503);
+
+  let slug: string | null = null;
+  let titulo = "";
+  let parcelasTotal = 1;
+  let valorParcelaCents = 0;
+  let fonteHistorico: HistoricoParcelaItem["fonte"] = "planilha";
+
+  if (fonte === "planilha") {
+    const [linha] = await query<Record<string, unknown>>(
+      `SELECT slug, descricao, parcelas_total, valor_parcela_cents
+         FROM fin_time_reembolso_parcela_v
+        WHERE person_id = $1 AND item_id = $2`,
+      [sessao.personId, itemId]
+    );
+    if (!linha) throw new TimeError("item não encontrado", 404);
+    slug = String(linha.slug);
+    titulo = String(linha.descricao).replace(/\s+\d+\/\d+.*$/, "").trim() || String(linha.descricao);
+    parcelasTotal = Number(linha.parcelas_total);
+    valorParcelaCents = Number(linha.valor_parcela_cents);
+  } else {
+    const [item] = await query<Record<string, unknown>>(
+      `SELECT i.description, i.amount_cents, i.installment_number, i.installment_total, i.expense_date::text
+         FROM fin_reimbursement_item i
+         JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+        WHERE i.id = $1 AND r.person_id = $2`,
+      [itemId, sessao.personId]
+    );
+    if (!item) throw new TimeError("item não encontrado", 404);
+    titulo = String(item.description ?? "");
+    parcelasTotal = item.installment_total === null ? 1 : Number(item.installment_total);
+    valorParcelaCents =
+      parcelasTotal > 1 ? Math.round(Number(item.amount_cents) / parcelasTotal) : Number(item.amount_cents);
+    slug = await slugPlanilhaDoItemApp(sessao, titulo, parcelasTotal > 1 ? parcelasTotal : null);
+    fonteHistorico = slug ? "planilha" : "estimado";
+  }
+
+  const pagas =
+    slug !== null
+      ? await query<Record<string, unknown>>(
+          `SELECT item_id, descricao, competencia, parcela, parcelas_total, valor_parcela_cents, quitado
+             FROM fin_time_reembolso_parcela_v
+            WHERE person_id = $1 AND slug = $2
+            ORDER BY competencia ASC, parcela ASC`,
+          [sessao.personId, slug]
+        )
+      : [];
+
+  const parcelasPagas: ParcelaHistoricoItem[] = pagas.map((p) => ({
+    id: Number(p.item_id),
+    mes: new Date(p.competencia as string).toISOString().slice(0, 7),
+    parcela: Number(p.parcela),
+    parcelasTotal: Number(p.parcelas_total),
+    valorCents: Number(p.valor_parcela_cents),
+    descricao: String(p.descricao),
+    situacao: "pago"
   }));
+
+  if (parcelasPagas.length > 0) {
+    titulo = titulo || parcelasPagas[0].descricao.replace(/\s+\d+\/\d+.*$/, "").trim();
+    parcelasTotal = parcelasPagas[parcelasPagas.length - 1].parcelasTotal;
+    valorParcelaCents = parcelasPagas[parcelasPagas.length - 1].valorCents;
+  }
+
+  const parcelaAtual = parcelasPagas.length > 0 ? Math.max(...parcelasPagas.map((p) => p.parcela)) : 0;
+  const parcelasRestantes = Math.max(0, parcelasTotal - parcelaAtual);
+  const inicioMes = parcelasPagas.length > 0 ? parcelasPagas[0].mes : null;
+  const ultimoMes = parcelasPagas.length > 0 ? parcelasPagas[parcelasPagas.length - 1].mes : null;
+
+  const parcelasPrevistas: ParcelaHistoricoItem[] = [];
+  if (parcelasRestantes > 0 && ultimoMes) {
+    for (let i = 1; i <= parcelasRestantes; i++) {
+      const numero = parcelaAtual + i;
+      parcelasPrevistas.push({
+        id: -numero,
+        mes: mesDepois(`${ultimoMes}-01`, i),
+        parcela: numero,
+        parcelasTotal,
+        valorCents: valorParcelaCents,
+        descricao: `${titulo} ${numero}/${parcelasTotal}`,
+        situacao: "previsto"
+      });
+    }
+  } else if (parcelasPagas.length === 0 && parcelasTotal > 1 && fonte === "app") {
+    const [item] = await query<{ expense_date: string | null }>(
+      `SELECT i.expense_date::text
+         FROM fin_reimbursement_item i
+         JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+        WHERE i.id = $1 AND r.person_id = $2`,
+      [itemId, sessao.personId]
+    );
+    const inicio = item?.expense_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+    for (let i = 0; i < parcelasTotal; i++) {
+      parcelasPrevistas.push({
+        id: -(i + 1),
+        mes: mesDepois(`${inicio}`, i),
+        parcela: i + 1,
+        parcelasTotal,
+        valorCents: valorParcelaCents,
+        descricao: `${titulo} ${i + 1}/${parcelasTotal}`,
+        situacao: i === 0 ? "registrado" : "previsto"
+      });
+    }
+  }
+
+  const parcelas = [...parcelasPagas, ...parcelasPrevistas];
+  const pagoCents = parcelasPagas.reduce((s, p) => s + p.valorCents, 0);
+  const totalContratadoCents = valorParcelaCents * parcelasTotal;
+  const saldoCents = parcelasRestantes * valorParcelaCents;
+
+  return {
+    titulo,
+    slug,
+    fonte: fonteHistorico,
+    parcelasTotal,
+    parcelaAtual,
+    valorParcelaCents,
+    totalContratadoCents,
+    pagoCents,
+    saldoCents,
+    parcelasRestantes,
+    inicioMes,
+    ultimoMes,
+    parcelas
+  };
+}
+
+export type ItemReembolsoDetalhe = {
+  fonte: "planilha" | "app";
+  id: number;
+  nome: string;
+  valorCents: number;
+  parcela: number | null;
+  parcelasTotal: number | null;
+  data: string | null;
+  categoriaId: number | null;
+  categoriaLivre: string | null;
+  tipoReembolso: string | null;
+  temComprovante: boolean;
+  statusParte: StatusExtrato;
+  slug: string | null;
+  nota: string | null;
+  envio: { origem: string; origemId: number; code: string } | null;
+};
+
+/** Ficha completa do item — mesmos campos do cadastro de reembolso, para editar depois. */
+export async function detalharItemReembolso(
+  sessao: Sessao,
+  fonte: "planilha" | "app",
+  itemId: number
+): Promise<ItemReembolsoDetalhe> {
+  if (fonte === "app") {
+    const [item] = await query<Record<string, unknown>>(
+      `SELECT i.id, i.description, i.amount_cents, i.installment_number, i.installment_total,
+              i.expense_date::text, i.category_id, i.reimbursement_type,
+              i.receipt_artifact_key IS NOT NULL AS tem_comprovante, i.status,
+              r.id AS reimbursement_id
+         FROM fin_reimbursement_item i
+         JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+        WHERE i.id = $1 AND r.person_id = $2`,
+      [itemId, sessao.personId]
+    );
+    if (!item) throw new TimeError("item não encontrado", 404);
+    const status = String(item.status);
+    const statusParte: StatusExtrato =
+      status === "pago" ? "pago" : status === "rejeitado" ? "nao_pago" : status === "aprovado" ? "aguardando" : "registrado";
+    const nome = String(item.description ?? "");
+    return {
+      fonte: "app",
+      id: Number(item.id),
+      nome: nome.replace(/\s+\d+\/\d+.*$/, "").trim() || nome,
+      valorCents: Number(item.amount_cents),
+      parcela: item.installment_number === null ? null : Number(item.installment_number),
+      parcelasTotal: item.installment_total === null ? null : Number(item.installment_total),
+      data: item.expense_date ? String(item.expense_date).slice(0, 10) : null,
+      categoriaId: item.category_id === null ? null : Number(item.category_id),
+      categoriaLivre: null,
+      tipoReembolso: item.reimbursement_type ? String(item.reimbursement_type) : null,
+      temComprovante: Boolean(item.tem_comprovante),
+      statusParte,
+      slug: await slugPlanilhaDoItemApp(
+        sessao,
+        nome,
+        item.installment_total === null ? null : Number(item.installment_total)
+      ),
+      nota: null,
+      envio: { origem: "reembolso", origemId: Number(item.reimbursement_id), code: `RB-${item.reimbursement_id}` }
+    };
+  }
+
+  const [linha] = await query<Record<string, unknown>>(
+    `SELECT id, slug, descricao, valor_parcela_cents, parcela, parcelas_total, competencia::text,
+            categoria_livre, nota
+       FROM fin_reembolso_item
+      WHERE id = $1 AND person_id = $2`,
+    [itemId, sessao.personId]
+  );
+  if (!linha) throw new TimeError("item não encontrado", 404);
+  const descricao = String(linha.descricao ?? "");
+  const quitado = Number(linha.parcela) >= Number(linha.parcelas_total);
+  return {
+    fonte: "planilha",
+    id: Number(linha.id),
+    nome: descricao.replace(/\s+\d+\/\d+.*$/, "").trim() || descricao,
+    valorCents: Number(linha.valor_parcela_cents),
+    parcela: Number(linha.parcela),
+    parcelasTotal: Number(linha.parcelas_total),
+    data: String(linha.competencia).slice(0, 10),
+    categoriaId: null,
+    categoriaLivre: linha.categoria_livre ? String(linha.categoria_livre) : null,
+    tipoReembolso: null,
+    temComprovante: false,
+    statusParte: quitado ? "pago" : "aguardando",
+    slug: String(linha.slug),
+    nota: linha.nota ? String(linha.nota) : null,
+    envio: null
+  };
+}
+
+/**
+ * Renomeia um item de reembolso. Na planilha, o slug é estável — só o rótulo
+ * muda em todas as parcelas. No app, é a description do item.
+ */
+export async function atualizarNomeItemReembolso(
+  sessao: Sessao,
+  fonte: "planilha" | "app",
+  itemId: number,
+  nome: string
+): Promise<{ titulo: string }> {
+  const rotulo = exigirTexto(nome, "nome", 200);
+
+  if (fonte === "app") {
+    const r = await query<{ id: number }>(
+      `UPDATE fin_reimbursement_item i
+          SET description = $3
+         FROM fin_reimbursement r
+        WHERE i.id = $1 AND i.reimbursement_id = r.id AND r.person_id = $2
+        RETURNING i.id`,
+      [itemId, sessao.personId, rotulo]
+    );
+    if (!r.length) throw new TimeError("item não encontrado", 404);
+    return { titulo: rotulo };
+  }
+
+  const [linha] = await query<{ slug: string }>(
+    `SELECT slug FROM fin_reembolso_item WHERE id = $1 AND person_id = $2`,
+    [itemId, sessao.personId]
+  );
+  if (!linha) throw new TimeError("item não encontrado", 404);
+
+  await query(
+    `UPDATE fin_reembolso_item
+        SET descricao = $3 || ' ' || parcela::text || '/' || parcelas_total::text
+      WHERE person_id = $1 AND slug = $2`,
+    [sessao.personId, linha.slug, rotulo]
+  );
+  return { titulo: rotulo };
+}
+
+/** Atualiza nome, categoria e tipo — o que o cadastro de reembolso já coleta. */
+export async function atualizarItemReembolso(
+  sessao: Sessao,
+  fonte: "planilha" | "app",
+  itemId: number,
+  dados: {
+    nome?: string;
+    categoriaId?: number | null;
+    tipoReembolso?: string | null;
+    categoriaLivre?: string | null;
+    nota?: string | null;
+  }
+): Promise<{ titulo: string }> {
+  let titulo = dados.nome?.trim();
+
+  if (fonte === "app") {
+    const [item] = await query<{ description: string }>(
+      `SELECT i.description
+         FROM fin_reimbursement_item i
+         JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+        WHERE i.id = $1 AND r.person_id = $2`,
+      [itemId, sessao.personId]
+    );
+    if (!item) throw new TimeError("item não encontrado", 404);
+    titulo = titulo ?? (item.description.replace(/\s+\d+\/\d+.*$/, "").trim() || item.description);
+
+    let categoryId: number | null | undefined = dados.categoriaId;
+    let tipo: string | null | undefined = dados.tipoReembolso;
+
+    if (tipo) {
+      const [t] = await query<{ category_id: number | null }>(
+        `SELECT category_id FROM fin_reimbursement_type WHERE slug = $1 AND is_active`,
+        [tipo]
+      );
+      if (!t) throw new TimeError("tipo de reembolso inválido");
+      categoryId = t.category_id ?? categoryId ?? null;
+    } else if (categoryId) {
+      const [cat] = await query<{ id: number }>(
+        `SELECT c.id FROM fin_category c
+           JOIN fin_entity e ON e.id = c.entity_id AND e.slug = $1
+          WHERE c.id = $2`,
+        [ENTITY, categoryId]
+      );
+      if (!cat) throw new TimeError("categoria inválida");
+      tipo = null;
+    }
+
+    const r = await query<{ id: number }>(
+      `UPDATE fin_reimbursement_item i
+          SET description = $3,
+              category_id = COALESCE($4, category_id),
+              reimbursement_type = CASE WHEN $5::text IS NOT NULL THEN $5 ELSE reimbursement_type END
+         FROM fin_reimbursement r
+        WHERE i.id = $1 AND i.reimbursement_id = r.id AND r.person_id = $2
+        RETURNING i.id`,
+      [itemId, sessao.personId, exigirTexto(titulo, "nome", 200), categoryId ?? null, tipo ?? null]
+    );
+    if (!r.length) throw new TimeError("item não encontrado", 404);
+    return { titulo };
+  }
+
+  if (titulo) {
+    await atualizarNomeItemReembolso(sessao, fonte, itemId, titulo);
+  }
+
+  const [linha] = await query<{ slug: string }>(
+    `SELECT slug FROM fin_reembolso_item WHERE id = $1 AND person_id = $2`,
+    [itemId, sessao.personId]
+  );
+  if (!linha) throw new TimeError("item não encontrado", 404);
+
+  if (dados.categoriaLivre !== undefined || dados.nota !== undefined) {
+    await query(
+      `UPDATE fin_reembolso_item
+          SET categoria_livre = COALESCE($3, categoria_livre),
+              nota = COALESCE($4, nota),
+              atualizado_em = now(),
+              atualizado_por = $5
+        WHERE person_id = $1 AND slug = $2`,
+      [
+        sessao.personId,
+        linha.slug,
+        dados.categoriaLivre === undefined ? null : dados.categoriaLivre?.trim() || null,
+        dados.nota === undefined ? null : dados.nota?.trim() || null,
+        `time:${sessao.nome}`
+      ]
+    );
+  }
+
+  if (!titulo) {
+    const [atual] = await query<{ descricao: string }>(
+      `SELECT descricao FROM fin_reembolso_item WHERE id = $1 AND person_id = $2`,
+      [itemId, sessao.personId]
+    );
+    titulo = atual?.descricao.replace(/\s+\d+\/\d+.*$/, "").trim() || atual?.descricao || "";
+  }
+  return { titulo };
+}
+
+/** Anexa comprovante a um item do app (fin_reimbursement_item). */
+export async function anexarComprovanteItemReembolso(
+  sessao: Sessao,
+  itemId: number,
+  anexo: AnexoEntrada
+): Promise<{ ok: true }> {
+  return transaction(async (client) => {
+    const item = await client.query<{ id: number }>(
+      `SELECT i.id
+         FROM fin_reimbursement_item i
+         JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+        WHERE i.id = $1 AND r.person_id = $2`,
+      [itemId, sessao.personId]
+    );
+    if (!item.rows[0]) throw new TimeError("item não encontrado", 404);
+
+    const entityId = await entidadeId(client);
+    const chave = await registrarAnexo(
+      client,
+      entityId,
+      "fin_reimbursement_item",
+      itemId,
+      "comprovante",
+      anexo,
+      `time:${sessao.nome}`
+    );
+    await client.query(`UPDATE fin_reimbursement_item SET receipt_artifact_key = $2 WHERE id = $1`, [
+      itemId,
+      chave
+    ]);
+    return { ok: true as const };
+  });
 }
 
 /**
@@ -1451,6 +2321,220 @@ export async function meuReembolso(sessao: Sessao) {
       restantes.length > 0
         ? "O histórico e o saldo saem de dois registros diferentes da mesma planilha, e eles divergem em alguns centavos no acervo. A unificação está pendente de decisão."
         : null
+  };
+}
+
+export type PerfilTime = {
+  nome: string;
+  email: string | null;
+  temFoto: boolean;
+};
+
+export type ResumoInicio = {
+  mesAtual: string;
+  reembolsoMesCents: number;
+  comprasMesCents: number;
+  aReceberCents: number;
+  historico: { mes: string; solicitadoCents: number; recebidoCents: number }[];
+  comprasRecentes: {
+    code: string;
+    titulo: string;
+    valorCents: number | null;
+    dataRef: string | null;
+    estado: string;
+  }[];
+};
+
+/**
+ * Perfil editável da pessoa da sessão — nome, e-mail e se há foto.
+ *
+ * O e-mail é o login; mudar aqui muda o que entra amanhã. A foto é só chave:
+ * o blob fica em `fin_anexo_blob`, como comprovante.
+ */
+export async function lerPerfil(sessao: Sessao): Promise<PerfilTime> {
+  const [linha] = await query<{ name: string; email: string | null; foto_chave: string | null }>(
+    `SELECT name, email, foto_chave FROM fin_person WHERE id = $1 AND status = 'ativo'`,
+    [sessao.personId]
+  );
+  if (!linha) throw new TimeError("pessoa não encontrada", 404);
+  return {
+    nome: linha.name,
+    email: linha.email,
+    temFoto: Boolean(linha.foto_chave)
+  };
+}
+
+export async function atualizarPerfil(
+  sessao: Sessao,
+  dados: { nome?: string; email?: string | null }
+): Promise<PerfilTime> {
+  const nome = dados.nome !== undefined ? String(dados.nome).trim() : undefined;
+  const email =
+    dados.email !== undefined
+      ? dados.email === null || dados.email === ""
+        ? null
+        : String(dados.email).trim().toLowerCase()
+      : undefined;
+
+  if (nome !== undefined && nome.length < 2) throw new TimeError("nome muito curto", 400);
+  if (email !== undefined && email !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new TimeError("e-mail inválido", 400);
+  }
+
+  return transaction(async (client) => {
+    if (email !== undefined && email !== null) {
+      const dup = await client.query(
+        `SELECT id FROM fin_person WHERE lower(email) = $1 AND id <> $2 LIMIT 1`,
+        [email, sessao.personId]
+      );
+      if (dup.rows[0]) throw new TimeError("este e-mail já está em uso", 409);
+    }
+
+    const campos: string[] = [];
+    const params: unknown[] = [];
+    if (nome !== undefined) {
+      params.push(nome);
+      campos.push(`name = $${params.length}`);
+    }
+    if (email !== undefined) {
+      params.push(email);
+      campos.push(`email = $${params.length}`);
+    }
+    if (campos.length === 0) return lerPerfil(sessao);
+
+    params.push(sessao.personId);
+    await client.query(
+      `UPDATE fin_person SET ${campos.join(", ")}, updated_at = now() WHERE id = $${params.length} AND status = 'ativo'`,
+      params
+    );
+    return lerPerfil(sessao);
+  });
+}
+
+const MIMES_FOTO_PERFIL = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+/** Avatar: só imagem, teto menor que comprovante — 2 MB após encolher no celular. */
+export async function salvarFotoPerfil(sessao: Sessao, anexo: AnexoEntrada): Promise<void> {
+  if (!MIMES_FOTO_PERFIL.has(anexo.mime)) {
+    throw new TimeError("mande uma foto (JPG, PNG ou WebP)", 400);
+  }
+  if (anexo.bytes.length > 2 * 1024 * 1024) {
+    throw new TimeError("foto acima de 2 MB — use uma imagem menor", 413);
+  }
+
+  await transaction(async (client) => {
+    const chave = await guardarAnexo(client, anexo, `perfil:${sessao.personId}`);
+    await client.query(`UPDATE fin_person SET foto_chave = $1, updated_at = now() WHERE id = $2`, [
+      chave,
+      sessao.personId
+    ]);
+  });
+}
+
+export async function lerFotoPerfil(sessao: Sessao): Promise<{ chave: string } | null> {
+  const [linha] = await query<{ foto_chave: string | null }>(
+    `SELECT foto_chave FROM fin_person WHERE id = $1 AND status = 'ativo'`,
+    [sessao.personId]
+  );
+  if (!linha?.foto_chave) return null;
+  return { chave: linha.foto_chave };
+}
+
+/**
+ * Números da abertura — escopo da sessão, sem parâmetro de pessoa.
+ *
+ * Reembolso do mês = o que a pessoa ENVIOU neste mês pelo app.
+ * Compras do mês = custos registrados neste mês (aprovados ou concluídos).
+ * O gráfico cruza envios (solicitado) com `fin_reimbursement` pago (recebido).
+ */
+export async function resumoInicio(sessao: Sessao): Promise<ResumoInicio> {
+  const mesAtual = new Date().toISOString().slice(0, 7);
+
+  const [kpis, historico, compras, saldo] = await Promise.all([
+    query<{ reemb: string; compras: string }>(
+      `SELECT
+         coalesce((
+           SELECT sum(amount_cents)::bigint
+             FROM fin_time_envio
+            WHERE person_id = $1 AND kind = 'reembolso' AND status <> 'rascunho'
+              AND to_char(created_at, 'YYYY-MM') = $2
+         ), 0)::text AS reemb,
+         coalesce((
+           SELECT sum(amount_cents)::bigint
+             FROM fin_time_envio
+            WHERE person_id = $1 AND kind = 'custo' AND status IN ('aprovado', 'concluido')
+              AND to_char(created_at, 'YYYY-MM') = $2
+         ), 0)::text AS compras`,
+      [sessao.personId, mesAtual]
+    ),
+    query<{ mes: string; solicitado: string; recebido: string }>(
+      `WITH meses AS (
+         SELECT to_char(d, 'YYYY-MM') AS mes
+           FROM generate_series(
+             date_trunc('month', now()) - interval '5 months',
+             date_trunc('month', now()),
+             interval '1 month'
+           ) d
+       ),
+       solic AS (
+         SELECT to_char(created_at, 'YYYY-MM') AS mes,
+                coalesce(sum(amount_cents), 0) AS cents
+           FROM fin_time_envio
+          WHERE person_id = $1 AND kind = 'reembolso' AND status <> 'rascunho'
+          GROUP BY 1
+       ),
+       rec AS (
+         SELECT to_char(r.reference_month, 'YYYY-MM') AS mes,
+                coalesce(sum(i.amount_cents), 0) AS cents
+           FROM fin_reimbursement r
+           JOIN fin_reimbursement_item i ON i.reimbursement_id = r.id
+          WHERE r.person_id = $1 AND r.status = 'pago'
+          GROUP BY 1
+       )
+       SELECT m.mes,
+              coalesce(s.cents, 0)::text AS solicitado,
+              coalesce(r.cents, 0)::text AS recebido
+         FROM meses m
+         LEFT JOIN solic s ON s.mes = m.mes
+         LEFT JOIN rec r ON r.mes = m.mes
+        ORDER BY m.mes`,
+      [sessao.personId]
+    ),
+    query<{ code: string; titulo: string; amount_cents: string | null; data_ref: string | null; estado_simples: string }>(
+      `SELECT code, titulo, amount_cents::text, data_ref::text, estado_simples
+         FROM fin_time_envios_v
+        WHERE person_id = $1 AND origem IN ('custo', 'compra')
+        ORDER BY created_at DESC
+        LIMIT 8`,
+      [sessao.personId]
+    ),
+    query<{ total: string }>(
+      `SELECT coalesce(sum(saldo_cents), 0)::text AS total
+         FROM fin_reembolso_saldo_v
+        WHERE person_id = $1 AND NOT quitado`,
+      [sessao.personId]
+    )
+  ]);
+
+  const k = kpis[0] ?? { reemb: "0", compras: "0" };
+
+  return {
+    mesAtual,
+    reembolsoMesCents: Number(k.reemb),
+    comprasMesCents: Number(k.compras),
+    aReceberCents: Number(saldo[0]?.total ?? 0),
+    historico: historico.map((h) => ({
+      mes: h.mes,
+      solicitadoCents: Number(h.solicitado),
+      recebidoCents: Number(h.recebido)
+    })),
+    comprasRecentes: compras.map((c) => ({
+      code: c.code,
+      titulo: c.titulo,
+      valorCents: c.amount_cents === null ? null : Number(c.amount_cents),
+      dataRef: c.data_ref ? String(c.data_ref).slice(0, 10) : null,
+      estado: c.estado_simples
+    }))
   };
 }
 
@@ -1879,8 +2963,8 @@ export async function catalogoDeClassificacao() {
 
 export async function opcoesDoTime() {
   const [tipos, categorias, centros, linhas, cartoes] = await Promise.all([
-    query<{ slug: string; name: string; requires_nfe: boolean }>(
-      `SELECT slug, name, requires_nfe FROM fin_reimbursement_type WHERE is_active ORDER BY sort_order, name`
+    query<{ slug: string; name: string; requires_nfe: boolean; allows_installment: boolean; category_id: number | null }>(
+      `SELECT slug, name, requires_nfe, allows_installment, category_id FROM fin_reimbursement_type WHERE is_active ORDER BY sort_order, name`
     ),
     query<{ id: number; code: string; name: string }>(
       `SELECT c.id, c.code, c.name FROM fin_category c
@@ -1945,7 +3029,13 @@ export async function opcoesDoTime() {
     )
   ]);
   return {
-    tipos: tipos.map((t) => ({ slug: t.slug, nome: t.name, exigeNfe: t.requires_nfe })),
+    tipos: tipos.map((t) => ({
+      slug: t.slug,
+      nome: t.name,
+      exigeNfe: t.requires_nfe,
+      permiteParcelas: t.allows_installment,
+      categoriaId: t.category_id ? Number(t.category_id) : null
+    })),
     categorias: categorias.map((c) => ({ id: Number(c.id), rotulo: `${c.code} ${c.name}` })),
     centros: centros.map((c) => ({
       id: Number(c.id),

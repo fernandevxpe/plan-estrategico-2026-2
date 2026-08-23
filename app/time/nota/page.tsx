@@ -1,27 +1,6 @@
-import { TimeApp } from "@/components/time/TimeApp";
-import { estadoDoTime } from "@/lib/financeiro/time";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Nota — XPE" };
-
-export const dynamic = "force-dynamic";
-
-export default async function TimeNotaPage() {
-  // A disponibilidade é resolvida no SERVIDOR e passada pronta: o cliente
-  // perguntando "existe schema?" mostraria a tela quebrada por um instante
-  // antes de descobrir que não existe.
-  const { disponivel, motivo } = await estadoDoTime();
-
-  return (
-    <>
-      <div className="page-header">
-        <h1>Enviar uma nota</h1>
-        <p>Nota fiscal que chegou para a empresa. Hoje a base só conhece nota de saída; a de entrada não tem por onde chegar, e este é o caminho.</p>
-      </div>
-      <TimeApp
-        aba="nota"
-        disponivel={disponivel}
-        motivo={motivo}
-      />
-    </>
-  );
+/** Nota e custo viraram um fluxo só — `/time/custo` registra foto, NF ou os dois. */
+export default function TimeNotaPage() {
+  redirect("/time/custo");
 }

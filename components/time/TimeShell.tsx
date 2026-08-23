@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { useDetalhesFechavel } from "./useDetalhesFechavel";
-
 /**
  * A navegação do app do time.
  *
@@ -15,15 +13,9 @@ import { useDetalhesFechavel } from "./useDetalhesFechavel";
  * linhas — 210px de navegação antes de qualquer conteúdo, numa tela de 852px.
  * Um quarto do aparelho gasto em menu.
  *
- * Pior que o espaço: as sete apareciam com o mesmo peso, então "Início" e
- * "Meu reembolso" competiam com "Lançar custo", que é o que a pessoa abre o app
- * para fazer. Lista plana não tem hierarquia, e sem hierarquia todo mundo lê
- * tudo toda vez.
- *
- * Barra inferior com QUATRO destinos, e a razão de serem quatro: é o que cabe
- * com alvo de 44px numa tela estreita sem virar ícone mudo. O que sobra vai
- * para "Mais" — não por descaso, mas porque são as coisas que se faz uma vez
- * por mês, não a cada compra.
+ * Cinco destinos na ordem de uso: solicitar compra, registrar custo, resumo
+ * (Principal), reembolso e histórico. Principal fica no centro — é o hub, não
+ * a ação mais frequente.
  *
  * E fica embaixo porque é onde o polegar alcança. O topo de um celular grande
  * exige a segunda mão, e este app é usado com uma mão só, no meio da rua, com
@@ -31,17 +23,11 @@ import { useDetalhesFechavel } from "./useDetalhesFechavel";
  */
 
 const PRINCIPAIS = [
-  { href: "/time/custo", rotulo: "Custo", icone: "seta-baixo" },
+  { href: "/time/compra", rotulo: "Solicitar", icone: "sacola" },
+  { href: "/time/custo", rotulo: "Registrar", icone: "seta-baixo" },
+  { href: "/time", rotulo: "Principal", icone: "casa" },
   { href: "/time/reembolso", rotulo: "Reembolso", icone: "volta" },
-  { href: "/time/comprar", rotulo: "Comprar", icone: "sacola" },
-  { href: "/time/envios", rotulo: "Enviados", icone: "lista" }
-] as const;
-
-const SECUNDARIOS = [
-  { href: "/time", rotulo: "Início" },
-  { href: "/time/nota", rotulo: "Enviar nota" },
-  { href: "/time/compra", rotulo: "Pedir compra" },
-  { href: "/time/meu-reembolso", rotulo: "Meu reembolso" }
+  { href: "/time/envios", rotulo: "Histórico", icone: "lista" }
 ] as const;
 
 /** Traço simples, 2px, `currentColor` — o ícone acompanha o estado do item. */
@@ -75,6 +61,12 @@ function Icone({ nome }: { nome: string }) {
         <path d="M5 8h14l-1 12H6L5 8ZM9 8V6a3 3 0 0 1 6 0v2" />
       </svg>
     );
+  if (nome === "casa")
+    return (
+      <svg {...comum}>
+        <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z" />
+      </svg>
+    );
   return (
     <svg {...comum}>
       <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
@@ -84,7 +76,6 @@ function Icone({ nome }: { nome: string }) {
 
 export function TimeShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const mais = useDetalhesFechavel<HTMLDetailsElement>();
 
   // Comparação por SEGMENTO, não `startsWith` cru: com o prefixo,
   // `/time/meu-reembolso` acendia a aba `/time/reembolso` junto — duas ativas
@@ -92,8 +83,6 @@ export function TimeShell({ children }: { children: React.ReactNode }) {
   // `/financeiro` × `/financeiro-publico`.
   const ativo = (href: string) =>
     href === "/time" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
-
-  const secundarioAtivo = SECUNDARIOS.find((s) => ativo(s.href));
 
   return (
     <div className="time-shell">
@@ -106,31 +95,6 @@ export function TimeShell({ children }: { children: React.ReactNode }) {
             <span>{t.rotulo}</span>
           </Link>
         ))}
-
-        {/*
-          `details` em vez de estado no React: abre e fecha sem JavaScript, sem
-          hidratação e sem o piscar de um menu que aparece depois que a página
-          já pintou. O `useDetalhesFechavel` só acrescenta o que falta ao
-          elemento nativo — sair com Esc e com toque fora, sem os quais este
-          menu ficava por cima do botão de enviar e sem gesto de saída.
-        */}
-        <details className="time-mais" ref={mais}>
-          <summary className={secundarioAtivo ? "time-item ativo" : "time-item"}>
-            <svg width={21} height={21} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <circle cx="5" cy="12" r="1.9" />
-              <circle cx="12" cy="12" r="1.9" />
-              <circle cx="19" cy="12" r="1.9" />
-            </svg>
-            <span>{secundarioAtivo ? secundarioAtivo.rotulo.split(" ")[0] : "Mais"}</span>
-          </summary>
-          <div className="time-mais-lista">
-            {SECUNDARIOS.map((t) => (
-              <Link key={t.href} href={t.href} className={ativo(t.href) ? "time-mais-item ativo" : "time-mais-item"}>
-                {t.rotulo}
-              </Link>
-            ))}
-          </div>
-        </details>
       </nav>
     </div>
   );

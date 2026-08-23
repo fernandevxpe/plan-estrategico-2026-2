@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AnexarFlutuante, type OrigemAnexo } from "@/components/time/AnexarFlutuante";
+import { BotaoTema } from "@/components/layout/ThemeToggle";
 import { SeloCamada, brl } from "@/components/financeiro/Certeza";
 
 /**
@@ -40,7 +41,7 @@ type Sessao = {
 type Porta = "basic" | "sessao";
 type Pessoa = { id: number; nome: string; area: string | null; exigePin: boolean };
 type Opcoes = {
-  tipos: { slug: string; nome: string; exigeNfe: boolean }[];
+  tipos: { slug: string; nome: string; exigeNfe: boolean; permiteParcelas: boolean; categoriaId: number | null }[];
   categorias: { id: number; rotulo: string }[];
   centros: { id: number; nome: string; ehProjeto: boolean; nucleo: string | null; recentes: number }[];
   linhas: { id: number; slug: string; nome: string }[];
@@ -50,6 +51,8 @@ type Opcoes = {
     plasticos: { id: number; nome: string; final: string | null; bandeira: string | null; cor: string | null }[];
   }[];
 };
+type StatusExtrato = "registrado" | "aguardando" | "pago" | "nao_pago";
+
 type Envio = {
   origem: string;
   origemId: number;
@@ -65,9 +68,46 @@ type Envio = {
   criadoEm: string;
   itens: number;
   itensComAnexo: number;
+  parcelasTotal: number | null;
+  parcelaAtual: number | null;
+  statusExtrato: StatusExtrato;
+  grupoChave: string;
+  itensPreview: { titulo: string; temComprovante: boolean }[];
 };
 
-export type AbaTime = "inicio" | "reembolso" | "custo" | "nota" | "compra" | "envios" | "meu-reembolso" | "comprar";
+type DetalheEnvio = {
+  origem: string;
+  origemId: number;
+  code: string;
+  titulo: string;
+  valorCents: number | null;
+  statusExtrato: StatusExtrato;
+  parcelasTotal: number | null;
+  partes: {
+    id: number;
+    fonte: "app" | "planilha";
+    titulo: string;
+    slug: string | null;
+    valorCents: number;
+    parcela: number | null;
+    parcelasTotal: number | null;
+    mesRef: string | null;
+    temComprovante: boolean;
+    statusParte: StatusExtrato;
+    categoriaRotulo: string | null;
+  }[];
+  cronograma: { mes: string; parcela: number; valorCents: number; situacao: StatusExtrato | "previsto" }[];
+  relacionados: {
+    origem: string;
+    origemId: number;
+    code: string;
+    titulo: string;
+    valorCents: number | null;
+    statusExtrato: StatusExtrato;
+  }[];
+};
+
+export type AbaTime = "inicio" | "reembolso" | "custo" | "nota" | "compra" | "envios" | "meu-reembolso" | "comprar" | "item";
 
 const HOJE = () => new Date().toISOString().slice(0, 10);
 
@@ -109,7 +149,19 @@ const ORIGEM_ROTULO: Record<string, string> = {
   nota_entrada: "Nota"
 };
 
-export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel: boolean; motivo: string | null }) {
+export function TimeApp({
+  aba,
+  disponivel,
+  motivo,
+  itemFonte,
+  itemId
+}: {
+  aba: AbaTime;
+  disponivel: boolean;
+  motivo: string | null;
+  itemFonte?: "planilha" | "app";
+  itemId?: number;
+}) {
   const [sessao, setSessao] = useState<Sessao | null>(null);
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [porta, setPorta] = useState<Porta>("sessao");
@@ -162,7 +214,7 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
     const r = await fetch("/api/time/envios", { cache: "no-store" });
     if (!r.ok) return;
     const j = await r.json();
-    setEnvios(j.envios ?? []);
+    setEnvios((j.envios ?? []).map((e: Partial<Envio> & Pick<Envio, "origem" | "origemId">) => normalizarEnvio(e)));
     setOpcoes(j.opcoes ?? { tipos: [], categorias: [] });
   }, []);
 
@@ -188,18 +240,26 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
 
   if (!disponivel) {
     return (
-      <div className="time-aviso">
-        <h2>O app do time ainda não está de pé neste ambiente</h2>
-        <p>{motivo ?? "a migration 0105 não foi aplicada"}</p>
-        <p className="time-sub">
-          As telas, as rotas e o schema existem e estão validados. Falta um passo operacional — aplicar a migration —
-          que esta entrega deliberadamente não deu: nesta base, migração validada não é migração aplicada.
-        </p>
+      <div className="time-porta">
+        <div className="time-aviso">
+          <h2>O app do time ainda não está de pé neste ambiente</h2>
+          <p>{motivo ?? "a migration 0105 não foi aplicada"}</p>
+          <p className="time-sub">
+            As telas, as rotas e o schema existem e estão validados. Falta um passo operacional — aplicar a migration —
+            que esta entrega deliberadamente não deu: nesta base, migração validada não é migração aplicada.
+          </p>
+        </div>
       </div>
     );
   }
 
-  if (carregando) return <div className="time-aviso">carregando…</div>;
+  if (carregando) {
+    return (
+      <div className="time-porta">
+        <p className="time-porta-espera">carregando…</p>
+      </div>
+    );
+  }
 
   const recarregar = async () => {
     const s = await carregarSessao();
@@ -217,6 +277,7 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
     <div className="time-app">
       <CabecalhoPessoa
         sessao={sessao}
+        aoAtualizarNome={(nome) => setSessao((s) => (s ? { ...s, nome } : s))}
         aoSair={async () => {
           await fetch("/api/time/sessao", { method: "DELETE" });
           setSessao(null);
@@ -237,7 +298,17 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
       ) : null}
 
       {aba === "inicio" ? <Inicio envios={envios} /> : null}
-      {aba === "reembolso" ? <FormReembolso opcoes={opcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
+      {aba === "reembolso" ? (
+        <FormEnvio
+          kind="custo"
+          somenteReembolso
+          opcoes={opcoes}
+          pessoas={pessoas}
+          aoAtualizarOpcoes={setOpcoes}
+          aoEnviar={aoEnviar}
+          aoFalhar={setRecado}
+        />
+      ) : null}
       {aba === "custo" ? (
         <FormEnvio
           kind="custo"
@@ -262,7 +333,10 @@ export function TimeApp({ aba, disponivel, motivo }: { aba: AbaTime; disponivel:
       {aba === "envios" ? <ListaEnvios envios={envios} /> : null}
       {aba === "meu-reembolso" ? <MeuReembolso /> : null}
       {aba === "comprar" ? (
-        <Comprar opcoes={opcoes} pessoas={pessoas} aoEnviar={aoEnviar} aoFalhar={setRecado} />
+        <Comprar opcoes={opcoes} pessoas={pessoas} aoAtualizarOpcoes={setOpcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} />
+      ) : null}
+      {aba === "item" && itemFonte && itemId ? (
+        <TelaItemGasto fonte={itemFonte} itemId={itemId} aoFalhar={setRecado} />
       ) : null}
     </div>
   );
@@ -310,103 +384,107 @@ function Identificacao({
   }
 
   return (
-    <div className="time-identidade">
-      <h2>Entrar</h2>
-      <p className="time-sub">
-        Use o seu e-mail e a sua senha. É essa entrada que faz cada lançamento nascer com o seu nome — e é por ela que
-        você vê o seu reembolso, e só o seu.
-      </p>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!email.trim() || !senha) return setErro("informe e-mail e senha");
-          void postar({ email: email.trim(), senha });
-        }}
-      >
-        <label className="campo">
-          <span>E-mail</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="username"
-            inputMode="email"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder="voce.xpenergy@gmail.com"
-          />
-        </label>
-        <label className="campo">
-          <span>Senha</span>
-          <input
-            type="password"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            autoComplete="current-password"
-          />
-        </label>
-
-        {erro ? <p className="time-erro">{erro}</p> : null}
-
-        <button type="submit" className="time-botao" disabled={enviando || !email.trim() || !senha}>
-          {enviando ? "entrando…" : "entrar"}
-        </button>
-      </form>
-
-      <p className="time-sub">Sem senha ainda? Peça ao Fernando ou ao Igor — eles cadastram e te entregam uma.</p>
-
-      {podeDeclarar ? (
-        <details className="time-declarar">
-          <summary>Entrar declarando quem sou (só pelo navegador da plataforma)</summary>
-          <p className="time-sub">
-            A senha da plataforma é a mesma para o time inteiro: ela sabe que você é do time, não sabe qual pessoa. Por
-            isso a escolha abaixo fica registrada como <strong>declaração</strong>, não como prova — e esta porta não
-            existe no app instalado no celular.
-          </p>
-          <div className="time-pessoas">
-            {pessoas.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={declarado === p.id ? "time-pessoa ativa" : "time-pessoa"}
-                onClick={() => {
-                  setDeclarado(p.id);
-                  setErro(null);
-                }}
-              >
-                <span className="time-pessoa-nome">{p.nome}</span>
-                {p.area ? <span className="time-pessoa-area">{p.area}</span> : null}
-                {p.exigePin ? <span className="time-pessoa-pin">PIN</span> : null}
-              </button>
-            ))}
+    <div className="time-porta">
+      <div className="time-identidade">
+        <header className="time-porta-marca">
+          <div className="time-porta-icone" aria-hidden>
+            <img src="/icone-192.png" alt="" width={52} height={52} />
           </div>
-          {escolhida?.exigePin ? (
-            <label className="campo">
-              <span>PIN de {escolhida.nome}</span>
-              <input
-                type="password"
-                inputMode="numeric"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                autoComplete="off"
-              />
-            </label>
-          ) : null}
-          <button
-            type="button"
-            className="time-botao secundario"
-            onClick={() => {
-              if (!declarado) return setErro("escolha quem é você");
-              void postar({ personId: declarado, pin: pin || null });
-            }}
-            disabled={enviando || !declarado}
-          >
-            {enviando ? "entrando…" : "entrar declarando"}
+          <p className="time-porta-nome">XPE</p>
+          <p className="time-porta-lema">Custos e reembolsos do time</p>
+        </header>
+
+        <form
+          className="time-porta-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!email.trim() || !senha) return setErro("informe e-mail e senha");
+            void postar({ email: email.trim(), senha });
+          }}
+        >
+          <label className="time-porta-campo">
+            <span>E-mail</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="seu@email.com"
+            />
+          </label>
+          <label className="time-porta-campo">
+            <span>Senha</span>
+            <input
+              type="password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              autoComplete="current-password"
+              placeholder="••••••••"
+            />
+          </label>
+
+          {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
+
+          <button type="submit" className="time-porta-entrar" disabled={enviando || !email.trim() || !senha}>
+            {enviando ? "Entrando…" : "Entrar"}
           </button>
-        </details>
-      ) : null}
+        </form>
+
+        <p className="time-porta-ajuda">Sem senha? Peça ao Fernando ou ao Igor.</p>
+
+        {podeDeclarar ? (
+          <details className="time-porta-declarar">
+            <summary>Entrar declarando quem sou</summary>
+            <p className="time-porta-ajuda">
+              Só no navegador da plataforma. A credencial é do time; você declara qual pessoa é.
+            </p>
+            <div className="time-pessoas">
+              {pessoas.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={declarado === p.id ? "time-pessoa ativa" : "time-pessoa"}
+                  onClick={() => {
+                    setDeclarado(p.id);
+                    setErro(null);
+                  }}
+                >
+                  <span className="time-pessoa-nome">{p.nome}</span>
+                  {p.area ? <span className="time-pessoa-area">{p.area}</span> : null}
+                  {p.exigePin ? <span className="time-pessoa-pin">PIN</span> : null}
+                </button>
+              ))}
+            </div>
+            {escolhida?.exigePin ? (
+              <label className="time-porta-campo">
+                <span>PIN de {escolhida.nome}</span>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  autoComplete="off"
+                />
+              </label>
+            ) : null}
+            <button
+              type="button"
+              className="time-porta-entrar secundario"
+              onClick={() => {
+                if (!declarado) return setErro("escolha quem é você");
+                void postar({ personId: declarado, pin: pin || null });
+              }}
+              disabled={enviando || !declarado}
+            >
+              {enviando ? "Entrando…" : "Continuar"}
+            </button>
+          </details>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -445,32 +523,41 @@ function TrocarSenha({ nome, aoTrocar }: { nome: string; aoTrocar: () => Promise
   }
 
   return (
-    <div className="time-identidade">
-      <h2>Escolha uma senha sua, {nome.split(" ")[0]}</h2>
-      <p className="time-sub">
-        A senha que você recebeu foi criada por outra pessoa, e ela conhece o valor. Antes de qualquer outra coisa,
-        troque por uma que só você saiba. As outras sessões abertas com a senha antiga vão cair.
-      </p>
-      <form onSubmit={trocar}>
-        <label className="campo">
-          <span>Senha que você recebeu</span>
-          <input type="password" value={atual} onChange={(e) => setAtual(e.target.value)} autoComplete="current-password" />
-        </label>
-        <label className="campo">
-          <span>Nova senha (mínimo 8 caracteres)</span>
-          <input type="password" value={nova} onChange={(e) => setNova(e.target.value)} autoComplete="new-password" />
-          {curta ? <span className="time-erro">faltam {8 - nova.length} caractere(s)</span> : null}
-        </label>
-        <label className="campo">
-          <span>Repita a nova senha</span>
-          <input type="password" value={repetida} onChange={(e) => setRepetida(e.target.value)} autoComplete="new-password" />
-          {diferem ? <span className="time-erro">as duas não são iguais</span> : null}
-        </label>
-        {erro ? <p className="time-erro">{erro}</p> : null}
-        <button type="submit" className="time-botao" disabled={enviando || !atual || nova.length < 8 || nova !== repetida}>
-          {enviando ? "trocando…" : "trocar e continuar"}
-        </button>
-      </form>
+    <div className="time-porta">
+      <div className="time-identidade">
+        <header className="time-porta-marca">
+          <div className="time-porta-icone" aria-hidden>
+            <img src="/icone-192.png" alt="" width={52} height={52} />
+          </div>
+          <p className="time-porta-nome">Nova senha</p>
+          <p className="time-porta-lema">Olá, {nome.split(" ")[0]}</p>
+        </header>
+
+        <p className="time-porta-ajuda">
+          Troque a senha de entrega por uma que só você saiba.
+        </p>
+
+        <form className="time-porta-form" onSubmit={trocar}>
+          <label className="time-porta-campo">
+            <span>Senha que você recebeu</span>
+            <input type="password" value={atual} onChange={(e) => setAtual(e.target.value)} autoComplete="current-password" />
+          </label>
+          <label className="time-porta-campo">
+            <span>Nova senha</span>
+            <input type="password" value={nova} onChange={(e) => setNova(e.target.value)} autoComplete="new-password" placeholder="mínimo 8 caracteres" />
+            {curta ? <span className="time-porta-erro">faltam {8 - nova.length} caractere(s)</span> : null}
+          </label>
+          <label className="time-porta-campo">
+            <span>Repita a nova senha</span>
+            <input type="password" value={repetida} onChange={(e) => setRepetida(e.target.value)} autoComplete="new-password" />
+            {diferem ? <span className="time-porta-erro">as duas não são iguais</span> : null}
+          </label>
+          {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
+          <button type="submit" className="time-porta-entrar" disabled={enviando || !atual || nova.length < 8 || nova !== repetida}>
+            {enviando ? "Salvando…" : "Continuar"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -523,8 +610,15 @@ function MeuReembolso() {
   const proximo = aReceber.proximosMeses[0];
 
   return (
-    <div className="reemb">
-      <h2>Meu reembolso</h2>
+    <div className="reemb time-tela-padrao">
+      <header className="time-form-cabeca">
+        <h1>Meu reembolso</h1>
+        <p>Quanto a empresa ainda te deve, quando cai, e o que já foi pago.</p>
+      </header>
+
+      <Link href="/time/reembolso" className="time-botao time-botao-secundario">
+        Pedir reembolso
+      </Link>
 
       <div className="reemb-destaques">
         <article className="kpi-card">
@@ -644,11 +738,13 @@ type CompraAprovada = {
 function Comprar({
   opcoes,
   pessoas,
+  aoAtualizarOpcoes,
   aoEnviar,
   aoFalhar
 }: {
   opcoes: Opcoes;
   pessoas: Pessoa[];
+  aoAtualizarOpcoes: (o: Opcoes) => void;
   aoEnviar: AoEnviar;
   aoFalhar: AoFalhar;
 }) {
@@ -670,7 +766,7 @@ function Comprar({
 
   if (escolhida) {
     return (
-      <div className="comprar">
+      <div className="comprar time-tela-padrao">
         <button type="button" className="comprar-voltar" onClick={() => setEscolhida(null)}>
           ← outras compras
         </button>
@@ -685,7 +781,7 @@ function Comprar({
           opcoes={opcoes}
           pessoas={pessoas}
           compra={escolhida}
-          aoAtualizarOpcoes={() => {}}
+          aoAtualizarOpcoes={aoAtualizarOpcoes}
           aoEnviar={async (t) => {
             setEscolhida(null);
             await carregar();
@@ -699,8 +795,11 @@ function Comprar({
 
   if (compras.length === 0) {
     return (
-      <div className="comprar">
-        <h2>Nada para comprar agora</h2>
+      <div className="comprar time-tela-padrao">
+        <header className="time-form-cabeca">
+          <h1>Comprar</h1>
+          <p>Pedidos aprovados que ainda não viraram gasto registrado.</p>
+        </header>
         <p className="time-sub">
           Quando um pedido seu for aprovado, ele aparece aqui esperando você comprar. Depois é só registrar
           quanto gastou de verdade.
@@ -711,8 +810,11 @@ function Comprar({
 
   const hoje = HOJE();
   return (
-    <div className="comprar">
-      <h2>Aprovadas, esperando você comprar</h2>
+    <div className="comprar time-tela-padrao">
+      <header className="time-form-cabeca">
+        <h1>Comprar</h1>
+        <p>Aprovadas e esperando você comprar — depois registre o valor real.</p>
+      </header>
       <ul className="comprar-lista">
         {compras.map((c) => {
           const atrasada = c.precisaAte !== null && c.precisaAte < hoje;
@@ -763,14 +865,128 @@ function Comprar({
 const semAcento = (v: string) =>
   v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
+function IconeRotuloBusca({
+  tipo
+}: {
+  tipo: "categoria" | "destino" | "compra" | "descricao" | "valor" | "data" | "tipo" | "pagamento" | "urgencia" | "link";
+}) {
+  const comum = {
+    className: "campo-rotulo-icone",
+    width: 20,
+    height: 20,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true
+  };
+  if (tipo === "compra") {
+    return (
+      <svg {...comum}>
+        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+        <path d="M3 6h18" />
+        <path d="M16 10a4 4 0 0 1-8 0" />
+      </svg>
+    );
+  }
+  if (tipo === "descricao") {
+    return (
+      <svg {...comum}>
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
+    );
+  }
+  if (tipo === "valor") {
+    return (
+      <svg {...comum}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 0 1 0 4H8" />
+        <path d="M12 6v2" />
+        <path d="M12 16v2" />
+      </svg>
+    );
+  }
+  if (tipo === "data") {
+    return (
+      <svg {...comum}>
+        <path d="M8 2v4" />
+        <path d="M16 2v4" />
+        <rect width="18" height="18" x="3" y="4" rx="2" />
+        <path d="M3 10h18" />
+      </svg>
+    );
+  }
+  if (tipo === "tipo") {
+    return (
+      <svg {...comum}>
+        <path d="M4 7h7v7H4z" />
+        <path d="M13 7h7v4h-7z" />
+        <path d="M13 14h7v3h-7z" />
+      </svg>
+    );
+  }
+  if (tipo === "pagamento") {
+    return (
+      <svg {...comum}>
+        <rect width="20" height="14" x="2" y="5" rx="2" />
+        <path d="M2 10h20" />
+      </svg>
+    );
+  }
+  if (tipo === "urgencia") {
+    return (
+      <svg {...comum}>
+        <path d="M12 2v4" />
+        <path d="m4.93 4.93 2.83 2.83" />
+        <path d="M2 12h4" />
+        <path d="m4.93 19.07 2.83-2.83" />
+        <circle cx="12" cy="13" r="7" />
+        <path d="M12 10v4l2 2" />
+      </svg>
+    );
+  }
+  if (tipo === "link") {
+    return (
+      <svg {...comum}>
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      </svg>
+    );
+  }
+  if (tipo === "categoria") {
+    return (
+      <svg {...comum}>
+        <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+        <circle cx="7.5" cy="7.5" r="1.5" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...comum}>
+      <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
+      <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
+      <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" />
+      <path d="M10 6h4" />
+      <path d="M10 10h4" />
+      <path d="M10 14h4" />
+      <path d="M10 18h4" />
+    </svg>
+  );
+}
+
 function BuscaDestino({
   centros,
   valor,
-  aoEscolher
+  aoEscolher,
+  destaque = false
 }: {
   centros: Opcoes["centros"];
   valor: string;
   aoEscolher: (id: string) => void;
+  destaque?: boolean;
 }) {
   const [termo, setTermo] = useState("");
   const [aberto, setAberto] = useState(false);
@@ -785,10 +1001,16 @@ function BuscaDestino({
     };
   }, [centros, termo]);
 
+  const rotuloCls = destaque ? "campo-rotulo campo-rotulo-destaque" : "campo-rotulo";
+
   if (escolhido) {
     return (
       <div className="campo">
-        <span className="campo-rotulo">Para qual obra ou projeto</span>
+        <span className={rotuloCls}>
+          {destaque ? <IconeRotuloBusca tipo="destino" /> : null}
+          Para qual obra ou projeto
+          {destaque ? <span className="campo-opcional">opcional</span> : null}
+        </span>
         <div className="destino-escolhido">
           <div>
             <strong>{escolhido.nome}</strong>
@@ -805,18 +1027,26 @@ function BuscaDestino({
   const total = achados.obras.length + achados.areas.length;
 
   return (
-    <div className="campo destino">
-      <label className="campo-rotulo" htmlFor="busca-destino">
+    <div className={`campo destino${destaque ? " destino-destaque" : ""}`}>
+      <label className={rotuloCls} htmlFor="busca-destino">
+        {destaque ? <IconeRotuloBusca tipo="destino" /> : null}
         Para qual obra ou projeto
+        {destaque ? <span className="campo-opcional">opcional</span> : null}
       </label>
-      <input
-        id="busca-destino"
-        value={termo}
-        onChange={(e) => { setTermo(e.target.value); setAberto(true); }}
-        onFocus={() => setAberto(true)}
-        placeholder="escreva o cliente, a obra ou a área"
-        autoComplete="off"
-      />
+      <div className="campo-busca">
+        <svg className="campo-busca-icone" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+        </svg>
+        <input
+          id="busca-destino"
+          value={termo}
+          onChange={(e) => { setTermo(e.target.value); setAberto(true); }}
+          onFocus={() => setAberto(true)}
+          placeholder="cliente, obra ou área"
+          autoComplete="off"
+        />
+      </div>
 
       {aberto ? (
         <div className="destino-lista">
@@ -846,7 +1076,368 @@ function BuscaDestino({
           </button>
         </div>
       ) : (
-        <small>É o campo que mais ajuda. Escreva o cliente e escolha — o custo já sabe de quem é.</small>
+        <small>{destaque ? "Busque pelo cliente, obra ou área." : "Opcional — ajuda a direcionar para o cliente ou obra certa."}</small>
+      )}
+    </div>
+  );
+}
+
+function BuscaCategoria({
+  categorias,
+  valor,
+  proposta,
+  aoEscolher,
+  aoPropor,
+  destaque = false
+}: {
+  categorias: Opcoes["categorias"];
+  valor: string;
+  proposta: string;
+  aoEscolher: (id: string) => void;
+  aoPropor: (texto: string) => void;
+  destaque?: boolean;
+}) {
+  const [termo, setTermo] = useState("");
+  const [aberto, setAberto] = useState(false);
+  const escolhida = categorias.find((c) => String(c.id) === valor);
+
+  const achados = useMemo(() => {
+    const t = semAcento(termo.trim());
+    const base = t ? categorias.filter((c) => semAcento(c.rotulo).includes(t)) : categorias;
+    return base.slice(0, 10);
+  }, [categorias, termo]);
+
+  const rotuloCls = destaque ? "campo-rotulo campo-rotulo-destaque" : "campo-rotulo";
+
+  if (escolhida) {
+    return (
+      <div className="campo">
+        <span className={rotuloCls}>
+          {destaque ? <IconeRotuloBusca tipo="categoria" /> : null}
+          Categoria
+        </span>
+        <div className="destino-escolhido">
+          <div>
+            <strong>{escolhida.rotulo}</strong>
+            <span className="time-sub">sugestão sua — o financeiro confere</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              aoEscolher("");
+              setTermo("");
+              setAberto(true);
+            }}
+          >
+            trocar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (proposta) {
+    return (
+      <div className="campo">
+        <span className={rotuloCls}>
+          {destaque ? <IconeRotuloBusca tipo="categoria" /> : null}
+          Categoria
+        </span>
+        <div className="destino-escolhido">
+          <div>
+            <strong>{proposta}</strong>
+            <span className="time-sub">nova — o financeiro valida antes de entrar na DRE</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              aoPropor("");
+              setTermo("");
+              setAberto(true);
+            }}
+          >
+            trocar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const podeSugerir =
+    termo.trim().length >= 3 &&
+    !achados.some((c) => semAcento(c.rotulo) === semAcento(termo.trim()));
+
+  return (
+    <div className={`campo destino${destaque ? " destino-destaque" : ""}`}>
+      <label className={rotuloCls} htmlFor="busca-categoria">
+        {destaque ? <IconeRotuloBusca tipo="categoria" /> : null}
+        Categoria
+      </label>
+      <div className="campo-busca">
+        <svg className="campo-busca-icone" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+        </svg>
+        <input
+          id="busca-categoria"
+          value={termo}
+          onChange={(e) => { setTermo(e.target.value); setAberto(true); }}
+          onFocus={() => setAberto(true)}
+          placeholder="buscar na lista ou sugerir nova"
+          autoComplete="off"
+        />
+      </div>
+
+      {aberto ? (
+        <div className="destino-lista">
+          {achados.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => {
+                aoEscolher(String(c.id));
+                aoPropor("");
+                setAberto(false);
+              }}
+            >
+              {c.rotulo}
+            </button>
+          ))}
+          {podeSugerir ? (
+            <button
+              type="button"
+              className="destino-criar"
+              onClick={() => {
+                aoPropor(termo.trim());
+                aoEscolher("");
+                setAberto(false);
+              }}
+            >
+              Sugerir «{termo.trim()}»
+            </button>
+          ) : null}
+          {achados.length === 0 && !podeSugerir ? (
+            <p className="destino-vazio">Nada com “{termo}”. Escreva mais para sugerir uma nova.</p>
+          ) : null}
+          <button
+            type="button"
+            className="destino-nenhum"
+            onClick={() => {
+              aoEscolher("");
+              aoPropor("");
+              setAberto(false);
+            }}
+          >
+            Deixo para o financeiro decidir
+          </button>
+        </div>
+      ) : (
+        <small>{destaque ? "Busque na lista ou sugira uma categoria nova." : "Opcional — busque na lista ou proponha uma categoria nova."}</small>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Tipo de reembolso + categorias de custo numa busca só.
+ *
+ * Os onze tipos de `fin_reimbursement_type` cobrem o dia a dia, mas a DRE tem
+ * 38 rubricas — esconder o resto atrás de chip obriga a rolar 275px de altura.
+ * Aqui os cinco primeiros (sort_order) aparecem como atalho; o resto vem com
+ * filtro, e categorias que não têm tipo dedicado entram na segunda seção.
+ */
+function BuscaClassificacaoGasto({
+  tipos,
+  categorias,
+  tipoSlug,
+  categoriaId,
+  aoEscolherTipo,
+  aoEscolherCategoria
+}: {
+  tipos: Opcoes["tipos"];
+  categorias: Opcoes["categorias"];
+  tipoSlug: string;
+  categoriaId: string;
+  aoEscolherTipo: (slug: string) => void;
+  aoEscolherCategoria: (id: string) => void;
+}) {
+  const [termo, setTermo] = useState("");
+  const [aberto, setAberto] = useState(false);
+
+  const tipoEscolhido = tipos.find((t) => t.slug === tipoSlug);
+  const categoriaEscolhida =
+    !tipoSlug && categoriaId ? categorias.find((c) => String(c.id) === categoriaId) : null;
+
+  const idsDosTipos = useMemo(() => new Set(tipos.map((t) => t.categoriaId).filter((id): id is number => id != null)), [tipos]);
+
+  const filtro = semAcento(termo.trim());
+
+  const tiposVisiveis = useMemo(() => {
+    const base = filtro
+      ? tipos.filter((t) => semAcento(t.nome).includes(filtro) || semAcento(t.slug).includes(filtro))
+      : tipos;
+    return base;
+  }, [tipos, filtro]);
+
+  const categoriasExtras = useMemo(() => {
+    const base = categorias.filter((c) => !idsDosTipos.has(c.id));
+    if (!filtro) return base;
+    return base.filter((c) => semAcento(c.rotulo).includes(filtro));
+  }, [categorias, idsDosTipos, filtro]);
+
+  const frequentes = tipos.slice(0, 5);
+  const rotuloCls = "campo-rotulo campo-rotulo-destaque";
+
+  if (tipoEscolhido) {
+    return (
+      <div className="campo">
+        <span className={rotuloCls}>
+          <IconeRotuloBusca tipo="tipo" />
+          Tipo de gasto
+        </span>
+        <div className="destino-escolhido">
+          <div>
+            <strong>{tipoEscolhido.nome}</strong>
+            <span className="time-sub">
+              {tipoEscolhido.exigeNfe ? "exige NF-e" : "tipo de reembolso"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              aoEscolherTipo("");
+              setTermo("");
+              setAberto(true);
+            }}
+          >
+            trocar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (categoriaEscolhida) {
+    return (
+      <div className="campo">
+        <span className={rotuloCls}>
+          <IconeRotuloBusca tipo="categoria" />
+          Categoria de custo
+        </span>
+        <div className="destino-escolhido">
+          <div>
+            <strong>{categoriaEscolhida.rotulo}</strong>
+            <span className="time-sub">categoria da DRE — sem tipo dedicado de reembolso</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              aoEscolherCategoria("");
+              setTermo("");
+              setAberto(true);
+            }}
+          >
+            trocar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const mostrarFrequentes = !filtro && !aberto;
+
+  return (
+    <div className="campo destino destino-destaque">
+      <label className={rotuloCls} htmlFor="busca-classificacao-gasto">
+        <IconeRotuloBusca tipo="tipo" />
+        Tipo ou categoria
+      </label>
+
+      {mostrarFrequentes ? (
+        <div className="classif-atalhos">
+          <p className="destino-grupo">Mais usados</p>
+          <div className="chips chips-compactos">
+            {frequentes.map((t) => (
+              <button
+                key={t.slug}
+                type="button"
+                className="chip"
+                onClick={() => {
+                  aoEscolherTipo(t.slug);
+                  aoEscolherCategoria("");
+                  setAberto(false);
+                }}
+              >
+                {t.nome}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="campo-busca">
+        <svg className="campo-busca-icone" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+        </svg>
+        <input
+          id="busca-classificacao-gasto"
+          value={termo}
+          onChange={(e) => {
+            setTermo(e.target.value);
+            setAberto(true);
+          }}
+          onFocus={() => setAberto(true)}
+          placeholder="buscar tipo ou categoria"
+          autoComplete="off"
+        />
+      </div>
+
+      {aberto || filtro ? (
+        <div className="destino-lista">
+          {tiposVisiveis.length > 0 ? (
+            <>
+              <p className="destino-grupo">Tipos de reembolso</p>
+              {tiposVisiveis.slice(0, 12).map((t) => (
+                <button
+                  key={t.slug}
+                  type="button"
+                  onClick={() => {
+                    aoEscolherTipo(t.slug);
+                    aoEscolherCategoria("");
+                    setAberto(false);
+                  }}
+                >
+                  {t.nome}
+                  {t.exigeNfe ? " · exige NF-e" : ""}
+                </button>
+              ))}
+            </>
+          ) : null}
+          {categoriasExtras.length > 0 ? (
+            <>
+              <p className="destino-grupo">Outras categorias de custo</p>
+              {categoriasExtras.slice(0, 10).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    aoEscolherCategoria(String(c.id));
+                    aoEscolherTipo("");
+                    setAberto(false);
+                  }}
+                >
+                  {c.rotulo}
+                </button>
+              ))}
+            </>
+          ) : null}
+          {tiposVisiveis.length === 0 && categoriasExtras.length === 0 ? (
+            <p className="destino-vazio">Nada com “{termo}”.</p>
+          ) : null}
+        </div>
+      ) : (
+        <small>Escolha um atalho ou busque na lista completa.</small>
       )}
     </div>
   );
@@ -1245,23 +1836,177 @@ function CadastrarCartao({
   );
 }
 
-function CabecalhoPessoa({ sessao, aoSair }: { sessao: Sessao; aoSair: () => Promise<void> }) {
+function iniciais(nome: string) {
+  const p = nome.trim().split(/\s+/).filter(Boolean);
+  if (p.length === 0) return "?";
+  if (p.length === 1) return p[0].slice(0, 2).toUpperCase();
+  return (p[0][0] + p[p.length - 1][0]).toUpperCase();
+}
+
+function CabecalhoPessoa({
+  sessao,
+  aoAtualizarNome,
+  aoSair
+}: {
+  sessao: Sessao;
+  aoAtualizarNome: (nome: string) => void;
+  aoSair: () => Promise<void>;
+}) {
+  const [perfil, setPerfil] = useState<{ nome: string; email: string | null; temFoto: boolean } | null>(null);
+  const [folha, setFolha] = useState(false);
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [fotoVersao, setFotoVersao] = useState(0);
+  const fotoRef = useRef<HTMLInputElement>(null);
+
+  const carregar = useCallback(async () => {
+    const r = await fetch("/api/time/perfil", { cache: "no-store" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return;
+    setPerfil(j.perfil);
+    setNome(j.perfil.nome);
+    setEmail(j.perfil.email ?? "");
+  }, []);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  async function salvarPerfil(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true);
+    setErro(null);
+    const r = await fetch("/api/time/perfil", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ nome: nome.trim(), email: email.trim() || null })
+    });
+    const j = await r.json().catch(() => ({}));
+    setSalvando(false);
+    if (!r.ok) return setErro(j.error ?? "não consegui salvar");
+    setPerfil(j.perfil);
+    aoAtualizarNome(j.perfil.nome);
+    setFolha(false);
+  }
+
+  async function enviarFoto(arquivo: File) {
+    const redimensionada = await encolherImagem(arquivo);
+    const fd = new FormData();
+    fd.append("arquivo", redimensionada);
+    setSalvando(true);
+    setErro(null);
+    const r = await fetch("/api/time/perfil/foto", { method: "POST", body: fd });
+    setSalvando(false);
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      setErro(j.error ?? "não consegui salvar a foto");
+      return;
+    }
+    setPerfil((p) => (p ? { ...p, temFoto: true } : p));
+    setFotoVersao((n) => n + 1);
+  }
+
+  const fotoSrc = perfil?.temFoto ? `/api/time/perfil/foto?v=${fotoVersao}` : null;
+
   return (
-    <div className="time-quem">
-      <div>
-        <strong>{sessao.nome}</strong>
-        <span className="time-prova" title={
-          sessao.prova === "declarada"
-            ? "a credencial é compartilhada pelo time: você declarou quem é, e ninguém provou. Tudo que você enviar fica marcado assim."
-            : "identidade conferida por PIN"
-        }>
-          {sessao.prova === "declarada" ? "identidade declarada" : "identidade conferida"}
-        </span>
-      </div>
-      <button type="button" className="time-link" onClick={aoSair}>
-        não sou eu
-      </button>
-    </div>
+    <>
+      <header className="time-topo">
+        <button type="button" className="time-topo-perfil" onClick={() => setFolha(true)}>
+          <span className="time-topo-foto">
+            {fotoSrc ? (
+              <img src={fotoSrc} alt="" />
+            ) : (
+              <span className="time-topo-iniciais">{iniciais(sessao.nome)}</span>
+            )}
+          </span>
+          <span className="time-topo-texto">
+            <strong>{sessao.nome}</strong>
+            <span>Meu perfil</span>
+          </span>
+        </button>
+        <div className="time-topo-acoes">
+          <BotaoTema className="time-topo-tema" />
+          <button type="button" className="time-topo-sair" onClick={() => void aoSair()} aria-label="Sair">
+            <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      {folha ? (
+        <div className="time-perfil-casca" role="presentation" onClick={() => setFolha(false)}>
+          <div
+            className="time-perfil-folha"
+            role="dialog"
+            aria-label="Meu perfil"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="time-perfil-folha-cabeca">
+              <h2>Meu perfil</h2>
+              <button type="button" className="time-perfil-fechar" onClick={() => setFolha(false)} aria-label="Fechar">
+                ×
+              </button>
+            </div>
+
+            <div className="time-perfil-foto-linha">
+              <button type="button" className="time-topo-foto time-topo-foto-grande" onClick={() => fotoRef.current?.click()}>
+                {fotoSrc ? (
+                  <img src={fotoSrc} alt="" />
+                ) : (
+                  <span className="time-topo-iniciais">{iniciais(nome || sessao.nome)}</span>
+                )}
+              </button>
+              <div>
+                <button type="button" className="time-perfil-foto-btn" onClick={() => fotoRef.current?.click()} disabled={salvando}>
+                  {salvando ? "Salvando…" : "Trocar foto"}
+                </button>
+                <p className="time-sub">Câmera ou galeria</p>
+              </div>
+              <input
+                ref={fotoRef}
+                type="file"
+                accept="image/*"
+                capture="user"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) void enviarFoto(f);
+                }}
+              />
+            </div>
+
+            <form className="time-porta-form" onSubmit={salvarPerfil}>
+              <label className="time-porta-campo">
+                <span>Nome</span>
+                <input value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" />
+              </label>
+              <label className="time-porta-campo">
+                <span>E-mail</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  inputMode="email"
+                />
+              </label>
+              {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
+              <button type="submit" className="time-porta-entrar" disabled={salvando || nome.trim().length < 2}>
+                {salvando ? "Salvando…" : "Salvar"}
+              </button>
+            </form>
+
+            <button type="button" className="time-perfil-sair" onClick={() => void aoSair()}>
+              Sair da conta
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -1272,15 +2017,97 @@ function CabecalhoPessoa({ sessao, aoSair }: { sessao: Sessao; aoSair: () => Pro
 function Inicio({ envios }: { envios: Envio[] }) {
   const aguardando = envios.filter((e) => e.estado === "aguardando");
   const voltaram = envios.filter((e) => e.estado === "devolvido" || e.estado === "recusado");
+  const [resumo, setResumo] = useState<{
+    reembolsoMesCents: number;
+    comprasMesCents: number;
+    aReceberCents: number;
+    historico: { mes: string; solicitadoCents: number; recebidoCents: number }[];
+    comprasRecentes: { code: string; titulo: string; valorCents: number | null; dataRef: string | null; estado: string }[];
+  } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const r = await fetch("/api/time/inicio", { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) setResumo(j.resumo);
+    })();
+  }, []);
+
+  const pico =
+    resumo && resumo.historico.length > 0
+      ? Math.max(1, ...resumo.historico.flatMap((h) => [h.solicitadoCents, h.recebidoCents]))
+      : 1;
+
+  const temGrafico = resumo?.historico.some((h) => h.solicitadoCents > 0 || h.recebidoCents > 0);
 
   return (
-    <>
-      <div className="time-atalhos">
-        <Atalho href="/time/reembolso" titulo="Pedir reembolso" texto="Gastei do meu bolso e quero de volta" icone="↩" />
-        <Atalho href="/time/custo" titulo="Lançar um custo" texto="A empresa pagou ou vai pagar" icone="↓" />
-        <Atalho href="/time/nota" titulo="Enviar uma nota" texto="Nota fiscal que chegou para nós" icone="▤" />
-        <Atalho href="/time/compra" titulo="Pedir uma compra" texto="Com o link do que precisa ser comprado" icone="＋" />
-      </div>
+    <div className="time-tela-padrao">
+      <header className="time-form-cabeca">
+        <h1>Início</h1>
+        <p>Resumo do mês, atalhos e o que está pendente com o financeiro.</p>
+      </header>
+
+      {resumo ? (
+        <>
+          <div className="time-faixa">
+            <article className="time-faixa-item">
+              <span className="time-faixa-rotulo">Reembolso no mês</span>
+              <strong className="time-faixa-valor">{brl(resumo.reembolsoMesCents)}</strong>
+            </article>
+            <article className="time-faixa-item">
+              <span className="time-faixa-rotulo">Compras no mês</span>
+              <strong className="time-faixa-valor">{brl(resumo.comprasMesCents)}</strong>
+            </article>
+            <Link href="/time/meu-reembolso" className="time-faixa-item time-faixa-destaque">
+              <span className="time-faixa-rotulo">A receber</span>
+              <strong className="time-faixa-valor">{brl(resumo.aReceberCents)}</strong>
+            </Link>
+          </div>
+
+          {temGrafico ? <GraficoReembolso historico={resumo.historico} pico={pico} /> : null}
+        </>
+      ) : null}
+
+      <section className="time-secao">
+        <h2>Enviar ao financeiro</h2>
+        <nav className="time-menu-atalhos" aria-label="Enviar ao financeiro">
+          <Atalho href="/time/reembolso" titulo="Reembolso" texto="Solicitar e registrar" tipo="reembolso" />
+          <Atalho
+            href="/time/custo"
+            titulo="Registrar compra"
+            texto="Foto, nota fiscal ou os dois"
+            tipo="custo"
+          />
+          <Atalho
+            href="/time/compra"
+            titulo="Solicitar compra"
+            texto="Links, valores e por que precisa"
+            tipo="compra"
+          />
+        </nav>
+
+        {resumo && resumo.comprasRecentes.length > 0 ? (
+          <details className="time-compras-dobrada">
+            <summary>
+              <span>Minhas compras</span>
+              <span className="time-compras-contagem">{resumo.comprasRecentes.length}</span>
+            </summary>
+            <ul className="time-compras-lista">
+              {resumo.comprasRecentes.map((c) => (
+                <li key={c.code}>
+                  <div>
+                    <strong>{c.titulo}</strong>
+                    <span className="time-sub">
+                      {c.code} · {ESTADO_ROTULO[c.estado as Envio["estado"]]?.texto ?? c.estado}
+                    </span>
+                  </div>
+                  <span className="time-compras-valor">{c.valorCents !== null ? brl(c.valorCents) : "—"}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+      </section>
 
       {voltaram.length > 0 ? (
         <section className="time-secao">
@@ -1301,17 +2128,180 @@ function Inicio({ envios }: { envios: Envio[] }) {
       <p className="time-sub time-rodape">
         <Link href="/time/envios">Ver tudo que eu já enviei →</Link>
       </p>
-    </>
+    </div>
   );
 }
 
-function Atalho({ href, titulo, texto, icone }: { href: string; titulo: string; texto: string; icone: string }) {
+function IconeAtalho({ tipo }: { tipo: "reembolso" | "custo" | "nota" | "compra" }) {
+  const comum = {
+    width: 20,
+    height: 20,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const
+  };
+  if (tipo === "reembolso")
+    return (
+      <svg {...comum}>
+        <path d="M9 7 4 12l5 5M4 12h10a6 6 0 0 1 6 6v2" />
+      </svg>
+    );
+  if (tipo === "custo")
+    return (
+      <svg {...comum}>
+        <path d="M12 4v13M6.5 11.5 12 17l5.5-5.5M5 20h14" />
+      </svg>
+    );
+  if (tipo === "nota")
+    return (
+      <svg {...comum}>
+        <path d="M8 6h12M8 12h12M8 18h8M4 6h.01M4 12h.01M4 18h.01" />
+      </svg>
+    );
   return (
-    <Link href={href} className="time-atalho">
+    <svg {...comum}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function GraficoReembolso({
+  historico,
+  pico
+}: {
+  historico: { mes: string; solicitadoCents: number; recebidoCents: number }[];
+  pico: number;
+}) {
+  const [dica, setDica] = useState<{
+    mes: string;
+    solicitado: number;
+    recebido: number;
+    indice: number;
+  } | null>(null);
+
+  const cols = historico.length;
+  const largura = cols * 52 + 8;
+  const grafAltura = 48;
+  const grafBase = 72;
+  const grafViewH = 92;
+  const grafMesY = 86;
+
+  return (
+    <section className="time-grafico-secao" aria-labelledby="time-grafico-titulo">
+      <div className="time-grafico-cabeca">
+        <h2 id="time-grafico-titulo" className="time-grafico-titulo">Reembolsos</h2>
+        <div className="time-grafico-legenda">
+          <span><i className="time-leg-solicitado" /> pedido</span>
+          <span><i className="time-leg-recebido" /> pago</span>
+        </div>
+      </div>
+
+      <div className="time-grafico-area">
+        {dica ? (
+          <div
+            className="time-grafico-dica"
+            style={{ left: `${((dica.indice + 0.5) / cols) * 100}%` }}
+            role="status"
+          >
+            <strong>{MES_CURTO(dica.mes)}</strong>
+            <span className="time-dica-linha time-dica-solic">
+              Pedido <em>{brl(dica.solicitado)}</em>
+            </span>
+            <span className="time-dica-linha time-dica-rec">
+              Pago <em>{brl(dica.recebido)}</em>
+            </span>
+          </div>
+        ) : null}
+
+        <svg
+          className="time-grafico"
+          viewBox={`0 0 ${largura} ${grafViewH}`}
+          role="img"
+          aria-label="Histórico de reembolsos nos últimos seis meses"
+        >
+          {[0.25, 0.5, 0.75].map((f) => (
+            <line
+              key={f}
+              x1={4}
+              y1={grafBase - grafAltura * f}
+              x2={largura - 4}
+              y2={grafBase - grafAltura * f}
+              className="time-grafico-guia"
+            />
+          ))}
+
+          {historico.map((h, i) => {
+            const altS = Math.max(2, Math.round((h.solicitadoCents / pico) * grafAltura));
+            const altR = Math.max(2, Math.round((h.recebidoCents / pico) * grafAltura));
+            const x = i * 52 + 10;
+            const ativo = dica?.mes === h.mes;
+
+            return (
+              <g
+                key={h.mes}
+                className={ativo ? "time-barra-grupo ativo" : "time-barra-grupo"}
+                onMouseEnter={() =>
+                  setDica({ mes: h.mes, solicitado: h.solicitadoCents, recebido: h.recebidoCents, indice: i })
+                }
+                onMouseLeave={() => setDica(null)}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  setDica({ mes: h.mes, solicitado: h.solicitadoCents, recebido: h.recebidoCents, indice: i });
+                }}
+                tabIndex={0}
+                role="button"
+                aria-label={`${MES_CURTO(h.mes)}: pedido ${brl(h.solicitadoCents)}, pago ${brl(h.recebidoCents)}`}
+              >
+                <rect
+                  x={x}
+                  y={grafBase - altS}
+                  width={14}
+                  height={altS}
+                  rx={4}
+                  className="time-bar-solicitado"
+                />
+                <rect
+                  x={x + 18}
+                  y={grafBase - altR}
+                  width={14}
+                  height={altR}
+                  rx={4}
+                  className="time-bar-recebido"
+                />
+                <text x={x + 16} y={grafMesY} className="time-grafico-mes">
+                  {MES_CURTO(h.mes).slice(0, 3)}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </section>
+  );
+}
+
+function Atalho({
+  href,
+  titulo,
+  texto,
+  tipo,
+  compacto = false
+}: {
+  href: string;
+  titulo: string;
+  texto: string;
+  tipo: "reembolso" | "custo" | "nota" | "compra";
+  compacto?: boolean;
+}) {
+  return (
+    <Link href={href} className={compacto ? "time-atalho time-atalho-compacto" : "time-atalho"}>
       <span className="time-atalho-icone" aria-hidden>
-        {icone}
+        <IconeAtalho tipo={tipo} />
       </span>
-      <span>
+      <span className="time-atalho-texto">
         <strong>{titulo}</strong>
         <span>{texto}</span>
       </span>
@@ -1434,107 +2424,15 @@ async function postar(
   return corpo;
 }
 
-function FormReembolso({ opcoes, aoEnviar, aoFalhar }: { opcoes: Opcoes; aoEnviar: AoEnviar; aoFalhar: AoFalhar }) {
-  const [tipo, setTipo] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [data, setData] = useState(HOJE());
-  const [valor, setValor] = useState("");
-  const [nfe, setNfe] = useState("");
-  const [arquivo, setArquivo] = useState<File | null>(null);
-  const [enviando, setEnviando] = useState(false);
-  const arquivoRef = useRef<HTMLInputElement>(null);
+const ROTULO = "campo-rotulo campo-rotulo-destaque";
 
-  const tipoEscolhido = opcoes.tipos.find((t) => t.slug === tipo);
-
-  async function enviar(e: React.FormEvent) {
-    e.preventDefault();
-    setEnviando(true);
-    try {
-      await postar("/api/time/reembolso", { tipo, descricao, expenseDate: data, valor, nfeKey: nfe }, arquivo);
-      await aoEnviar(`Reembolso de ${descricao} enviado. Ele entra na competência de ${data.slice(5, 7)}/${data.slice(0, 4)}.`);
-      setDescricao("");
-      setValor("");
-      setNfe("");
-      setArquivo(null);
-      if (arquivoRef.current) arquivoRef.current.value = "";
-    } catch (erro) {
-      aoFalhar({ tom: "erro", texto: (erro as Error).message });
-    } finally {
-      setEnviando(false);
-    }
-  }
-
-  return (
-    <form className="time-form" onSubmit={enviar}>
-      <h2>Pedir reembolso</h2>
-      <p className="time-sub">
-        O que você pagou do seu bolso e a empresa devolve. O reembolso é pago junto com o fixo do mês seguinte.
-      </p>
-
-      <label className="campo">
-        <span>Tipo</span>
-        <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
-          <option value="">— escolha —</option>
-          {opcoes.tipos.map((t) => (
-            <option key={t.slug} value={t.slug}>
-              {t.nome}
-              {t.exigeNfe ? " (exige NF-e)" : ""}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="campo">
-        <span>O que foi</span>
-        <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="almoço com o cliente X" required />
-      </label>
-
-      <div className="campo-par">
-        <label className="campo">
-          <span>Quando</span>
-          <input type="date" value={data} max={HOJE()} onChange={(e) => setData(e.target.value)} required />
-        </label>
-        <label className="campo">
-          <span>Quanto</span>
-          <input value={valor} onChange={(e) => setValor(e.target.value)} inputMode="decimal" placeholder="0,00" required />
-        </label>
-      </div>
-
-      {tipoEscolhido?.exigeNfe ? (
-        <label className="campo">
-          <span>Chave da NF-e (44 dígitos)</span>
-          <input value={nfe} onChange={(e) => setNfe(e.target.value)} inputMode="numeric" />
-        </label>
-      ) : null}
-
-      <label className="campo">
-        <span>Comprovante</span>
-        <input
-          ref={arquivoRef}
-          type="file"
-          accept="image/*,application/pdf,.xml"
-          onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
-        />
-        <small>
-          Foto da nota ou do cupom. Hoje <strong>nenhum</strong> dos 193 itens de reembolso desta base tem comprovante
-          anexado — quem aprova está confiando no número digitado. Sem ele o pedido entra do mesmo jeito, e a fila
-          mostra que falta.
-        </small>
-      </label>
-
-      <button className="time-botao" disabled={enviando}>
-        {enviando ? "enviando…" : "enviar reembolso"}
-      </button>
-      <p className="time-nota">Enviar não é aprovar. Isto vira um pedido na fila de quem decide.</p>
-    </form>
-  );
-}
 
 function FormEnvio({
   kind,
   opcoes,
   pessoas,
   compra,
+  somenteReembolso = false,
   aoAtualizarOpcoes,
   aoEnviar,
   aoFalhar
@@ -1545,19 +2443,31 @@ function FormEnvio({
   pessoas: Pessoa[];
   /** Quando vem preenchido, este custo FECHA a solicitação de compra. */
   compra?: CompraAprovada;
+  /** Tela dedicada de reembolso: mesmo formulário, destino fixo no bolso. */
+  somenteReembolso?: boolean;
   /** Chamado quando um cartão novo é cadastrado sem sair da tela. */
   aoAtualizarOpcoes: (opcoes: Opcoes) => void;
   aoEnviar: AoEnviar;
   aoFalhar: AoFalhar;
 }) {
   const nota = kind === "nota_entrada";
+  const unificado = kind === "custo";
+  /**
+   * Para onde este lançamento vai, depois que o cartão respondeu.
+   * Declarado antes de `modoReembolso`: usar `destino` acima da linha do
+   * useState gerava ReferenceError e derrubava custo/reembolso no cliente.
+   */
+  const [destino, setDestino] = useState<"custo" | "reembolso">(somenteReembolso ? "reembolso" : "custo");
+  const [decisaoPendente, setDecisaoPendente] = useState<{ titular: string } | null>(null);
+  const [tipoReembolso, setTipoReembolso] = useState("");
+  const modoReembolso = somenteReembolso || destino === "reembolso";
   // O título vem da solicitação quando é uma compra: reescrever o que já foi
   // aprovado desliga o pedido do gasto na hora de conferir os dois.
   const [titulo, setTitulo] = useState(compra?.titulo ?? "");
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [data, setData] = useState(HOJE());
-  const [pagamento, setPagamento] = useState(nota ? "boleto" : "a_definir");
+  const [pagamento, setPagamento] = useState(nota ? "boleto" : "");
   const [parcelas, setParcelas] = useState("");
   const [final, setFinal] = useState("");
   // Só a tela de NOTA ainda precisa de quem emitiu: numa nota fiscal o emitente
@@ -1567,6 +2477,7 @@ function FormEnvio({
   const [nfeKey, setNfeKey] = useState("");
   const [nfeNumero, setNfeNumero] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [categoriaProposta, setCategoriaProposta] = useState("");
   const [centro, setCentro] = useState("");
   const [linha, setLinha] = useState("");
   const [banco, setBanco] = useState("");
@@ -1589,6 +2500,13 @@ function FormEnvio({
   const params = useSearchParams();
   const anexoCompartilhado = params.get("anexo");
   const nomeCompartilhado = params.get("nome");
+  useEffect(() => {
+    if (!somenteReembolso) return;
+    const d = params.get("descricao");
+    const v = params.get("valor");
+    if (d) setDescricao(d);
+    if (v) setValor(mascaraDinheiro(v));
+  }, [somenteReembolso, params]);
   const [cadastrando, setCadastrando] = useState(false);
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -1634,17 +2552,6 @@ function FormEnvio({
     apelido?: string | null;
   } | null>(null);
 
-  /**
-   * Para onde este lançamento vai, depois que o cartão respondeu.
-   *
-   * `null` é "ainda não perguntei". O `pendente` existe para a pergunta ficar
-   * na tela até ser respondida: um cartão pessoal recém-cadastrado significa
-   * reembolso, mas quem decide é a pessoa — o cartão pode ser pessoal e a
-   * compra ter sido a empresa quem reembolsa por outro caminho.
-   */
-  const [destino, setDestino] = useState<"custo" | "reembolso">("custo");
-  const [decisaoPendente, setDecisaoPendente] = useState<{ titular: string } | null>(null);
-  const [tipoReembolso, setTipoReembolso] = useState("");
   const tentativaRef = useRef<string | null>(null);
 
   /**
@@ -1703,10 +2610,15 @@ function FormEnvio({
         // O CARTÃO SAI DA FOTO. "Mastercard **** 5585" é o dado mais chato de
         // digitar e o mais fácil de ler — e é ele que casa com a fatura depois.
         if (l.cartaoFinal && !final) {
-          setPagamento("cartao_da_empresa");
           setFinal(l.cartaoFinal);
           preenchidos.push("cartão");
           setBandeiraLida(l.cartaoBandeira !== "indeterminado" ? l.cartaoBandeira : "");
+
+          if (somenteReembolso) {
+            setPagamento("cartao_pessoal");
+            setCartaoLido({ final: l.cartaoFinal, conhecido: true, natureza: "pessoal" });
+          } else {
+          setPagamento("cartao_da_empresa");
 
           // E PERGUNTA NA HORA se este final é conhecido. Antes o final ficava
           // guardado sem ninguém ver, porque o campo dependia de um banco que
@@ -1738,6 +2650,7 @@ function FormEnvio({
           } catch {
             // Consulta é conveniência: se ela falhar, o final continua digitado
             // e o fluxo antigo segue. Não é motivo para perder a leitura toda.
+          }
           }
         }
         if (l.parcelas && !parcelas) {
@@ -1826,12 +2739,20 @@ function FormEnvio({
         setLendo(false);
       }
     },
-    [titulo, valor, data, fornecedor, nfeKey, final, parcelas, descricao, categoria, centro, opcoes]
+    [titulo, valor, data, fornecedor, nfeKey, final, parcelas, descricao, categoria, centro, opcoes, somenteReembolso]
   );
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setEnviando(true);
+
+    const kindEnvio = ((): "custo" | "nota_entrada" => {
+      if (nota) return "nota_entrada";
+      const temComprovante = Boolean(arquivo || anexoCompartilhado);
+      const temFiscal = Boolean(arquivoNota || nfeKey.trim() || nfeNumero.trim() || fornecedor.trim());
+      if (!temComprovante && temFiscal) return "nota_entrada";
+      return "custo";
+    })();
 
     // A CHAVE DA TENTATIVA (0145).
     //
@@ -1847,6 +2768,8 @@ function FormEnvio({
     if (!tentativaRef.current) tentativaRef.current = crypto.randomUUID();
 
     try {
+      if (!nota && !pagamento && !modoReembolso) throw new Error("escolha a forma de pagamento");
+
       /*
        * O DESTINO DECIDE O ENDPOINT, e é o cartão que decide o destino.
        *
@@ -1862,15 +2785,26 @@ function FormEnvio({
        * recebe o dinheiro é quem pede.
        */
       if (destino === "reembolso") {
-        if (!tipoReembolso) throw new Error("escolha o tipo do reembolso");
+        if (!tipoReembolso && !categoria) throw new Error("escolha o tipo ou a categoria do gasto");
+        const tipoEscolhido = opcoes.tipos.find((t) => t.slug === tipoReembolso);
+        if (tipoEscolhido?.exigeNfe && !nfeKey.trim()) throw new Error("este tipo exige a chave da NF-e");
+        if (!pagamento) throw new Error("escolha como foi pago");
         const rr = await postar(
           "/api/time/reembolso",
           {
-            tipo: tipoReembolso,
+            tipo: tipoReembolso || undefined,
+            categoriaId: !tipoReembolso && categoria ? categoria : undefined,
             descricao: [titulo, descricao].filter(Boolean).join(" — "),
             expenseDate: data,
             valor,
             nfeKey: nfeKey,
+            nfeNumero,
+            parcelas,
+            pagamento,
+            fornecedor,
+            centroCusto: centro,
+            linhaServico: centro ? "" : linha,
+            finalCartao: final,
             idempotencyKey: tentativaRef.current
           },
           arquivo,
@@ -1885,8 +2819,9 @@ function FormEnvio({
         setArquivo(null);
         setArquivoNota(null);
         setCartaoLido(null);
-        setDestino("custo");
+        setDestino(somenteReembolso ? "reembolso" : "custo");
         setTipoReembolso("");
+        setCategoria("");
         setPalpite(null);
         setLeitura(null);
         return;
@@ -1895,11 +2830,13 @@ function FormEnvio({
       const r = await postar(
         compra ? "/api/time/compra/realizar" : "/api/time/envio",
         {
-          kind,
+          kind: kindEnvio,
           idempotencyKey: tentativaRef.current,
           compraId: compra?.id,
           titulo,
-          descricao,
+          descricao: [categoriaProposta ? `Categoria sugerida: ${categoriaProposta}` : "", descricao]
+            .filter(Boolean)
+            .join(" — "),
           valor,
           data,
           parcelas,
@@ -1921,7 +2858,7 @@ function FormEnvio({
       await aoEnviar(
         compra
           ? `Compra ${compra.code} registrada — o custo ${r.code} foi para análise.`
-          : `${nota ? "Nota" : "Custo"} ${r.code} enviado para análise.`
+          : `${kindEnvio === "nota_entrada" ? "Nota" : "Custo"} ${r.code} enviado para análise.`
       );
       tentativaRef.current = null;
       setTitulo("");
@@ -1949,45 +2886,59 @@ function FormEnvio({
     }
   }
 
+  const aoAnexar = (f: File, origem: OrigemAnexo) => {
+    if (lendo) return;
+    setLeitura(null);
+    if (origem === "nota") setArquivoNota(f);
+    else setArquivo(f);
+    void lerArquivo(f);
+  };
+
+  const rotulo = unificado ? "campo-rotulo campo-rotulo-destaque" : undefined;
+
   return (
-    <form className="time-form" onSubmit={enviar}>
-      {/*
-        Sem <h2> aqui: a página já tem o <h1> com o mesmo texto, e os dois
-        juntos repetiam "Lançar um custo" a dois centímetros de distância —
-        ocupando a dobra do celular com a mesma informação duas vezes. A
-        explicação abaixo continua, porque ela diz algo que o título não diz.
-      */}
-      <p className="time-sub">
-        {nota ? (
-          <>
-            Nota fiscal que <strong>chegou para a empresa</strong>. Hoje a base só conhece nota de saída — as 3.521
-            NFS-e que emitimos. A de entrada não tem por onde chegar, e é por aqui que ela passa a existir.
-          </>
-        ) : (
-          <>
-            Se você pagou do <strong>seu bolso</strong>, o caminho é o reembolso — é ele que te devolve o dinheiro.
-          </>
-        )}
-      </p>
+    <form className={unificado ? "time-form time-form-registro time-tela-padrao" : "time-form"} onSubmit={enviar}>
+      {unificado ? (
+        <header className="time-form-cabeca">
+          <h1>
+            {somenteReembolso ? "Pedir reembolso" : compra ? `Registrar ${compra.code}` : "Registrar compra"}
+          </h1>
+          <p>
+            {somenteReembolso
+              ? "Gasto do seu bolso — mesmo registro de uma compra, mas a empresa te devolve."
+              : "Processo para registro das compras e custos da empresa."}
+          </p>
+        </header>
+      ) : (
+        <p className="time-sub">
+          {nota ? (
+            <>
+              Nota fiscal que <strong>chegou para a empresa</strong>. Hoje a base só conhece nota de saída — as 3.521
+              NFS-e que emitimos. A de entrada não tem por onde chegar, e é por aqui que ela passa a existir.
+            </>
+          ) : (
+            <>
+              Se você pagou do <strong>seu bolso</strong>, o caminho é o reembolso — é ele que te devolve o dinheiro.
+            </>
+          )}
+        </p>
+      )}
 
       <label className="campo">
-        <span>{nota ? "Do que é a nota" : "O que foi"}</span>
-        <input value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
+        <span className={rotulo}>
+          {unificado ? <IconeRotuloBusca tipo="compra" /> : null}
+          {nota ? "Do que é a nota" : unificado ? "O que comprou" : "O que foi comprado"}
+        </span>
+        <input
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          placeholder={unificado ? "ex.: toner, almoço com cliente, passagem" : undefined}
+          required
+        />
       </label>
 
-      {anexoCompartilhado && !arquivo ? (
-        <div className="compartilhado">
-          <strong>Comprovante recebido</strong>
-          <span className="time-sub">
-            {nomeCompartilhado || "arquivo"} chegou pelo compartilhamento e vai junto com este lançamento.
-          </span>
-        </div>
-      ) : null}
-
-      {/* O valor é o campo mais importante da tela, então ganha a tela inteira
-          e o tamanho de um número que se lê de longe. */}
-      <label className="campo valor-campo">
-        <span>Valor total</span>
+      <label className={`campo valor-campo${unificado ? " valor-campo-centro" : ""}`}>
+        <span className={rotulo}>Valor{unificado ? "" : " total"}</span>
         <div className="valor-caixa">
           <em>R$</em>
           <input
@@ -2000,15 +2951,47 @@ function FormEnvio({
         </div>
       </label>
 
-      {/* Parcelamento: chips, não um campo numérico. "Em quantas vezes" tem
-          quatro ou cinco respostas prováveis, e um teclado para escolher entre
-          elas é mais trabalho do que tocar. O total continua sendo o total —
-          a parcela é mostrada, não digitada. */}
+      {(unificado && (arquivo || arquivoNota)) || (unificado && leitura) ? (
+        <div className="anexos-resumo">
+          <div className="anexos-lista" role="group" aria-label="Anexos do envio">
+            {arquivo ? (
+              <div className="anexo-ficha">
+                <strong>{arquivo.name}</strong>
+                <small>foto ou print · {(arquivo.size / 1024).toFixed(0)} KB</small>
+                <button type="button" onClick={() => { setArquivo(null); setLeitura(null); }} aria-label="tirar a foto do envio">
+                  tirar
+                </button>
+              </div>
+            ) : null}
+            {arquivoNota ? (
+              <div className="anexo-ficha fiscal">
+                <strong>{arquivoNota.name}</strong>
+                <small>nota fiscal · {(arquivoNota.size / 1024).toFixed(0)} KB</small>
+                <button type="button" onClick={() => setArquivoNota(null)} aria-label="tirar a nota do envio">
+                  tirar
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {leitura ? <p className={`reemb-leitura ${leitura.tom}`}>{leitura.texto}</p> : null}
+        </div>
+      ) : null}
+
+      {anexoCompartilhado && !arquivo ? (
+        <div className="compartilhado">
+          <strong>Comprovante recebido</strong>
+          <span className="time-sub">
+            {nomeCompartilhado || "arquivo"} chegou pelo compartilhamento e vai junto com este lançamento.
+          </span>
+        </div>
+      ) : null}
+
+      {/* Parcelamento: chips, não um campo numérico. */}
       {!nota ? (
         <div className="campo">
-          <span className="campo-rotulo" id="grupo-parcelado">Parcelado?</span>
+          <span className={rotulo ?? "campo-rotulo"} id="grupo-parcelado">{unificado ? "Parcelas" : "Parcelado?"}</span>
           <div className="chips" role="group" aria-labelledby="grupo-parcelado">
-            {["", "2", "3", "4", "6", "10", "12", "18", "21"].map((n) => (
+            {["", "2", "3", "4", "6", "10", "12", "18", "21", "24"].map((n) => (
               <button
                 key={n || "avista"}
                 type="button"
@@ -2029,30 +3012,36 @@ function FormEnvio({
       ) : null}
 
       <label className="campo">
-        <span>{nota ? "Emissão" : "Data da compra"}</span>
+        <span className={rotulo}>{nota ? "Emissão" : unificado ? "Data" : "Data da compra"}</span>
         <input type="date" value={data} onChange={(e) => setData(e.target.value)} required />
       </label>
 
-      {/* Forma de pagamento em chips: são cinco opções, todas curtas, e um
-          `select` esconde as outras quatro atrás de um toque e de uma folha
-          nativa que cobre a tela. */}
+      {/* Forma de pagamento em chips: opções curtas, sem folha nativa de select. */}
       <div className="campo">
-        <span className="campo-rotulo" id="grupo-como-foi-pago">Como foi pago</span>
+        <span className={rotulo ?? "campo-rotulo"} id="grupo-como-foi-pago">{unificado ? "Pagamento" : "Como foi pago"}</span>
         <div className="chips" role="group" aria-labelledby="grupo-como-foi-pago">
-          {[
-            ["cartao_da_empresa", "Cartão"],
-            ["pix_da_empresa", "PIX"],
-            ["boleto", "Boleto"],
-            ["debito_automatico", "Débito automático"],
-            ["a_definir", "Não sei"]
-          ].map(([v, r]) => (
+          {(modoReembolso
+            ? [
+                ["cartao_pessoal", "Cartão"],
+                ["pix_pessoal", "PIX"],
+                ["dinheiro", "Dinheiro"],
+                ["debito_pessoal", "Débito"]
+              ]
+            : [
+                ["cartao_da_empresa", "Cartão"],
+                ["pix_da_empresa", "PIX"],
+                ["dinheiro", "Dinheiro"],
+                ["boleto", "Boleto"],
+                ["debito_automatico", "Débito"]
+              ]
+          ).map(([v, r]) => (
             <button
               key={v}
               type="button"
               aria-pressed={pagamento === v} className={pagamento === v ? "chip ativo" : "chip"}
               onClick={() => {
                 setPagamento(v);
-                if (v !== "cartao_da_empresa") {
+                if (v !== "cartao_da_empresa" && v !== "cartao_pessoal") {
                   setBanco("");
                   setCartao("");
                   setFinal("");
@@ -2065,31 +3054,28 @@ function FormEnvio({
         </div>
       </div>
 
-      {/*
-        Qual plástico. Só aparece quando a forma é cartão — e é o campo que a
-        conciliação futura mais vai usar: o final do cartão existe em 793 dos
-        795 itens de fatura, contra 37,5% de cobertura de contraparte. É o
-        sinal que quase sempre casa.
-      */}
-      {/*
-        O CARTÃO, e a regra é a mesma para os dois bancos.
-        Antes, escolher Nubank mostrava os finais e escolher Inter não mostrava
-        nada — porque o Inter tem zero plásticos cadastrados. Do lado de quem
-        usa isso é incompreensível: o cartão do Inter existe na carteira dela.
+      {modoReembolso && pagamento === "cartao_pessoal" ? (
+        <label className="campo">
+          <span className={rotulo}>Final do seu cartão</span>
+          <input
+            value={final}
+            onChange={(e) => setFinal(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="4 últimos dígitos"
+            className="campo-final"
+          />
+        </label>
+      ) : null}
 
-        Agora o final é sempre digitável. Se casar com um plástico registrado, o
-        vínculo acontece sozinho e a tela avisa. Se não casar, os quatro dígitos
-        ficam guardados assim mesmo — é o dado que ela tem na mão, e é ele que
-        vai casar com a fatura.
-      */}
-      {pagamento === "cartao_da_empresa" && opcoes.bancos.length > 0
+      {pagamento === "cartao_da_empresa" && !modoReembolso && opcoes.bancos.length > 0
         ? (() => {
             const escolhido = opcoes.bancos.find((b) => String(b.id) === banco);
             const casa = escolhido?.plasticos.find((p) => p.nome.endsWith(final)) && final.length === 4;
             return (
               <>
                 <div className="campo">
-                  <span className="campo-rotulo" id="grupo-qual-banco">Qual banco</span>
+                  <span className={rotulo ?? "campo-rotulo"} id="grupo-qual-banco">Banco</span>
                   <div className="chips" role="group" aria-labelledby="grupo-qual-banco">
                     {opcoes.bancos.map((b) => (
                       <button
@@ -2109,7 +3095,7 @@ function FormEnvio({
 
                 {banco && !cadastrando ? (
                   <label className="campo">
-                    <span>Final do cartão</span>
+                    <span className={rotulo}>Final do cartão</span>
                     <input
                       value={final}
                       onChange={(e) => setFinal(e.target.value.replace(/\D/g, "").slice(0, 4))}
@@ -2143,71 +3129,91 @@ function FormEnvio({
           })()
         : null}
 
-      {/* Só na NOTA. Numa nota fiscal o emitente é o fato central; num custo
-          ele já vem da foto quando existe, e perguntar de novo é mais um campo
-          entre a pessoa e o botão de enviar. */}
-      {nota ? (
-        <label className="campo">
-          <span>Quem emitiu</span>
-          <input value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} placeholder="nome do fornecedor" />
-        </label>
-      ) : null}
+      {unificado ? (
+        <section className="time-form-classificar">
+          {modoReembolso ? (
+            <BuscaClassificacaoGasto
+              tipos={opcoes.tipos}
+              categorias={opcoes.categorias}
+              tipoSlug={tipoReembolso}
+              categoriaId={categoria}
+              aoEscolherTipo={(slug) => {
+                setTipoReembolso(slug);
+                if (slug) setCategoria("");
+              }}
+              aoEscolherCategoria={(id) => {
+                setCategoria(id);
+                if (id) setTipoReembolso("");
+              }}
+            />
+          ) : (
+            <BuscaCategoria
+              destaque
+              categorias={opcoes.categorias}
+              valor={categoria}
+              proposta={categoriaProposta}
+              aoEscolher={(id) => {
+                setCategoria(id);
+                if (id) setCategoriaProposta("");
+              }}
+              aoPropor={setCategoriaProposta}
+            />
+          )}
 
-      {nota ? (
-        <div className="campo-par">
-          <label className="campo">
-            <span>Chave da NF-e</span>
-            <input value={nfeKey} onChange={(e) => setNfeKey(e.target.value)} inputMode="numeric" placeholder="44 dígitos" />
-          </label>
-          <label className="campo">
-            <span>Número</span>
-            <input value={nfeNumero} onChange={(e) => setNfeNumero(e.target.value)} />
-          </label>
-        </div>
-      ) : null}
+          <BuscaDestino
+            destaque
+            centros={opcoes.centros}
+            valor={centro}
+            aoEscolher={(id) => {
+              setCentro(id);
+              if (id) setLinha("");
+            }}
+          />
 
-      {/*
-        O EIXO DESTINO. Um toque aqui responde duas perguntas de uma vez: o
-        núcleo sai do centro de custo, e é este campo que tira o indicador de
-        centro de custo dos 0,0% em que está.
+          {!centro ? (
+            <details className="campo-extra">
+              <summary>Foi para um serviço específico?</summary>
+              <label className="campo">
+                <span>Qual serviço</span>
+                <select value={linha} onChange={(e) => setLinha(e.target.value)}>
+                  <option value="">— não é de um serviço —</option>
+                  {opcoes.linhas.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </details>
+          ) : null}
 
-        Vem ANTES da categoria de propósito. "Para qual obra" é a pergunta que
-        quem comprou sabe responder na hora; "qual linha da DRE" é a que o
-        financeiro sabe. Pedir a difícil primeiro é o que faz as duas ficarem
-        vazias.
-      */}
-      <BuscaDestino
-        centros={opcoes.centros}
-        valor={centro}
-        aoEscolher={(id) => {
-          setCentro(id);
-          if (id) setLinha("");
-        }}
-      />
-
-      {/*
-        A linha de serviço fica RECOLHIDA. Ela responde um caso real —
-        combustível para rodar um laudo que ainda não virou contrato — mas é
-        minoria, e um select aberto no meio do formulário fazia todo mundo parar
-        para ler uma pergunta que quase nunca é a sua. Some de vez quando há
-        obra: aí o destino já está respondido.
-      */}
-      {!centro ? (
-        <details className="campo-extra">
-          <summary>Foi para um serviço específico?</summary>
-          <label className="campo">
-            <span>Qual serviço</span>
-            <select value={linha} onChange={(e) => setLinha(e.target.value)}>
-              <option value="">— não é de um serviço —</option>
-              {opcoes.linhas.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.nome}
-                </option>
-              ))}
-            </select>
-            <small>Ex.: combustível para rodar um laudo que ainda não virou contrato.</small>
-          </label>
-        </details>
+          <details className="time-form-extra time-form-extra-compacto">
+            <summary>Quem emitiu, chave e número da NF</summary>
+            <div className="time-form-extra-corpo">
+              <p className="time-sub">
+                Vem da foto ou do XML. Só abra se quiser digitar na mão.
+              </p>
+              <label className="campo">
+                <span>Quem emitiu</span>
+                <input
+                  value={fornecedor}
+                  onChange={(e) => setFornecedor(e.target.value)}
+                  placeholder="nome do fornecedor"
+                />
+              </label>
+              <div className="campo-par">
+                <label className="campo">
+                  <span>Chave da NF-e</span>
+                  <input value={nfeKey} onChange={(e) => setNfeKey(e.target.value)} inputMode="numeric" placeholder="44 dígitos" />
+                </label>
+                <label className="campo">
+                  <span>Número</span>
+                  <input value={nfeNumero} onChange={(e) => setNfeNumero(e.target.value)} />
+                </label>
+              </div>
+            </div>
+          </details>
+        </section>
       ) : null}
 
       {/*
@@ -2242,7 +3248,12 @@ function FormEnvio({
         dinheiro do bolso de alguém, e isso é reembolso.
       */}
       {cartaoLido && !cadastrando ? (
-        cartaoLido.conhecido ? (
+        somenteReembolso ? (
+          <div className="cartao-lido pessoal">
+            <strong>Cartão final {cartaoLido.final}</strong>
+            <span className="time-sub">Li da foto — confira o final e a forma de pagamento.</span>
+          </div>
+        ) : cartaoLido.conhecido ? (
           <div className={cartaoLido.natureza === "empresa" ? "cartao-lido ok" : "cartao-lido pessoal"}>
             <strong>
               Cartão final {cartaoLido.final} — {cartaoLido.natureza === "empresa" ? "da empresa" : "pessoal"}
@@ -2273,7 +3284,7 @@ function FormEnvio({
         é sempre — e gravar o caminho errado aqui manda a pessoa refazer tudo.
         Por isso pergunta, com os dois botões do mesmo tamanho.
       */}
-      {decisaoPendente ? (
+      {decisaoPendente && !somenteReembolso ? (
         <div className="decisao">
           <strong>Cartão pessoal {decisaoPendente.titular === "você" ? "seu" : `de ${decisaoPendente.titular}`}</strong>
           <span className="time-sub">
@@ -2312,7 +3323,7 @@ function FormEnvio({
       ) : null}
 
       {/* O tipo do reembolso, que só existe neste caminho. */}
-      {destino === "reembolso" ? (
+      {destino === "reembolso" && !unificado ? (
         <div className="decisao escolhido">
           <strong>Isto vai como REEMBOLSO</strong>
           <span className="time-sub">A empresa te devolve este valor. Escolha o tipo para o financeiro conferir.</span>
@@ -2387,94 +3398,136 @@ function FormEnvio({
         </div>
       ) : null}
 
-      <label className="campo">
-        <span>Onde isso entra (se você souber)</span>
-        <select value={categoria} onChange={(e) => setCategoria(e.target.value)}>
-          <option value="">— deixo para o financeiro decidir —</option>
-          {opcoes.categorias.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.rotulo}
-            </option>
-          ))}
-        </select>
-        <small>É uma sugestão. Quem decide a categoria é o financeiro — ela muda a DRE.</small>
-      </label>
+      {!unificado ? (
+        <>
+          {nota ? (
+            <label className="campo">
+              <span>Quem emitiu</span>
+              <input value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} placeholder="nome do fornecedor" />
+            </label>
+          ) : null}
 
-      {/*
-        O QUE JÁ FOI ANEXADO.
-        Deixou de ser um `<input type="file">` no fim do formulário e virou um
-        recibo do que está preso ao envio: o botão flutuante é quem anexa. Os
-        dois cabem juntos porque respondem perguntas diferentes — o print prova
-        o que foi comprado, a nota é o documento que a contabilidade precisa.
-      */}
-      <div className="anexos">
-        <span className="campo-rotulo" id="grupo-anexos">
-          {nota ? "Arquivo da nota" : "Comprovante"}
-        </span>
-        <div className="anexos-lista" role="group" aria-labelledby="grupo-anexos">
-          {arquivo ? (
-            <div className="anexo-ficha">
-              <strong>{arquivo.name}</strong>
-              <small>foto ou print · {(arquivo.size / 1024).toFixed(0)} KB</small>
-              <button type="button" onClick={() => { setArquivo(null); setLeitura(null); }} aria-label="tirar a foto do envio">
-                tirar
-              </button>
+          {nota ? (
+            <div className="campo-par">
+              <label className="campo">
+                <span>Chave da NF-e</span>
+                <input value={nfeKey} onChange={(e) => setNfeKey(e.target.value)} inputMode="numeric" placeholder="44 dígitos" />
+              </label>
+              <label className="campo">
+                <span>Número</span>
+                <input value={nfeNumero} onChange={(e) => setNfeNumero(e.target.value)} />
+              </label>
             </div>
           ) : null}
-          {arquivoNota ? (
-            <div className="anexo-ficha fiscal">
-              <strong>{arquivoNota.name}</strong>
-              <small>nota fiscal · {(arquivoNota.size / 1024).toFixed(0)} KB</small>
-              <button type="button" onClick={() => setArquivoNota(null)} aria-label="tirar a nota do envio">
-                tirar
-              </button>
-            </div>
+
+          <BuscaDestino
+            centros={opcoes.centros}
+            valor={centro}
+            aoEscolher={(id) => {
+              setCentro(id);
+              if (id) setLinha("");
+            }}
+          />
+
+          {!centro ? (
+            <details className="campo-extra">
+              <summary>Foi para um serviço específico?</summary>
+              <label className="campo">
+                <span>Qual serviço</span>
+                <select value={linha} onChange={(e) => setLinha(e.target.value)}>
+                  <option value="">— não é de um serviço —</option>
+                  {opcoes.linhas.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.nome}
+                    </option>
+                  ))}
+                </select>
+                <small>Ex.: combustível para rodar um laudo que ainda não virou contrato.</small>
+              </label>
+            </details>
           ) : null}
-          {!arquivo && !arquivoNota ? (
-            <p className="anexos-vazio">
-              Nada anexado ainda. Toque em <strong>foto da compra</strong>, ali embaixo — eu leio e preencho o que der.
-            </p>
-          ) : null}
+
+          <BuscaCategoria
+            categorias={opcoes.categorias}
+            valor={categoria}
+            proposta={categoriaProposta}
+            aoEscolher={(id) => {
+              setCategoria(id);
+              if (id) setCategoriaProposta("");
+            }}
+            aoPropor={setCategoriaProposta}
+          />
+        </>
+      ) : null}
+
+      {!unificado ? (
+        <div className="anexos">
+          <span className="campo-rotulo" id="grupo-anexos">
+            {nota ? "Arquivo da nota" : "Comprovante e nota"}
+          </span>
+          <div className="anexos-lista" role="group" aria-labelledby="grupo-anexos">
+            {arquivo ? (
+              <div className="anexo-ficha">
+                <strong>{arquivo.name}</strong>
+                <small>foto ou print · {(arquivo.size / 1024).toFixed(0)} KB</small>
+                <button type="button" onClick={() => { setArquivo(null); setLeitura(null); }} aria-label="tirar a foto do envio">
+                  tirar
+                </button>
+              </div>
+            ) : null}
+            {arquivoNota ? (
+              <div className="anexo-ficha fiscal">
+                <strong>{arquivoNota.name}</strong>
+                <small>nota fiscal · {(arquivoNota.size / 1024).toFixed(0)} KB</small>
+                <button type="button" onClick={() => setArquivoNota(null)} aria-label="tirar a nota do envio">
+                  tirar
+                </button>
+              </div>
+            ) : null}
+            {!arquivo && !arquivoNota ? (
+              <p className="anexos-vazio">
+                Nada anexado ainda. Toque em <strong>foto da compra</strong>, ali embaixo.
+              </p>
+            ) : null}
+          </div>
+          {lendo ? <small className="reemb-lendo">lendo o comprovante…</small> : null}
+          {leitura ? <small className={`reemb-leitura ${leitura.tom}`}>{leitura.texto}</small> : null}
         </div>
-        {lendo ? <small className="reemb-lendo">lendo o comprovante…</small> : null}
-        {leitura ? <small className={`reemb-leitura ${leitura.tom}`}>{leitura.texto}</small> : null}
+      ) : null}
+
+      <div className="time-form-rodape">
+        <button className="time-botao" disabled={enviando}>
+          {enviando
+            ? "enviando…"
+            : modoReembolso
+              ? "pedir reembolso"
+              : nota
+                ? "enviar nota"
+                : "registrar compra"}
+        </button>
+        <p className="time-nota">
+          {modoReembolso
+            ? "Isto entra no SEU reembolso do mês. Não vira lançamento nem mexe em saldo até o financeiro conferir."
+            : nota
+              ? "A nota entra na fila do financeiro. Não vira documento nem mexe em saldo até alguém conferir."
+              : compra
+                ? "Registrar não mexe em saldo. O custo fica aguardando o financeiro conferir a compra aprovada."
+                : "Enviar não é aprovar. O custo entra na fila do financeiro — sem mexer em saldo até conferir."}
+        </p>
       </div>
 
-      <button className="time-botao" disabled={enviando}>
-        {enviando
-          ? "enviando…"
-          : destino === "reembolso"
-            ? "pedir reembolso"
-            : nota
-              ? "enviar nota"
-              : "enviar custo"}
-      </button>
-      <p className="time-nota">
-        {destino === "reembolso"
-          ? "Isto entra no SEU reembolso do mês. Não vira lançamento nem mexe em saldo até o financeiro conferir."
-          : "Isto não vira lançamento nem mexe em saldo. Vira um pedido aguardando decisão de quem cuida do financeiro."}
-      </p>
-
-      {/*
-        Dentro do <form> por causa do `position: fixed` — ele sai do fluxo de
-        qualquer jeito, e ficar aqui mantém o botão ao lado do estado que ele
-        altera, em vez de num irmão que precisaria receber cinco callbacks.
-      */}
-      <AnexarFlutuante
-        lendo={lendo}
-        jaTem={Boolean(arquivo || arquivoNota)}
-        aoEscolher={(f, origem: OrigemAnexo) => {
-          if (lendo) return;
-          setLeitura(null);
-          // A nota vai para o slot fiscal; foto e print, para o slot de
-          // evidência. É esta escolha que o servidor traduz em `kind`, e é por
-          // isso que a folha pergunta a origem em vez de aceitar tudo num
-          // campo só.
-          if (origem === "nota") setArquivoNota(f);
-          else setArquivo(f);
-          void lerArquivo(f);
-        }}
-      />
+      {!unificado ? (
+        <AnexarFlutuante lendo={lendo} jaTem={Boolean(arquivo || arquivoNota)} aoEscolher={aoAnexar} />
+      ) : (
+        <AnexarFlutuante
+          centralizado
+          rotulo="Registro automático"
+          rotuloAnexado="Trocar arquivo"
+          lendo={lendo}
+          jaTem={Boolean(arquivo || arquivoNota)}
+          aoEscolher={aoAnexar}
+        />
+      )}
     </form>
   );
 }
@@ -2483,17 +3536,11 @@ function FormCompra({ aoEnviar, aoFalhar }: { aoEnviar: AoEnviar; aoFalhar: AoFa
   const [titulo, setTitulo] = useState("");
   const [justificativa, setJustificativa] = useState("");
   const [quantidade, setQuantidade] = useState("1");
-  const [unidade, setUnidade] = useState("un");
   const [valor, setValor] = useState("");
   const [urgencia, setUrgencia] = useState("normal");
   const [precisaAte, setPrecisaAte] = useState("");
-  const [links, setLinks] = useState<{ url: string; loja: string; preco: string }[]>([{ url: "", loja: "", preco: "" }]);
+  const [links, setLinks] = useState<{ url: string; loja: string }[]>([{ url: "", loja: "" }]);
   const [enviando, setEnviando] = useState(false);
-
-  const somaLinks = useMemo(
-    () => links.filter((l) => l.preco).reduce((a, l) => a + Number(l.preco.replace(/\./g, "").replace(",", ".")) || a, 0),
-    [links]
-  );
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -2505,11 +3552,10 @@ function FormCompra({ aoEnviar, aoFalhar }: { aoEnviar: AoEnviar; aoFalhar: AoFa
           titulo,
           justificativa,
           quantidade,
-          unidade,
           valor,
           urgencia,
           precisaAte,
-          links: links.filter((l) => l.url.trim()).map((l) => ({ url: l.url.trim(), loja: l.loja, preco: l.preco }))
+          links: links.filter((l) => l.url.trim()).map((l) => ({ url: l.url.trim(), loja: l.loja }))
         },
         null
       );
@@ -2517,7 +3563,7 @@ function FormCompra({ aoEnviar, aoFalhar }: { aoEnviar: AoEnviar; aoFalhar: AoFa
       setTitulo("");
       setJustificativa("");
       setValor("");
-      setLinks([{ url: "", loja: "", preco: "" }]);
+      setLinks([{ url: "", loja: "" }]);
     } catch (erro) {
       aoFalhar({ tom: "erro", texto: (erro as Error).message });
     } finally {
@@ -2526,20 +3572,25 @@ function FormCompra({ aoEnviar, aoFalhar }: { aoEnviar: AoEnviar; aoFalhar: AoFa
   }
 
   return (
-    <form className="time-form" onSubmit={enviar}>
-      <h2>Pedir uma compra</h2>
-      <p className="time-sub">
-        O que você precisa que a empresa compre — com o link de onde comprar. Vários links, se você achou em mais de um
-        lugar: é o que transforma o pedido numa cotação.
-      </p>
+    <form className="time-form time-form-registro time-tela-padrao" onSubmit={enviar}>
+      <header className="time-form-cabeca">
+        <h1>Solicitar compra</h1>
+        <p>Processo para pedir o que a empresa precisa comprar — links, valores e justificativa viram cotação e aprovação.</p>
+      </header>
 
       <label className="campo">
-        <span>O que precisa comprar</span>
+        <span className={ROTULO}>
+          <IconeRotuloBusca tipo="compra" />
+          O que precisa
+        </span>
         <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="cadeira de escritório" required />
       </label>
 
       <label className="campo">
-        <span>Para que serve</span>
+        <span className={ROTULO}>
+          <IconeRotuloBusca tipo="descricao" />
+          Para que serve
+        </span>
         <textarea
           value={justificativa}
           onChange={(e) => setJustificativa(e.target.value)}
@@ -2550,39 +3601,94 @@ function FormCompra({ aoEnviar, aoFalhar }: { aoEnviar: AoEnviar; aoFalhar: AoFa
         <small>Quem decide lê isto ao lado do valor. Sem justificativa, aprovar vira carimbo.</small>
       </label>
 
-      <div className="campo-trio">
-        <label className="campo">
-          <span>Quantidade</span>
-          <input value={quantidade} onChange={(e) => setQuantidade(e.target.value)} inputMode="decimal" />
-        </label>
-        <label className="campo">
-          <span>Unidade</span>
-          <input value={unidade} onChange={(e) => setUnidade(e.target.value)} />
-        </label>
-        <label className="campo">
-          <span>Valor estimado</span>
-          <input value={valor} onChange={(e) => setValor(e.target.value)} inputMode="decimal" placeholder="0,00" required />
-        </label>
+      <div className="campo campo-qty">
+        <span className={ROTULO}>Quantidade</span>
+        <div className="qty-stepper">
+          <button
+            type="button"
+            aria-label="diminuir quantidade"
+            onClick={() => {
+              const n = Math.max(1, Math.round(Number(String(quantidade).replace(",", ".")) || 1) - 1);
+              setQuantidade(String(n));
+            }}
+          >
+            −
+          </button>
+          <input
+            value={quantidade}
+            onChange={(e) => setQuantidade(e.target.value.replace(/[^\d.,]/g, ""))}
+            inputMode="decimal"
+            aria-label="quantidade"
+          />
+          <button
+            type="button"
+            aria-label="aumentar quantidade"
+            onClick={() => {
+              const n = Math.max(1, Math.round(Number(String(quantidade).replace(",", ".")) || 1) + 1);
+              setQuantidade(String(n));
+            }}
+          >
+            +
+          </button>
+        </div>
       </div>
 
-      <div className="campo-par">
-        <label className="campo">
-          <span>Urgência</span>
-          <select value={urgencia} onChange={(e) => setUrgencia(e.target.value)}>
-            <option value="baixa">baixa</option>
-            <option value="normal">normal</option>
-            <option value="alta">alta</option>
-            <option value="critica">crítica — está parando o trabalho</option>
-          </select>
-        </label>
-        <label className="campo">
-          <span>Preciso até</span>
-          <input type="date" value={precisaAte} onChange={(e) => setPrecisaAte(e.target.value)} />
-        </label>
+      <label className="campo valor-campo valor-campo-centro">
+        <span className={ROTULO}>
+          <IconeRotuloBusca tipo="valor" />
+          Valor estimado
+        </span>
+        <div className="valor-caixa">
+          <em>R$</em>
+          <input
+            value={valor}
+            onChange={(e) => setValor(mascaraDinheiro(e.target.value))}
+            inputMode="numeric"
+            placeholder="0,00"
+            required
+          />
+        </div>
+      </label>
+
+      <div className="campo">
+        <span className={ROTULO} id="grupo-urgencia">
+          <IconeRotuloBusca tipo="urgencia" />
+          Urgência
+        </span>
+        <div className="chips" role="group" aria-labelledby="grupo-urgencia">
+          {[
+            ["baixa", "Baixa"],
+            ["normal", "Normal"],
+            ["alta", "Alta"],
+            ["critica", "Crítica"]
+          ].map(([v, r]) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={urgencia === v}
+              className={urgencia === v ? "chip ativo" : "chip"}
+              onClick={() => setUrgencia(v)}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <fieldset className="time-links">
-        <legend>Links do que comprar</legend>
+      <label className="campo">
+        <span className={ROTULO}>
+          <IconeRotuloBusca tipo="data" />
+          Preciso até
+          <span className="campo-opcional">opcional</span>
+        </span>
+        <input type="date" value={precisaAte} onChange={(e) => setPrecisaAte(e.target.value)} />
+      </label>
+
+      <fieldset className="time-links time-links-padrao">
+        <legend className={ROTULO}>
+          <IconeRotuloBusca tipo="link" />
+          Links do que comprar
+        </legend>
         {links.map((l, i) => (
           <div className="time-link-linha" key={i}>
             <input
@@ -2596,12 +3702,6 @@ function FormCompra({ aoEnviar, aoFalhar }: { aoEnviar: AoEnviar; aoFalhar: AoFa
               onChange={(e) => setLinks(links.map((x, j) => (j === i ? { ...x, loja: e.target.value } : x)))}
               placeholder="loja"
             />
-            <input
-              value={l.preco}
-              onChange={(e) => setLinks(links.map((x, j) => (j === i ? { ...x, preco: e.target.value } : x)))}
-              placeholder="preço"
-              inputMode="decimal"
-            />
             {links.length > 1 ? (
               <button type="button" className="time-link" onClick={() => setLinks(links.filter((_, j) => j !== i))}>
                 remover
@@ -2609,29 +3709,21 @@ function FormCompra({ aoEnviar, aoFalhar }: { aoEnviar: AoEnviar; aoFalhar: AoFa
             ) : null}
           </div>
         ))}
-        <button type="button" className="time-link" onClick={() => setLinks([...links, { url: "", loja: "", preco: "" }])}>
+        <button type="button" className="time-link" onClick={() => setLinks([...links, { url: "", loja: "" }])}>
           + outro link
         </button>
-        {somaLinks > 0 ? (
-          <p className="time-sub">
-            Com preço informado em {links.filter((l) => l.preco).length} link(s), o pedido vai marcado como{" "}
-            <strong>cotação</strong>, não estimativa.
-          </p>
-        ) : (
-          <p className="time-sub">
-            Sem preço no link, o pedido vai como <strong>estimativa</strong> — e cada link fica registrado dizendo que
-            quem enviou não informou o preço.
-          </p>
-        )}
+        <p className="time-sub">URL e loja de onde achou. O valor vai só no campo acima.</p>
       </fieldset>
 
-      <button className="time-botao" disabled={enviando}>
-        {enviando ? "enviando…" : "enviar pedido"}
-      </button>
-      <p className="time-nota">
-        Pedido aprovado ainda não é compra feita nem dinheiro reservado: ele vira solicitação de pagamento num segundo
-        passo, com aprovação de quem tem alçada.
-      </p>
+      <div className="time-form-rodape">
+        <button className="time-botao" disabled={enviando}>
+          {enviando ? "enviando…" : "enviar pedido"}
+        </button>
+        <p className="time-nota">
+          Pedido aprovado ainda não é compra feita nem dinheiro reservado: ele vira solicitação de pagamento num segundo
+          passo, com aprovação de quem tem alçada.
+        </p>
+      </div>
     </form>
   );
 }
@@ -2640,52 +3732,1139 @@ function FormCompra({ aoEnviar, aoFalhar }: { aoEnviar: AoEnviar; aoFalhar: AoFa
 // Acompanhamento
 // ---------------------------------------------------------------------------
 
-function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?: boolean }) {
-  if (envios.length === 0) {
-    return <p className="time-sub">Você ainda não enviou nada.</p>;
+const ORDEM_ENVIO_ROTULO: Record<string, string> = {
+  recente: "Mais recentes",
+  antigo: "Mais antigos",
+  valor_desc: "Maior valor",
+  valor_asc: "Menor valor",
+  titulo: "Nome A–Z"
+};
+
+const FILTRO_TIPO_OPCOES: [string, string][] = [
+  ["", "Todos"],
+  ["custo", "Custo"],
+  ["reembolso", "Reembolso"],
+  ["compra", "Compra"],
+  ["nota_entrada", "Nota"]
+];
+
+const FILTRO_STATUS_OPCOES: [string, string][] = [
+  ["", "Todos"],
+  ["registrado", "Registrado"],
+  ["aguardando", "Aguardando"],
+  ["pago", "Pago"],
+  ["nao_pago", "Não pago"]
+];
+
+const STATUS_EXTRATO_ROTULO: Record<StatusExtrato, string> = {
+  registrado: "Registrado",
+  aguardando: "Aguardando",
+  pago: "Pago",
+  nao_pago: "Não pago"
+};
+
+const SITUACAO_CRONO_ROTULO: Record<StatusExtrato | "previsto", string> = {
+  registrado: "Registrado",
+  aguardando: "Aguardando",
+  pago: "Pago",
+  nao_pago: "Não pago",
+  previsto: "Previsto"
+};
+
+function normalizarEnvio(bruto: Partial<Envio> & Pick<Envio, "origem" | "origemId">): Envio {
+  const estado = (bruto.estado ?? "aguardando") as Envio["estado"];
+  const statusExtrato: StatusExtrato =
+    bruto.statusExtrato ??
+    (estado === "concluido"
+      ? "pago"
+      : estado === "recusado" || estado === "devolvido"
+        ? "nao_pago"
+        : estado === "rascunho"
+          ? "registrado"
+          : "aguardando");
+  return {
+    origem: bruto.origem,
+    origemId: bruto.origemId,
+    code: bruto.code ?? "",
+    titulo: bruto.titulo ?? "",
+    valorCents: bruto.valorCents ?? null,
+    dataRef: bruto.dataRef ?? null,
+    status: bruto.status ?? "",
+    estado,
+    resposta: bruto.resposta ?? null,
+    decididoEm: bruto.decididoEm ?? null,
+    decididoPor: bruto.decididoPor ?? null,
+    criadoEm: bruto.criadoEm ?? new Date().toISOString(),
+    itens: bruto.itens ?? 0,
+    itensComAnexo: bruto.itensComAnexo ?? 0,
+    parcelasTotal: bruto.parcelasTotal ?? null,
+    parcelaAtual: bruto.parcelaAtual ?? null,
+    statusExtrato,
+    grupoChave: bruto.grupoChave ?? `${bruto.origem}:${bruto.origemId}`,
+    itensPreview: bruto.itensPreview ?? []
+  };
+}
+
+function chaveEnvio(e: Pick<Envio, "origem" | "origemId">) {
+  return `${e.origem}-${e.origemId}`;
+}
+
+function metaEnvio(e: Envio) {
+  const partes: string[] = [e.code];
+  if (e.origem === "reembolso" && e.itens > 0) {
+    const faltam = e.itens - e.itensComAnexo;
+    if (faltam > 0) partes.push(`${faltam} sem comprovante`);
+    else partes.push("comprovantes ok");
+  }
+  if (e.origem === "compra" && e.itens > 0) partes.push(`${e.itens} link${e.itens === 1 ? "" : "s"}`);
+  if (e.parcelasTotal && e.parcelasTotal >= 2) {
+    const parcela = e.parcelaAtual ?? 1;
+    partes.push(`${parcela}/${e.parcelasTotal}`);
+  }
+  return partes.join(" · ");
+}
+
+function formatMesRef(mes: string) {
+  const [a, m] = mes.split("-");
+  return `${m}/${a.slice(2)}`;
+}
+
+function IconeExpandir({ aberto }: { aberto: boolean }) {
+  return (
+    <svg
+      className="envios-produto-expandir-icone"
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {aberto ? <path d="M6 15l6-6 6 6" /> : <path d="M6 9l6 6 6-6" />}
+    </svg>
+  );
+}
+
+const FILTRO_PERIODO_OPCOES: [string, string][] = [
+  ["tudo", "Tudo"],
+  ["7d", "7 dias"],
+  ["30d", "30 dias"],
+  ["90d", "90 dias"]
+];
+
+function rotuloFiltroTipo(v: string) {
+  return FILTRO_TIPO_OPCOES.find(([id]) => id === v)?.[1] ?? v;
+}
+
+function rotuloFiltroStatus(v: string) {
+  return FILTRO_STATUS_OPCOES.find(([id]) => id === v)?.[1] ?? v;
+}
+
+function rotuloFiltroPeriodo(v: string) {
+  return FILTRO_PERIODO_OPCOES.find(([id]) => id === v)?.[1] ?? v;
+}
+
+function formatDataEnvio(e: Envio) {
+  const d = e.dataRef ?? e.criadoEm.slice(0, 10);
+  const [a, m, dia] = d.split("-");
+  return `${dia}/${m}/${a.slice(2)}`;
+}
+
+function TelaItemGasto({
+  fonte,
+  itemId,
+  aoFalhar
+}: {
+  fonte: "planilha" | "app";
+  itemId: number;
+  aoFalhar: (r: { tom: "ok" | "erro"; texto: string }) => void;
+}) {
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [nome, setNome] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [tipoReembolso, setTipoReembolso] = useState("");
+  const [categoriaLivre, setCategoriaLivre] = useState("");
+  const [nota, setNota] = useState("");
+  const [valorCents, setValorCents] = useState(0);
+  const [parcela, setParcela] = useState<number | null>(null);
+  const [parcelasTotal, setParcelasTotal] = useState<number | null>(null);
+  const [data, setData] = useState<string | null>(null);
+  const [statusParte, setStatusParte] = useState<StatusExtrato>("aguardando");
+  const [temComprovante, setTemComprovante] = useState(false);
+  const [envio, setEnvio] = useState<{ origem: string; origemId: number; code: string } | null>(null);
+  const [opcoes, setOpcoes] = useState<Opcoes>({ tipos: [], categorias: [], centros: [], linhas: [], bancos: [] });
+  const [historico, setHistorico] = useState<{
+    parcelaAtual: number;
+    parcelasTotal: number;
+    pagoCents: number;
+    saldoCents: number;
+    inicioMes: string | null;
+    parcelas: { id: number; mes: string; parcela: number; parcelasTotal: number; valorCents: number; situacao: StatusExtrato | "previsto" }[];
+  } | null>(null);
+  const [enviandoAnexo, setEnviandoAnexo] = useState(false);
+  const arquivoRef = useRef<HTMLInputElement>(null);
+
+  const recarregar = useCallback(async () => {
+    setCarregando(true);
+    setErro(null);
+    try {
+      const r = await fetch(`/api/time/reembolso-item/${fonte}/${itemId}`, { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setErro((j.erro as string) ?? "Não foi possível carregar o item.");
+        return;
+      }
+      const item = j.item as {
+        nome: string;
+        valorCents: number;
+        parcela: number | null;
+        parcelasTotal: number | null;
+        data: string | null;
+        categoriaId: number | null;
+        tipoReembolso: string | null;
+        categoriaLivre: string | null;
+        nota: string | null;
+        temComprovante: boolean;
+        statusParte: StatusExtrato;
+        envio: { origem: string; origemId: number; code: string } | null;
+      };
+      setNome(item.nome);
+      setValorCents(item.valorCents);
+      setParcela(item.parcela);
+      setParcelasTotal(item.parcelasTotal);
+      setData(item.data);
+      setCategoria(item.categoriaId ? String(item.categoriaId) : "");
+      setTipoReembolso(item.tipoReembolso ?? "");
+      setCategoriaLivre(item.categoriaLivre ?? "");
+      setNota(item.nota ?? "");
+      setTemComprovante(item.temComprovante);
+      setStatusParte(item.statusParte);
+      setEnvio(item.envio);
+      setOpcoes(j.opcoes ?? { tipos: [], categorias: [], centros: [], linhas: [], bancos: [] });
+      if (j.historico) {
+        setHistorico({
+          parcelaAtual: j.historico.parcelaAtual,
+          parcelasTotal: j.historico.parcelasTotal,
+          pagoCents: j.historico.pagoCents,
+          saldoCents: j.historico.saldoCents,
+          inicioMes: j.historico.inicioMes,
+          parcelas: j.historico.parcelas
+        });
+      }
+    } finally {
+      setCarregando(false);
+    }
+  }, [fonte, itemId]);
+
+  useEffect(() => {
+    void recarregar();
+  }, [recarregar]);
+
+  const salvar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSalvando(true);
+    try {
+      const r = await fetch(`/api/time/reembolso-item/${fonte}/${itemId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          nome: nome.trim(),
+          categoriaId: categoria ? Number(categoria) : null,
+          tipoReembolso: tipoReembolso || null,
+          categoriaLivre: categoriaLivre.trim() || null,
+          nota: nota.trim() || null
+        })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        aoFalhar({ tom: "erro", texto: (j.erro as string) ?? "Não foi possível salvar." });
+        return;
+      }
+      if (j.titulo) setNome(j.titulo);
+      aoFalhar({ tom: "ok", texto: "Item atualizado." });
+      void recarregar();
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const enviarComprovante = async (arquivo: File) => {
+    if (fonte !== "app") return;
+    setEnviandoAnexo(true);
+    try {
+      const form = new FormData();
+      form.append("arquivo", arquivo);
+      const r = await fetch(`/api/time/reembolso-item/app/${itemId}/comprovante`, { method: "POST", body: form });
+      if (r.ok) {
+        setTemComprovante(true);
+        aoFalhar({ tom: "ok", texto: "Comprovante anexado." });
+      } else {
+        const j = await r.json().catch(() => ({}));
+        aoFalhar({ tom: "erro", texto: (j.erro as string) ?? "Não foi possível anexar." });
+      }
+    } finally {
+      setEnviandoAnexo(false);
+    }
+  };
+
+  if (carregando) return <div className="time-aviso">carregando…</div>;
+  if (erro) return <p className="time-erro">{erro}</p>;
+
+  const voltar =
+    envio ? `/time/envios#envio-${envio.origem}-${envio.origemId}` : "/time/envios";
+
+  return (
+    <form className="time-form time-form-registro time-tela-padrao item-gasto" onSubmit={(e) => void salvar(e)}>
+      <header className="time-form-cabeca">
+        <Link href={voltar} className="time-link item-gasto-voltar">
+          ← Histórico
+        </Link>
+        <h1>Item de reembolso</h1>
+        <p>
+          Mesmo cadastro do pedido de reembolso — nome, categoria e parcelas ficam ligados ao que você vê no histórico.
+          {fonte === "planilha" ? " Este item veio da planilha; o app vai substituir aos poucos." : null}
+        </p>
+        <span className={`envios-status envios-status-${statusParte}`}>{STATUS_EXTRATO_ROTULO[statusParte]}</span>
+      </header>
+
+      <label className="campo">
+        <span className="campo-rotulo campo-rotulo-destaque">O que é</span>
+        <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="ex.: ar-condicionado sala reunião" required />
+      </label>
+
+      <div className="item-gasto-resumo">
+        <span>
+          <strong>{brl(valorCents)}</strong>
+          {parcelasTotal && parcelasTotal >= 2 ? ` · parcela ${parcela ?? "?"}/${parcelasTotal}` : null}
+        </span>
+        {data ? <span className="time-sub">{data.split("-").reverse().join("/")}</span> : null}
+        {envio ? (
+          <span className="time-sub">
+            envio {envio.code}
+          </span>
+        ) : null}
+      </div>
+
+      <section className="time-form-classificar">
+        {fonte === "app" ? (
+          <BuscaClassificacaoGasto
+            tipos={opcoes.tipos}
+            categorias={opcoes.categorias}
+            tipoSlug={tipoReembolso}
+            categoriaId={categoria}
+            aoEscolherTipo={(slug) => {
+              setTipoReembolso(slug);
+              if (slug) setCategoria("");
+            }}
+            aoEscolherCategoria={(id) => {
+              setCategoria(id);
+              if (id) setTipoReembolso("");
+            }}
+          />
+        ) : (
+          <label className="campo">
+            <span className="campo-rotulo campo-rotulo-destaque">Categoria</span>
+            <input
+              value={categoriaLivre}
+              onChange={(e) => setCategoriaLivre(e.target.value)}
+              placeholder="Transporte, Alimentação, Curso…"
+              list="item-categorias-planilha"
+            />
+            <datalist id="item-categorias-planilha">
+              {opcoes.categorias.map((c) => (
+                <option key={c.id} value={c.rotulo.replace(/^\d+\s+/, "")} />
+              ))}
+            </datalist>
+          </label>
+        )}
+      </section>
+
+      {fonte === "planilha" ? (
+        <label className="campo">
+          <span className="campo-rotulo">Observação</span>
+          <textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={2} placeholder="Detalhe que ajude o financeiro" />
+        </label>
+      ) : null}
+
+      <div className="campo">
+        <span className="campo-rotulo">Comprovante</span>
+        {temComprovante ? (
+          <p className="time-sub">Comprovante anexado.</p>
+        ) : fonte === "app" ? (
+          <>
+            <input
+              ref={arquivoRef}
+              type="file"
+              accept="image/*,application/pdf"
+              className="sr-only"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void enviarComprovante(f);
+                e.target.value = "";
+              }}
+            />
+            <button type="button" className="envios-acao-roxo" disabled={enviandoAnexo} onClick={() => arquivoRef.current?.click()}>
+              {enviandoAnexo ? "enviando…" : "Anexar comprovante"}
+            </button>
+          </>
+        ) : (
+          <p className="time-sub">
+            Itens da planilha ainda não guardam arquivo aqui.{" "}
+            <Link
+              href={`/time/reembolso?descricao=${encodeURIComponent(nome)}&valor=${encodeURIComponent(mascaraDinheiro(String(valorCents)))}`}
+              className="envios-acao-roxo"
+            >
+              Registrar com comprovante
+            </Link>
+          </p>
+        )}
+      </div>
+
+      {historico && historico.parcelas.length > 0 ? (
+        <section className="envios-detalhe-secao item-gasto-parcelas">
+          <p className="envios-detalhe-contagem">Parcelas</p>
+          <div className="envios-item-resumo envios-item-resumo-estatico">
+            <span className="envios-item-resumo-pago">
+              <strong>{brl(historico.pagoCents)}</strong>
+              <span>
+                {" "}
+                de {brl(historico.pagoCents + historico.saldoCents)}
+              </span>
+            </span>
+            <span className="envios-item-resumo-fracao">
+              {historico.parcelaAtual}/{historico.parcelasTotal}
+            </span>
+            <span className="envios-item-resumo-periodo">
+              {historico.inicioMes ? formatMesRef(historico.inicioMes) : "—"}
+              {" → "}
+              {historico.parcelas.length
+                ? formatMesRef(historico.parcelas[historico.parcelas.length - 1].mes)
+                : "—"}
+            </span>
+          </div>
+          <ul className="envios-detalhe-cronograma envios-item-parcelas">
+            {historico.parcelas.map((parc) => (
+              <li key={`${parc.id}-${parc.mes}-${parc.parcela}`}>
+                <span>{formatMesRef(parc.mes)}</span>
+                <span>
+                  {parc.parcela}/{parc.parcelasTotal}
+                </span>
+                <span>{brl(parc.valorCents)}</span>
+                <span
+                  className={`envios-status envios-status-${parc.situacao === "previsto" ? "aguardando" : parc.situacao}`}
+                >
+                  {SITUACAO_CRONO_ROTULO[parc.situacao]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <button type="submit" className="time-botao" disabled={salvando}>
+        {salvando ? "Salvando…" : "Salvar"}
+      </button>
+    </form>
+  );
+}
+
+function ItemParteReembolso({ p }: { p: DetalheEnvio["partes"][number] }) {
+  const tituloBase = p.titulo.replace(/\s+\d+\/\d+.*$/, "").trim() || p.titulo;
+  const hrefItem = `/time/item/${p.fonte}/${p.id}`;
+  const [listaAberta, setListaAberta] = useState(false);
+  const [historico, setHistorico] = useState<{
+    titulo: string;
+    parcelasTotal: number;
+    parcelaAtual: number;
+    valorParcelaCents: number;
+    totalContratadoCents: number;
+    pagoCents: number;
+    saldoCents: number;
+    parcelasRestantes: number;
+    inicioMes: string | null;
+    ultimoMes: string | null;
+    parcelas: { id: number; mes: string; parcela: number; parcelasTotal: number; valorCents: number; descricao: string; situacao: StatusExtrato | "previsto" }[];
+  } | null>(null);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const temParcelas = Boolean(p.parcelasTotal && p.parcelasTotal >= 2);
+
+  const mesHoje = new Date().toISOString().slice(0, 7);
+  const proximaPendente = historico?.parcelas.find((x) => x.situacao === "previsto" || x.situacao === "registrado");
+  const quitado =
+    p.statusParte === "pago" && (!temParcelas || (historico ? historico.parcelasRestantes === 0 : (p.parcela ?? 0) >= (p.parcelasTotal ?? 1)));
+  const emAtraso = Boolean(!quitado && proximaPendente && proximaPendente.mes < mesHoje);
+  const situacaoParcela = quitado ? "pago" : emAtraso ? "atrasado" : temParcelas ? "em_dia" : p.statusParte;
+  const situacaoRotulo =
+    situacaoParcela === "pago"
+      ? "Pago"
+      : situacaoParcela === "atrasado"
+        ? "Atrasado"
+        : situacaoParcela === "em_dia"
+          ? "Em dia"
+          : STATUS_EXTRATO_ROTULO[p.statusParte];
+
+  useEffect(() => {
+    if (!temParcelas) return;
+    let cancelado = false;
+    (async () => {
+      setCarregando(true);
+      try {
+        const r = await fetch(`/api/time/reembolso-item/${p.fonte}/${p.id}`, { cache: "no-store" });
+        const j = await r.json().catch(() => ({}));
+        if (!cancelado) {
+          if (r.ok && j.historico) setHistorico(j.historico);
+          else setErro((j.erro as string) ?? "Não foi possível carregar parcelas.");
+        }
+      } finally {
+        if (!cancelado) setCarregando(false);
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [temParcelas, p.fonte, p.id]);
+
+  return (
+    <li className={`envios-produto${listaAberta ? " envios-produto-aberto" : ""}${emAtraso ? " envios-produto-atraso" : ""}`}>
+      <Link href={hrefItem} className="envios-produto-linha" title="Abrir item">
+        <span className="envios-produto-nome">{tituloBase}</span>
+        <span className={`envios-produto-cat${p.categoriaRotulo ? "" : " envios-produto-cat-falta"}`}>
+          {p.categoriaRotulo ?? "Sem cat."}
+        </span>
+        <span className="envios-produto-valor">{brl(p.valorCents)}</span>
+        <span className={`envios-produto-situacao envios-produto-situacao-${situacaoParcela}`}>
+          {situacaoRotulo}
+        </span>
+      </Link>
+
+      {temParcelas ? (
+        <button
+          type="button"
+          className={`envios-produto-parcelas${listaAberta ? " envios-produto-parcelas-aberta" : ""}`}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setListaAberta((v) => !v);
+          }}
+          aria-expanded={listaAberta}
+        >
+          {carregando && !historico ? (
+            <span className="envios-produto-parcelas-loading">Carregando parcelas…</span>
+          ) : historico ? (
+            <div className="envios-produto-parcelas-topo">
+              <span className="envios-produto-fracao">
+                {historico.parcelaAtual}
+                <span>/{historico.parcelasTotal}</span>
+              </span>
+              <span className="envios-produto-pago-total">
+                <strong>{brl(historico.pagoCents)}</strong>
+                <span> / {brl(historico.totalContratadoCents)}</span>
+              </span>
+              <span className="envios-produto-expandir" aria-hidden>
+                <IconeExpandir aberto={listaAberta} />
+              </span>
+            </div>
+          ) : (
+            <span className="envios-produto-parcelas-loading">
+              {p.parcela ?? "?"}/{p.parcelasTotal} parcelas
+              {erro ? ` — ${erro}` : ""}
+            </span>
+          )}
+        </button>
+      ) : null}
+
+      {listaAberta && historico ? (
+        <ul className="envios-detalhe-cronograma envios-item-parcelas">
+          {historico.parcelas.map((parc) => (
+            <li key={`${parc.id}-${parc.mes}-${parc.parcela}`}>
+              <span>{formatMesRef(parc.mes)}</span>
+              <span>
+                {parc.parcela}/{parc.parcelasTotal}
+              </span>
+              <span>{brl(parc.valorCents)}</span>
+              <span
+                className={`envios-status envios-status-${parc.situacao === "previsto" ? "aguardando" : parc.situacao}`}
+              >
+                {SITUACAO_CRONO_ROTULO[parc.situacao]}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
+  );
+}
+
+function DetalheEnvioPainel({
+  detalhe,
+  carregando,
+  erro,
+  aoAbrirRelacionado,
+  aoVerGrupo
+}: {
+  detalhe: DetalheEnvio | null;
+  carregando: boolean;
+  erro: string | null;
+  aoAbrirRelacionado: (origem: string, origemId: number) => void;
+  aoVerGrupo: () => void;
+}) {
+  if (carregando) return <div className="envios-detalhe envios-detalhe-carregando">Carregando detalhes…</div>;
+  if (erro) return <div className="envios-detalhe envios-detalhe-erro">{erro}</div>;
+  if (!detalhe) return null;
+
+  return (
+    <div className="envios-detalhe">
+      {detalhe.partes.length > 0 ? (
+        <section className="envios-detalhe-secao" aria-label={`${detalhe.partes.length} itens`}>
+          <ul className="envios-detalhe-lista">
+            {detalhe.partes.map((p) => (
+              <ItemParteReembolso key={`${p.fonte}-${p.id}`} p={p} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {detalhe.cronograma.length > 0 ? (
+        <section className="envios-detalhe-secao">
+          <p className="envios-detalhe-contagem">Parcelas previstas</p>
+          <ul className="envios-detalhe-cronograma">
+            {detalhe.cronograma.map((c) => (
+              <li key={`${c.mes}-${c.parcela}`}>
+                <span>{formatMesRef(c.mes)}</span>
+                <span>
+                  {c.parcela}/{detalhe.parcelasTotal ?? detalhe.cronograma.length}
+                </span>
+                <span>{brl(c.valorCents)}</span>
+                <span className={`envios-status envios-status-${c.situacao === "previsto" ? "aguardando" : c.situacao}`}>
+                  {SITUACAO_CRONO_ROTULO[c.situacao]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {detalhe.relacionados.length > 0 ? (
+        <section className="envios-detalhe-secao">
+          <div className="envios-detalhe-secao-topo">
+            <p className="envios-detalhe-contagem">Relacionados ({detalhe.relacionados.length})</p>
+            <button type="button" className="time-link" onClick={aoVerGrupo}>
+              Ver grupo
+            </button>
+          </div>
+          <ul className="envios-detalhe-lista">
+            {detalhe.relacionados.map((r) => (
+              <li key={`${r.origem}-${r.origemId}`} className="envios-detalhe-item envios-detalhe-item-plano">
+                <button type="button" className="envios-detalhe-link" onClick={() => aoAbrirRelacionado(r.origem, r.origemId)}>
+                  <strong>{r.titulo}</strong>
+                  <span>
+                    {r.code} · {r.valorCents !== null ? brl(r.valorCents) : "—"} ·{" "}
+                    {STATUS_EXTRATO_ROTULO[r.statusExtrato]}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function LinhaExtrato({
+  e,
+  compacta,
+  aberto,
+  onToggle
+}: {
+  e: Envio;
+  compacta: boolean;
+  aberto?: boolean;
+  onToggle?: () => void;
+}) {
+  const tipo = ORIGEM_ROTULO[e.origem] ?? e.origem;
+  const meta = metaEnvio(e);
+  const faltaComprovante = e.origem === "reembolso" && e.itens > 0 && e.itensComAnexo < e.itens;
+  const qtdItens = Math.max(e.itens, e.itensPreview.length);
+  const chips = e.itensPreview.slice(0, 4);
+  const resto = Math.max(0, qtdItens - chips.length);
+  const temMini = qtdItens > 0 && !compacta;
+
+  const corpo = (
+    <>
+      <div className="envios-cel envios-cel-data-linha">
+        <span className="envios-cel-data" data-label="Data">
+          {formatDataEnvio(e)}
+        </span>
+        {temMini ? (
+          <span className="envios-mini-acao">
+            <span className="envios-mini-qtd">
+              {qtdItens} {qtdItens === 1 ? "item" : "itens"}
+            </span>
+            <IconeExpandir aberto={Boolean(aberto)} />
+          </span>
+        ) : null}
+      </div>
+      <span className="envios-cel envios-cel-tipo" data-label="Tipo">
+        {tipo}
+      </span>
+      <div className="envios-cel envios-cel-item" data-label="Item">
+        <strong className="envios-titulo">{e.titulo}</strong>
+        <span className={`envios-meta${faltaComprovante ? " time-falta" : ""}`}>{meta}</span>
+      </div>
+      <span className="envios-cel envios-cel-valor" data-label="Valor">
+        {e.valorCents === null ? "—" : brl(e.valorCents)}
+      </span>
+      <span className="envios-cel envios-cel-status" data-label="Status">
+        <span className={`envios-status envios-status-${e.statusExtrato}`}>{STATUS_EXTRATO_ROTULO[e.statusExtrato]}</span>
+      </span>
+      {temMini && !aberto && chips.length > 0 ? (
+        <div className="envios-mini-chips">
+          {chips.map((m, i) => (
+            <span
+              key={`${m.titulo}-${i}`}
+              className={`envios-mini-chip${m.temComprovante ? " envios-mini-ok" : ""}`}
+              title={m.titulo}
+            >
+              {m.titulo.replace(/\s+\d+\/\d+.*$/, "").trim().slice(0, 14) || m.titulo.slice(0, 14)}
+            </span>
+          ))}
+          {resto > 0 ? <span className="envios-mini-mais">+{resto}</span> : null}
+        </div>
+      ) : null}
+      {e.resposta ? (
+        <div className="envios-resposta">
+          <strong>{e.decididoPor ?? "financeiro"}:</strong> {e.resposta}
+        </div>
+      ) : e.estado === "devolvido" || e.estado === "recusado" ? (
+        <div className="envios-resposta envios-resposta-vazio">Sem motivo registrado — cobre quem decidiu.</div>
+      ) : null}
+    </>
+  );
+
+  if (compacta) {
+    return <article className="envios-linha envios-linha-compacta">{corpo}</article>;
   }
 
   return (
-    <>
-      {!compacta ? <h2>Tudo que eu enviei</h2> : null}
-      <ul className="time-lista">
-        {envios.map((e) => {
-          const estado = ESTADO_ROTULO[e.estado] ?? ESTADO_ROTULO.aguardando;
-          return (
-            <li key={`${e.origem}-${e.origemId}`} className="time-item" data-estado={e.estado}>
-              <div className="time-item-topo">
-                <span className="time-item-origem">{ORIGEM_ROTULO[e.origem] ?? e.origem}</span>
-                <span className="time-item-code">{e.code}</span>
-                <SeloCamada camada={estado.camada} texto={estado.texto} />
-              </div>
-              <div className="time-item-titulo">{e.titulo}</div>
-              <div className="time-item-baixo">
-                <span className="time-item-valor">{e.valorCents === null ? "—" : brl(e.valorCents)}</span>
-                {e.dataRef ? <span>{e.dataRef.split("-").reverse().join("/")}</span> : null}
-                {e.origem === "reembolso" && e.itens > 0 ? (
-                  <span
-                    className={e.itensComAnexo < e.itens ? "time-falta" : undefined}
-                    title="itens com comprovante anexado"
+    <article className={`envios-linha${aberto ? " envios-linha-aberta" : ""}${temMini ? " envios-linha-com-mini" : ""}`}>
+      <button type="button" className="envios-linha-botao" onClick={onToggle} aria-expanded={aberto}>
+        {corpo}
+        {!temMini ? (
+          <span className="envios-linha-chevron" aria-hidden>
+            <IconeExpandir aberto={Boolean(aberto)} />
+          </span>
+        ) : null}
+      </button>
+    </article>
+  );
+}
+
+function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?: boolean }) {
+  const [busca, setBusca] = useState("");
+  const [tipo, setTipo] = useState("");
+  const [estadoFiltro, setEstadoFiltro] = useState("");
+  const [periodo, setPeriodo] = useState("tudo");
+  const [ordem, setOrdem] = useState<"recente" | "antigo" | "valor_desc" | "valor_asc" | "titulo">("recente");
+  const [valorMin, setValorMin] = useState("");
+  const [valorMax, setValorMax] = useState("");
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [aberto, setAberto] = useState<string | null>(null);
+  const [detalhes, setDetalhes] = useState<Record<string, DetalheEnvio>>({});
+  const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
+  const [erroDetalhe, setErroDetalhe] = useState<string | null>(null);
+  const [grupoFiltro, setGrupoFiltro] = useState("");
+
+  const filtrados = useMemo(() => {
+    const t = semAcento(busca.trim());
+    const min = valorMin ? centavosDoTexto(valorMin) : null;
+    const max = valorMax ? centavosDoTexto(valorMax) : null;
+    const limite =
+      periodo === "7d" || periodo === "30d" || periodo === "90d"
+        ? (() => {
+            const d = new Date();
+            d.setDate(d.getDate() - Number(periodo.replace("d", "")));
+            d.setHours(0, 0, 0, 0);
+            return d;
+          })()
+        : null;
+
+    let lista = envios.filter((e) => {
+      if (grupoFiltro && e.grupoChave !== grupoFiltro) return false;
+      if (tipo && e.origem !== tipo) return false;
+      if (estadoFiltro && e.statusExtrato !== estadoFiltro) return false;
+      if (limite && new Date(e.criadoEm) < limite) return false;
+      if (min !== null && (e.valorCents === null || e.valorCents < min)) return false;
+      if (max !== null && (e.valorCents === null || e.valorCents > max)) return false;
+      if (!t) return true;
+      return semAcento(e.titulo).includes(t) || semAcento(e.code).includes(t);
+    });
+
+    lista = [...lista].sort((a, b) => {
+      if (ordem === "titulo") return a.titulo.localeCompare(b.titulo, "pt-BR");
+      if (ordem === "valor_desc") return (b.valorCents ?? -1) - (a.valorCents ?? -1);
+      if (ordem === "valor_asc") return (a.valorCents ?? Infinity) - (b.valorCents ?? Infinity);
+      if (ordem === "antigo") return a.criadoEm.localeCompare(b.criadoEm);
+      return b.criadoEm.localeCompare(a.criadoEm);
+    });
+
+    return lista;
+  }, [envios, busca, tipo, estadoFiltro, periodo, ordem, valorMin, valorMax, grupoFiltro]);
+
+  const limparFiltros = () => {
+    setBusca("");
+    setTipo("");
+    setEstadoFiltro("");
+    setPeriodo("tudo");
+    setOrdem("recente");
+    setValorMin("");
+    setValorMax("");
+    setGrupoFiltro("");
+  };
+
+  const filtrosAtivos =
+    Boolean(
+      busca || tipo || estadoFiltro || periodo !== "tudo" || valorMin || valorMax || ordem !== "recente" || grupoFiltro
+    );
+
+  const qtdFiltros = useMemo(() => {
+    let n = 0;
+    if (busca) n++;
+    if (tipo) n++;
+    if (estadoFiltro) n++;
+    if (periodo !== "tudo") n++;
+    if (valorMin || valorMax) n++;
+    if (grupoFiltro) n++;
+    return n;
+  }, [busca, tipo, estadoFiltro, periodo, valorMin, valorMax, grupoFiltro]);
+
+  const pillsAtivos = useMemo(() => {
+    const pills: { chave: string; rotulo: string; limpar: () => void }[] = [];
+    if (busca.trim()) {
+      pills.push({ chave: "busca", rotulo: `“${busca.trim()}”`, limpar: () => setBusca("") });
+    }
+    if (tipo) {
+      pills.push({ chave: "tipo", rotulo: rotuloFiltroTipo(tipo), limpar: () => setTipo("") });
+    }
+    if (estadoFiltro) {
+      pills.push({ chave: "status", rotulo: rotuloFiltroStatus(estadoFiltro), limpar: () => setEstadoFiltro("") });
+    }
+    if (periodo !== "tudo") {
+      pills.push({ chave: "periodo", rotulo: rotuloFiltroPeriodo(periodo), limpar: () => setPeriodo("tudo") });
+    }
+    if (valorMin || valorMax) {
+      const faixa = [valorMin || "…", valorMax || "…"].join(" – ");
+      pills.push({
+        chave: "valor",
+        rotulo: `Valor ${faixa}`,
+        limpar: () => {
+          setValorMin("");
+          setValorMax("");
+        }
+      });
+    }
+    if (ordem !== "recente") {
+      pills.push({ chave: "ordem", rotulo: ORDEM_ENVIO_ROTULO[ordem], limpar: () => setOrdem("recente") });
+    }
+    if (grupoFiltro) {
+      pills.push({ chave: "grupo", rotulo: "Mesmo grupo", limpar: () => setGrupoFiltro("") });
+    }
+    return pills;
+  }, [busca, tipo, estadoFiltro, periodo, valorMin, valorMax, ordem, grupoFiltro]);
+
+  const carregarDetalhe = async (e: Envio) => {
+    const k = chaveEnvio(e);
+    setAberto(k);
+    if (detalhes[k]) return;
+    setCarregandoDetalhe(true);
+    setErroDetalhe(null);
+    try {
+      const r = await fetch(`/api/time/envios/${e.origem}/${e.origemId}`, { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.detalhe) setDetalhes((d) => ({ ...d, [k]: j.detalhe }));
+      else setErroDetalhe((j.erro as string) ?? "Não foi possível carregar o detalhe.");
+    } finally {
+      setCarregandoDetalhe(false);
+    }
+  };
+
+  const alternarDetalhe = async (e: Envio) => {
+    const k = chaveEnvio(e);
+    if (aberto === k) {
+      setAberto(null);
+      setErroDetalhe(null);
+      return;
+    }
+    await carregarDetalhe(e);
+  };
+
+  const abrirRelacionado = (origem: string, origemId: number) => {
+    const alvo = envios.find((e) => e.origem === origem && e.origemId === origemId);
+    if (!alvo) return;
+    void carregarDetalhe(alvo);
+    document.getElementById(`envio-${origem}-${origemId}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+
+  // Voltar de /time/item/... com #envio-origem-id reabre o detalhe e rola até a linha.
+  const hashAbertoRef = useRef(false);
+  useEffect(() => {
+    if (hashAbertoRef.current || envios.length === 0) return;
+    const hash = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
+    const m = /^envio-([a-z_]+)-(\d+)$/.exec(hash);
+    if (!m) return;
+    const alvo = envios.find((e) => e.origem === m[1] && e.origemId === Number(m[2]));
+    if (!alvo) return;
+    hashAbertoRef.current = true;
+    void carregarDetalhe(alvo);
+    requestAnimationFrame(() => {
+      document.getElementById(`envio-${alvo.origem}-${alvo.origemId}`)?.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth"
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só na chegada com hash; carregarDetalhe muda a cada render
+  }, [envios]);
+
+  if (envios.length === 0) {
+    return compacta ? (
+      <p className="time-sub">Você ainda não enviou nada.</p>
+    ) : (
+      <div className="time-tela-padrao envios-extrato">
+        <header className="time-form-cabeca">
+          <h1>O que eu enviei</h1>
+          <p>Extrato de custos, reembolsos e pedidos de compra.</p>
+        </header>
+        <p className="time-sub">Você ainda não enviou nada.</p>
+      </div>
+    );
+  }
+
+  if (compacta) {
+    return (
+      <div className="envios-extrato envios-extrato-compacto">
+        <div className="envios-tabela">
+          {envios.map((e) => (
+            <LinhaExtrato key={`${e.origem}-${e.origemId}`} e={e} compacta />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="time-tela-padrao envios-extrato">
+      <header className="time-form-cabeca">
+        <h1>O que eu enviei</h1>
+        <p>Busque e filtre custos, reembolsos e pedidos de compra.</p>
+      </header>
+
+      <div className="envios-toolbar">
+        <div className="campo-busca envios-busca">
+          <svg className="campo-busca-icone" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+          </svg>
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Item, código ou valor"
+            autoComplete="off"
+          />
+          {busca ? (
+            <button type="button" className="envios-busca-limpar" onClick={() => setBusca("")} aria-label="Limpar busca">
+              ×
+            </button>
+          ) : null}
+        </div>
+
+        <div className="envios-toolbar-acoes">
+          <button
+            type="button"
+            className={filtrosAbertos ? "envios-btn-acao ativo" : "envios-btn-acao"}
+            aria-expanded={filtrosAbertos}
+            onClick={() => setFiltrosAbertos((v) => !v)}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
+            </svg>
+            Filtros
+            {qtdFiltros > 0 ? <span className="envios-badge">{qtdFiltros}</span> : null}
+          </button>
+
+          <label className="envios-btn-acao envios-btn-ordenar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M8 6h12M8 12h8M8 18h4" strokeLinecap="round" />
+            </svg>
+            <select value={ordem} onChange={(e) => setOrdem(e.target.value as typeof ordem)} aria-label="Ordenar lista">
+              {Object.entries(ORDEM_ENVIO_ROTULO).map(([v, r]) => (
+                <option key={v} value={v}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <span className="envios-contagem-inline">
+            {filtrados.length}/{envios.length}
+          </span>
+        </div>
+
+        {pillsAtivos.length > 0 ? (
+          <div className="envios-pills" role="list" aria-label="Filtros ativos">
+            {pillsAtivos.map((p) => (
+              <button key={p.chave} type="button" className="envios-pill" role="listitem" onClick={p.limpar}>
+                {p.rotulo}
+                <span aria-hidden>×</span>
+              </button>
+            ))}
+            {pillsAtivos.length > 1 ? (
+              <button type="button" className="envios-pill envios-pill-limpar" onClick={limparFiltros}>
+                Limpar tudo
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {filtrosAbertos ? (
+          <div className="envios-filtros-painel">
+            <div className="envios-filtros-bloco">
+              <span className="envios-filtros-titulo">Tipo</span>
+              <div className="envios-grade-opcoes envios-grade-opcoes-3">
+                {FILTRO_TIPO_OPCOES.map(([v, r]) => (
+                  <button
+                    key={v || "todos"}
+                    type="button"
+                    className={tipo === v ? "envios-opcao ativo" : "envios-opcao"}
+                    aria-pressed={tipo === v}
+                    onClick={() => setTipo(v)}
                   >
-                    {e.itensComAnexo}/{e.itens} com comprovante
-                  </span>
-                ) : null}
-                {e.origem === "compra" && e.itens > 0 ? <span>{e.itens} link(s)</span> : null}
+                    {r}
+                  </button>
+                ))}
               </div>
-              {/* A resposta aparece SEMPRE que existir, inclusive na aprovação.
-                  Mostrar só na recusa ensinaria que texto do financeiro é
-                  sinônimo de má notícia. */}
-              {e.resposta ? (
-                <div className="time-item-resposta">
-                  <strong>{e.decididoPor ?? "financeiro"}:</strong> {e.resposta}
-                </div>
-              ) : e.estado === "devolvido" || e.estado === "recusado" ? (
-                <div className="time-item-resposta">Sem motivo registrado — cobre quem decidiu.</div>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
-    </>
+            </div>
+
+            <div className="envios-filtros-bloco">
+              <span className="envios-filtros-titulo">Status</span>
+              <div className="envios-grade-opcoes envios-grade-opcoes-3">
+                {FILTRO_STATUS_OPCOES.map(([v, r]) => (
+                  <button
+                    key={v || "todos"}
+                    type="button"
+                    className={estadoFiltro === v ? "envios-opcao ativo" : "envios-opcao"}
+                    aria-pressed={estadoFiltro === v}
+                    onClick={() => setEstadoFiltro(v)}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="envios-filtros-bloco">
+              <span className="envios-filtros-titulo">Período</span>
+              <div className="envios-segmento">
+                {FILTRO_PERIODO_OPCOES.map(([v, r]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={periodo === v ? "envios-segmento-item ativo" : "envios-segmento-item"}
+                    aria-pressed={periodo === v}
+                    onClick={() => setPeriodo(v)}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="envios-filtros-bloco">
+              <span className="envios-filtros-titulo">Faixa de valor</span>
+              <div className="envios-valor-faixa">
+                <label className="envios-campo-mini">
+                  <span>Mínimo</span>
+                  <input
+                    value={valorMin}
+                    onChange={(e) => setValorMin(mascaraDinheiro(e.target.value))}
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
+                  />
+                </label>
+                <label className="envios-campo-mini">
+                  <span>Máximo</span>
+                  <input
+                    value={valorMax}
+                    onChange={(e) => setValorMax(mascaraDinheiro(e.target.value))}
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="envios-filtros-rodape">
+              {filtrosAtivos ? (
+                <button type="button" className="time-link" onClick={limparFiltros}>
+                  Limpar filtros
+                </button>
+              ) : (
+                <span className="envios-filtros-dica">Nenhum filtro aplicado</span>
+              )}
+              <button type="button" className="envios-btn-aplicar" onClick={() => setFiltrosAbertos(false)}>
+                Ver {filtrados.length} resultado{filtrados.length === 1 ? "" : "s"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {filtrados.length === 0 ? (
+        <p className="time-sub envios-vazio">Nada com esses filtros. Tente outro termo ou limpe a busca.</p>
+      ) : (
+        <div className="envios-tabela" role="table" aria-label="Extrato de envios">
+          <div className="envios-tabela-cabeca" role="row">
+            <span role="columnheader">Data</span>
+            <span role="columnheader">Tipo</span>
+            <span role="columnheader">Item</span>
+            <span role="columnheader">Valor</span>
+            <span role="columnheader">Status</span>
+          </div>
+          {filtrados.map((e) => {
+            const k = chaveEnvio(e);
+            const abertoLinha = aberto === k;
+            return (
+              <div
+                key={k}
+                id={`envio-${e.origem}-${e.origemId}`}
+                className={`envios-bloco-linha${abertoLinha ? " envios-bloco-aberto" : ""}`}
+              >
+                <LinhaExtrato
+                  e={e}
+                  compacta={false}
+                  aberto={abertoLinha}
+                  onToggle={() => void alternarDetalhe(e)}
+                />
+                {abertoLinha ? (
+                  <DetalheEnvioPainel
+                    detalhe={detalhes[k] ?? null}
+                    carregando={carregandoDetalhe && !detalhes[k]}
+                    erro={abertoLinha ? erroDetalhe : null}
+                    aoAbrirRelacionado={abrirRelacionado}
+                    aoVerGrupo={() => setGrupoFiltro(e.grupoChave)}
+                  />
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

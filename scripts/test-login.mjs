@@ -243,6 +243,13 @@ try {
 
   const liberado = await c('/api/time/envios');
   afirma(liberado.status === 200, 'depois da troca a rota protegida abre', `status ${liberado.status}`);
+  const primeiro = (liberado.corpo?.envios ?? [])[0];
+  if (primeiro) {
+    const det = await c(`/api/time/envios/${primeiro.origem}/${primeiro.origemId}`);
+    afirma(det.status === 200 && det.corpo?.detalhe?.code, 'detalhe do envio abre', `status ${det.status}`);
+  } else {
+    ok('detalhe do envio (sem envios na cobaia — pulado)');
+  }
 
   console.log('\n=== 5. A SESSÃO CORRENTE SOBREVIVE À PRÓPRIA TROCA ===');
   const sessaoDepois = await c('/api/time/sessao');

@@ -105,11 +105,18 @@ function Icone({ origem }: { origem: OrigemAnexo }) {
 export function AnexarFlutuante({
   aoEscolher,
   lendo,
-  jaTem
+  jaTem,
+  centralizado = false,
+  rotulo = "foto da compra",
+  rotuloAnexado = "trocar anexo"
 }: {
   aoEscolher: (arquivo: File, origem: OrigemAnexo) => void;
   lendo: boolean;
   jaTem: boolean;
+  /** Centraliza o botão flutuante na parte inferior da tela. */
+  centralizado?: boolean;
+  rotulo?: string;
+  rotuloAnexado?: string;
 }) {
   const [aberto, setAberto] = useState(false);
   const caixaRef = useRef<HTMLDivElement | null>(null);
@@ -137,8 +144,29 @@ export function AnexarFlutuante({
     };
   }, [aberto]);
 
+  const inputsOcultos = OPCOES.map((o) => (
+    <input
+      key={o.origem}
+      ref={(el) => {
+        inputs.current[o.origem] = el;
+      }}
+      type="file"
+      className="anexar-input"
+      accept={o.accept}
+      {...(o.capture ? { capture: "environment" as const } : {})}
+      tabIndex={-1}
+      aria-hidden
+      onChange={(e) => {
+        const f = e.target.files?.[0];
+        e.target.value = "";
+        setAberto(false);
+        if (f) aoEscolher(f, o.origem);
+      }}
+    />
+  ));
+
   return (
-    <div className="anexar" ref={caixaRef}>
+    <div className={centralizado ? "anexar anexar-centro" : "anexar"} ref={caixaRef}>
       {aberto ? (
         <div className="anexar-folha" role="menu" aria-label="De onde vem o comprovante">
           {OPCOES.map((o) => (
@@ -175,9 +203,9 @@ export function AnexarFlutuante({
         {lendo ? (
           <span className="anexar-girando" aria-hidden />
         ) : (
-          <Icone origem={aberto ? "galeria" : "camera"} />
+          <Icone origem="camera" />
         )}
-        <span>{lendo ? "lendo…" : jaTem ? "trocar anexo" : "foto da compra"}</span>
+        <span>{lendo ? "lendo…" : jaTem ? rotuloAnexado : rotulo}</span>
       </button>
 
       {/*
@@ -185,29 +213,7 @@ export function AnexarFlutuante({
         painel faria o `click()` disparar num nó recém-criado, que o Safari
         ignora por não ter vindo de gesto do usuário.
       */}
-      {OPCOES.map((o) => (
-        <input
-          key={o.origem}
-          ref={(el) => {
-            inputs.current[o.origem] = el;
-          }}
-          type="file"
-          className="anexar-input"
-          accept={o.accept}
-          {...(o.capture ? { capture: "environment" as const } : {})}
-          tabIndex={-1}
-          aria-hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            // Zera o valor: escolher O MESMO arquivo duas vezes seguidas não
-            // dispara `change`, e a segunda tentativa (depois de um erro de
-            // leitura) parecia que o botão tinha parado de funcionar.
-            e.target.value = "";
-            setAberto(false);
-            if (f) aoEscolher(f, o.origem);
-          }}
-        />
-      ))}
+      {inputsOcultos}
     </div>
   );
 }

@@ -165,8 +165,46 @@ export function AnexarFlutuante({
     />
   ));
 
+  /*
+   * O FLUTUANTE SAI DE CENA QUANDO O BOTÃO DE ENVIAR ENTRA.
+   *
+   * Ele é `position: fixed` e, na variante centralizada, ocupa o meio da tela
+   * logo acima da barra — exatamente onde passa o botão que conclui o
+   * formulário. Medido rolando de 20 em 20px e perguntando ao
+   * `elementFromPoint` quem está no centro do botão de envio:
+   *
+   *   /time/custo      o flutuante responde entre scrollY 380 e 400
+   *   /time/reembolso  entre 460 e 500
+   *
+   * Essa faixa é onde um flick para. A pessoa rola EM DIREÇÃO ao botão verde,
+   * ele aparece, ela toca no meio dele — e abre o menu de anexo.
+   *
+   * Já houve uma correção aqui, e ela foi parcial: afastou o flutuante na
+   * posição de REPOUSO (no fim da rolagem sobram 140px), mas no meio do
+   * caminho a sobreposição continuou. Distância fixa não resolve um alvo que
+   * se move.
+   *
+   * A regra certa não é geométrica, é de intenção: o flutuante existe para
+   * COMEÇAR o formulário ("já começa anexando"). Quando o botão de enviar está
+   * na tela, a pessoa está terminando — o flutuante já fez o trabalho dele e
+   * não tem por que continuar disputando o dedo. Some, e leva junto toda a
+   * classe de sobreposição, inclusive as que eu não medi.
+   */
+  const [chegouNoFim, setChegouNoFim] = useState(false);
+  useEffect(() => {
+    const rodape = document.querySelector(".time-form-rodape");
+    if (!rodape || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(([e]) => setChegouNoFim(e.isIntersecting), { threshold: 0 });
+    obs.observe(rodape);
+    return () => obs.disconnect();
+  }, []);
+
   return (
-    <div className={centralizado ? "anexar anexar-centro" : "anexar"} ref={caixaRef}>
+    <div
+      className={`${centralizado ? "anexar anexar-centro" : "anexar"}${chegouNoFim ? " anexar-recolhido" : ""}`}
+      ref={caixaRef}
+      aria-hidden={chegouNoFim || undefined}
+    >
       {aberto ? (
         <div className="anexar-folha" role="menu" aria-label="De onde vem o comprovante">
           {OPCOES.map((o) => (

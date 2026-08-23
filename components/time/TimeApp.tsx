@@ -13,6 +13,7 @@ import {
   nomeMes as nomeMesRec,
   type Recebiveis as DadoRecebiveis,
   carregarRecebiveis,
+  plural,
   invalidarRecebiveis,
   useRecebiveis
 } from "@/components/time/recebiveis-dado";
@@ -369,8 +370,26 @@ export function TimeApp({
       {aba === "comprar" ? (
         <Comprar opcoes={opcoes} pessoas={pessoas} aoAtualizarOpcoes={setOpcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} />
       ) : null}
-      {aba === "item" && itemFonte && itemId ? (
-        <TelaItemGasto fonte={itemFonte} itemId={itemId} aoFalhar={setRecado} />
+      {aba === "item" ? (
+        itemFonte && itemId ? (
+          <TelaItemGasto fonte={itemFonte} itemId={itemId} aoFalhar={setRecado} />
+        ) : (
+          /*
+           * Sem este ramo, `/time/item/xxx/1` (fonte que não é `planilha` nem
+           * `app`) renderizava cabeçalho, barra inferior e NADA entre os dois.
+           * Não é um beco — a barra está lá — mas é uma tela que não diz nem
+           * "não achei". O `&&` que faltava custava uma página em branco.
+           */
+          <div className="time-tela-padrao">
+            <header className="time-form-cabeca">
+              <h1>Não achei esse item</h1>
+              <p>O endereço aponta para um item que não existe, ou que não é seu.</p>
+            </header>
+            <Link href="/time/envios" className="time-botao secundario time-botao-largo">
+              Ver meu histórico
+            </Link>
+          </div>
+        )
       ) : null}
     </div>
   );
@@ -2446,14 +2465,14 @@ function Inicio({ envios }: { envios: Envio[] }) {
               </strong>
               <small className="time-faixa-nota">
                 {rec && rec.porMes.length
-                  ? `${rec.linhas.filter((l) => l.mes === rec.porMes[rec.porMes.length - 1].mes).length} pagamentos`
+                  ? plural(rec.linhas.filter((l) => l.mes === rec.porMes[rec.porMes.length - 1].mes).length, "pagamento", "pagamentos")
                   : "nada ainda"}
               </small>
             </Link>
             <article className="time-faixa-item">
               <span className="time-faixa-rotulo">De hábito</span>
               <strong className="time-faixa-valor">{brl(rec?.medianaRecorrenteCents ?? 0)}</strong>
-              <small className="time-faixa-nota">mediana, {rec?.porMes.length ?? 0} meses</small>
+              <small className="time-faixa-nota">mediana, {plural(rec?.porMes.length ?? 0, "mês", "meses")}</small>
             </article>
             {rec && rec.emAbertoCents > 0 ? (
               <Link href="/time/recebiveis#aberto" className="time-faixa-item">
@@ -2539,7 +2558,22 @@ function Inicio({ envios }: { envios: Envio[] }) {
       <section className="time-secao">
         <h2>Esperando resposta {aguardando.length > 0 ? <span className="time-contador">{aguardando.length}</span> : null}</h2>
         {aguardando.length === 0 ? (
-          <p className="time-sub">Nada pendente. O que você mandou já foi respondido.</p>
+          /*
+           * "Nada pendente. O que você mandou já foi respondido." descreve uma
+           * história que, para 27 das 28 pessoas, não aconteceu:
+           * `fin_time_envio` tem UMA linha na base inteira. A condição olhava
+           * só `aguardando.length === 0` e não distinguia "não tenho nada em
+           * aberto" de "nunca mandei nada" — e afirmar que houve resposta a
+           * quem nunca perguntou é a forma mais rápida de o app perder a
+           * confiança de quem acabou de instalar.
+           */
+          envios.length === 0 ? (
+            <p className="time-sub">
+              Você ainda não mandou nada para o financeiro. Quando mandar, o andamento aparece aqui.
+            </p>
+          ) : (
+            <p className="time-sub">Nada pendente. O que você mandou já foi respondido.</p>
+          )
         ) : (
           <ListaEnvios envios={aguardando} compacta />
         )}
@@ -2667,8 +2701,8 @@ function GraficoRecebido({
           uma imagem, e esta linha muda quando a pessoa toca num mês. */}
       <p className="rec-plot-nota" role="status">
         {foco
-          ? `${nomeMesRec(foco.mes)} · ${brl(foco.totalCents)} em ${rec.linhas.filter((l) => l.mes === foco.mes).length} pagamentos. Toque de novo para fechar.`
-          : `Últimos ${meses.length} meses. Toque num mês para ver só ele.`}
+          ? `${nomeMesRec(foco.mes)} · ${brl(foco.totalCents)} em ${plural(rec.linhas.filter((l) => l.mes === foco.mes).length, "pagamento", "pagamentos")}. Toque de novo para fechar.`
+          : `${meses.length === 1 ? "O único mês com pagamento" : `Últimos ${meses.length} meses`}. Toque num mês para ver só ele.`}
       </p>
       <ul className="rec-legenda">
         {legenda.map(([nat, v]) => (
@@ -2915,6 +2949,29 @@ function FormEnvio({
   const [enviando, setEnviando] = useState(false);
   const [lendo, setLendo] = useState(false);
   const [leitura, setLeitura] = useState<{ tom: "ok" | "aviso" | "erro"; texto: string } | null>(null);
+
+  /*
+   * A CONFIRMAÇÃO FICA ONDE O DEDO ESTÁ.
+   *
+   * O recado de sucesso vive no topo de `.time-app`. Medido com a pessoa
+   * rolada até o botão de enviar — que é onde ela está no instante em que
+   * envia: o recado nascia a 484px acima da viewport no custo, 579px no
+   * reembolso. Invisível.
+   *
+   * E logo depois o handler limpa `setTitulo("")`, `setValor("")`,
+   * `setDescricao("")`… Então o ÚNICO efeito visível de um envio bem-sucedido
+   * era: tudo que a pessoa acabou de digitar some. Isso não lê como "deu
+   * certo", lê como "o app perdeu meu lançamento".
+   *
+   * Rolar até o recado no sucesso seria a correção óbvia e está descartada com
+   * motivo: na tela de PIX isso levava a página de scrollY 999 para 0 e fazia
+   * o QR sair do quadro no exato momento de pagar. A regra que sobrou é trazer
+   * a mensagem até a pessoa, nunca mover a pessoa até a mensagem.
+   *
+   * O código também não era link e não havia caminho para frente. Agora tem
+   * os dois.
+   */
+  const [feito, setFeito] = useState<{ texto: string; href: string } | null>(null);
 
   /**
    * O que a IA achou que isto é — categoria, área, e em que ela se baseou.
@@ -3215,6 +3272,10 @@ function FormEnvio({
         );
         tentativaRef.current = null;
         await aoEnviar(`Reembolso ${rr.code ?? ""} enviado — a empresa te devolve este valor.`.replace("  ", " "));
+        setFeito({
+          texto: `Reembolso ${rr.code ?? ""} enviado. A empresa te devolve este valor.`.replace("  ", " "),
+          href: "/time/envios"
+        });
         setTitulo("");
         setValor("");
         setDescricao("");
@@ -3263,6 +3324,12 @@ function FormEnvio({
           ? `Compra ${compra.code} registrada — o custo ${r.code} foi para análise.`
           : `${kindEnvio === "nota_entrada" ? "Nota" : "Custo"} ${r.code} enviado para análise.`
       );
+      setFeito({
+        texto: compra
+          ? `Compra ${compra.code} registrada. O custo ${r.code} foi para análise.`
+          : `${kindEnvio === "nota_entrada" ? "Nota" : "Custo"} ${r.code} enviado para análise.`,
+        href: r.id ? `/time/envios#envio-custo-${r.id}` : "/time/envios"
+      });
       tentativaRef.current = null;
       setTitulo("");
       setArquivoNota(null);
@@ -3899,15 +3966,31 @@ function FormEnvio({
       ) : null}
 
       <div className="time-form-rodape">
-        <button className="time-botao" disabled={enviando}>
-          {enviando
-            ? "enviando…"
-            : modoReembolso
-              ? "pedir reembolso"
-              : nota
-                ? "enviar nota"
-                : "registrar compra"}
-        </button>
+        {feito ? (
+          <div className="time-feito" role="status">
+            <strong>
+              <span aria-hidden>✓</span> {feito.texto}
+            </strong>
+            <div className="time-feito-portas">
+              <Link href={feito.href} className="time-botao secundario">
+                Ver no histórico
+              </Link>
+              <button type="button" className="time-botao" onClick={() => setFeito(null)}>
+                Enviar outro
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button className="time-botao" disabled={enviando}>
+            {enviando
+              ? "enviando…"
+              : modoReembolso
+                ? "pedir reembolso"
+                : nota
+                  ? "enviar nota"
+                  : "registrar compra"}
+          </button>
+        )}
         <p className="time-nota">
           {modoReembolso
             ? "Isto entra no SEU reembolso do mês. Não vira lançamento nem mexe em saldo até o financeiro conferir."
@@ -4226,6 +4309,7 @@ function metaEnvio(e: Envio) {
   }
   return partes.join(" · ");
 }
+
 
 function formatMesRef(mes: string) {
   const [a, m] = mes.split("-");
@@ -4832,15 +4916,34 @@ function TelaItemGasto({
             </button>
           </>
         ) : (
+          /*
+           * AQUI TINHA UM BOTÃO QUE PEDIA O MESMO DINHEIRO DE NOVO.
+           *
+           * Este ramo é o item vindo da PLANILHA — reembolso que a casa já
+           * processou; a própria tela mostra o selo e o cronograma de
+           * parcelas. E o call-to-action era "Registrar com comprovante",
+           * apontando para `/time/reembolso?descricao=…&valor=…`: o formulário
+           * de PEDIR reembolso, com descrição e valor já preenchidos.
+           *
+           * Quem tentasse anexar a nota de um reembolso recebido estaria
+           * solicitando o mesmo valor uma segunda vez, sem nenhum aviso. E o
+           * app empurra para cá: os cartões do Histórico exibem "5 sem
+           * comprovante" em vermelho, então a pessoa vem justamente resolver
+           * isso.
+           *
+           * Anexar de verdade exigiria coluna de anexo em `fin_reembolso_item`,
+           * que é uma das duas tabelas da duplicação em aberto (item 0 do
+           * AGENTS.md) — mexer nela antes daquela decisão é escolher a verdade
+           * pela porta dos fundos. Até lá, a tela diz o que dá para fazer em
+           * vez de oferecer um caminho que cobra em dobro.
+           */
           <div className="item-gasto-anexo-zona item-gasto-anexo-zona-texto">
             <strong>Sem arquivo neste item</strong>
-            <small>Itens da planilha ainda não guardam anexo aqui.</small>
-            <Link
-              href={`/time/reembolso?descricao=${encodeURIComponent(nome)}&valor=${encodeURIComponent(mascaraDinheiro(String(valorCents)))}`}
-              className="item-gasto-anexo-link"
-            >
-              Registrar com comprovante
-            </Link>
+            <small>
+              Este veio da planilha de reembolso, e a planilha não guarda anexo. Se você ainda tem a nota, mande para o
+              financeiro — não abra um pedido novo por aqui: este valor já está na fila, e um segundo pedido cobraria
+              duas vezes.
+            </small>
           </div>
         )}
       </div>
@@ -4991,7 +5094,7 @@ function TelaItemGasto({
                   setCancelPasso("motivo");
                 }}
               >
-                Cancelar compra
+                Cancelar este reembolso
               </button>
             ) : null}
           </>
@@ -5017,7 +5120,13 @@ function TelaItemGasto({
           >
             {cancelPasso === "motivo" ? (
               <>
-                <h2 id="item-cancelar-titulo">Cancelar compra</h2>
+                {/* "Cancelar compra" numa tela cujo H1 é "Item de reembolso", cujo
+                    selo é "Pago" e cujo resumo diz "parcela 3/12 · RB-297". A
+                    palavra "compra" não aparecia em nenhum outro lugar daqui —
+                    e este é o botão que GERA UMA DÍVIDA EM PIX para a pessoa.
+                    O controle mais destrutivo da tela era o único falando
+                    outro idioma. */}
+                <h2 id="item-cancelar-titulo">Cancelar este reembolso</h2>
                 <p className="time-sub">As parcelas futuras param. Se a empresa já pagou algo, você devolve a soma.</p>
                 <div className="item-cancelar-motivos">
                   {MOTIVOS_CANCELAR.map((m) => (
@@ -5954,7 +6063,33 @@ function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?:
   // O invólucro (`.time-tela-padrao`) e o cabeçalho pertencem ao `Historico`,
   // que é quem sabe qual das duas metades está na tela.
   if (envios.length === 0) {
-    return <p className="time-sub envios-vazio">Você ainda não enviou nada.</p>;
+    /*
+     * O vazio de "Enviei" é a experiência PADRÃO, não a exceção:
+     * `fin_time_envio` tem uma linha na base inteira, então 27 das 28 pessoas
+     * abrem o Histórico e caem exatamente aqui.
+     *
+     * Antes era uma frase solta e mil pixels de branco — sem dizer o que é
+     * "enviar", sem caminho para fazer o primeiro. As duas portas abaixo são
+     * as mesmas duas ações da barra inferior, mas aqui elas respondem à
+     * pergunta que a tela vazia levanta, em vez de deixá-la no ar.
+     */
+    return (
+      <div className="envios-vazio-caixa">
+        <strong>Você ainda não enviou nada</strong>
+        <p>
+          Aqui fica o que você manda para o financeiro: compras que já fez, reembolsos que pediu e pedidos de compra.
+          Do lado, em <b>Recebi</b>, fica o que a casa já te pagou.
+        </p>
+        <div className="envios-vazio-portas">
+          <Link href="/time/custo" className="time-botao">
+            Registrar uma compra
+          </Link>
+          <Link href="/time/reembolso" className="time-botao secundario">
+            Pedir um reembolso
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (compacta) {

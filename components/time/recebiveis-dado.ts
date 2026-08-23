@@ -65,6 +65,18 @@ const MES_LONGO = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
 ];
 
+/**
+ * Plural que não quebra em 1.
+ *
+ * A tela dizia "1 pagamentos", "mediana, 1 meses", "Últimos 1 meses" — e o
+ * detalhe cruel é QUEM via: quem tem 8 meses de histórico nunca encontra; quem
+ * entrou este mês encontra em toda tela. É o primeiro sinal de descuido que a
+ * pessoa recebe de um app que fala do dinheiro dela.
+ */
+export function plural(n: number, um: string, muitos: string) {
+  return `${n} ${n === 1 ? um : muitos}`;
+}
+
 export const nomeMes = (m: string) => `${MES_LONGO[Number(m.slice(5, 7)) - 1]} de ${m.slice(0, 4)}`;
 export const mesCurto = (m: string) => MES_LONGO[Number(m.slice(5, 7)) - 1].slice(0, 3);
 

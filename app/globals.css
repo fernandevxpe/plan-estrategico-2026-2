@@ -17373,3 +17373,50 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 .hist-rec-mes .rec-linhas-longa li {
   grid-template-columns: 44px 9px minmax(0, 1fr) auto;
 }
+
+/* As três portas do 404 do time. Empilhadas e largas: é uma tela de
+   recuperação tocada por quem já está perdido, não hora de economizar espaço. */
+.time-404-portas { display: grid; gap: 10px; margin-top: 4px; }
+
+/* O vazio de "Enviei" — a tela que 27 das 28 pessoas veem no primeiro dia. */
+.envios-vazio-caixa {
+  display: grid;
+  gap: 10px;
+  padding: 20px 16px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.envios-vazio-caixa strong { font-size: 15px; }
+.envios-vazio-caixa p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.envios-vazio-portas { display: grid; gap: 8px; margin-top: 2px; }
+
+/* A confirmação de envio, no lugar do botão que a pessoa acabou de tocar. */
+/* `--green` e `--ink-green` existem nos três blocos de tema; `--cert-ok` NÃO
+   existe neste arquivo, e era o que eu ia usar. Token inventado cai no
+   fallback e a borda vira a cor da linha comum — o mesmo jeito que a banda de
+   R$ 72.022 sumiu. Conferido antes: 3 definições de cada. */
+.time-feito {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--green);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.time-feito strong { font-size: 14px; line-height: 1.45; }
+.time-feito strong span { color: var(--ink-green); font-weight: 800; }
+.time-feito-portas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* O flutuante recolhido: desaparece sem saltar, e para de receber toque antes
+   de terminar a transição — `visibility` junto do `opacity` é o que garante
+   isso; só `opacity: 0` deixaria um alvo invisível no caminho do dedo. */
+.anexar-recolhido {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px) translateX(0);
+  pointer-events: none;
+  transition: opacity .16s ease, transform .16s ease, visibility 0s linear .16s;
+}
+.anexar-centro.anexar-recolhido { transform: translateX(-50%) translateY(8px); }
+@media (prefers-reduced-motion: reduce) { .anexar-recolhido { transition: none; } }

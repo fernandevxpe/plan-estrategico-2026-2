@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { brl } from "@/components/financeiro/Certeza";
-import { CLASSE, ROTULO, mesCurto, nomeMes, useRecebiveis } from "@/components/time/recebiveis-dado";
+import { CLASSE, ROTULO, mesCurto, nomeMes, plural, useRecebiveis } from "@/components/time/recebiveis-dado";
 
 /**
  * O que a casa me paga.
@@ -120,7 +120,7 @@ export function Recebiveis() {
           <strong className="time-faixa-valor">{brl(porMesDesc[0]?.totalCents ?? 0)}</strong>
           <small className="time-faixa-nota">
             {porMesDesc[0]
-              ? `${dado.linhas.filter((l) => l.mes === porMesDesc[0].mes).length} pagamentos`
+              ? plural(dado.linhas.filter((l) => l.mes === porMesDesc[0].mes).length, "pagamento", "pagamentos")
               : "nada ainda"}
           </small>
         </article>
@@ -130,7 +130,7 @@ export function Recebiveis() {
           {/* "mediana" escrito na tela de propósito: não é o contrato, é o que
               costuma cair. A média seria puxada pelos extremos — no Fernando os
               oito meses vão de R$ 2.386 a R$ 7.644. */}
-          <small className="time-faixa-nota">mediana, {dado.porMes.length} meses</small>
+          <small className="time-faixa-nota">mediana, {plural(dado.porMes.length, "mês", "meses")}</small>
         </article>
         {dado.emAbertoCents > 0 ? (
           <a className="time-faixa-item" href="#aberto">
@@ -184,9 +184,9 @@ export function Recebiveis() {
             de cima. */}
         <p className="rec-plot-nota">
           {menor === maior
-            ? `O mesmo valor nos ${meses.length} meses: ${brl(maior)}.`
-            : `Nos ${meses.length} meses: de ${brl(menor)} a ${brl(maior)}.`}
-          {dado.porMes.length > meses.length ? ` Total de ${dado.porMes.length} meses: ${brl(dado.totalCents)}.` : ""}
+            ? `O mesmo valor ${meses.length === 1 ? "no único mês" : `nos ${meses.length} meses`}: ${brl(maior)}.`
+            : `${meses.length === 1 ? "No único mês" : `Nos ${meses.length} meses`}: de ${brl(menor)} a ${brl(maior)}.`}
+          {dado.porMes.length > meses.length ? ` Total de ${plural(dado.porMes.length, "mês", "meses")}: ${brl(dado.totalCents)}.` : ""}
         </p>
         <ul className="rec-legenda">
           {legenda.map((n) => (

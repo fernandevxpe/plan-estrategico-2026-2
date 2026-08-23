@@ -35,9 +35,32 @@ import { CLASSE, ROTULO, mesCurto, nomeMes, plural, useRecebiveis } from "@/comp
  *   "o que ainda vai cair" = saldo em aberto. É contrato, não é caixa.
  *
  * A folha NÃO aparece nesta tela. Ela é a contabilidade do financeiro, não uma
- * segunda opinião sobre o extrato de ninguém. O zero de julho no ledger vira um
- * problema visível — reembolso pago junto com o salário caiu em 6.01/6.02 em
- * vez de 6.05 — e um zero que incomoda é melhor que dois números que se calam.
+ * segunda opinião sobre o extrato de ninguém.
+ *
+ * ---------------------------------------------------------------------------
+ * O ZERO DE JULHO: EU TINHA ESCRITO A CAUSA ERRADA AQUI
+ * ---------------------------------------------------------------------------
+ * Este comentário afirmava, sem medir, que o zero vinha de "reembolso pago
+ * junto com o salário caiu em 6.01/6.02 em vez de 6.05". Fui testar: se fosse
+ * isso, tirar a folha do recorrente deixaria a série mensal mais estável.
+ * Deixa mais INSTÁVEL, nas 6 pessoas de maior volume. A hipótese é falsa.
+ *
+ * O que os 81 pares (pessoa × competência) mostram:
+ *
+ *   26%  o ledger paga no MÊS SEGUINTE ao da competência, valor exato
+ *    2%  paga no mesmo mês
+ *   41%  não há nada no ledger nos dois meses
+ *   31%  há, mas o valor diverge (pagamento parcial ou agrupado)
+ *
+ * A causa principal do zero de julho é banal e não é defeito: gasto de julho é
+ * reembolsado em AGOSTO, e agosto ainda está aberto. Dos 33 pares sem
+ * contrapartida, ONZE são de competência 07/2026 — mais do que qualquer outro
+ * mês, e exatamente o que se espera de um mês que ainda não fechou.
+ *
+ * Sobra um resto real: reembolso na folha que nunca vira 6.05 no ledger. Esse
+ * é problema de categorização, mas é MENOR do que este comentário dizia, e a
+ * regra desta tela ("o que caiu = ledger") continua certa por outro motivo — é
+ * o único número conferível contra o extrato do banco da pessoa.
  */
 
 export function Recebiveis() {

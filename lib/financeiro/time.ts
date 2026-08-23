@@ -1466,12 +1466,43 @@ export type MeusRecebiveis = {
   mesAtualCents: number;
   /** Mediana do que se repete — a base honesta para "quanto costumo receber". */
   medianaRecorrenteCents: number;
+  /** O reembolso de cada competência, item a item — o que compõe a banda. */
+  reembolsoPorCompetencia: {
+    competencia: string;
+    totalCents: number;
+    itens: {
+      descricao: string;
+      valorCents: number;
+      parcela: number | null;
+      parcelasTotal: number | null;
+      tipo: string | null;
+      temComprovante: boolean;
+    }[];
+  }[];
   emAbertoCents: number;
+  emAberto: {
+    slug: string;
+    descricao: string;
+    parcela: number;
+    parcelasTotal: number;
+    parcelasRestantes: number;
+    valorParcelaCents: number;
+    saldoCents: number;
+  }[];
   desde: string | null;
   ultimoEm: string | null;
   porNatureza: { natureza: string; cents: number; n: number }[];
   porMes: MesRecebivel[];
   linhas: RecebivelLinha[];
+};
+
+type RecebivelReembolsoItem = {
+  descricao: string;
+  valorCents: number;
+  parcela: number | null;
+  parcelasTotal: number | null;
+  tipo: string | null;
+  temComprovante: boolean;
 };
 
 /** Naturezas que se repetem mês a mês. Comissão varia; reembolso é devolução. */
@@ -1489,7 +1520,7 @@ const RECORRENTE = new Set(["salario", "prolabore", "estagio"]);
  * e para essa pergunta a mediana responde melhor.
  */
 export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
-  const [linhas, saldo] = await Promise.all([
+  const [linhas, saldo, porNaturezaMes, itensReembolso] = await Promise.all([
     query<Record<string, unknown>>(
       `SELECT data, to_char(mes, 'YYYY-MM') AS mes, valor_cents, natureza, categoria, conta, descricao
          FROM fin_time_recebivel_v
@@ -1497,11 +1528,61 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         ORDER BY data DESC`,
       [sessao.personId]
     ),
-    query<{ total: string }>(
-      `SELECT coalesce(sum(saldo_cents), 0)::text AS total
-         FROM fin_reembolso_saldo_v WHERE person_id = $1 AND NOT quitado`,
+    /*
+     * O SALDO VEM DETALHADO, não só somado.
+     *
+     * A tela tinha o total em dois lugares — no azulejo do topo e, 350px
+     * abaixo, numa seção com o MESMO número maior. E o azulejo é um link
+     * (`#aberto`) que rola até lá: a pessoa toca esperando "quais reembolsos"
+     * e recebe "R$ 12.119,51" de novo.
+     *
+     * A view já sabe a resposta (slug, parcela, quantas faltam, saldo por
+     * série); só ninguém a estava pedindo.
+     */
+    query<Record<string, unknown>>(
+      `SELECT slug, descricao, parcela, parcelas_total, parcelas_restantes,
+              valor_parcela_cents, saldo_cents
+         FROM fin_reembolso_saldo_v
+        WHERE person_id = $1 AND NOT quitado
+        ORDER BY saldo_cents DESC`,
       [sessao.personId]
-    ).catch(() => [{ total: "0" }])
+    ).catch(() => []),
+    /*
+     * O CORTE POR NATUREZA VEM DA FOLHA, NÃO DA CATEGORIA DO LEDGER.
+     *
+     * `fin_time_recebivel_v` classifica cada lançamento pela categoria, e a
+     * categoria mente quando reembolso e pró-labore saem no mesmo dia: a casa
+     * marca os dois como 6.02. Medido no Fernando: a tela dizia reembolso
+     * R$ 1.327,09 quando o real são R$ 7.586,13 — R$ 6.259,04 do dinheiro dele
+     * rotulado como remuneração.
+     *
+     * `fin_time_remuneracao_mes_v` (0163) faz o mesmo corte que a gestão faz, e
+     * a migration PROVA que a soma das bandas é exatamente o que caiu na conta,
+     * pessoa por pessoa, mês por mês.
+     */
+    query<Record<string, unknown>>(
+      `SELECT to_char(mes, 'YYYY-MM') AS mes, natureza, valor_cents,
+              to_char(competencia, 'YYYY-MM') AS competencia, reembolso_status
+         FROM fin_time_remuneracao_mes_v
+        WHERE person_id = $1
+        ORDER BY mes, natureza`,
+      [sessao.personId]
+    ).catch(() => []),
+    /*
+     * E o reembolso vem ITEM A ITEM. Era o pedido: "sabemos todo detalhamento
+     * dos reembolsos, itens, parcelas — isso deve aparecer". A casa sabe: o
+     * cabeçalho bate com a soma dos itens em 100% dos 81 cabeçalhos da base.
+     */
+    query<Record<string, unknown>>(
+      `SELECT to_char(r.reference_month, 'YYYY-MM') AS competencia,
+              i.description, i.amount_cents, i.installment_number, i.installment_total,
+              i.reimbursement_type, i.receipt_artifact_key IS NOT NULL AS tem_comprovante
+         FROM fin_reimbursement_item i
+         JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+        WHERE r.person_id = $1
+        ORDER BY r.reference_month DESC, i.amount_cents DESC`,
+      [sessao.personId]
+    ).catch(() => [])
   ]);
 
   const itens: RecebivelLinha[] = linhas.map((l) => ({
@@ -1514,8 +1595,29 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
     descricao: String(l.descricao ?? "")
   }));
 
+  /*
+   * O MÊS É MONTADO PELA VIEW DA FOLHA, e a lista de lançamentos é só o
+   * comprovante do que caiu.
+   *
+   * Antes, `porMes` era somado a partir de `itens` — ou seja, da categoria do
+   * ledger. Isso é o que fazia o reembolso do Fernando aparecer como
+   * pró-labore. Agora as bandas vêm de `fin_time_remuneracao_mes_v`, cujo total
+   * por mês é PROVADO igual ao pago (pós-condição da 0163), e `itens` continua
+   * servindo para "quais PIX foram esses" e para a contagem de pagamentos.
+   */
   const meses = new Map<string, MesRecebivel>();
+  for (const r of porNaturezaMes) {
+    const mes = String(r.mes);
+    const m = meses.get(mes) ?? { mes, totalCents: 0, porNatureza: {} };
+    const v = Number(r.valor_cents);
+    m.totalCents += v;
+    m.porNatureza[String(r.natureza)] = (m.porNatureza[String(r.natureza)] ?? 0) + v;
+    meses.set(mes, m);
+  }
+  // Um mês em que a pessoa recebeu mas a view não cobriu (fora de 2026, por
+  // exemplo) não pode sumir da tela: entra pelo caminho antigo.
   for (const i of itens) {
+    if (meses.has(i.mes)) continue;
     const m = meses.get(i.mes) ?? { mes: i.mes, totalCents: 0, porNatureza: {} };
     m.totalCents += i.valorCents;
     m.porNatureza[i.natureza] = (m.porNatureza[i.natureza] ?? 0) + i.valorCents;
@@ -1523,10 +1625,23 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
   }
   const porMes = [...meses.values()].sort((a, b) => a.mes.localeCompare(b.mes));
 
+  /*
+   * `n` PASSA A SER O NÚMERO DE MESES, e não o de lançamentos.
+   *
+   * Contar lançamentos deixou de fazer sentido no instante em que o valor
+   * passou a vir da folha: o Fernando tem 2 lançamentos em 6.05 e 7 meses com
+   * reembolso, então a legenda mostraria "R$ 7.586,13 · 2×" — um número certo
+   * ao lado de uma contagem que o desmente.
+   *
+   * Mês é a unidade que as duas metades compartilham, e é a que a barra do
+   * gráfico logo acima representa.
+   */
   const porNat = new Map<string, { cents: number; n: number }>();
-  for (const i of itens) {
-    const a = porNat.get(i.natureza) ?? { cents: 0, n: 0 };
-    porNat.set(i.natureza, { cents: a.cents + i.valorCents, n: a.n + 1 });
+  for (const m of porMes) {
+    for (const [nat, v] of Object.entries(m.porNatureza)) {
+      const a = porNat.get(nat) ?? { cents: 0, n: 0 };
+      porNat.set(nat, { cents: a.cents + v, n: a.n + 1 });
+    }
   }
 
   const recorrentes = porMes
@@ -1551,7 +1666,35 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
     totalCents: itens.reduce((s, i) => s + i.valorCents, 0),
     mesAtualCents: meses.get(mesCorrente)?.totalCents ?? 0,
     medianaRecorrenteCents,
-    emAbertoCents: Number(saldo[0]?.total ?? 0),
+    reembolsoPorCompetencia: (() => {
+      const m = new Map<string, { competencia: string; totalCents: number; itens: RecebivelReembolsoItem[] }>();
+      for (const r of itensReembolso) {
+        const k = String(r.competencia);
+        const g = m.get(k) ?? { competencia: k, totalCents: 0, itens: [] };
+        const v = Number(r.amount_cents);
+        g.totalCents += v;
+        g.itens.push({
+          descricao: String(r.description ?? ""),
+          valorCents: v,
+          parcela: r.installment_number == null ? null : Number(r.installment_number),
+          parcelasTotal: r.installment_total == null ? null : Number(r.installment_total),
+          tipo: (r.reimbursement_type as string) ?? null,
+          temComprovante: Boolean(r.tem_comprovante)
+        });
+        m.set(k, g);
+      }
+      return [...m.values()].sort((a, b) => b.competencia.localeCompare(a.competencia));
+    })(),
+    emAbertoCents: saldo.reduce((t, r) => t + Number(r.saldo_cents ?? 0), 0),
+    emAberto: saldo.map((r) => ({
+      slug: String(r.slug),
+      descricao: String(r.descricao ?? r.slug),
+      parcela: Number(r.parcela ?? 0),
+      parcelasTotal: Number(r.parcelas_total ?? 0),
+      parcelasRestantes: Number(r.parcelas_restantes ?? 0),
+      valorParcelaCents: Number(r.valor_parcela_cents ?? 0),
+      saldoCents: Number(r.saldo_cents ?? 0)
+    })),
     desde: porMes[0]?.mes ?? null,
     ultimoEm: itens[0]?.data ?? null,
     porNatureza: [...porNat.entries()]

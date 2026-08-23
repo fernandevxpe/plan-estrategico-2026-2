@@ -17588,3 +17588,42 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 }
 .item-gasto-parcela-repetida strong { display: block; }
 .envios-item-parcelas li.parcela-repetida { background: var(--tint-amber-soft); border-radius: 8px; }
+
+/* "De onde vem o que falta": a composição do saldo em aberto. */
+.rec-aberto-lista { list-style: none; margin: 0; padding: 0; }
+.rec-aberto-lista li {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  min-height: 44px; padding: 7px 0; border-bottom: 1px solid var(--line);
+}
+.rec-aberto-nome { font-size: 13.5px; min-width: 0; }
+.rec-aberto-parc { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.rec-aberto-valor { font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rec-aberto-rodape {
+  display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+  margin: 10px 0 0; padding: 11px 13px; border-radius: 10px; background: var(--surface-2);
+}
+.rec-aberto-rodape strong { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rec-aberto-rodape span { font-size: 12px; color: var(--muted); }
+
+/* A composição do mês: o que cada parte É, acima dos Pix que caíram. */
+.rec-comp { list-style: none; margin: 2px 0 10px; padding: 9px 11px; border-radius: 9px; background: var(--surface-2); display: grid; gap: 5px; }
+.rec-comp li { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 9px; font-size: 12.5px; }
+.rec-comp b { font-variant-numeric: tabular-nums; font-weight: 650; }
+.rec-mes-rotulo { margin: 0 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+
+/* O reembolso do mês, item a item — o detalhamento que a folha já tinha. */
+.rec-reemb { margin: 10px 0 2px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); }
+.rec-reemb h3 {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin: 0 0 7px; font-size: 12.5px; font-weight: 700; color: var(--muted);
+}
+.rec-reemb h3 b { font-size: 13.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.rec-reemb ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rec-reemb li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12.5px; }
+.rec-reemb-nome { min-width: 0; }
+.rec-reemb-parc { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; }
+.rec-reemb-valor { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+
+/* A lista de Pix do mês não tem pontinho de natureza — a natureza de cada Pix
+   não é conhecível. Três filhos, três colunas. */
+.rec-linhas-sem-ponto li { grid-template-columns: 44px minmax(0, 1fr) auto; }

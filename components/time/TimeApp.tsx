@@ -2698,7 +2698,27 @@ function GraficoRecebido({
               type="button"
               className={mesFoco === m.mes ? "rec-col ativa" : "rec-col"}
               aria-pressed={mesFoco === m.mes}
-              aria-label={`${nomeMesRec(m.mes)}: ${brl(m.totalCents)}`}
+              /*
+               * A COMPOSIÇÃO PRECISA ESTAR AQUI, E NÃO SÓ O TOTAL.
+               *
+               * `.rec-pilha i` tem `min-height: 5px` de propósito — sem ele a
+               * banda fina some, e 15% das bandas da base valem menos de 5% do
+               * mês. O comentário do CSS que justifica esse piso diz que "o
+               * número exato está na legenda, no title e no aria-label". Em
+               * Recebíveis está; AQUI não estava.
+               *
+               * Medido em abril do Fernando: R$ 280,74 de reembolso em
+               * R$ 5.046,35 é 5,6% do mês, mas o piso desenha 5px numa pilha de
+               * 57,8px — 8,6%. A banda parece 56% maior do que é, e o
+               * aria-label só dizia "abril de 2026: R$ 5.046,35". Quem visse a
+               * distorção não tinha de onde tirar o número certo.
+               *
+               * A legenda também não resolvia: ela soma os SEIS meses, não abril.
+               */
+              aria-label={`${nomeMesRec(m.mes)}: ${brl(m.totalCents)}${Object.entries(m.porNatureza)
+                .sort((a, b) => b[1] - a[1])
+                .map(([nat, v]) => ` · ${ROTULO_REC[nat] ?? nat} ${brl(v)}`)
+                .join("")}`}
               onClick={() => aoFocar(mesFoco === m.mes ? null : m.mes)}
             >
               <span className="rec-col-area">
@@ -2710,6 +2730,7 @@ function GraficoRecebido({
                         key={nat}
                         className={CLASSE_REC[nat] ?? "nat-encargo"}
                         style={{ height: `${(v / m.totalCents) * 100}%` }}
+                        title={`${ROTULO_REC[nat] ?? nat}: ${brl(v)}`}
                       />
                     ))}
                 </span>

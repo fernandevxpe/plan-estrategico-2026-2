@@ -144,6 +144,12 @@ export function RecebiveisGrafico() {
                           key={nat}
                           className={CLASSE[nat] ?? "nat-encargo"}
                           style={{ height: `${(v / m.total) * 100}%` }}
+                          /* Aqui a distorção do piso de 5px é desprezível (a
+                             pilha tem 300px), e tocar no mês já abre a lista
+                             com cada pagamento. O `title` entra pela paridade
+                             com as outras duas telas: a mesma banda deve
+                             responder à mesma pergunta em qualquer uma. */
+                          title={`${ROTULO[nat] ?? nat}: ${brl(v)}`}
                         />
                       ))}
                   </span>

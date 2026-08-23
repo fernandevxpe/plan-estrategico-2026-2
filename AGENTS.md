@@ -229,12 +229,44 @@ Funcionando em produção:
 
 Aberto, em ordem de tamanho:
 
+00. **Sócio não tem 6.01 no ledger, e por isso o app não mostra o salário dele.**
+
+    O Fernando tem salário (perto do mínimo) E pró-labore. Os 8 meses dele têm
+    `pago_salarios_cents = 0`: o ledger põe os 27 lançamentos em 6.02, e a
+    descrição de todos é a mesma string ("Pix enviado — Fernando De Siqueira
+    Campos Silva"). Não há de onde tirar a divisão.
+
+    A categoria existe e é usada — 88 meses com 6.01 na base contra 72 com 6.02
+    — mas só nos MEIs. Nenhum dos 4 sócios tem 6.01.
+
+    `fin_time_remuneracao_mes_v` (0163) já desenha N naturezas: **no dia em que
+    alguém categorizar os lançamentos de salário como 6.01, a banda aparece
+    sozinha**, no gráfico e na composição do mês, sem uma linha de código.
+
+    Enquanto isso não acontece, a view devolve tudo como `prolabore`. Foi
+    decisão explícita: inventar a divisão do salário de alguém é pior que não
+    mostrá-la.
+
+    Há um padrão sugestivo no dado — R$ 1.621,00 cai em TODOS os 8 meses do
+    Fernando, e o resto completa para valores redondos (4.000, 4.400, 5.000).
+    É consistente com "mínimo + pró-labore", mas é inferência, e não entra sem
+    alguém confirmar.
+
 0. **A MESMA planilha de reembolso está em DUAS tabelas.** É a decisão que
    trava as outras, e ela precisa do dono — não a tome sozinho.
 
    | | linhas | valor | data | anexo | categoria | parcelas | lida por |
    |---|---|---|---|---|---|---|---|
-   | `fin_reimbursement_item` | 193 | R$ 42.320,34 | **0** | 0 | 0 | 0 | 7 views, 10 arquivos |
+   | `fin_reimbursement_item` | 193 | R$ 42.320,34 | **0**\* | 0 | 0 | 0 | 7 views, 10 arquivos |
+
+   \* **Correção de 23/08, mais tarde no mesmo dia:** `expense_date` é nulo nas
+   193, mas o MÊS não está perdido — ele vem de
+   `fin_reimbursement.reference_month`, no cabeçalho, e os 81 cabeçalhos batem
+   com a soma dos seus itens em 100% dos casos. Ou seja, esta tabela sabe a
+   competência de cada item; o que ela não sabe é a data do gasto dentro do
+   mês. Eu tinha escrito que ela "não sabe a data de gasto nenhum", e isso
+   pesava demais contra ela na decisão. A conta ainda favorece preencher em vez
+   de apagar, mas por menos.
    | `fin_reembolso_item` | 194 | R$ 42.280,13 | 194 | 0 | 0 | 67 | 2 views, 4 arquivos |
 
    192 pares idênticos por (pessoa, valor, competência) — R$ 41.948,26 contados

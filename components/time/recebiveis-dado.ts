@@ -16,7 +16,28 @@ export type Recebiveis = {
   totalCents: number;
   mesAtualCents: number;
   medianaRecorrenteCents: number;
+  reembolsoPorCompetencia: {
+    competencia: string;
+    totalCents: number;
+    itens: {
+      descricao: string;
+      valorCents: number;
+      parcela: number | null;
+      parcelasTotal: number | null;
+      tipo: string | null;
+      temComprovante: boolean;
+    }[];
+  }[];
   emAbertoCents: number;
+  emAberto: {
+    slug: string;
+    descricao: string;
+    parcela: number;
+    parcelasTotal: number;
+    parcelasRestantes: number;
+    valorParcelaCents: number;
+    saldoCents: number;
+  }[];
   desde: string | null;
   ultimoEm: string | null;
   porNatureza: { natureza: string; cents: number; n: number }[];

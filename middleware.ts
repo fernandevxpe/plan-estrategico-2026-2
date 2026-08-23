@@ -69,6 +69,14 @@ export function middleware(request: NextRequest) {
     // produção. Para exercitar o perfil comum localmente existe
     // `XPE_PERFIL_LOCAL=comum`.
     const perfilLocal = (normalizeSecret(process.env.XPE_PERFIL_LOCAL) as Perfil) || "admin";
+    // O corte vale aqui também. Antes esta linha voltava direto, e
+    // `XPE_PERFIL_LOCAL=comum` carimbava o perfil sem NEGAR nada: o menu
+    // escondia a rota e a URL abria mesmo assim. Quem quisesse conferir um
+    // prefixo novo localmente via a metade errada do comportamento — e foi
+    // assim que `/obras` ficou cinco dias fora do prefixo lendo o ledger.
+    if (exigeAdmin(pathname) && perfilLocal !== "admin") {
+      return new NextResponse("Not found", { status: 404 });
+    }
     return seguir(request, perfilLocal);
   }
 

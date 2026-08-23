@@ -56,7 +56,22 @@ export const CABECALHO_PORTA = "x-xpe-porta";
  * `/financeiro-publico`, que o `startsWith` deixaria passar como se fosse a
  * mesma família.
  */
-const SO_ADMIN = ["/financeiro", "/api/financeiro"];
+/*
+ * `/obras` está aqui e não sob `/financeiro` por um motivo que vale registrar:
+ * a tela nasceu no menu principal, ao lado de Comercial e Planejamento, e
+ * ninguém percebeu que ela lê `lib/financeiro/contratos` — contratado,
+ * recebido, na reserva, INADIMPLÊNCIA e "marcado pago sem documento". Isso é
+ * ledger. Quem tem a credencial comum é marketing e vendas.
+ *
+ * `scripts/test-perfil-guard.mjs` encontrou sozinho, cinco dias depois, porque
+ * a varredura dele é por IMPORT e não por lista — exatamente o caso que o
+ * prefixo não pegaria, já que a rota não se chama financeiro.
+ *
+ * Manter a URL `/obras` (em vez de mover para `/financeiro/obras`) é decisão
+ * de não quebrar o link de quem já usa; a proteção é a mesma, porque a
+ * comparação abaixo é por segmento e cobre `/obras/qualquer-coisa`.
+ */
+const SO_ADMIN = ["/financeiro", "/api/financeiro", "/obras"];
 
 export function exigeAdmin(pathname: string): boolean {
   return SO_ADMIN.some((p) => pathname === p || pathname.startsWith(`${p}/`));

@@ -1214,6 +1214,232 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
   });
 }
 
+
+// ---------------------------------------------------------------------------
+// Para onde vai o dinheiro da pessoa (0159)
+// ---------------------------------------------------------------------------
+
+export type ContaPagamento = {
+  metodo: "pix" | "ted";
+  pixTipo: string | null;
+  pixChave: string | null;
+  bancoNome: string | null;
+  agencia: string | null;
+  conta: string | null;
+  contaTipo: string | null;
+  titularEhAPessoa: boolean;
+  titularNome: string | null;
+  titularDocumento: string | null;
+  recebeSalario: boolean;
+  recebeReembolso: boolean;
+  observacao: string | null;
+  conferidoEm: string | null;
+  atualizadoEm: string | null;
+};
+
+/**
+ * A CHAVE PIX, VALIDADA PELO TIPO — porque chave errada não dá erro.
+ *
+ * Uma chave malformada não volta como falha: ou o banco recusa na hora do
+ * pagamento (bom) ou ela é válida e pertence a OUTRA PESSOA (péssimo). Como
+ * esta tabela existe para programar lote de pagamento, validar aqui é a
+ * diferença entre um erro que aparece e um que não.
+ *
+ * Os formatos seguem o que o BR Code espera, e são os mesmos de
+ * `lib/financeiro/pix-brcode.ts`: CPF e CNPJ só dígitos, telefone em E.164
+ * com o `+55`, e-mail e chave aleatória como estão.
+ */
+function normalizarChavePix(tipo: string, bruta: string): string {
+  const v = bruta.trim();
+  const d = v.replace(/\D/g, "");
+  switch (tipo) {
+    case "cpf":
+      if (d.length !== 11) throw new TimeError("CPF precisa ter 11 dígitos", 400);
+      return d;
+    case "cnpj":
+      if (d.length !== 14) throw new TimeError("CNPJ precisa ter 14 dígitos", 400);
+      return d;
+    case "telefone": {
+      // Aceita com ou sem o 55; grava sempre no formato que o PIX exige.
+      const nacional = d.startsWith("55") ? d.slice(2) : d;
+      if (nacional.length < 10 || nacional.length > 11) {
+        throw new TimeError("telefone precisa ter DDD + número (10 ou 11 dígitos)", 400);
+      }
+      return `+55${nacional}`;
+    }
+    case "email":
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) throw new TimeError("e-mail inválido", 400);
+      return v.toLowerCase();
+    case "aleatoria":
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) {
+        throw new TimeError("chave aleatória tem 36 caracteres no formato do banco", 400);
+      }
+      return v.toLowerCase();
+    default:
+      throw new TimeError("tipo de chave inválido", 400);
+  }
+}
+
+/**
+ * A conta da pessoa da SESSÃO. Ninguém lê a de outra pessoa por aqui.
+ *
+ * @param executor passar o `client` da transação é OBRIGATÓRIO para ler algo
+ *   que ela acabou de gravar: `query()` é `pool.query`, outra conexão, e não
+ *   enxerga o INSERT pendente. Escrevi este arquivo logo depois de consertar
+ *   exatamente esse bug no estorno — e caí nele de novo, com o mesmo sintoma:
+ *   500 no caminho de sucesso, validação funcionando normalmente.
+ */
+export async function lerContaPagamento(
+  sessao: Sessao,
+  executor?: { query: (t: string, p?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }> }
+): Promise<ContaPagamento | null> {
+  const rodar = executor
+    ? async (t: string, p: unknown[]) => (await executor.query(t, p)).rows
+    : (t: string, p: unknown[]) => query<Record<string, unknown>>(t, p);
+  const [l] = await rodar(
+    `SELECT metodo, pix_tipo, pix_chave, banco_nome, agencia, conta, conta_tipo,
+            titular_e_a_pessoa, titular_nome, titular_documento,
+            recebe_salario, recebe_reembolso, observacao, conferido_em, atualizado_em
+       FROM fin_person_pagamento WHERE person_id = $1`,
+    [sessao.personId]
+  );
+  if (!l) return null;
+  return {
+    metodo: l.metodo as "pix" | "ted",
+    pixTipo: (l.pix_tipo as string) ?? null,
+    pixChave: (l.pix_chave as string) ?? null,
+    bancoNome: (l.banco_nome as string) ?? null,
+    agencia: (l.agencia as string) ?? null,
+    conta: (l.conta as string) ?? null,
+    contaTipo: (l.conta_tipo as string) ?? null,
+    titularEhAPessoa: Boolean(l.titular_e_a_pessoa),
+    titularNome: (l.titular_nome as string) ?? null,
+    titularDocumento: (l.titular_documento as string) ?? null,
+    recebeSalario: Boolean(l.recebe_salario),
+    recebeReembolso: Boolean(l.recebe_reembolso),
+    observacao: (l.observacao as string) ?? null,
+    conferidoEm: l.conferido_em ? new Date(l.conferido_em as string).toISOString() : null,
+    atualizadoEm: l.atualizado_em ? new Date(l.atualizado_em as string).toISOString() : null
+  };
+}
+
+export type NovaContaPagamento = {
+  metodo?: unknown;
+  pixTipo?: unknown;
+  pixChave?: unknown;
+  bancoNome?: unknown;
+  agencia?: unknown;
+  conta?: unknown;
+  contaTipo?: unknown;
+  titularEhAPessoa?: unknown;
+  titularNome?: unknown;
+  titularDocumento?: unknown;
+  recebeSalario?: unknown;
+  recebeReembolso?: unknown;
+  observacao?: unknown;
+};
+
+export async function salvarContaPagamento(
+  sessao: Sessao,
+  dados: NovaContaPagamento
+): Promise<ContaPagamento> {
+  const metodo = dados.metodo === "ted" ? "ted" : "pix";
+  const titularEhAPessoa = dados.titularEhAPessoa !== false && dados.titularEhAPessoa !== "false";
+
+  let pixTipo: string | null = null;
+  let pixChave: string | null = null;
+  if (metodo === "pix") {
+    pixTipo = String(dados.pixTipo ?? "").trim();
+    pixChave = normalizarChavePix(pixTipo, String(dados.pixChave ?? ""));
+  }
+
+  const texto = (v: unknown, max: number) => {
+    const t = String(v ?? "").trim();
+    return t ? t.slice(0, max) : null;
+  };
+
+  const bancoNome = metodo === "ted" ? texto(dados.bancoNome, 80) : null;
+  const agencia = metodo === "ted" ? texto(dados.agencia, 12) : null;
+  const conta = metodo === "ted" ? texto(dados.conta, 24) : null;
+  const contaTipo = metodo === "ted" ? (texto(dados.contaTipo, 16) ?? "corrente") : null;
+  if (metodo === "ted" && (!bancoNome || !agencia || !conta)) {
+    throw new TimeError("para TED preciso do banco, da agência e da conta", 400);
+  }
+
+  const titularNome = titularEhAPessoa ? null : texto(dados.titularNome, 120);
+  const titularDoc = titularEhAPessoa ? "" : String(dados.titularDocumento ?? "").replace(/\D/g, "");
+  if (!titularEhAPessoa && (!titularNome || !(titularDoc.length === 11 || titularDoc.length === 14))) {
+    throw new TimeError("diga o nome e o CPF ou CNPJ de quem recebe", 400);
+  }
+
+  return transaction(async (client) => {
+    const ent = await client.query<{ id: number }>(`SELECT id FROM fin_entity WHERE slug = $1`, [ENTITY]);
+    const entityId = ent.rows[0]?.id;
+    if (!entityId) throw new TimeError("entidade não configurada", 503);
+
+    const antes = await client.query(
+      `SELECT metodo, pix_tipo, pix_chave FROM fin_person_pagamento WHERE person_id = $1`,
+      [sessao.personId]
+    );
+
+    await client.query(
+      `INSERT INTO fin_person_pagamento (
+         person_id, entity_id, metodo, pix_tipo, pix_chave,
+         banco_nome, agencia, conta, conta_tipo,
+         titular_e_a_pessoa, titular_nome, titular_documento,
+         recebe_salario, recebe_reembolso, observacao, atualizado_em, atualizado_por
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15, now(), $16)
+       ON CONFLICT (person_id) DO UPDATE SET
+         metodo = EXCLUDED.metodo, pix_tipo = EXCLUDED.pix_tipo, pix_chave = EXCLUDED.pix_chave,
+         banco_nome = EXCLUDED.banco_nome, agencia = EXCLUDED.agencia, conta = EXCLUDED.conta,
+         conta_tipo = EXCLUDED.conta_tipo, titular_e_a_pessoa = EXCLUDED.titular_e_a_pessoa,
+         titular_nome = EXCLUDED.titular_nome, titular_documento = EXCLUDED.titular_documento,
+         recebe_salario = EXCLUDED.recebe_salario, recebe_reembolso = EXCLUDED.recebe_reembolso,
+         observacao = EXCLUDED.observacao, atualizado_em = now(),
+         atualizado_por = EXCLUDED.atualizado_por,
+         -- Mudou a chave? A conferência do financeiro CAI. Quem confirmou o
+         -- destino antigo não confirmou o novo, e um lote automático não pode
+         -- herdar essa confiança.
+         conferido_em = CASE
+           WHEN fin_person_pagamento.pix_chave IS DISTINCT FROM EXCLUDED.pix_chave
+             OR fin_person_pagamento.conta IS DISTINCT FROM EXCLUDED.conta
+           THEN NULL ELSE fin_person_pagamento.conferido_em END,
+         conferido_por = CASE
+           WHEN fin_person_pagamento.pix_chave IS DISTINCT FROM EXCLUDED.pix_chave
+             OR fin_person_pagamento.conta IS DISTINCT FROM EXCLUDED.conta
+           THEN NULL ELSE fin_person_pagamento.conferido_por END`,
+      [
+        sessao.personId, entityId, metodo, pixTipo, pixChave,
+        bancoNome, agencia, conta, contaTipo,
+        titularEhAPessoa, titularNome, titularDoc || null,
+        dados.recebeSalario !== false && dados.recebeSalario !== "false",
+        dados.recebeReembolso !== false && dados.recebeReembolso !== "false",
+        texto(dados.observacao, 300),
+        `time:${sessao.personId}`
+      ]
+    );
+
+    // Mudar para onde vai dinheiro é exatamente o que precisa de rastro.
+    await client.query(
+      `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, before, after, fields, actor)
+       VALUES ($1, 'fin_person_pagamento', $2, $3, $4::jsonb, $5::jsonb, ARRAY['metodo','pix_chave'], $6)`,
+      [
+        entityId,
+        sessao.personId,
+        antes.rows[0] ? "update" : "insert",
+        JSON.stringify(antes.rows[0] ?? {}),
+        JSON.stringify({ metodo, pix_tipo: pixTipo, pix_chave: pixChave, conta }),
+        `time:${sessao.personId}`
+      ]
+    );
+
+    // `client`, não `query()`: a linha só existe nesta conexão até o COMMIT.
+    const salvo = await lerContaPagamento(sessao, client);
+    if (!salvo) throw new TimeError("não consegui salvar a conta", 500);
+    return salvo;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // 4. Pedido de compra — com os links
 // ---------------------------------------------------------------------------

@@ -1891,6 +1891,83 @@ function CabecalhoPessoa({
    * primeira tabulação saía para o conteúdo atrás da folha. Mesma disciplina
    * do diálogo de cancelar.
    */
+  /*
+   * PARA ONDE VAI O MEU DINHEIRO.
+   *
+   * A casa paga R$ 42.320 de reembolso por ano com a chave vindo de conversa.
+   * Isto é o cadastro que fecha essa lacuna — e é insumo de lote de pagamento,
+   * não campo de exibição: por isso a validação é por tipo de chave, e mudar a
+   * chave derruba a conferência do financeiro (quem confirmou o destino antigo
+   * não confirmou o novo).
+   */
+  const [conta, setConta] = useState<{
+    metodo: string; pixTipo: string | null; pixChave: string | null;
+    bancoNome: string | null; agencia: string | null; conta: string | null;
+    titularEhAPessoa: boolean; titularNome: string | null; titularDocumento: string | null;
+    recebeSalario: boolean; recebeReembolso: boolean; observacao: string | null;
+    conferidoEm: string | null;
+  } | null>(null);
+  const [contaMetodo, setContaMetodo] = useState("pix");
+  const [pixTipo, setPixTipo] = useState("cpf");
+  const [pixChave, setPixChave] = useState("");
+  const [bancoNome, setBancoNome] = useState("");
+  const [agencia, setAgencia] = useState("");
+  const [contaNum, setContaNum] = useState("");
+  const [titularEhEu, setTitularEhEu] = useState(true);
+  const [titularNome, setTitularNome] = useState("");
+  const [titularDoc, setTitularDoc] = useState("");
+  const [salvandoConta, setSalvandoConta] = useState(false);
+  const [erroConta, setErroConta] = useState<string | null>(null);
+  const [contaOk, setContaOk] = useState(false);
+
+  useEffect(() => {
+    if (!folha) return;
+    void (async () => {
+      const r = await fetch("/api/time/perfil/conta", { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      const c = j.conta as typeof conta;
+      if (!c) return;
+      setConta(c);
+      setContaMetodo(c.metodo);
+      setPixTipo(c.pixTipo ?? "cpf");
+      setPixChave(c.pixChave ?? "");
+      setBancoNome(c.bancoNome ?? "");
+      setAgencia(c.agencia ?? "");
+      setContaNum(c.conta ?? "");
+      setTitularEhEu(c.titularEhAPessoa);
+      setTitularNome(c.titularNome ?? "");
+      setTitularDoc(c.titularDocumento ?? "");
+    })();
+  }, [folha]);
+
+  async function salvarConta(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvandoConta(true);
+    setErroConta(null);
+    setContaOk(false);
+    try {
+      const r = await fetch("/api/time/perfil/conta", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          metodo: contaMetodo, pixTipo, pixChave,
+          bancoNome, agencia, conta: contaNum,
+          titularEhAPessoa: titularEhEu, titularNome, titularDocumento: titularDoc,
+          recebeSalario: true, recebeReembolso: true
+        })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setErroConta((j.error as string) ?? "não consegui salvar");
+        return;
+      }
+      setConta(j.conta);
+      setContaOk(true);
+    } finally {
+      setSalvandoConta(false);
+    }
+  }
+
   const folhaRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!folha) return;
@@ -2059,6 +2136,134 @@ function CabecalhoPessoa({
               {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
               <button type="submit" className="time-porta-entrar" disabled={salvando || nome.trim().length < 2}>
                 {salvando ? "Salvando…" : "Salvar"}
+              </button>
+            </form>
+
+            {/*
+              A CONTA QUE RECEBE. Vem depois do nome e do e-mail porque é o
+              cadastro mais raro de mexer — e antes de "Sair" porque é o que a
+              pessoa vem preencher quando abre esta folha pela primeira vez.
+            */}
+            <form className="time-porta-form conta-pgto" onSubmit={salvarConta}>
+              <div className="conta-pgto-topo">
+                <strong>Onde eu recebo</strong>
+                {conta ? (
+                  <span className={conta.conferidoEm ? "pp-selo ok" : "pp-selo aviso"}>
+                    {conta.conferidoEm ? "conferido" : "aguardando conferência"}
+                  </span>
+                ) : null}
+              </div>
+              <p className="time-sub">
+                É para cá que vai o seu reembolso e o seu pagamento. Confira caractere por caractere: chave errada
+                não dá erro, o dinheiro vai para outra pessoa.
+              </p>
+
+              <div className="campo">
+                <span className="campo-rotulo" id="grupo-metodo">Como você recebe</span>
+                <div className="chips" role="group" aria-labelledby="grupo-metodo">
+                  {[["pix", "PIX"], ["ted", "TED / transferência"]].map(([v, r]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      aria-pressed={contaMetodo === v}
+                      className={contaMetodo === v ? "chip ativo" : "chip"}
+                      onClick={() => setContaMetodo(v)}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {contaMetodo === "pix" ? (
+                <>
+                  <div className="campo">
+                    <span className="campo-rotulo" id="grupo-tipo-chave">Tipo da chave</span>
+                    <div className="chips" role="group" aria-labelledby="grupo-tipo-chave">
+                      {[["cpf", "CPF"], ["cnpj", "CNPJ"], ["telefone", "Telefone"], ["email", "E-mail"], ["aleatoria", "Aleatória"]].map(
+                        ([v, r]) => (
+                          <button
+                            key={v}
+                            type="button"
+                            aria-pressed={pixTipo === v}
+                            className={pixTipo === v ? "chip ativo" : "chip"}
+                            onClick={() => setPixTipo(v)}
+                          >
+                            {r}
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                  <label className="time-porta-campo">
+                    <span>Chave PIX</span>
+                    <input
+                      value={pixChave}
+                      onChange={(e) => setPixChave(e.target.value)}
+                      inputMode={pixTipo === "cpf" || pixTipo === "cnpj" || pixTipo === "telefone" ? "numeric" : "text"}
+                      placeholder={
+                        pixTipo === "cpf" ? "000.000.000-00"
+                        : pixTipo === "cnpj" ? "00.000.000/0000-00"
+                        : pixTipo === "telefone" ? "(81) 99999-9999"
+                        : pixTipo === "email" ? "voce@exemplo.com"
+                        : "a chave que o banco gerou"
+                      }
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="time-porta-campo">
+                    <span>Banco</span>
+                    <input value={bancoNome} onChange={(e) => setBancoNome(e.target.value)} placeholder="Inter, Nubank…" />
+                  </label>
+                  <div className="campo-par">
+                    <label className="time-porta-campo">
+                      <span>Agência</span>
+                      <input value={agencia} onChange={(e) => setAgencia(e.target.value)} inputMode="numeric" />
+                    </label>
+                    <label className="time-porta-campo">
+                      <span>Conta</span>
+                      <input value={contaNum} onChange={(e) => setContaNum(e.target.value)} inputMode="numeric" />
+                    </label>
+                  </div>
+                </>
+              )}
+
+              <div className="campo">
+                <span className="campo-rotulo" id="grupo-titular">De quem é a conta</span>
+                <div className="chips" role="group" aria-labelledby="grupo-titular">
+                  <button type="button" aria-pressed={titularEhEu} className={titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(true)}>
+                    Minha
+                  </button>
+                  <button type="button" aria-pressed={!titularEhEu} className={!titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(false)}>
+                    Do meu CNPJ / de outra pessoa
+                  </button>
+                </div>
+                <small>
+                  {titularEhEu
+                    ? "O comprovante vai sair no seu nome."
+                    : "Comum aqui: o time é MEI e recebe no CNPJ. Diga o titular para o comprovante fazer sentido depois."}
+                </small>
+              </div>
+
+              {!titularEhEu ? (
+                <div className="campo-par">
+                  <label className="time-porta-campo">
+                    <span>Nome do titular</span>
+                    <input value={titularNome} onChange={(e) => setTitularNome(e.target.value)} />
+                  </label>
+                  <label className="time-porta-campo">
+                    <span>CPF ou CNPJ dele</span>
+                    <input value={titularDoc} onChange={(e) => setTitularDoc(e.target.value)} inputMode="numeric" />
+                  </label>
+                </div>
+              ) : null}
+
+              {erroConta ? <p className="time-porta-erro" role="alert">{erroConta}</p> : null}
+              {contaOk ? <p className="conta-pgto-ok" role="status">Conta salva. O financeiro vai conferir antes do próximo pagamento.</p> : null}
+              <button type="submit" className="time-porta-entrar" disabled={salvandoConta}>
+                {salvandoConta ? "Salvando…" : conta ? "Atualizar conta" : "Salvar conta"}
               </button>
             </form>
 

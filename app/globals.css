@@ -16741,3 +16741,98 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
   display: block; margin-top: 3px; font-size: 10.5px; line-height: 1.3;
   color: var(--muted); font-weight: 400;
 }
+
+/* ===========================================================================
+   PERFIL FINANCEIRO DA PESSOA
+   =========================================================================== */
+.pp-selo {
+  font-size: 11.5px; font-weight: 650; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+}
+.pp-selo.ok { background: var(--tint-green-soft); color: var(--ink-green); border: 1px solid var(--tint-green-line); }
+.pp-selo.aviso { background: var(--tint-amber-soft); color: var(--ink-amber); border: 1px solid var(--tint-amber-line); }
+
+.pp-conta {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px 20px; margin: 0 0 4px;
+}
+.pp-conta-larga { grid-column: 1 / -1; }
+.pp-conta dt { font-size: 11px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.pp-conta dd { margin: 3px 0 0; font-size: 14px; }
+/* A chave em mono: é para conferir caractere a caractere antes de pagar. */
+.pp-chave {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13.5px;
+  word-break: break-all; background: var(--surface-2); padding: 6px 9px; border-radius: 7px;
+  display: inline-block;
+}
+.pp-nota { color: var(--ink-amber); font-size: 12px; }
+
+.pp-aviso, .pp-vazio-alerta {
+  margin: 12px 0 0; padding: 12px 14px; font-size: 12.5px; line-height: 1.5;
+  border: 1px solid var(--tint-amber-line); border-radius: 10px;
+  background: var(--tint-amber-soft); color: var(--ink-amber);
+}
+.pp-vazio-alerta { margin-top: 0; }
+.pp-vazio-alerta strong, .pp-aviso strong { font-weight: 660; }
+.pp-vazio { margin: 0; font-size: 13px; color: var(--muted); }
+
+.pp-numeros {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 20px;
+}
+.pp-num { background: var(--card); padding: 14px 16px; }
+.pp-num b { display: block; font-size: 19px; font-weight: 680; font-variant-numeric: tabular-nums; }
+.pp-num span { display: block; font-size: 11.5px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+.pp-num.aviso b { color: var(--ink-amber); }
+
+.pp-bloco { margin-bottom: 22px; min-width: 0; }
+.pp-bloco h3 {
+  margin: 0 0 10px; font-size: 12px; font-weight: 650; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--muted);
+}
+.pp-bloco h3 em { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.pp-cortes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 22px; }
+
+.pp-historico { display: flex; align-items: flex-end; gap: 8px; height: 200px; padding-top: 6px; overflow-x: auto; }
+.pp-mes {
+  flex: 1 0 58px; min-width: 58px; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end; height: 100%; gap: 4px;
+}
+.pp-mes-valor { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Empilhado por natureza: o mês com comissão ou extra se distingue de relance,
+   que é justamente o que a média esconde. */
+.pp-coluna {
+  width: 100%; display: flex; flex-direction: column-reverse;
+  border-radius: 5px 5px 2px 2px; overflow: hidden; min-height: 4px;
+}
+.pp-coluna i { display: block; width: 100%; }
+.pp-mes-rotulo { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.pp-barras { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.pp-barras li {
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(56px, 1fr) auto auto;
+  align-items: center; gap: 10px; font-size: 12.5px;
+}
+.pp-rotulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-trilho { height: 7px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.pp-trilho i { display: block; height: 100%; border-radius: 4px; background: var(--purple); }
+.pp-valor { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.pp-n { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 11.5px; }
+
+.pp-tabela-caixa { overflow: auto; max-height: 520px; border: 1px solid var(--line); border-radius: 10px; }
+.pp-tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 560px; }
+.pp-tabela th {
+  position: sticky; top: 0; text-align: left; font-size: 10.5px; font-weight: 650;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
+  background: var(--surface-2); padding: 9px 13px; border-bottom: 1px solid var(--line);
+}
+.pp-tabela td { padding: 9px 13px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.pp-tabela tr:last-child td { border-bottom: 0; }
+.pp-tabela .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pp-tabela th.num { text-align: right; }
+.pp-titulo { display: block; font-weight: 550; }
+.pp-meta { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* A conta que recebe, dentro da folha de perfil. */
+.conta-pgto { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 4px; }
+.conta-pgto-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.conta-pgto-topo strong { font-size: 15px; font-weight: 650; }
+.conta-pgto-ok { margin: 0; font-size: 12.5px; color: var(--ink-green); }

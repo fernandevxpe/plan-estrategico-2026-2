@@ -413,6 +413,53 @@ try {
   afirma(gp.rows[0]?.card_last4 === '0343', 'o final digitado fica', gp.rows[0]?.card_last4);
   afirma(gp.rows[0]?.card_id !== null, 'e casou sozinho com o plástico cadastrado', `card_id=${gp.rows[0]?.card_id}`);
 
+  console.log('\n=== 5b1. A CONTA QUE RECEBE (0159) ===');
+  // Existe para PROGRAMAR pagamento, não para exibir: chave malformada não
+  // volta como erro no dia do pagamento — ou o banco recusa, ou ela é válida e
+  // pertence a outra pessoa. Por isso a validação é por tipo.
+  {
+    const chaves = [
+      ['cpf', '123', false], ['cpf', '12345678909', true],
+      ['telefone', '999', false], ['telefone', '81999998888', true],
+      ['email', 'nao-eh-email', false], ['email', 'teste@xpe.com.br', true],
+      ['aleatoria', 'abc', false]
+    ];
+    let acertos = 0;
+    for (const [tipo, chave, deveria] of chaves) {
+      const r = await c('/api/time/perfil/conta', {
+        method: 'PUT', body: JSON.stringify({ metodo: 'pix', pixTipo: tipo, pixChave: chave })
+      });
+      if ((r.status === 200) === deveria) acertos += 1;
+    }
+    afirma(acertos === chaves.length, 'a chave PIX é validada pelo TIPO',
+      `${acertos}/${chaves.length} — chave errada não dá erro no pagamento, paga outra pessoa`);
+
+    await c('/api/time/perfil/conta', {
+      method: 'PUT', body: JSON.stringify({ metodo: 'pix', pixTipo: 'telefone', pixChave: '(81) 99999-8888' })
+    });
+    const lida = await c('/api/time/perfil/conta');
+    afirma(lida.corpo?.conta?.pixChave === '+5581999998888',
+      'telefone é normalizado para E.164', String(lida.corpo?.conta?.pixChave));
+
+    // Quem conferiu o destino antigo não conferiu o novo.
+    await db.query(`UPDATE fin_person_pagamento SET conferido_em = now() WHERE person_id = $1`, [cobaia.id]);
+    await c('/api/time/perfil/conta', {
+      method: 'PUT', body: JSON.stringify({ metodo: 'pix', pixTipo: 'email', pixChave: 'outro@xpe.com.br' })
+    });
+    const conf = await db.query(`SELECT conferido_em FROM fin_person_pagamento WHERE person_id = $1`, [cobaia.id]);
+    afirma(conf.rows[0]?.conferido_em === null, 'trocar a chave derruba a conferência do financeiro',
+      'lote automático não pode herdar confiança de um destino que mudou');
+
+    const semTitular = await c('/api/time/perfil/conta', {
+      method: 'PUT',
+      body: JSON.stringify({ metodo: 'pix', pixTipo: 'cnpj', pixChave: '12345678000190', titularEhAPessoa: false })
+    });
+    afirma(semTitular.status === 400, 'conta de terceiro exige nome e documento do titular',
+      `status ${semTitular.status} — o time é MEI e recebe no CNPJ; sem o titular o comprovante não casa`);
+
+    await db.query(`DELETE FROM fin_person_pagamento WHERE person_id = $1`, [cobaia.id]);
+  }
+
   console.log('\n=== 5b2a. CANCELAR REEMBOLSO COM ESTORNO ===');
   // Esta rota NUNCA funcionou: dois bugs independentes, cada um suficiente.
   // (1) o SQL usava `t.description` e `t.occurred_at`, que não existem em

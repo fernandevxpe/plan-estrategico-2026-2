@@ -683,6 +683,13 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
                       >
                         detalhar
                       </button>
+                      {/* O perfil completo: para onde o dinheiro dela vai,
+                          histórico mês a mês e cada pagamento desde 2026.
+                          "detalhar" abre a composição do custo aqui na tabela;
+                          isto abre a pessoa. */}
+                      <a className="fin-why" href={`/financeiro/pessoas/${linha.pessoa.id}`}>
+                        perfil e conta →
+                      </a>
                     </td>
                     <td>{linha.pessoa.vinculoRotulo}</td>
                     <td>{linha.pessoa.timeRotulo}</td>

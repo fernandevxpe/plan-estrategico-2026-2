@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { brl } from "@/components/financeiro/Certeza";
-import { CLASSE, ROTULO, mesCurto, nomeMes, type Recebiveis } from "@/components/time/recebiveis-dado";
+import { CLASSE, ROTULO, mesCurto, nomeMes, useRecebiveis } from "@/components/time/recebiveis-dado";
 
 /**
  * O histórico inteiro, com filtro por natureza e o mês aberto.
@@ -35,23 +35,10 @@ import { CLASSE, ROTULO, mesCurto, nomeMes, type Recebiveis } from "@/components
  */
 
 export function RecebiveisGrafico() {
-  const [dado, setDado] = useState<Recebiveis | null>(null);
-  const [carregando, setCarregando] = useState(true);
+  const { dado, carregando } = useRecebiveis();
   const [ocultas, setOcultas] = useState<Set<string>>(new Set());
   const [mesAberto, setMesAberto] = useState<string | null>(null);
   const trilhoRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const r = await fetch("/api/time/recebiveis", { cache: "no-store" });
-        const j = await r.json().catch(() => ({}));
-        setDado(j.recebiveis ?? null);
-      } finally {
-        setCarregando(false);
-      }
-    })();
-  }, []);
 
   // Começa rolado no mês MAIS RECENTE. Sem isso, o mês que a pessoa abriu a
   // tela para ver nasce fora do quadro — e o problema piora sozinho a cada mês

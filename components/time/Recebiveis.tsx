@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { brl } from "@/components/financeiro/Certeza";
-import { CLASSE, ROTULO, mesCurto, nomeMes, type Recebiveis as Dado } from "@/components/time/recebiveis-dado";
+import { CLASSE, ROTULO, mesCurto, nomeMes, useRecebiveis } from "@/components/time/recebiveis-dado";
 
 /**
  * O que a casa me paga.
@@ -41,25 +41,7 @@ import { CLASSE, ROTULO, mesCurto, nomeMes, type Recebiveis as Dado } from "@/co
  */
 
 export function Recebiveis() {
-  const [dado, setDado] = useState<Dado | null>(null);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const r = await fetch("/api/time/recebiveis", { cache: "no-store" });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) {
-          setErro((j.error as string) ?? "não consegui carregar");
-          return;
-        }
-        setDado(j.recebiveis as Dado);
-      } finally {
-        setCarregando(false);
-      }
-    })();
-  }, []);
+  const { dado, erro, carregando } = useRecebiveis();
 
   if (carregando) return <div className="time-aviso">carregando…</div>;
   if (erro) return <p className="time-erro">{erro}</p>;

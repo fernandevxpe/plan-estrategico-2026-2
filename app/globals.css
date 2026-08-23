@@ -12584,12 +12584,15 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   gap: 8px;
   align-items: stretch;
 }
+/* 44px e não 40: "Filtros" e "Ordenar" são os dois controles mais tocados do
+   Histórico, e estavam 4px abaixo do mínimo desde que a barra existe. Passou
+   despercebido porque nenhum teste varria esta tela. */
 .envios-btn-acao {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -17232,3 +17235,141 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 
 /* O link do rodapé tinha 170x16px. Ele é a porta para o Histórico inteiro. */
 .time-rodape a { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* ===========================================================================
+   HISTÓRICO — as duas direções
+   ===========================================================================
+   O segmento do topo NÃO reusa `.envios-segmento`, que tem 34px de altura.
+   Aquele é um filtro dentro de um painel já aberto de propósito; este é a
+   navegação principal da tela, tocada com o polegar sem olhar. 34px reprova o
+   mínimo de 44px, e o teste de alvos pega. */
+.hist-segmento {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  padding: 3px;
+  margin: 0 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-2);
+}
+.hist-segmento-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.hist-segmento-item.ativo {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+}
+/* A contagem é o que faz a aba fechada valer um toque; ela precisa ser legível
+   também no estado apagado, e por isso não herda a cor esmaecida do rótulo. */
+/*
+ * A pilha de fundos alterna de propósito. A aba APAGADA sobre o trilho
+ * `--surface-2`; a ATIVA sobre a lâmina `--card`. Se o selo usasse a mesma cor
+ * nos dois, ele sumiria em um deles.
+ *
+ * A primeira versão pedia `--surface-3` e `--purple-weak`, que NÃO EXISTEM
+ * neste arquivo — o `var()` cairia no fallback e o selo ficaria exatamente da
+ * cor de trás. É o mesmo erro que fez a banda de R$ 72.022 do Gabriel
+ * renderizar invisível: classe apontando para token que ninguém definiu, e
+ * nada avisa.
+ */
+.hist-segmento-item b {
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.hist-segmento-item.ativo b {
+  background: var(--surface-2);
+  color: var(--purple);
+}
+
+/* A lista de Recebi atravessa anos — 01/08 vira 01/08/26 e a coluna do dia
+   precisa dos 16px a mais, senão a data quebra em duas linhas e a régua de
+   44px vira 60. */
+.rec-linhas-longa li {
+  grid-template-columns: 56px 9px minmax(0, 1fr) auto;
+}
+/* E aqui o dia NUNCA se esconde: em `Recebiveis` a lista é de um mês só e
+   repetir "01/08" em três linhas era ruído. Nesta, duas linhas seguidas podem
+   estar a um ano de distância. */
+.rec-linhas-longa .rec-linha-mesmodia .rec-linha-dia {
+  visibility: visible;
+}
+
+.hist-rec-total {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 2px 0 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.hist-rec-total strong {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.hist-rec-total span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* O rótulo da ordem, por baixo do <select> invisível. `pointer-events: none`
+   porque quem recebe o toque é o select — sem isso, tocar exatamente na
+   palavra não abriria o seletor. */
+.envios-btn-ordenar-rotulo {
+  pointer-events: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A faixa do mês em Recebi. */
+.hist-rec-mes { margin: 0 0 4px; }
+.hist-rec-mes h3 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 9px 2px 6px;
+  /* Opaco: a faixa gruda no topo enquanto a pessoa rola, e translúcida ela
+     deixaria as linhas passarem por trás do próprio título. */
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.hist-rec-mes h3 b {
+  font-size: 13px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+/* Dentro de um mês a coluna do dia volta a ser DD/MM: o ano está no cabeçalho. */
+.hist-rec-mes .rec-linhas-longa li {
+  grid-template-columns: 44px 9px minmax(0, 1fr) auto;
+}

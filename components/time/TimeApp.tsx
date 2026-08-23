@@ -11,7 +11,10 @@ import {
   ROTULO as ROTULO_REC,
   mesCurto as mesCurtoRec,
   nomeMes as nomeMesRec,
-  type Recebiveis as DadoRecebiveis
+  type Recebiveis as DadoRecebiveis,
+  carregarRecebiveis,
+  invalidarRecebiveis,
+  useRecebiveis
 } from "@/components/time/recebiveis-dado";
 import { RecebiveisGrafico } from "@/components/time/RecebiveisGrafico";
 import { PixQr } from "@/components/time/PixQr";
@@ -353,7 +356,7 @@ export function TimeApp({
         />
       ) : null}
       {aba === "compra" ? <FormCompra aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
-      {aba === "envios" ? <ListaEnvios envios={envios} /> : null}
+      {aba === "envios" ? <Historico envios={envios} /> : null}
       {aba === "meu-reembolso" ? <MeuReembolso /> : null}
       {/*
         Recebíveis vive em arquivo próprio: ela busca o próprio dado e não usa
@@ -1955,17 +1958,15 @@ function CabecalhoPessoa({
       const r = await fetch("/api/time/perfil/conta", { cache: "no-store" });
       const j = await r.json().catch(() => ({}));
       // Aproveita a abertura da folha para trazer os dois números também.
-      void (async () => {
-        const rr = await fetch("/api/time/recebiveis", { cache: "no-store" });
-        const rj = await rr.json().catch(() => ({}));
-        if (rj.recebiveis) {
+      void carregarRecebiveis().then(({ dado }) => {
+        if (dado) {
           setResumoRec({
-            mediana: rj.recebiveis.medianaRecorrenteCents ?? 0,
-            aberto: rj.recebiveis.emAbertoCents ?? 0,
-            desde: rj.recebiveis.desde ?? null
+            mediana: dado.medianaRecorrenteCents ?? 0,
+            aberto: dado.emAbertoCents ?? 0,
+            desde: dado.desde ?? null
           });
         }
-      })();
+      });
       const c = j.conta as typeof conta;
       if (!c) return;
       setConta(c);
@@ -2380,16 +2381,8 @@ function Inicio({ envios }: { envios: Envio[] }) {
    * lugar é a resposta a "a casa me pagou o que devia?", e é ela que a tela
    * principal passa a responder.
    */
-  const [rec, setRec] = useState<DadoRecebiveis | null>(null);
+  const { dado: rec } = useRecebiveis();
   const [mesFoco, setMesFoco] = useState<string | null>(null);
-
-  useEffect(() => {
-    void (async () => {
-      const r = await fetch("/api/time/recebiveis", { cache: "no-store" });
-      const j = await r.json().catch(() => ({}));
-      if (j.recebiveis) setRec(j.recebiveis as DadoRecebiveis);
-    })();
-  }, []);
 
   const aguardando = envios.filter((e) => e.estado === "aguardando");
   const voltaram = envios.filter((e) => e.estado === "devolvido" || e.estado === "recusado");
@@ -4277,9 +4270,37 @@ function rotuloFiltroPeriodo(v: string) {
   return FILTRO_PERIODO_OPCOES.find(([id]) => id === v)?.[1] ?? v;
 }
 
+/**
+ * A data que a linha MOSTRA — e, por isso, a data por que ela ordena e filtra.
+ *
+ * ---------------------------------------------------------------------------
+ * ELAS ESTAVAM SEPARADAS, E A LISTA SAÍA EMBARALHADA
+ * ---------------------------------------------------------------------------
+ * O cartão exibia `dataRef ?? criadoEm` (a data do gasto), e a ordenação usava
+ * `criadoEm` cru (a data em que a linha entrou na base). Nas duas pessoas
+ * conferidas, `dataRef` difere de `criadoEm` em 8 de 8 e 7 de 7 envios — a
+ * planilha foi importada de uma vez, então TODA linha tem as duas datas
+ * distantes.
+ *
+ * O resultado em "Mais recentes", medido no Fernando:
+ *   12/08 · 01/03 · 01/04 · 01/05 · 01/02 · 01/07 · 01/01 · 01/06
+ * Quatro quebras em sete pares. A pessoa lia uma lista que se dizia ordenada e
+ * não estava, sem nada na tela explicando por quê.
+ *
+ * O filtro de período tinha a MESMA raiz e era pior: "últimos 30 dias" comparava
+ * `criadoEm`, então devolvia gastos de janeiro — importados em agosto — como se
+ * fossem do mês. Filtro que responde a outra pergunta é pior que filtro
+ * ausente, porque a resposta parece boa.
+ *
+ * Empate cai em `criadoEm`: duas compras no mesmo dia mantêm a ordem em que
+ * foram enviadas, em vez de trocarem de lugar a cada render.
+ */
+function dataDoEnvio(e: Envio) {
+  return e.dataRef ?? e.criadoEm.slice(0, 10);
+}
+
 function formatDataEnvio(e: Envio) {
-  const d = e.dataRef ?? e.criadoEm.slice(0, 10);
-  const [a, m, dia] = d.split("-");
+  const [a, m, dia] = dataDoEnvio(e).split("-");
   return `${dia}/${m}/${a.slice(2)}`;
 }
 
@@ -4570,6 +4591,9 @@ function TelaItemGasto({
       }
       setCancelPasso(null);
       aoFalhar({ tom: "ok", texto: "Compra cancelada. Veja abaixo como devolver o valor." });
+      // Cancelar move o saldo em aberto: "Ainda a receber" no Início e o
+      // aberto de Recebíveis passam a mentir se o cache sobreviver ao POST.
+      invalidarRecebiveis();
       void recarregar();
     } finally {
       setCancelando(false);
@@ -5357,6 +5381,401 @@ function LinhaExtrato({
   );
 }
 
+
+/**
+ * O Histórico: as duas direções do meu dinheiro com a casa.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE DUAS ABAS E NÃO UM EXTRATO SÓ
+ * ---------------------------------------------------------------------------
+ * A tentação era misturar num fluxo cronológico, como extrato de banco. Não
+ * serve aqui, e o motivo é a coluna Valor: em "Enviei", R$ 429,97 quer dizer
+ * "pedi isso e ainda não sei se sai"; em "Recebi", R$ 7.624,11 quer dizer
+ * "caiu na conta". Somar os dois não responde nada, e é exatamente o que uma
+ * lista única convida a fazer.
+ *
+ * As colunas também divergem: envio tem Status (aguardando, aprovado,
+ * devolvido) e recebimento não tem — ele já aconteceu. Uma tabela com Status
+ * vazio em metade das linhas é pior que duas tabelas.
+ *
+ * ---------------------------------------------------------------------------
+ * A CONTAGEM NO BOTÃO É O QUE FAZ A ABA EXISTIR
+ * ---------------------------------------------------------------------------
+ * "Recebi" nasce escondida atrás de um toque. Sem número, ninguém descobre que
+ * tem conteúdo — e ela é a metade mais cheia: no Fernando são 8 envios contra
+ * 27 recebimentos; no Gabriel, 7 contra 48. Quem chega ao Histórico para achar
+ * um pagamento veria a metade pobre e concluiria que o app não tem o dado.
+ */
+function Historico({ envios }: { envios: Envio[] }) {
+  const [lado, setLado] = useState<"enviei" | "recebi">("enviei");
+  const { dado: rec } = useRecebiveis();
+  const nRecebi = rec?.linhas.length ?? null;
+
+  return (
+    <div className="time-tela-padrao envios-extrato">
+      <header className="time-form-cabeca">
+        <h1>Histórico</h1>
+        <p>O que eu mandei para o financeiro, e o que a casa me pagou.</p>
+      </header>
+
+      <div className="hist-segmento" role="tablist" aria-label="Direção do histórico">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={lado === "enviei"}
+          className={lado === "enviei" ? "hist-segmento-item ativo" : "hist-segmento-item"}
+          onClick={() => setLado("enviei")}
+        >
+          Enviei
+          <b>{envios.length}</b>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={lado === "recebi"}
+          className={lado === "recebi" ? "hist-segmento-item ativo" : "hist-segmento-item"}
+          onClick={() => setLado("recebi")}
+        >
+          Recebi
+          {/* Enquanto não carregou, nada — um "0" que vira "27" depois é pior
+              que a ausência: quem lê o zero vai embora. */}
+          {nRecebi === null ? null : <b>{nRecebi}</b>}
+        </button>
+      </div>
+
+      {lado === "enviei" ? <ListaEnvios envios={envios} /> : <ListaRecebidos />}
+    </div>
+  );
+}
+
+const HIST_ORDEM_REC: Record<string, string> = {
+  recente: "Mais recentes",
+  antigo: "Mais antigos",
+  valor_desc: "Maior valor",
+  valor_asc: "Menor valor"
+};
+
+/**
+ * "Recebi": cada pagamento que caiu, com as naturezas ligáveis uma a uma.
+ *
+ * O filtro de natureza é MÚLTIPLO, e não uma lista de "só um por vez", porque
+ * a pergunta real tem essa forma: "quanto recebi de comissão E extra este
+ * ano?". Com escolha única a pessoa somaria de cabeça.
+ *
+ * E o total acompanha o filtro. Aqui somar faz sentido — é tudo dinheiro que
+ * entrou, na mesma direção — o que não vale do lado "Enviei", onde a soma
+ * misturaria pedido com compra no cartão da empresa.
+ */
+function ListaRecebidos() {
+  const { dado, erro, carregando } = useRecebiveis();
+  const [busca, setBusca] = useState("");
+  const [naturezas, setNaturezas] = useState<Set<string>>(new Set());
+  const [periodo, setPeriodo] = useState("tudo");
+  const [valorMin, setValorMin] = useState("");
+  const [valorMax, setValorMax] = useState("");
+  const [ordem, setOrdem] = useState<"recente" | "antigo" | "valor_desc" | "valor_asc">("recente");
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+
+  const linhas = useMemo(() => dado?.linhas ?? [], [dado]);
+
+  const filtradas = useMemo(() => {
+    const t = semAcento(busca.trim());
+    const min = valorMin ? centavosDoTexto(valorMin) : null;
+    const max = valorMax ? centavosDoTexto(valorMax) : null;
+    // Mesma razão de `dataDoEnvio`: string ISO, nunca `Date`, para o item da
+    // borda não entrar ou sair do filtro conforme o fuso do aparelho.
+    const limite =
+      periodo === "7d" || periodo === "30d" || periodo === "90d"
+        ? (() => {
+            const d = new Date();
+            d.setDate(d.getDate() - Number(periodo.replace("d", "")));
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+          })()
+        : null;
+
+    const lista = linhas.filter((l) => {
+      if (naturezas.size > 0 && !naturezas.has(l.natureza)) return false;
+      if (limite && l.data < limite) return false;
+      if (min !== null && l.valorCents < min) return false;
+      if (max !== null && l.valorCents > max) return false;
+      if (!t) return true;
+      return (
+        semAcento(ROTULO_REC[l.natureza] ?? l.natureza).includes(t) ||
+        semAcento(l.conta).includes(t) ||
+        semAcento(l.descricao ?? "").includes(t) ||
+        semAcento(l.categoria ?? "").includes(t)
+      );
+    });
+
+    return [...lista].sort((a, b) => {
+      if (ordem === "valor_desc") return b.valorCents - a.valorCents;
+      if (ordem === "valor_asc") return a.valorCents - b.valorCents;
+      if (ordem === "antigo") return a.data.localeCompare(b.data);
+      return b.data.localeCompare(a.data);
+    });
+  }, [linhas, busca, naturezas, periodo, valorMin, valorMax, ordem]);
+
+  const totalFiltrado = filtradas.reduce((s, l) => s + l.valorCents, 0);
+
+  const porData = ordem === "recente" || ordem === "antigo";
+  const grupos = useMemo(() => {
+    if (!porData) return [];
+    const m = new Map<string, { mes: string; cents: number; linhas: typeof filtradas }>();
+    for (const l of filtradas) {
+      const g = m.get(l.mes) ?? { mes: l.mes, cents: 0, linhas: [] };
+      g.cents += l.valorCents;
+      g.linhas.push(l);
+      m.set(l.mes, g);
+    }
+    // A ordem dos meses já vem certa: `filtradas` está ordenada por data e o
+    // Map preserva a ordem de inserção. Reordenar aqui seria a chance de os
+    // dois discordarem.
+    return [...m.values()];
+  }, [filtradas, porData]);
+
+  const limpar = () => {
+    setBusca("");
+    setNaturezas(new Set());
+    setPeriodo("tudo");
+    setValorMin("");
+    setValorMax("");
+    setOrdem("recente");
+  };
+
+  const qtdFiltros =
+    (busca ? 1 : 0) + (naturezas.size > 0 ? 1 : 0) + (periodo !== "tudo" ? 1 : 0) + (valorMin || valorMax ? 1 : 0);
+
+  const alternarNatureza = (n: string) =>
+    setNaturezas((antes) => {
+      const novo = new Set(antes);
+      if (novo.has(n)) novo.delete(n);
+      else novo.add(n);
+      return novo;
+    });
+
+  if (carregando) return <div className="time-aviso">carregando…</div>;
+  if (erro) return <p className="time-erro">{erro}</p>;
+  if (!dado || linhas.length === 0) {
+    return <p className="time-sub envios-vazio">A casa ainda não te pagou nada em 2026 — ou o pagamento ainda não foi categorizado.</p>;
+  }
+
+  return (
+    <>
+      <div className="envios-toolbar">
+        <div className="campo-busca envios-busca">
+          <svg className="campo-busca-icone" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+          </svg>
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Natureza, conta ou descrição"
+            autoComplete="off"
+          />
+          {busca ? (
+            <button type="button" className="envios-busca-limpar" onClick={() => setBusca("")} aria-label="Limpar busca">
+              ×
+            </button>
+          ) : null}
+        </div>
+
+        <div className="envios-toolbar-acoes">
+          <button
+            type="button"
+            className={filtrosAbertos ? "envios-btn-acao ativo" : "envios-btn-acao"}
+            aria-expanded={filtrosAbertos}
+            onClick={() => setFiltrosAbertos((v) => !v)}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
+            </svg>
+            Filtros
+            {qtdFiltros > 0 ? <span className="envios-badge">{qtdFiltros}</span> : null}
+          </button>
+
+          <label className="envios-btn-acao envios-btn-ordenar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M8 6h12M8 12h8M8 18h4" strokeLinecap="round" />
+            </svg>
+            <span className="envios-btn-ordenar-rotulo">{HIST_ORDEM_REC[ordem]}</span>
+            <select
+              value={ordem}
+              onChange={(e) => setOrdem(e.target.value as typeof ordem)}
+              aria-label="Ordenar recebimentos"
+            >
+              {Object.entries(HIST_ORDEM_REC).map(([v, r]) => (
+                <option key={v} value={v}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <span className="envios-contagem-inline">
+            {filtradas.length}/{linhas.length}
+          </span>
+        </div>
+
+        {filtrosAbertos ? (
+          <div className="envios-filtros-painel">
+            <div className="envios-filtros-bloco">
+              <span className="envios-filtros-titulo">Natureza</span>
+              <div className="envios-grade-opcoes envios-grade-opcoes-3">
+                {dado.porNatureza.map((n) => {
+                  const ligada = naturezas.has(n.natureza);
+                  return (
+                    <button
+                      key={n.natureza}
+                      type="button"
+                      className={ligada ? "envios-opcao ativo" : "envios-opcao"}
+                      aria-pressed={ligada}
+                      onClick={() => alternarNatureza(n.natureza)}
+                    >
+                      <i className={`rec-ponto ${CLASSE_REC[n.natureza] ?? "nat-encargo"}`} aria-hidden />
+                      {ROTULO_REC[n.natureza] ?? n.natureza}
+                    </button>
+                  );
+                })}
+              </div>
+              {naturezas.size === 0 ? (
+                <span className="envios-filtros-dica">Nenhuma marcada — mostrando todas.</span>
+              ) : null}
+            </div>
+
+            <div className="envios-filtros-bloco">
+              <span className="envios-filtros-titulo">Período</span>
+              <div className="envios-segmento">
+                {FILTRO_PERIODO_OPCOES.map(([v, r]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={periodo === v ? "envios-segmento-item ativo" : "envios-segmento-item"}
+                    aria-pressed={periodo === v}
+                    onClick={() => setPeriodo(v)}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="envios-filtros-bloco">
+              <span className="envios-filtros-titulo">Faixa de valor</span>
+              <div className="envios-valor-faixa">
+                <label className="envios-campo-mini">
+                  <span>Mínimo</span>
+                  <input
+                    value={valorMin}
+                    onChange={(e) => setValorMin(mascaraDinheiro(e.target.value))}
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
+                  />
+                </label>
+                <label className="envios-campo-mini">
+                  <span>Máximo</span>
+                  <input
+                    value={valorMax}
+                    onChange={(e) => setValorMax(mascaraDinheiro(e.target.value))}
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="envios-filtros-rodape">
+              {qtdFiltros > 0 || ordem !== "recente" ? (
+                <button type="button" className="time-link" onClick={limpar}>
+                  Limpar filtros
+                </button>
+              ) : (
+                <span className="envios-filtros-dica">Nenhum filtro aplicado</span>
+              )}
+              <button type="button" className="envios-btn-aplicar" onClick={() => setFiltrosAbertos(false)}>
+                Ver {filtradas.length} resultado{filtradas.length === 1 ? "" : "s"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {filtradas.length === 0 ? (
+        <p className="time-sub envios-vazio">Nada com esses filtros. Tente outro termo ou limpe a busca.</p>
+      ) : (
+        <>
+          <p className="hist-rec-total">
+            <strong>{brl(totalFiltrado)}</strong>
+            <span>
+              {qtdFiltros > 0
+                ? `em ${filtradas.length} pagamento${filtradas.length === 1 ? "" : "s"} filtrado${filtradas.length === 1 ? "" : "s"}`
+                : `em ${filtradas.length} pagamento${filtradas.length === 1 ? "" : "s"}, desde ${formatMesRef(linhas[linhas.length - 1].mes)}`}
+            </span>
+          </p>
+          {/*
+            AGRUPADO POR MÊS — mas só quando a ordem é por data.
+
+            Sem isso a lista do Fernando é vinte e cinco linhas seguidas
+            dizendo "Pró-labore · Inter", e a única informação que muda entre
+            elas (o mês) está espremida numa coluna de 56px. Com o mês virando
+            cabeçalho, a repetição some dentro da estrutura e cada faixa ganha
+            o total do mês — que é a pergunta real de quem rola até março.
+
+            Ordenado por VALOR o agrupamento seria mentira: as faixas
+            apareceriam fora de ordem cronológica e um "total de março" no meio
+            da lista somaria só as linhas de março que calharam de estar ali.
+            Nesse caso, lista corrida.
+          */}
+          {porData ? (
+            grupos.map((g) => (
+              <section key={g.mes} className="hist-rec-mes">
+                <h3>
+                  {/* Maiúscula na fonte, não com `text-transform: capitalize`
+                      — aquele maiusculiza TODA palavra e escrevia
+                      "Agosto De 2026". */}
+                  {nomeMesRec(g.mes).charAt(0).toUpperCase() + nomeMesRec(g.mes).slice(1)}
+                  <b>{brl(g.cents)}</b>
+                </h3>
+                <ul className="rec-linhas rec-linhas-longa">
+                  {g.linhas.map((l, i) => (
+                    <li key={`${l.data}-${i}`}>
+                      <span className="rec-linha-dia">
+                        {l.data.slice(8, 10)}/{l.data.slice(5, 7)}
+                      </span>
+                      <i className={`rec-ponto ${CLASSE_REC[l.natureza] ?? "nat-encargo"}`} aria-hidden />
+                      <span className="rec-linha-nat">
+                        {ROTULO_REC[l.natureza] ?? l.natureza}
+                        <span className="rec-linha-conta">{l.conta}</span>
+                      </span>
+                      <span className="rec-linha-valor">{brl(l.valorCents)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))
+          ) : (
+            <ul className="rec-linhas rec-linhas-longa">
+              {filtradas.map((l, i) => (
+                <li key={`${l.data}-${i}`}>
+                  <span className="rec-linha-dia">
+                    {l.data.slice(8, 10)}/{l.data.slice(5, 7)}/{l.data.slice(2, 4)}
+                  </span>
+                  <i className={`rec-ponto ${CLASSE_REC[l.natureza] ?? "nat-encargo"}`} aria-hidden />
+                  <span className="rec-linha-nat">
+                    {ROTULO_REC[l.natureza] ?? l.natureza}
+                    <span className="rec-linha-conta">{l.conta}</span>
+                  </span>
+                  <span className="rec-linha-valor">{brl(l.valorCents)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
 function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?: boolean }) {
   const [busca, setBusca] = useState("");
   const [tipo, setTipo] = useState("");
@@ -5376,13 +5795,21 @@ function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?:
     const t = semAcento(busca.trim());
     const min = valorMin ? centavosDoTexto(valorMin) : null;
     const max = valorMax ? centavosDoTexto(valorMax) : null;
+    /*
+     * O limite é STRING `YYYY-MM-DD`, não `Date`.
+     *
+     * `dataDoEnvio` devolve a data do gasto, que é um dia civil sem hora — e
+     * `new Date("2026-01-15")` no JS é meia-noite UTC, que em São Paulo é 15/01
+     * às 21h do dia 14. Comparar os dois faria o item da borda entrar ou sair
+     * do filtro dependendo do fuso do aparelho. Duas strings ISO comparam por
+     * ordem alfabética e são o mesmo dia em qualquer lugar.
+     */
     const limite =
       periodo === "7d" || periodo === "30d" || periodo === "90d"
         ? (() => {
             const d = new Date();
             d.setDate(d.getDate() - Number(periodo.replace("d", "")));
-            d.setHours(0, 0, 0, 0);
-            return d;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
           })()
         : null;
 
@@ -5390,7 +5817,7 @@ function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?:
       if (grupoFiltro && e.grupoChave !== grupoFiltro) return false;
       if (tipo && e.origem !== tipo) return false;
       if (estadoFiltro && e.statusExtrato !== estadoFiltro) return false;
-      if (limite && new Date(e.criadoEm) < limite) return false;
+      if (limite && dataDoEnvio(e) < limite) return false;
       if (min !== null && (e.valorCents === null || e.valorCents < min)) return false;
       if (max !== null && (e.valorCents === null || e.valorCents > max)) return false;
       if (!t) return true;
@@ -5401,8 +5828,10 @@ function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?:
       if (ordem === "titulo") return a.titulo.localeCompare(b.titulo, "pt-BR");
       if (ordem === "valor_desc") return (b.valorCents ?? -1) - (a.valorCents ?? -1);
       if (ordem === "valor_asc") return (a.valorCents ?? Infinity) - (b.valorCents ?? Infinity);
-      if (ordem === "antigo") return a.criadoEm.localeCompare(b.criadoEm);
-      return b.criadoEm.localeCompare(a.criadoEm);
+      const da = dataDoEnvio(a);
+      const db = dataDoEnvio(b);
+      if (ordem === "antigo") return da.localeCompare(db) || a.criadoEm.localeCompare(b.criadoEm);
+      return db.localeCompare(da) || b.criadoEm.localeCompare(a.criadoEm);
     });
 
     return lista;
@@ -5522,18 +5951,10 @@ function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?:
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só na chegada com hash; carregarDetalhe muda a cada render
   }, [envios]);
 
+  // O invólucro (`.time-tela-padrao`) e o cabeçalho pertencem ao `Historico`,
+  // que é quem sabe qual das duas metades está na tela.
   if (envios.length === 0) {
-    return compacta ? (
-      <p className="time-sub">Você ainda não enviou nada.</p>
-    ) : (
-      <div className="time-tela-padrao envios-extrato">
-        <header className="time-form-cabeca">
-          <h1>O que eu enviei</h1>
-          <p>Extrato de custos, reembolsos e pedidos de compra.</p>
-        </header>
-        <p className="time-sub">Você ainda não enviou nada.</p>
-      </div>
-    );
+    return <p className="time-sub envios-vazio">Você ainda não enviou nada.</p>;
   }
 
   if (compacta) {
@@ -5549,12 +5970,7 @@ function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?:
   }
 
   return (
-    <div className="time-tela-padrao envios-extrato">
-      <header className="time-form-cabeca">
-        <h1>O que eu enviei</h1>
-        <p>Busque e filtre custos, reembolsos e pedidos de compra.</p>
-      </header>
-
+    <>
       <div className="envios-toolbar">
         <div className="campo-busca envios-busca">
           <svg className="campo-busca-icone" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -5592,6 +6008,11 @@ function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?:
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <path d="M8 6h12M8 12h8M8 18h4" strokeLinecap="round" />
             </svg>
+            {/* O `<select>` é invisível de propósito (`opacity: 0`) para o
+                celular abrir o seletor nativo. Sem este rótulo por baixo, o
+                botão era um ícone mudo: a lista podia estar por maior valor e
+                nada na tela dizia isso. */}
+            <span className="envios-btn-ordenar-rotulo">{ORDEM_ENVIO_ROTULO[ordem]}</span>
             <select value={ordem} onChange={(e) => setOrdem(e.target.value as typeof ordem)} aria-label="Ordenar lista">
               {Object.entries(ORDEM_ENVIO_ROTULO).map(([v, r]) => (
                 <option key={v} value={v}>
@@ -5755,6 +6176,6 @@ function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?:
           })}
         </div>
       )}
-    </div>
+    </>
   );
 }

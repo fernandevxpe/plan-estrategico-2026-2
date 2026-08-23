@@ -87,6 +87,41 @@ export function financePool(): pg.Pool {
       // que o usuário desiste. Consulta que passar disso é defeito, e falhar
       // rápido nomeando a consulta é melhor que degradar a aplicação toda.
       statement_timeout: 20_000,
+      /*
+       * JIT DESLIGADO — e esta é a linha mais cara do arquivo.
+       *
+       * MEDIDO EM 23/08/2026, na mesma base, mesma consulta, só trocando isto:
+       *
+       *   fin_custo_previsto_consolidado_v    12.573ms →   541ms
+       *   fin_agenda_dia_v (janela 120d)      23.445ms →   440ms
+       *   fin_agenda_resumo_dia_v (janela)    41.912ms →   544ms
+       *   fin_agenda_prova_v                  28.363ms →   409ms
+       *
+       * Quarenta segundos viravam meio. E o efeito não ficava na agenda: com
+       * `max: 5`, quatro consultas dessas seguravam o pool inteiro, e o
+       * `/api/notificacoes` — que TODA página chama — passou a responder em
+       * 19,9s. A `/financeiro/agenda` batia no `statement_timeout` acima e
+       * devolvia 500 em produção.
+       *
+       * POR QUE O JIT SAI TÃO CARO AQUI
+       * O JIT dispara por ESTIMATIVA de custo (`jit_above_cost`, 100.000). As
+       * views do financeiro são profundamente aninhadas — `fin_agenda_dia_v`
+       * expande num plano de 2.170 linhas — e o planejador estima um custo
+       * enorme para uma consulta que toca alguns milhares de linhas. O LLVM
+       * então gasta 15 a 40 segundos compilando expressões para um trabalho
+       * real de 400ms.
+       *
+       * Foi o que escondeu o diagnóstico por horas: no EXPLAIN, o tempo de
+       * compilação aparece grudado no PRIMEIRO nó do plano. Aqui ele caía
+       * numa CTE `hoje` que só calcula `now()::date` — e o plano dizia, com
+       * cara de verdade, que pegar a data de hoje levava 22 segundos.
+       *
+       * O JIT existe para varredura analítica de milhões de linhas. Esta base
+       * tem milhares. Ele nunca se paga aqui, e é `options` (pacote de
+       * inicialização) em vez de `SET` por consulta justamente para valer
+       * também na conexão que o `transaction()` toma emprestada.
+       */
+      options: "-c jit=off",
       // O Railway serve Postgres com certificado próprio; o cliente confia na
       // rede privada. Mesmo tratamento de scripts/lib/artifact-db.mjs.
       ssl: { rejectUnauthorized: false },

@@ -16836,3 +16836,332 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 .conta-pgto-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .conta-pgto-topo strong { font-size: 15px; font-weight: 650; }
 .conta-pgto-ok { margin: 0; font-size: 12.5px; color: var(--ink-green); }
+/* ===========================================================================
+   O QUE EU RECEBO — recebíveis, salário e o gráfico empilhado
+   ---------------------------------------------------------------------------
+   Três telas sobre o mesmo dado (`fin_time_recebivel_v`, 0161) e um gráfico só,
+   em dois tamanhos. Prefixo `rec-` para o que é de recebíveis (e do gráfico,
+   que a tela principal também usa) e `sal-` para o que só existe no salário —
+   mesma divisão que `envios-` já faz dentro de /time.
+   =========================================================================== */
+
+/* --- A cor de cada natureza -------------------------------------------------
+   NENHUMA COR NOVA. Cada natureza é um APELIDO de token que já existe e que já
+   tem contraparte escura — por isso não há bloco `[data-theme]` aqui: quando o
+   tema troca, `--purple`, `--ink-amber`, `--neon-green-ink`, `--neon-pink-ink`
+   e `--muted` trocam sozinhos e as bandas vão junto.
+
+   Salário, pró-labore e estágio dividem UMA cor porque são mutuamente
+   exclusivos: conferido nas 28 pessoas com pagamento em 2026, ninguém tem duas
+   delas. O ganho é que a banda roxa quer dizer "o que se repete" no gráfico de
+   todo mundo, seja o vínculo qual for; a legenda diz o nome certo.
+
+   Medido (sobre `--card`, mínimo 3:1 da WCAG 1.4.11 para gráfico):
+     claro  — roxo 6,71 · âmbar 6,26 · verde 4,12 · rosa 5,47 · cinza 4,96
+     escuro — roxo 3,15 · âmbar 11,14 · verde 14,66 · rosa 8,83 · cinza 7,28
+   O pior caso é o roxo no escuro, 3,15:1: passa, com pouca folga. */
+:root {
+  --nat-recorrente: var(--purple);
+  --nat-comissao: var(--ink-amber);
+  --nat-reembolso: var(--neon-green-ink);
+  --nat-extra: var(--neon-pink-ink);
+  --nat-encargo: var(--muted);
+}
+/* `.nat-recorrente` é o nome que o componente emite, e é o mais honesto: ele
+   diz o QUE a cor significa ("o que se repete todo mês") em vez de nomear um
+   dos três vínculos. Os três nomes específicos ficam porque o protótipo os
+   usou e alguém pode escrever markup com eles. */
+.nat-recorrente, .nat-salario, .nat-prolabore, .nat-estagio { background: var(--nat-recorrente); }
+.nat-comissao { background: var(--nat-comissao); }
+.nat-reembolso { background: var(--nat-reembolso); }
+.nat-extra { background: var(--nat-extra); }
+.nat-encargo, .nat-encargo_beneficio { background: var(--nat-encargo); }
+
+/* ===========================================================================
+   O GRÁFICO EMPILHADO — um componente, dois tamanhos
+   =========================================================================== */
+.rec-plot { display: grid; gap: 10px; }
+.rec-plot-cabeca { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rec-plot-cabeca h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+
+/* 44px porque é o alvo mínimo, e "abrir em tela cheia" não pode ser o
+   ícone de 20px que este tipo de controle costuma virar. */
+.rec-plot-abrir {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--ink);
+  font-size: 12.5px; font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.rec-plot-abrir:active { background: var(--surface-2); }
+
+/* O trilho rola DENTRO de si; a página nunca rola de lado.
+   `overscroll-behavior-x: contain` para o gesto não virar "voltar" do
+   navegador no meio de arrastar o gráfico. */
+.rec-plot-trilho {
+  position: relative;
+  overflow-x: auto; overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.rec-plot-trilho::-webkit-scrollbar { display: none; }
+
+/* `align-items: stretch` e altura no TRILHO, não na coluna: a pilha tem altura
+   em %, e % contra pai de altura automática colapsa para zero — foi o primeiro
+   erro do protótipo, e ele renderiza sem erro nenhum, só sem barra. */
+.rec-grade { display: grid; grid-auto-flow: column; align-items: stretch; gap: 6px; position: relative;
+  /* 4px de folga dos dois lados: sem ela o contorno do mês selecionado
+     (outline-offset 2px) é cortado pela borda do trilho que rola. */
+  padding: 0 4px; }
+.rec-col-area { width: 100%; display: flex; align-items: flex-end; }
+/* Compacto (tela principal): SEIS meses, sempre os últimos.
+   Medido em 393px: 361px de conteúdo ÷ 6 colunas com 6px de vão = 55,2px por
+   coluna — acima dos 44px de alvo. Com doze meses a mesma conta dá 24,6px, e
+   por isso a janela é fixa em seis: o resto está na tela cheia. */
+.rec-plot-mini .rec-grade { grid-template-columns: repeat(6, 1fr); }
+.rec-plot-mini .rec-col-area { height: 72px; }
+/* Cheio: 44px de largura mínima por coluna, o mesmo alvo de toque. A partir de
+   oito meses o trilho passa a rolar — e é o comportamento certo, porque o
+   número de meses só cresce. */
+.rec-plot-cheio .rec-grade { grid-auto-columns: minmax(44px, 1fr); }
+.rec-plot-cheio .rec-col-area { height: 300px; }
+
+.rec-col {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  gap: 5px; min-width: 0; height: 100%;
+  background: none; border: 0; padding: 0; color: inherit; font: inherit;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.rec-col:focus-visible { outline: 2px solid var(--neon-purple); outline-offset: 3px; border-radius: 6px; }
+
+.rec-pilha {
+  width: 100%; display: flex; flex-direction: column-reverse;
+  border-radius: 5px 5px 2px 2px; overflow: hidden;
+  background: var(--surface-2); /* o mês sem pagamento não é um buraco */
+}
+/* CADA BANDA GANHA UM FIO DA COR DO FUNDO, e não é enfeite.
+   Medido: no tema claro o roxo e o âmbar têm quase a mesma luminância — 1,07:1
+   entre eles. Encostadas, duas bandas de naturezas diferentes viram um bloco só
+   para quem não separa matiz. O fio de 2px em `--card` devolve a fronteira que
+   a cor sozinha não faz. `box-sizing: border-box` mantém a altura exata: o fio
+   come da própria banda, então a proporção da pilha não mente. */
+/* `min-height` porque a banda pequena SOME. Medido em 2026: das 227 bandas
+   mês×natureza da base, 34 (15%) valem menos de 5% do mês, e a menor vale
+   0,51% — 0,37px numa pilha de 72px. Não é caso raro, é um sexto do dado.
+   O piso de 5px distorce a proporção em até 6,9% na pilha compacta, e a troca
+   é essa: uma banda levemente maior que a verdade, ou um reembolso que a tela
+   diz não existir. O número exato está na legenda, no `title` e no aria-label. */
+.rec-pilha i { display: block; width: 100%; box-sizing: border-box; min-height: 5px; }
+.rec-pilha i + i { border-bottom: 2px solid var(--card); }
+.rec-col-mes { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
+.rec-col.ativa .rec-col-mes { color: var(--ink); }
+.rec-col.ativa .rec-pilha { outline: 2px solid var(--purple); outline-offset: 2px; }
+
+/* NÃO EXISTE RÉGUA NO EMPILHADO. Foi desenhada, renderizada e removida: uma
+   linha de mediana atravessando uma pilha de naturezas convida a comparar o
+   total do mês com um número que descreve só uma parte dele (a mediana do
+   recorrente). A régua sobrevive na série de salário, que é de uma coisa só —
+   `.sal-regua`, mais abaixo. */
+
+/* A FAIXA DO PERÍODO, em texto. Nasceu do caso pobre: quem recebe o mesmo
+   valor todo mês vê seis barras idênticas e a primeira leitura é "quebrou".
+   A frase transforma isso em resposta — "o mesmo valor nos 6 meses" — e serve
+   igual no caso rico, onde ela dá o piso e o teto que a barra só insinua.
+   É também a alternativa textual mais curta ao gráfico, ao lado do aria-label. */
+.rec-plot-nota { margin: 0; font-size: 11.5px; line-height: 1.4; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* A legenda é o corte "por natureza" — ela carrega o total e a contagem, então
+   não existe uma segunda seção dizendo a mesma coisa em barras. */
+.rec-legenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.rec-legenda li {
+  display: grid; grid-template-columns: 9px minmax(0, 1fr) auto auto;
+  align-items: center; gap: 9px; min-height: 30px; font-size: 12.5px;
+}
+.rec-ponto { width: 9px; height: 9px; border-radius: 3px; }
+.rec-legenda b { font-weight: 650; font-variant-numeric: tabular-nums; }
+.rec-legenda span { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.rec-legenda-off { opacity: .4; }
+
+/* ===========================================================================
+   FILTRO DE NATUREZA — só na tela cheia
+   ---------------------------------------------------------------------------
+   Em FLUXO, nunca fixo. Um trilho de filtros grudado embaixo é a terceira vez
+   que algo fixo cobriria o botão de ação, e as duas primeiras já custaram.
+   =========================================================================== */
+.rec-filtros { display: flex; flex-wrap: wrap; gap: 8px; }
+.rec-filtro {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 44px; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--ink);
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+/* Marcado NÃO é só cor: o ponto fica cheio, a borda engrossa e o rótulo pesa.
+   Diferença de matiz sozinha não é um estado. */
+.rec-filtro[aria-pressed="true"] {
+  border-color: var(--purple); background: var(--tint-purple-soft); color: var(--purple-text);
+}
+.rec-filtro[aria-pressed="false"] .rec-ponto { background: transparent !important; box-shadow: inset 0 0 0 2px var(--muted); }
+.rec-filtro:active { background: var(--surface-2); }
+
+/* ===========================================================================
+   O QUE AINDA FALTA RECEBER
+   =========================================================================== */
+.rec-aberto-topo {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--line);
+}
+.rec-aberto-topo strong { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rec-aberto-topo span { color: var(--muted); font-size: 11.5px; }
+.rec-aberto-lista { list-style: none; margin: 0; padding: 0; }
+.rec-aberto-lista li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center; gap: 10px 12px; padding: 11px 0; border-bottom: 1px solid var(--line);
+}
+.rec-aberto-lista li:last-child { border-bottom: 0; }
+.rec-aberto-nome { font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; }
+.rec-aberto-meta { display: block; margin-top: 2px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rec-aberto-saldo { font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* A barra de parcelas: quanto do item já voltou. Fina, sem número em cima —
+   a fração está escrita ao lado em texto. */
+.rec-aberto-trilho { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.rec-aberto-trilho i { display: block; height: 100%; border-radius: 3px; background: var(--nat-reembolso); }
+
+/* ===========================================================================
+   PAGAMENTO A PAGAMENTO — dobrado por mês
+   ---------------------------------------------------------------------------
+   Sem rolagem dentro de si, ao contrário de `.gd-tabela-caixa`, e a diferença
+   tem motivo: lá havia conteúdo DEPOIS da tabela, e 194 linhas empurravam o
+   resto para 10.700px de página. Aqui o extrato é a última coisa da tela —
+   rolagem aninhada só tiraria o gesto da mão de quem está de pé na rua.
+   O que segura o tamanho é o mês fechado: só o corrente abre sozinho.
+   =========================================================================== */
+.rec-mes { border-bottom: 1px solid var(--line); }
+.rec-mes > summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 48px; padding: 6px 0; cursor: pointer; list-style: none;
+  font-size: 13.5px; font-weight: 650;
+}
+.rec-mes > summary::-webkit-details-marker { display: none; }
+.rec-mes > summary::after {
+  content: ""; width: 8px; height: 8px; margin-left: 2px; flex: none;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s ease;
+}
+.rec-mes[open] > summary::after { transform: rotate(-135deg) translate(-3px, -3px); }
+.rec-mes-total { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; }
+.rec-mes-n { color: var(--muted); font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.rec-linhas { list-style: none; margin: 0; padding: 0 0 8px; }
+.rec-linhas li {
+  display: grid; grid-template-columns: 40px 9px minmax(0, 1fr) auto;
+  align-items: center; gap: 10px; min-height: 44px; padding: 5px 0;
+}
+.rec-linha-dia { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* O dia só aparece quando muda: três Pix no mesmo 01/08 são três linhas, e
+   repetir a data em todas transforma a coluna em ruído. */
+.rec-linha-mesmodia .rec-linha-dia { visibility: hidden; }
+.rec-linha-nat { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-linha-conta { display: block; font-size: 11px; color: var(--muted); }
+.rec-linha-valor { font-size: 13.5px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ===========================================================================
+   SALÁRIO — a série no tempo
+   =========================================================================== */
+.sal-agora { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.sal-agora > div { background: var(--card); padding: 13px 14px; }
+.sal-agora b {
+  display: block; font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 20px; font-weight: 750; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+}
+.sal-agora span { display: block; margin-top: 4px; font-size: 11.5px; line-height: 1.35; color: var(--muted); }
+.sal-desde { margin: 0; font-size: 13px; line-height: 1.5; }
+/* O aviso que impede a tela de mentir: a base começa em 2026, e quem entrou
+   antes veria "desde janeiro" como data de admissão. */
+.sal-corte {
+  margin: 0; padding: 10px 12px; font-size: 11.5px; line-height: 1.45;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2);
+  /* `--chip-neutral-ink`, NÃO `--muted`: medido no protótipo renderizado,
+     `--muted` sobre `--surface-2` dá 4,44:1 no tema claro e reprova em AA por
+     0,06. Foi a única reprovação em 1.890 nós de texto medidos, e a regra que
+     ela ensina vale para qualquer componente novo: quem tinge o próprio fundo
+     não pode também apagar o próprio texto. Com este token: 5,58:1 claro,
+     6,90:1 escuro. */
+  color: var(--chip-neutral-ink);
+}
+
+.sal-serie { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(38px, 1fr);
+  align-items: end; gap: 6px; height: 132px; }
+.sal-serie-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; height: 100%; }
+.sal-serie-barra { width: 100%; border-radius: 5px 5px 2px 2px; background: var(--nat-recorrente); min-height: 3px; }
+.sal-serie-mes { font-size: 10.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* A mediana desenhada. Aqui ela é honesta: a série é de UMA natureza, então a
+   linha e as barras medem a mesma coisa. `bottom` conta a partir da base da
+   barra, não do bloco — os 21px são a linha do rótulo (16px) mais o vão (5px). */
+/* A LINHA NÃO CARREGA RÓTULO. Com rótulo, ela cobria julho e agosto — os dois
+   meses que a pessoa abriu a tela para ver. O valor da mediana está escrito no
+   cabeçalho da seção e no aria-label; a linha só precisa ser a marca visual. */
+.sal-regua { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--muted); pointer-events: none; opacity: .55; }
+.sal-serie-cabeca { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.sal-serie-cabeca small { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sal-serie-cabeca small::before {
+  content: ""; display: inline-block; width: 14px; margin-right: 5px;
+  border-top: 1px dashed var(--muted); vertical-align: middle;
+}
+
+.sal-meses { list-style: none; margin: 0; padding: 0; }
+.sal-mes { border-bottom: 1px solid var(--line); }
+.sal-mes > summary {
+  display: grid; grid-template-columns: 58px minmax(0, 1fr) auto 10px; align-items: center; gap: 10px;
+  min-height: 48px; cursor: pointer; list-style: none; font-size: 13.5px;
+}
+.sal-mes > summary::-webkit-details-marker { display: none; }
+/* A seta existe porque sem ela nada dizia que a linha abre — e o que ela abre
+   é o que não se adivinha: o mês não é UM pagamento. Medido no Fernando, o
+   pró-labore de agosto são três Pix (R$ 1.621 + R$ 3.379 + R$ 1.281,26). */
+.sal-mes > summary::after {
+  content: ""; width: 7px; height: 7px; justify-self: end;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s ease;
+}
+.sal-mes[open] > summary::after { transform: rotate(-135deg) translate(-3px, -3px); }
+.sal-mes-nome { font-weight: 600; }
+.sal-mes-valor { font-weight: 700; font-variant-numeric: tabular-nums; }
+/* A variação contra a mediana. O sinal (+/−) carrega o significado; a cor só
+   reforça. "vs. mediana" foi escrito uma vez no título da seção e apagado das
+   oito linhas — repetido, virava a palavra mais frequente da tela. */
+.sal-delta { font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.sal-delta.acima { color: var(--ink-green); }
+.sal-delta.abaixo { color: var(--ink-amber); }
+.sal-parcelas { list-style: none; margin: 0; padding: 0 0 10px 60px; display: grid; gap: 6px; }
+.sal-parcelas li { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.sal-anos { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sal-anos th { text-align: left; font-size: 10.5px; font-weight: 650; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--muted); padding: 8px 0; border-bottom: 1px solid var(--line); }
+.sal-anos td { padding: 11px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.sal-anos tr:last-child td { border-bottom: 0; }
+.sal-anos .num, .sal-anos th.num { text-align: right; }
+.sal-ano-frase { margin: 0; font-size: 13px; line-height: 1.5; }
+
+.sal-fora { display: grid; gap: 10px; padding-top: 18px; border-top: 2px solid var(--line); }
+.sal-fora-vazio { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+
+/* Vazio de verdade: nunca recebeu nada. Uma frase e a razão. */
+.rec-vazio { margin: 0; padding: 16px 0; font-size: 13px; line-height: 1.55; color: var(--muted); }
+
+/* "Solicitar" no cabeçalho: pílula rotulada, não ícone mudo.
+   Ação rara (zero pedidos em 7 meses) pertence ao canto difícil — mas um "+"
+   sozinho ali não diz o que faz. */
+.time-topo-solicitar {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 0 14px;
+  border: 1px solid var(--tint-purple-line); border-radius: 999px;
+  background: var(--tint-purple-soft); color: var(--purple-text);
+  font-size: 13px; font-weight: 640; text-decoration: none; white-space: nowrap;
+}
+/* Tema e sair, agora dentro da folha de perfil. */
+.time-perfil-rodape { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+.time-perfil-tema { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.time-perfil-tema span { font-size: 13.5px; font-weight: 550; }

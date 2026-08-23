@@ -22,8 +22,22 @@ import { usePathname } from "next/navigation";
  * a outra segurando a nota.
  */
 
+/*
+ * A casa que "Solicitar" desocupou vai para Recebíveis, e só ela muda.
+ *
+ * `fin_purchase_request` tem ZERO linhas desde que existe: "Solicitar" ocupava
+ * 20% da barra e nunca produziu um registro. Não é pouco usado — é zero. Ele
+ * sobe para o cabeçalho, que é onde ação rara pertence.
+ *
+ * Recebíveis entra porque é a única tela com conteúdo para TODO MUNDO no dia 1:
+ * 449 pagamentos, 28 de 28 pessoas, 8 meses. Nenhuma pessoa abre e vê vazio.
+ *
+ * As outras quatro ficam no mesmo pixel de propósito. Quem já usa não reaprende
+ * nada, e a barra já mudou duas vezes (7 abas no topo → 4 + "Mais" → 5 fixas) —
+ * a terceira mudança tem de ser a menor possível.
+ */
 const PRINCIPAIS = [
-  { href: "/time/compra", rotulo: "Solicitar", icone: "sacola" },
+  { href: "/time/recebiveis", rotulo: "Recebíveis", icone: "entrada" },
   { href: "/time/custo", rotulo: "Registrar", icone: "seta-baixo" },
   { href: "/time", rotulo: "Principal", icone: "casa" },
   { href: "/time/reembolso", rotulo: "Reembolso", icone: "volta" },
@@ -59,6 +73,12 @@ function Icone({ nome }: { nome: string }) {
     return (
       <svg {...comum}>
         <path d="M5 8h14l-1 12H6L5 8ZM9 8V6a3 3 0 0 1 6 0v2" />
+      </svg>
+    );
+  if (nome === "entrada")
+    return (
+      <svg {...comum}>
+        <path d="M12 20V7M6.5 12.5 12 7l5.5 5.5M5 4h14" />
       </svg>
     );
   if (nome === "casa")

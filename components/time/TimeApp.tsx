@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AnexarFlutuante, type OrigemAnexo } from "@/components/time/AnexarFlutuante";
+import { Recebiveis } from "@/components/time/Recebiveis";
 import { PixQr } from "@/components/time/PixQr";
 import { BotaoTema } from "@/components/layout/ThemeToggle";
 import { SeloCamada, brl } from "@/components/financeiro/Certeza";
@@ -108,7 +109,9 @@ type DetalheEnvio = {
   }[];
 };
 
-export type AbaTime = "inicio" | "reembolso" | "custo" | "nota" | "compra" | "envios" | "meu-reembolso" | "comprar" | "item";
+export type AbaTime =
+  | "inicio" | "reembolso" | "custo" | "nota" | "compra"
+  | "envios" | "meu-reembolso" | "comprar" | "item" | "recebiveis";
 
 const HOJE = () => new Date().toISOString().slice(0, 10);
 
@@ -344,6 +347,13 @@ export function TimeApp({
       {aba === "compra" ? <FormCompra aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
       {aba === "envios" ? <ListaEnvios envios={envios} /> : null}
       {aba === "meu-reembolso" ? <MeuReembolso /> : null}
+      {/*
+        Recebíveis vive em arquivo próprio: ela busca o próprio dado e não usa
+        `sessao`, `opcoes` nem `envios` — os três que justificam este arquivo
+        ser grande. Passa por aqui só para herdar o portão de sessão e o
+        cabeçalho; o corte para uma moldura compartilhada é o passo seguinte.
+      */}
+      {aba === "recebiveis" ? <Recebiveis /> : null}
       {aba === "comprar" ? (
         <Comprar opcoes={opcoes} pessoas={pessoas} aoAtualizarOpcoes={setOpcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} />
       ) : null}
@@ -2051,13 +2061,29 @@ function CabecalhoPessoa({
             <span>Meu perfil</span>
           </span>
         </button>
+        {/*
+          UM CONTROLE SÓ NESTE CANTO, e os dois que saíram tinham razão para sair.
+          
+          "Sair" aqui era a SEGUNDA porta para a mesma coisa: a folha de perfil
+          já tem "Sair da conta", rotulado e muito menos sujeito a toque errado.
+          Um ícone de deslogar a 8px de uma ação é como se perde o raciocínio no
+          meio de um lançamento.
+          
+          O tema é escolha de UMA VEZ na vida ocupando 40px do imóvel mais
+          disputado do app, em toda rota, para sempre. Desceu para o perfil, que
+          é onde ajuste de aparência pertence.
+          
+          No lugar entra "Solicitar": ação RARA (zero pedidos em 7 meses), e
+          canto superior é exatamente onde ação rara deve ficar. Como pílula
+          rotulada, não ícone mudo — um "+" sozinho ali não diz o que faz.
+        */}
         <div className="time-topo-acoes">
-          <BotaoTema className="time-topo-tema" />
-          <button type="button" className="time-topo-sair" onClick={() => void aoSair()} aria-label="Sair">
-            <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
+          <Link href="/time/compra" className="time-topo-solicitar">
+            <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+              <path d="M12 5v14M5 12h14" strokeLinecap="round" />
             </svg>
-          </button>
+            <span>Solicitar</span>
+          </Link>
         </div>
       </header>
 
@@ -2267,9 +2293,15 @@ function CabecalhoPessoa({
               </button>
             </form>
 
-            <button type="button" className="time-perfil-sair" onClick={() => void aoSair()}>
-              Sair da conta
-            </button>
+            <div className="time-perfil-rodape">
+              <div className="time-perfil-tema">
+                <span>Aparência</span>
+                <BotaoTema className="time-topo-tema" />
+              </div>
+              <button type="button" className="time-perfil-sair" onClick={() => void aoSair()}>
+                Sair da conta
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -2341,7 +2373,7 @@ function Inicio({ envios }: { envios: Envio[] }) {
               <strong className="time-faixa-valor">{brl(resumo.comprasMesCents)}</strong>
               <small className="time-faixa-nota">da empresa · não entra no seu reembolso</small>
             </article>
-            <Link href="/time/meu-reembolso" className="time-faixa-item time-faixa-destaque">
+            <Link href="/time/recebiveis#aberto" className="time-faixa-item time-faixa-destaque">
               <span className="time-faixa-rotulo">A receber</span>
               <strong className="time-faixa-valor">{brl(resumo.aReceberCents)}</strong>
               <small className="time-faixa-nota">só reembolso, acumulado</small>

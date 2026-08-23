@@ -2071,6 +2071,28 @@ export async function detalharEnvioDoTime(
        * mesmo dinheiro dentro (R$ 42.320,34 × R$ 42.280,13) e qualquer soma
        * futura que toque as duas ainda conta em dobro. Escolher qual é a
        * verdade e aposentar a outra é decisão que precisa do dono.
+       *
+       * E o dado que essa decisão precisa, medido em 23/08:
+       *
+       *   fin_reimbursement_item   193 linhas · expense_date preenchido em 0
+       *                            · receipt_artifact_key 0 · nfe_key 0
+       *                            · category_id 0 · installment_plan_id 0
+       *                            lido por 7 views e 10 arquivos
+       *   fin_reembolso_item       194 linhas · competencia preenchida em 194
+       *                            (01/2026 a 07/2026) · 67 parceladas
+       *                            lido por 2 views e 4 arquivos
+       *
+       * Ou seja: as duas são metade uma da outra. A mais USADA não sabe a data
+       * de nenhum gasto — nem a categoria, nem o anexo. A que sabe está ligada
+       * a quase nada. Isso descarta "apague a menor": apagar
+       * `fin_reembolso_item` jogaria fora as 194 competências e as 67 parcelas,
+       * e nada as reconstrói.
+       *
+       * O caminho que sobra é preencher `fin_reimbursement_item` a partir de
+       * `fin_reembolso_item` pelo par (pessoa, valor, competência) que já casa
+       * em 192 dos 194, resolver os 2 restantes à mão, e só então aposentar a
+       * segunda. Não faço isso sem a palavra do dono: é irreversível e muda os
+       * números que a casa reporta.
        */
       const jaCasado = new Set<number>();
       for (const p of planilha) {

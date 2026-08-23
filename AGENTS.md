@@ -186,7 +186,7 @@ BIN, os primeiros 6–8 dígitos, que a casa não guarda de propósito.
 
 ---
 
-## Estado em 22/08/2026
+## Estado em 23/08/2026
 
 Funcionando em produção:
 
@@ -199,6 +199,24 @@ Funcionando em produção:
 - Painel do gasto descrito em `/financeiro/custos` e `/financeiro/cartoes`.
 
 Aberto, em ordem de tamanho:
+
+0. **A MESMA planilha de reembolso está em DUAS tabelas.** É a decisão que
+   trava as outras, e ela precisa do dono — não a tome sozinho.
+
+   | | linhas | valor | data | anexo | categoria | parcelas | lida por |
+   |---|---|---|---|---|---|---|---|
+   | `fin_reimbursement_item` | 193 | R$ 42.320,34 | **0** | 0 | 0 | 0 | 7 views, 10 arquivos |
+   | `fin_reembolso_item` | 194 | R$ 42.280,13 | 194 | 0 | 0 | 67 | 2 views, 4 arquivos |
+
+   192 pares idênticos por (pessoa, valor, competência) — R$ 41.948,26 contados
+   em dobro. A tela já funde as duas (`lib/financeiro/time.ts`, em
+   `detalharEnvioDoTime`); **o banco não.** Qualquer soma nova que toque as
+   duas conta dobrado.
+
+   Não é "apague a menor": a mais usada não sabe a data de nenhum gasto, e a
+   que sabe está ligada a quase nada. O caminho é preencher a primeira a partir
+   da segunda pelo par que já casa em 192 de 194, resolver 2 à mão, e só então
+   aposentar. Irreversível, e muda número que a casa reporta.
 
 1. **R$ 336.245 em 83 lançamentos sem categoria** no ledger, e **193 itens de
    reembolso** (R$ 42.320) sem categoria e sem data. O app resolve na origem

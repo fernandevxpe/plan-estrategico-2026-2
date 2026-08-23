@@ -614,7 +614,15 @@ function MeuReembolso() {
     })();
   }, []);
 
-  if (erro) return <p className="time-erro">{erro}</p>;
+  if (erro)
+    return (
+      <div className="time-aviso">
+        <p className="time-erro">{erro}</p>
+        <Link href="/time/envios" className="time-botao secundario">
+          Ver o histórico
+        </Link>
+      </div>
+    );
   if (!dados) return <div className="time-aviso">carregando…</div>;
 
   const { aReceber, historico } = dados;
@@ -4069,7 +4077,23 @@ function TelaItemGasto({
       const r = await fetch(`/api/time/reembolso-item/${fonte}/${itemId}`, { cache: "no-store" });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
-        setErro((j.erro as string) ?? "Não foi possível carregar o item.");
+        /*
+         * 404 aqui quase sempre é URL trocada, não falha de sistema — e a
+         * mensagem genérica não ajudava ninguém a sair.
+         *
+         * O caso concreto: `/time/item/app/391`. O 391 existe, mas é um
+         * `fin_time_envio` (uma compra registrada), e a fonte `app` procura em
+         * `fin_reimbursement_item`. São duas sequências de id independentes, e
+         * o mesmo número aponta para coisas diferentes em cada uma. A tela
+         * dizia só "não foi possível carregar" e deixava a pessoa parada.
+         */
+        setErro(
+          r.status === 404
+            ? `Não achei o item ${itemId} em ${fonte === "app" ? "reembolsos do app" : "reembolsos da planilha"}. ` +
+              "Se você chegou aqui por um link antigo, veja a lista em Histórico — compras registradas ficam lá, " +
+              "não nesta tela."
+            : ((j.erro as string) ?? "Não foi possível carregar o item.")
+        );
         return;
       }
       const item = j.item as {

@@ -4993,9 +4993,45 @@ function TelaItemGasto({
             </span>
           </div>
 
+          {/*
+            NÚMERO DE PARCELA REPETIDO NÃO PODE PASSAR CALADO.
+            
+            Medido na base em 23/08: `notebook estag 2` do Fernando tem a
+            parcela 1/12 em 01/2026 E em 05/2026, R$ 274,91 cada, e depois 2/12
+            em junho, 3/12 em julho — a série limpa começa em maio, e a linha de
+            janeiro sobra. `Curso MUC` do Jonildo tem 12/12 em março e de novo
+            em abril. Somados, R$ 374,61 contados duas vezes.
+
+            A planilha foi importada; nenhum código produziu isso. Mas a tela
+            desenhava as duas linhas iguais como se fosse normal, e o único que
+            sabe se foram dois notebooks ou um erro de digitação é a pessoa que
+            comprou. Então o aviso vive AQUI, e não no financeiro: ele pergunta
+            a quem tem a resposta.
+
+            Não conserto o dado por conta própria — é o ledger de produção, e
+            apagar linha de reembolso alheio não é decisão de quem está
+            revisando CSS.
+          */}
+          {(() => {
+            const vistos = new Map<number, number>();
+            for (const p of historico.parcelas) vistos.set(p.parcela, (vistos.get(p.parcela) ?? 0) + 1);
+            const repetidas = [...vistos.entries()].filter(([, n]) => n > 1).map(([k]) => k);
+            if (repetidas.length === 0) return null;
+            return (
+              <p className="item-gasto-parcela-repetida">
+                <strong>Confira com o financeiro.</strong> A parcela{" "}
+                {repetidas.map((n) => `${n}/${historico.parcelasTotal}`).join(" e a ")} aparece duas vezes nesta série.
+                Se você comprou só um, uma delas está cobrada a mais.
+              </p>
+            );
+          })()}
+
           <ul className="envios-detalhe-cronograma envios-item-parcelas">
-            {historico.parcelas.map((parc) => (
-              <li key={`${parc.id}-${parc.mes}-${parc.parcela}`}>
+            {historico.parcelas.map((parc) => {
+              const repetida =
+                historico.parcelas.filter((o) => o.parcela === parc.parcela).length > 1;
+              return (
+              <li key={`${parc.id}-${parc.mes}-${parc.parcela}`} className={repetida ? "parcela-repetida" : undefined}>
                 <span>{formatMesRef(parc.mes)}</span>
                 <span>
                   {parc.parcela}/{parc.parcelasTotal}
@@ -5007,7 +5043,8 @@ function TelaItemGasto({
                   {SITUACAO_CRONO_ROTULO[parc.situacao]}
                 </span>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       ) : null}

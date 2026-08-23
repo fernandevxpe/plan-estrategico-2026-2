@@ -17519,3 +17519,18 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
      6,71 no claro e 5,79 no escuro — o roxo é escuro o bastante nos dois. */
   color: #fff;
 }
+
+/* Parcela com número repetido: o aviso e a marca na linha. Âmbar de leitura,
+   não o de gráfico — já errei esse token quatro vezes nesta rodada. */
+.item-gasto-parcela-repetida {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ink-amber);
+  background: var(--tint-amber-soft);
+  color: var(--ink-amber);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.item-gasto-parcela-repetida strong { display: block; }
+.envios-item-parcelas li.parcela-repetida { background: var(--tint-amber-soft); border-radius: 8px; }

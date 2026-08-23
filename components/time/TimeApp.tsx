@@ -1928,6 +1928,16 @@ function CabecalhoPessoa({
   const [titularEhEu, setTitularEhEu] = useState(true);
   const [titularNome, setTitularNome] = useState("");
   const [titularDoc, setTitularDoc] = useState("");
+  /**
+   * SALÁRIO ATUAL E REEMBOLSO PREVISTO, no perfil.
+   *
+   * São os mesmos dois números do cabeçalho de Recebíveis, e essa repetição é
+   * deliberada: aqui eles respondem "o que a empresa me paga hoje", que é a
+   * pergunta que a pessoa faz olhando o próprio cadastro. Mesma fonte, mesmo
+   * componente — não é o caso de duas telas discordando, é o caso de um número
+   * aparecer onde ele é procurado.
+   */
+  const [resumoRec, setResumoRec] = useState<{ mediana: number; aberto: number; desde: string | null } | null>(null);
   const [salvandoConta, setSalvandoConta] = useState(false);
   const [erroConta, setErroConta] = useState<string | null>(null);
   const [contaOk, setContaOk] = useState(false);
@@ -1937,6 +1947,18 @@ function CabecalhoPessoa({
     void (async () => {
       const r = await fetch("/api/time/perfil/conta", { cache: "no-store" });
       const j = await r.json().catch(() => ({}));
+      // Aproveita a abertura da folha para trazer os dois números também.
+      void (async () => {
+        const rr = await fetch("/api/time/recebiveis", { cache: "no-store" });
+        const rj = await rr.json().catch(() => ({}));
+        if (rj.recebiveis) {
+          setResumoRec({
+            mediana: rj.recebiveis.medianaRecorrenteCents ?? 0,
+            aberto: rj.recebiveis.emAbertoCents ?? 0,
+            desde: rj.recebiveis.desde ?? null
+          });
+        }
+      })();
       const c = j.conta as typeof conta;
       if (!c) return;
       setConta(c);
@@ -2172,6 +2194,24 @@ function CabecalhoPessoa({
               cadastro mais raro de mexer — e antes de "Sair" porque é o que a
               pessoa vem preencher quando abre esta folha pela primeira vez.
             */}
+            {resumoRec ? (
+              <div className="perfil-numeros">
+                <div>
+                  <span>Recebo de hábito</span>
+                  <strong>{brl(resumoRec.mediana)}</strong>
+                  {/* "mediana" escrito: não é o contrato, é o que costuma cair.
+                      A média seria puxada pelos extremos — nos oito meses do
+                      Fernando os valores vão de R$ 2.386 a R$ 7.644. */}
+                  <small>mediana por mês</small>
+                </div>
+                <div>
+                  <span>Reembolso previsto</span>
+                  <strong>{brl(resumoRec.aberto)}</strong>
+                  <small>{resumoRec.aberto > 0 ? "aprovado, ainda não pago" : "nada em aberto"}</small>
+                </div>
+              </div>
+            ) : null}
+
             <form className="time-porta-form conta-pgto" onSubmit={salvarConta}>
               <div className="conta-pgto-topo">
                 <strong>Onde eu recebo</strong>

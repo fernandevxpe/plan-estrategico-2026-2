@@ -17197,3 +17197,16 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
    "caiu ao longo do mês", que é a primeira coisa que se quer saber ao cruzar
    com o extrato do banco. */
 .rec-mes-periodo { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 1px; }
+
+/* Os dois números no perfil: mesma fonte do cabeçalho de Recebíveis. A
+   repetição é deliberada — é onde a pessoa procura "o que a empresa me paga"
+   quando está olhando o próprio cadastro. */
+.perfil-numeros {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 10px;
+  overflow: hidden; margin-bottom: 4px;
+}
+.perfil-numeros > div { background: var(--card); padding: 12px 13px; }
+.perfil-numeros span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 620; }
+.perfil-numeros strong { display: block; font-size: 18px; font-weight: 680; font-variant-numeric: tabular-nums; margin-top: 3px; }
+.perfil-numeros small { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; }

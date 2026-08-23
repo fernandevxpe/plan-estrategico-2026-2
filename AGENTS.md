@@ -9,7 +9,7 @@ o que **não** se descobre lendo o código: as armadilhas que já custaram caro.
 
 ---
 
-## As cinco coisas que quebram primeiro
+## As seis coisas que quebram primeiro
 
 ### 1. `db:migrate` escreve em PRODUÇÃO
 
@@ -78,8 +78,37 @@ Ele impõe duas regras que sustentam "cada um vê só o que enviou":
 Se o guard reprovar, a saída certa é respeitar a regra, não mover o SQL de
 arquivo até o grep parar de ver.
 
-> O guard tem **2 falhas pré-existentes** sobre `/obras`, anteriores a este
-> trabalho. Dois é o número esperado; três significa que você quebrou algo.
+> O guard passa limpo. Qualquer falha é regressão — não existe "falha
+> conhecida" para ignorar. As duas que havia sobre `/obras` eram reais: a tela
+> lia `lib/financeiro/contratos` fora do prefixo de admin, e `/obras` entrou em
+> `SO_ADMIN` em 23/08.
+
+### 6. Consulta lenta no financeiro é o JIT, até prova em contrário
+
+O pool desliga o JIT (`options: "-c jit=off"` em `lib/financeiro/db.ts`). **Não
+tire.** As views daqui são profundamente aninhadas — `fin_agenda_dia_v` expande
+num plano de 2.170 linhas — e o planejador estima um custo enorme para uma
+consulta que toca alguns milhares de linhas. O LLVM então gasta 15 a 40
+SEGUNDOS compilando expressões para um trabalho real de 400ms.
+
+Medido em 23/08, mesma base, mesma consulta:
+
+| | JIT on | JIT off |
+|---|---|---|
+| `fin_custo_previsto_consolidado_v` | 12.573ms | 541ms |
+| `fin_agenda_dia_v` (janela 120d) | 23.445ms | 440ms |
+| `fin_agenda_resumo_dia_v` (janela) | 41.912ms | 544ms |
+| `fin_agenda_prova_v` | 28.363ms | 409ms |
+
+Com `max: 5` no pool, quatro consultas dessas seguram TODAS as conexões:
+`/financeiro/agenda` devolvia 500 e o `/api/notificacoes` — que toda página
+chama — respondia em 19,9s.
+
+**E o EXPLAIN mente sobre onde.** O tempo de compilação aparece grudado no
+primeiro nó do plano. Aqui ele caía numa CTE que só calcula `now()::date`, e o
+plano afirmava que pegar a data de hoje levava 22 segundos. Se você vir um nó
+barato com tempo absurdo, teste `SET LOCAL jit = off` antes de reescrever
+qualquer coisa.
 
 ---
 
@@ -97,7 +126,7 @@ comprovante; sem ela o botão de foto some em vez de falhar no toque).
 ### Testes que valem rodar antes de commitar
 
 ```bash
-npm run test:perfil-guard   # escopo do time — precisa continuar em 2 falhas
+npm run test:perfil-guard   # escopo do time — tem de passar LIMPO
 npm run test:login          # ponta a ponta do app: login, envio, cartão, anexo
 npm run test:time           # notificações, em transação com ROLLBACK
 npx tsc --noEmit

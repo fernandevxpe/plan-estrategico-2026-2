@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { brl } from "@/components/financeiro/Certeza";
+import { CLASSE, ROTULO, mesCurto, nomeMes, type Recebiveis as Dado } from "@/components/time/recebiveis-dado";
 
 /**
  * O que a casa me paga.
@@ -39,63 +40,8 @@ import { brl } from "@/components/financeiro/Certeza";
  * vez de 6.05 — e um zero que incomoda é melhor que dois números que se calam.
  */
 
-type Recebiveis = {
-  totalCents: number;
-  mesAtualCents: number;
-  medianaRecorrenteCents: number;
-  emAbertoCents: number;
-  desde: string | null;
-  ultimoEm: string | null;
-  porNatureza: { natureza: string; cents: number; n: number }[];
-  porMes: { mes: string; totalCents: number; porNatureza: Record<string, number> }[];
-  linhas: {
-    data: string;
-    mes: string;
-    valorCents: number;
-    natureza: string;
-    categoria: string | null;
-    conta: string;
-    descricao: string;
-  }[];
-};
-
-const ROTULO: Record<string, string> = {
-  salario: "Salário",
-  prolabore: "Pró-labore",
-  estagio: "Estágio",
-  comissao: "Comissão",
-  reembolso: "Reembolso",
-  encargo_beneficio: "Benefício",
-  extra: "Extra"
-};
-
-/*
- * Salário, pró-labore e estágio dividem a MESMA classe de cor.
- *
- * Conferido nas 28 pessoas com pagamento em 2026: ninguém tem duas delas — os
- * vínculos são mutuamente exclusivos. Com uma cor só, a banda roxa quer dizer
- * "o que se repete" no gráfico de qualquer pessoa, seja MEI ou CLT, e a
- * legenda diz o nome certo de cada uma.
- */
-const CLASSE: Record<string, string> = {
-  salario: "nat-recorrente",
-  prolabore: "nat-recorrente",
-  estagio: "nat-recorrente",
-  comissao: "nat-comissao",
-  reembolso: "nat-reembolso",
-  extra: "nat-extra",
-  encargo_beneficio: "nat-encargo"
-};
-
-const MES_LONGO = [
-  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
-];
-const nomeMes = (m: string) => `${MES_LONGO[Number(m.slice(5, 7)) - 1]} de ${m.slice(0, 4)}`;
-const mesCurto = (m: string) => MES_LONGO[Number(m.slice(5, 7)) - 1].slice(0, 3);
-
 export function Recebiveis() {
-  const [dado, setDado] = useState<Recebiveis | null>(null);
+  const [dado, setDado] = useState<Dado | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -108,7 +54,7 @@ export function Recebiveis() {
           setErro((j.error as string) ?? "não consegui carregar");
           return;
         }
-        setDado(j.recebiveis as Recebiveis);
+        setDado(j.recebiveis as Dado);
       } finally {
         setCarregando(false);
       }

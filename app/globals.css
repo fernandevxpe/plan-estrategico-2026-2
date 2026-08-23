@@ -17165,3 +17165,30 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 .time-perfil-rodape { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
 .time-perfil-tema { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .time-perfil-tema span { font-size: 13.5px; font-weight: 550; }
+
+/* O gráfico cheio: rota própria, não sobreposição.
+   Seria o TERCEIRO elemento fixo por cima do conteúdo neste app, e os dois
+   primeiros custaram — o menu "Mais" e o botão flutuante, ambos cobrindo o
+   botão que conclui a tarefa. Como rota, a barra fica, o voltar é o do
+   sistema, e não há foco preso para construir. */
+.rec-plot-cheio .rec-col-area { height: 300px; }
+.rec-plot-cheio .rec-grade { grid-auto-columns: minmax(44px, 1fr); gap: 6px; }
+.rec-plot-cheio .rec-col { cursor: pointer; border: 0; background: none; padding: 0; }
+.rec-plot-cheio .rec-col.ativa .rec-pilha { outline: 2px solid var(--purple); outline-offset: 2px; border-radius: 5px; }
+.rec-plot-cheio .rec-col.ativa .rec-col-mes { color: var(--purple-text); font-weight: 700; }
+
+/* A LEGENDA É O FILTRO. Duas listas — uma explicando as cores, outra filtrando
+   — seriam a mesma informação duas vezes, e a segunda envelheceria primeiro. */
+.rec-filtros { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 7px; }
+.rec-filtro {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 44px; padding: 0 13px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--muted);
+  font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.rec-filtro.ligado { border-color: var(--tint-purple-line); background: var(--tint-purple-soft); color: var(--ink); }
+.rec-filtro b { font-weight: 650; font-variant-numeric: tabular-nums; }
+/* Marcado não é SÓ cor: o ponto cheio vira anel vazado quando desligado.
+   Quem não distingue as duas cores ainda lê a diferença pela forma. */
+.rec-ponto.vazado { background: none !important; box-shadow: inset 0 0 0 2px currentColor; opacity: .55; }

@@ -64,7 +64,13 @@ const SCRIPT_TEMA = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${sora.variable}`}>
+    // `suppressHydrationWarning` no <html> por causa do SCRIPT_TEMA logo abaixo:
+    // ele aplica `data-theme` ANTES do React montar, de propósito, para a tela
+    // não piscar branco antes de virar escura. O servidor não tem como saber o
+    // tema salvo, então o atributo diverge sempre — e o React reclamava disso
+    // em toda página, em dev, enterrando os avisos de hidratação de verdade.
+    // O escopo é só este atributo: os filhos continuam sendo comparados.
+    <html lang="pt-BR" suppressHydrationWarning className={`${inter.variable} ${sora.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
       </head>

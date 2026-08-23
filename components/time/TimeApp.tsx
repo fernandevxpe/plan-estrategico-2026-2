@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AnexarFlutuante, type OrigemAnexo } from "@/components/time/AnexarFlutuante";
 import { Recebiveis } from "@/components/time/Recebiveis";
+import { RecebiveisGrafico } from "@/components/time/RecebiveisGrafico";
 import { PixQr } from "@/components/time/PixQr";
 import { BotaoTema } from "@/components/layout/ThemeToggle";
 import { SeloCamada, brl } from "@/components/financeiro/Certeza";
@@ -111,7 +112,7 @@ type DetalheEnvio = {
 
 export type AbaTime =
   | "inicio" | "reembolso" | "custo" | "nota" | "compra"
-  | "envios" | "meu-reembolso" | "comprar" | "item" | "recebiveis";
+  | "envios" | "meu-reembolso" | "comprar" | "item" | "recebiveis" | "recebiveis-grafico";
 
 const HOJE = () => new Date().toISOString().slice(0, 10);
 
@@ -354,6 +355,7 @@ export function TimeApp({
         cabeçalho; o corte para uma moldura compartilhada é o passo seguinte.
       */}
       {aba === "recebiveis" ? <Recebiveis /> : null}
+      {aba === "recebiveis-grafico" ? <RecebiveisGrafico /> : null}
       {aba === "comprar" ? (
         <Comprar opcoes={opcoes} pessoas={pessoas} aoAtualizarOpcoes={setOpcoes} aoEnviar={aoEnviar} aoFalhar={setRecado} />
       ) : null}

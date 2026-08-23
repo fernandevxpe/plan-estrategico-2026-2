@@ -136,7 +136,7 @@ export function Recebiveis() {
           <a className="time-faixa-item" href="#aberto">
             <span className="time-faixa-rotulo">Ainda a receber</span>
             <strong className="time-faixa-valor">{brl(dado.emAbertoCents)}</strong>
-            <small className="time-faixa-nota">reembolso parcelado</small>
+            <small className="time-faixa-nota">aprovado, ainda não pago</small>
           </a>
         ) : (
           <article className="time-faixa-item">
@@ -205,7 +205,7 @@ export function Recebiveis() {
           <h2>Ainda a receber</h2>
           <div className="rec-aberto-topo">
             <strong>{brl(dado.emAbertoCents)}</strong>
-            <span>reembolso já aprovado, ainda não pago</span>
+            <span>aprovado, ainda não pago</span>
           </div>
         </section>
       ) : null}

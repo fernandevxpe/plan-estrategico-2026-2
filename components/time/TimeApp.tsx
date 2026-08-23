@@ -2495,7 +2495,12 @@ function Inicio({ envios }: { envios: Envio[] }) {
               <Link href="/time/recebiveis#aberto" className="time-faixa-item">
                 <span className="time-faixa-rotulo">Ainda a receber</span>
                 <strong className="time-faixa-valor">{brl(rec.emAbertoCents)}</strong>
-                <small className="time-faixa-nota">reembolso parcelado</small>
+                {/* MESMO número, MESMA legenda nas três telas.
+                    R$ 12.119,51 aparecia como "reembolso parcelado" no Início,
+                    "reembolso já aprovado, ainda não pago" em Recebíveis e
+                    "aprovado, ainda não pago" no perfil. Um número com três
+                    nomes parece três dinheiros. */}
+                <small className="time-faixa-nota">aprovado, ainda não pago</small>
               </Link>
             ) : (
               <article className="time-faixa-item">

@@ -39,7 +39,10 @@ import { usePathname } from "next/navigation";
 const PRINCIPAIS = [
   { href: "/time/recebiveis", rotulo: "Recebíveis", icone: "entrada" },
   { href: "/time/custo", rotulo: "Registrar", icone: "seta-baixo" },
-  { href: "/time", rotulo: "Principal", icone: "casa" },
+  // "Início", não "Principal": a tela se chama Início no H1 e no título da
+  // página. Duas palavras para o mesmo destino faz a pessoa procurar a
+  // terceira.
+  { href: "/time", rotulo: "Início", icone: "casa" },
   { href: "/time/reembolso", rotulo: "Reembolso", icone: "volta" },
   { href: "/time/envios", rotulo: "Histórico", icone: "lista" }
 ] as const;

@@ -1440,6 +1440,128 @@ export async function salvarContaPagamento(
   });
 }
 
+
+// ---------------------------------------------------------------------------
+// Recebíveis: o que a pessoa recebe da casa (0161)
+// ---------------------------------------------------------------------------
+
+export type RecebivelLinha = {
+  data: string;
+  mes: string;
+  valorCents: number;
+  natureza: string;
+  categoria: string | null;
+  conta: string;
+  descricao: string;
+};
+
+export type MesRecebivel = {
+  mes: string;
+  totalCents: number;
+  porNatureza: Record<string, number>;
+};
+
+export type MeusRecebiveis = {
+  totalCents: number;
+  mesAtualCents: number;
+  /** Mediana do que se repete — a base honesta para "quanto costumo receber". */
+  medianaRecorrenteCents: number;
+  emAbertoCents: number;
+  desde: string | null;
+  ultimoEm: string | null;
+  porNatureza: { natureza: string; cents: number; n: number }[];
+  porMes: MesRecebivel[];
+  linhas: RecebivelLinha[];
+};
+
+/** Naturezas que se repetem mês a mês. Comissão varia; reembolso é devolução. */
+const RECORRENTE = new Set(["salario", "prolabore", "estagio"]);
+
+/**
+ * Tudo que a casa pagou para QUEM ESTÁ LOGADO, desde 2026.
+ *
+ * Lê `fin_time_recebivel_v` (0161), que é a versão sem `transaction_id` da
+ * view do financeiro — id de lançamento do ledger não desce para o celular.
+ *
+ * A MEDIANA, e não a média, para "quanto costumo receber": medido no Fernando,
+ * os oito meses vão de R$ 2.386 a R$ 7.644, e a média é puxada pelos extremos.
+ * Quem olha esse número está perguntando "com quanto eu conto no mês que vem",
+ * e para essa pergunta a mediana responde melhor.
+ */
+export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
+  const [linhas, saldo] = await Promise.all([
+    query<Record<string, unknown>>(
+      `SELECT data, to_char(mes, 'YYYY-MM') AS mes, valor_cents, natureza, categoria, conta, descricao
+         FROM fin_time_recebivel_v
+        WHERE person_id = $1
+        ORDER BY data DESC`,
+      [sessao.personId]
+    ),
+    query<{ total: string }>(
+      `SELECT coalesce(sum(saldo_cents), 0)::text AS total
+         FROM fin_reembolso_saldo_v WHERE person_id = $1 AND NOT quitado`,
+      [sessao.personId]
+    ).catch(() => [{ total: "0" }])
+  ]);
+
+  const itens: RecebivelLinha[] = linhas.map((l) => ({
+    data: String(l.data).slice(0, 10),
+    mes: String(l.mes),
+    valorCents: Number(l.valor_cents),
+    natureza: String(l.natureza),
+    categoria: (l.categoria as string) ?? null,
+    conta: String(l.conta),
+    descricao: String(l.descricao ?? "")
+  }));
+
+  const meses = new Map<string, MesRecebivel>();
+  for (const i of itens) {
+    const m = meses.get(i.mes) ?? { mes: i.mes, totalCents: 0, porNatureza: {} };
+    m.totalCents += i.valorCents;
+    m.porNatureza[i.natureza] = (m.porNatureza[i.natureza] ?? 0) + i.valorCents;
+    meses.set(i.mes, m);
+  }
+  const porMes = [...meses.values()].sort((a, b) => a.mes.localeCompare(b.mes));
+
+  const porNat = new Map<string, { cents: number; n: number }>();
+  for (const i of itens) {
+    const a = porNat.get(i.natureza) ?? { cents: 0, n: 0 };
+    porNat.set(i.natureza, { cents: a.cents + i.valorCents, n: a.n + 1 });
+  }
+
+  const recorrentes = porMes
+    .map((m) =>
+      Object.entries(m.porNatureza)
+        .filter(([n]) => RECORRENTE.has(n))
+        .reduce((s, [, v]) => s + v, 0)
+    )
+    .filter((v) => v > 0)
+    .sort((a, b) => a - b);
+  const meio = Math.floor(recorrentes.length / 2);
+  const medianaRecorrenteCents =
+    recorrentes.length === 0
+      ? 0
+      : recorrentes.length % 2
+        ? recorrentes[meio]
+        : Math.round((recorrentes[meio - 1] + recorrentes[meio]) / 2);
+
+  const mesCorrente = new Date().toISOString().slice(0, 7);
+
+  return {
+    totalCents: itens.reduce((s, i) => s + i.valorCents, 0),
+    mesAtualCents: meses.get(mesCorrente)?.totalCents ?? 0,
+    medianaRecorrenteCents,
+    emAbertoCents: Number(saldo[0]?.total ?? 0),
+    desde: porMes[0]?.mes ?? null,
+    ultimoEm: itens[0]?.data ?? null,
+    porNatureza: [...porNat.entries()]
+      .map(([natureza, v]) => ({ natureza, ...v }))
+      .sort((a, b) => b.cents - a.cents),
+    porMes,
+    linhas: itens.slice(0, 300)
+  };
+}
+
 // ---------------------------------------------------------------------------
 // 4. Pedido de compra — com os links
 // ---------------------------------------------------------------------------

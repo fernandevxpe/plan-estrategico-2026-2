@@ -17192,3 +17192,8 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 /* Marcado não é SÓ cor: o ponto cheio vira anel vazado quando desligado.
    Quem não distingue as duas cores ainda lê a diferença pela forma. */
 .rec-ponto.vazado { background: none !important; box-shadow: inset 0 0 0 2px currentColor; opacity: .55; }
+
+/* O intervalo de dias no cabeçalho do mês: distingue "caiu tudo no dia 1º" de
+   "caiu ao longo do mês", que é a primeira coisa que se quer saber ao cruzar
+   com o extrato do banco. */
+.rec-mes-periodo { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 1px; }

@@ -209,14 +209,30 @@ export function Recebiveis() {
             // rolagem antes do primeiro mês antigo.
             <details key={m.mes} className="rec-mes" open={i === 0}>
               <summary>
-                <span>{nomeMes(m.mes)}</span>
+                <span>
+                  {nomeMes(m.mes)}
+                  {/* Quando os pagamentos do mês não caíram todos no mesmo dia,
+                      o intervalo aparece fechado: é a diferença entre "recebi
+                      dia 1º" e "recebi ao longo do mês". */}
+                  {doMes.length > 1 && doMes[0].data !== doMes[doMes.length - 1].data ? (
+                    <small className="rec-mes-periodo">
+                      {doMes[doMes.length - 1].data.slice(8, 10)}–{doMes[0].data.slice(8, 10)}
+                    </small>
+                  ) : null}
+                </span>
                 <span className="rec-mes-total">{brl(m.totalCents)}</span>
                 <span className="rec-mes-n">{doMes.length}×</span>
               </summary>
               <ul className="rec-linhas">
                 {doMes.map((l, k) => (
                   <li key={`${l.data}-${k}`} className={k > 0 && doMes[k - 1].data === l.data ? "rec-linha-mesmodia" : ""}>
-                    <span className="rec-linha-dia">{l.data.slice(8, 10)}/{l.data.slice(5, 7)}</span>
+                    {/* A data da movimentação, sempre — é o que a pessoa cruza
+                        com o extrato do banco dela. Some só quando é o MESMO
+                        dia da linha de cima, para três Pix do mesmo dia não
+                        repetirem a data três vezes. */}
+                    <span className="rec-linha-dia">
+                      {k > 0 && doMes[k - 1].data === l.data ? "" : `${l.data.slice(8, 10)}/${l.data.slice(5, 7)}`}
+                    </span>
                     <i className={`rec-ponto ${CLASSE[l.natureza] ?? "nat-encargo"}`} />
                     <span className="rec-linha-nat">
                       {ROTULO[l.natureza] ?? l.natureza}

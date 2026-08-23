@@ -2049,13 +2049,54 @@ export async function detalharEnvioDoTime(
           ORDER BY descricao, parcela`,
         [sessao.personId, competencia]
       );
+      /*
+       * FUNDE, NÃO EMPILHA — e este é o bug que a tela mostrava.
+       *
+       * O mesmo gasto existe nas DUAS tabelas: a planilha foi importada duas
+       * vezes, em 11/08 para `fin_reimbursement_item` e em 20/08 para
+       * `fin_reembolso_item`. Medido: 192 pares idênticos por (pessoa, valor,
+       * competência), 14 pessoas, R$ 41.948,26.
+       *
+       * O código carregava os itens do app e depois dava `push` em todos os da
+       * planilha do mesmo mês. Resultado na tela: "Antropic R$ 280,74" duas
+       * vezes, "Ar Cond R$ 324,95" duas vezes — cada despesa repetida.
+       *
+       * A fusão casa por VALOR dentro da competência, que é o par mais forte
+       * que existe aqui (o título diverge: a planilha anexa a parcela, "Ar
+       * Cond" vira "Ar Cond 4/12"). Onde casa, a linha do app RECEBE o que só
+       * a planilha sabe — parcela, total e slug. Onde não casa, a linha da
+       * planilha entra como parte própria: é gasto que o app não conhece.
+       *
+       * ISTO CONSERTA A TELA, NÃO O BANCO. As duas tabelas continuam com o
+       * mesmo dinheiro dentro (R$ 42.320,34 × R$ 42.280,13) e qualquer soma
+       * futura que toque as duas ainda conta em dobro. Escolher qual é a
+       * verdade e aposentar a outra é decisão que precisa do dono.
+       */
+      const jaCasado = new Set<number>();
       for (const p of planilha) {
+        const valor = Number(p.valor_parcela_cents);
+        const gemea = partes.findIndex(
+          (parte, i) => parte.fonte === "app" && parte.valorCents === valor && !jaCasado.has(i)
+        );
+        if (gemea >= 0) {
+          jaCasado.add(gemea);
+          // A parcela é o que a planilha tem e o app não: sem ela a tela não
+          // sabe dizer "8 de 12" nem quanto já foi pago da compra.
+          partes[gemea] = {
+            ...partes[gemea],
+            slug: String(p.slug ?? ""),
+            parcela: partes[gemea].parcela ?? Number(p.parcela),
+            parcelasTotal: partes[gemea].parcelasTotal ?? Number(p.parcelas_total),
+            categoriaRotulo: partes[gemea].categoriaRotulo ?? (p.categoria_livre ? String(p.categoria_livre) : null)
+          };
+          continue;
+        }
         partes.push({
           id: Number(p.id),
           fonte: "planilha",
           titulo: String(p.descricao ?? ""),
           slug: String(p.slug ?? ""),
-          valorCents: Number(p.valor_parcela_cents),
+          valorCents: valor,
           parcela: Number(p.parcela),
           parcelasTotal: Number(p.parcelas_total),
           mesRef: String(p.competencia).slice(0, 10),

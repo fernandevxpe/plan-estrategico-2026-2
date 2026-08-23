@@ -27,7 +27,11 @@
   --surface-2: #eef3f5;
   --card: #ffffff;
   --ink: #14121a;
-  --muted: #64727a;
+  /* #64727a dava 4,44:1 sobre `--surface-2` — reprova o AA por 0,06, e
+     `--muted` é a cor de toda legenda, nota e rótulo secundário da plataforma.
+     #606d75 sobe para 4,76 sobre surface-2 e 5,33 sobre o branco, sem mudar o
+     tom percebido. O escuro (#a79fc0) já passava com folga: 7,28. */
+  --muted: #606d75;
   --line: #dce5e8;
   --green: #1c9e73;
   /* Acento XPE — roxo do site (#bc13fe), agora usado de verdade */
@@ -16139,12 +16143,39 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
     0 10px 28px color-mix(in srgb, var(--purple) 45%, transparent),
     0 0 0 1px color-mix(in srgb, #fff 12%, transparent) inset;
 }
-[data-theme="escuro"] .anexar-botao,
-:root:not([data-theme="claro"]) .anexar-botao {
+/*
+ * O VERDE PRECISA DO `@media`, E A FALTA DELE DEIXOU O BOTÃO ILEGÍVEL NO CLARO.
+ *
+ * Sem o media query, `:root:not([data-theme="claro"])` casa também com o
+ * estado NÃO CARIMBADO — que é o de quem nunca tocou no seletor de tema, ou
+ * seja, a maioria. Aí o botão recebia este gradiente verde enquanto `color`
+ * vinha de `--on-bright`, que É escopado por tema e vale `#fff` no claro.
+ *
+ * Medido no navegador, `prefers-color-scheme: light` sem atributo:
+ *   branco #ffffff sobre o verde #1ecf7a = 2,05:1  (mínimo AA: 4,5:1)
+ * E o botão é o mais proeminente das duas telas mais usadas do app.
+ *
+ * O que denuncia a intenção é a própria primeira metade do seletor:
+ * `[data-theme="escuro"]`. O verde sempre foi do escuro. Com o media query no
+ * lugar, o claro volta ao roxo da regra base — branco sobre #6d22c9 = 7,71:1 —
+ * e o escuro segue idêntico, 8,72:1.
+ *
+ * As outras sete regras com este mesmo formato usam `var(--neon-green)`, que É
+ * escopado por tema e portanto se adapta. Esta era a única que fixava hex.
+ */
+[data-theme="escuro"] .anexar-botao {
   background: linear-gradient(135deg, #5dffb8 0%, #1ecf7a 55%, #0a9f5c 100%);
   box-shadow:
     0 10px 28px color-mix(in srgb, var(--neon-green) 35%, transparent),
     0 0 0 1px color-mix(in srgb, #fff 10%, transparent) inset;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) .anexar-botao {
+    background: linear-gradient(135deg, #5dffb8 0%, #1ecf7a 55%, #0a9f5c 100%);
+    box-shadow:
+      0 10px 28px color-mix(in srgb, var(--neon-green) 35%, transparent),
+      0 0 0 1px color-mix(in srgb, #fff 10%, transparent) inset;
+  }
 }
 .anexar-botao.aberto { background: var(--ink); color: var(--card); }
 .anexar-botao:active { transform: translateY(1px); }
@@ -17296,9 +17327,12 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+/* `--purple` sobre `--surface-2` dá 2,99:1 no escuro — reprova por 1,5. Quem
+   existe para ser roxo LEGÍVEL sobre superfície é `--ink-purple`: #d9a3ff no
+   escuro (8,62:1) e #6d28d9 no claro. Era o token certo desde o começo. */
 .hist-segmento-item.ativo b {
   background: var(--surface-2);
-  color: var(--purple);
+  color: var(--ink-purple);
 }
 
 /* A lista de Recebi atravessa anos — 01/08 vira 01/08/26 e a coluna do dia

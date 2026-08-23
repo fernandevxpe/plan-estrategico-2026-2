@@ -35,6 +35,23 @@ export function HomePage({ analysis, criticalFindings }: Props) {
 
   return (
     <>
+      {/*
+       * A ÚNICA PÁGINA DA PLATAFORMA SEM `h1`.
+       *
+       * Todas as outras abrem com `.page-header > h1`; esta caía direto no
+       * resumo executivo. Para quem navega por leitor de tela, a página
+       * principal era a que não dizia o próprio nome — e o primeiro cabeçalho
+       * que aparecia era um `h2` ("Precisa de decisão agora"), o que também
+       * quebra a hierarquia: um documento não começa no nível 2.
+       *
+       * Achado varrendo as 32 rotas nos dois temas; era o único `sem-h1` da
+       * plataforma inteira.
+       */}
+      <div className="page-header">
+        <h1>Visão geral</h1>
+        <p>O que decidir agora, o forecast do ano e a porta para cada área.</p>
+      </div>
+
       <section className="executive-brief" aria-label="Resumo executivo de decisão">
         <article className="brief-primary">
           <span className="brief-kicker">Forecast recomendado</span>

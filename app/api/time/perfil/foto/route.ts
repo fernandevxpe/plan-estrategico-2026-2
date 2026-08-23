@@ -25,7 +25,14 @@ export async function GET() {
     return new Response(new Uint8Array(bytes), {
       headers: {
         "content-type": tipo,
-        "cache-control": "private, max-age=300"
+        "cache-control": "private, max-age=300",
+        // As três que a rota de anexo já tinha e esta nasceu sem. `nosniff`
+        // impede o navegador de reinterpretar o conteúdo como HTML; a CSP
+        // desarma script mesmo que algo passe; `inline` sem nome de arquivo
+        // evita download disfarçado.
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'none'; img-src 'self'; sandbox",
+        "content-disposition": "inline"
       }
     });
   } catch (erro) {

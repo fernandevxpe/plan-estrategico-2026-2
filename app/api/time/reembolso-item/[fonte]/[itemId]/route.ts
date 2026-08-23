@@ -1,11 +1,6 @@
 import { exigirContexto, respostaDeErro } from "@/app/api/time/_sessao";
 import { buscarEstornoItem } from "@/lib/financeiro/estorno-reembolso";
-import {
-  atualizarItemReembolso,
-  detalharItemReembolso,
-  historicoParcelasItem,
-  opcoesDoTime
-} from "@/lib/financeiro/time";
+import { anexosDoRegistro, atualizarItemReembolso, detalharItemReembolso, historicoParcelasItem, opcoesDoTime } from "@/lib/financeiro/time";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +28,18 @@ export async function GET(
     const item = await detalharItemReembolso(sessao, fonte, id);
     const estorno = await buscarEstornoItem(sessao, fonte, id);
     const opcoes = await opcoesDoTime();
-    return Response.json({ historico, item, estorno, opcoes });
+    /*
+     * Os arquivos presos ao item — sem esta lista a tela não tinha como
+     * oferecer um link, e o comprovante ficava guardado e invisível.
+     *
+     * Só a fonte `app` tem anexo aqui: ela é `fin_reimbursement_item`, que é
+     * um dos dois alvos que `fin_payment_attachment` aceita. `planilha` é
+     * `fin_reembolso_item`, a importação da planilha, que nasceu antes do
+     * upload existir e não tem arquivo para mostrar. Mapear as duas para a
+     * mesma tabela devolveria o anexo de OUTRO registro com o mesmo id.
+     */
+    const anexos = fonte === "app" ? await anexosDoRegistro(sessao, "fin_reimbursement_item", id) : [];
+    return Response.json({ historico, item, estorno, opcoes, anexos });
   } catch (erro) {
     return respostaDeErro(erro);
   }

@@ -44,7 +44,7 @@ export const dynamic = "force-dynamic";
  */
 const EXIBIVEL = /^(application\/pdf|image\/(jpeg|png|webp|gif))$/;
 
-export async function GET(_request: Request, { params }: { params: Promise<{ chave: string[] }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ chave: string[] }> }) {
   try {
     const { sessao } = await exigirContexto();
 
@@ -101,7 +101,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cha
     }
 
     const tipo = linha.content_type ?? "";
-    const exibivel = EXIBIVEL.test(tipo);
+    // `?download=1` força o salvamento mesmo de um tipo exibível: a tela do
+    // item oferece "abrir" e "baixar" para o mesmo arquivo, e a diferença
+    // entre os dois é só esta.
+    const querBaixar = new URL(request.url).searchParams.get("download") === "1";
+    const exibivel = EXIBIVEL.test(tipo) && !querBaixar;
     const nome = (linha.file_name ?? "comprovante").replace(/[^\w.\- ]+/g, "_").slice(0, 120) || "comprovante";
 
     return new Response(new Uint8Array(bytes), {

@@ -16701,3 +16701,42 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 .gd-titulo { display: block; font-weight: 550; }
 .gd-forma { display: block; font-weight: 550; }
 .gd-meta { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* Confirmação da cópia do PIX, junto do botão. Fica aqui e não no recado do
+   topo porque medido: o recado global rolava a página de scrollY 999 para 0 e
+   levava o QR de y=240 para y=1291 — a confirmação fazia sumir o que ela
+   confirmava, na tela de pagar. */
+.item-estorno-copia { margin: 6px 0 0; font-size: 12.5px; color: var(--ink-green); min-height: 1.2em; }
+/* O payload em texto: o pior caso aceitável quando a área de transferência
+   falha. Sem isto o BR Code não existia em lugar nenhum da página. */
+.item-estorno-brcode {
+  width: 100%; margin-top: 8px; padding: 9px 11px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface-2); color: var(--ink);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px;
+  line-height: 1.45; word-break: break-all; resize: vertical;
+}
+
+/* Os anexos, abríveis. Antes a tela dizia "Comprovante anexado" e ponto — o
+   arquivo existia no banco, a rota que o serve existia, e nenhum link levava
+   até ele. */
+.anexo-lista { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+.anexo-lista li {
+  display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px;
+  padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2);
+}
+.anexo-lista-nome { min-width: 0; display: grid; gap: 1px; }
+.anexo-lista-nome strong {
+  font-size: 13px; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.anexo-lista-nome small { font-size: 11px; color: var(--muted); }
+/* Alvo de 44px nos dois, porque abrir e baixar têm o mesmo peso: quem está no
+   celular quer ver, quem está no computador quer guardar. */
+.anexo-lista a {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 0 14px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.anexo-lista-abrir { background: var(--purple); color: var(--on-bright); }
+.anexo-lista-baixar { border: 1px solid var(--line); color: var(--ink); }

@@ -195,11 +195,22 @@ export function TimeApp({
   useEffect(() => {
     const no = recadoRef.current;
     if (!no || !recado) return;
-    no.scrollIntoView({ block: "center", behavior: "smooth" });
-    // O foco só se move no ERRO. Num "enviado com sucesso" a pessoa segue para
-    // o próximo lançamento, e roubar o foco atrapalharia; num erro ela precisa
-    // ler o que falta antes de qualquer outra coisa.
-    if (recado.tom === "erro") no.focus({ preventScroll: true });
+    /*
+     * SÓ O ERRO ARRASTA A TELA. O sucesso avisa onde a pessoa está.
+     *
+     * Eu tinha rolado até o recado nos DOIS tons, e isso virou um defeito na
+     * tela de PIX: medido, a pessoa tocava em "copiar", o recado "PIX copiado."
+     * puxava a página de scrollY 999 para 0, e o QR que estava em y=240 ia
+     * para y=1291 — fora de uma tela de 852px. Confirmação que faz o conteúdo
+     * confirmado desaparecer, no exato momento de pagar.
+     *
+     * Erro é diferente: ali a mensagem É o que precisa ser lido, e sem rolar
+     * ela ficava 415px acima da viewport, invisível.
+     */
+    if (recado.tom === "erro") {
+      no.scrollIntoView({ block: "center", behavior: "smooth" });
+      no.focus({ preventScroll: true });
+    }
   }, [recado, selo]);
 
   const carregarSessao = useCallback(async () => {
@@ -3908,6 +3919,15 @@ function TelaItemGasto({
     parcelas: { id: number; mes: string; parcela: number; parcelasTotal: number; valorCents: number; situacao: StatusExtrato | "previsto" }[];
   } | null>(null);
   const [enviandoAnexo, setEnviandoAnexo] = useState(false);
+  /** Os arquivos presos a este item — para poder abrir e baixar. */
+  const [anexos, setAnexos] = useState<
+    { chave: string; nome: string; tipo: string; kind: string; bytes: number; em: string }[]
+  >([]);
+
+  /** Confirmação da cópia junto do botão, e o payload à mão se ela falhar. */
+  const [pixCopiado, setPixCopiado] = useState<"copiado" | "falhou" | null>(null);
+  const [mostrarBrcode, setMostrarBrcode] = useState(false);
+
   const [estorno, setEstorno] = useState<{
     id: number;
     valorCents: number;
@@ -3985,6 +4005,7 @@ function TelaItemGasto({
       } else {
         setEstorno(null);
       }
+      setAnexos(Array.isArray(j.anexos) ? j.anexos : []);
     } finally {
       setCarregando(false);
     }
@@ -4072,12 +4093,27 @@ function TelaItemGasto({
     return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
   };
 
+  /*
+   * A CONFIRMAÇÃO FICA JUNTO DO BOTÃO, não no recado do topo da tela.
+   *
+   * O recado global é ótimo para "custo enviado" e péssimo aqui: ele mora no
+   * alto de `.time-app`, e confirmar a cópia levava a pessoa para longe do QR
+   * que ela acabou de copiar.
+   *
+   * E se a área de transferência falhar — permissão negada, contexto sem
+   * HTTPS, navegador antigo —, o código precisa continuar alcançável. Antes o
+   * BR Code não existia em lugar nenhum da página como texto: sem a cópia, não
+   * havia como pagar por copia-e-cola. `mostrarBrcode` põe o payload numa
+   * caixa selecionável, que é o pior caso aceitável.
+   */
   const copiarPix = async (texto: string) => {
     try {
       await navigator.clipboard.writeText(texto);
-      aoFalhar({ tom: "ok", texto: "PIX copiado." });
+      setPixCopiado("copiado");
+      window.setTimeout(() => setPixCopiado(null), 2500);
     } catch {
-      aoFalhar({ tom: "erro", texto: "Não foi possível copiar." });
+      setPixCopiado("falhou");
+      setMostrarBrcode(true);
     }
   };
 
@@ -4179,9 +4215,41 @@ function TelaItemGasto({
 
       <div className="campo item-gasto-comprovante">
         <span className="campo-rotulo">Comprovante</span>
+        {/*
+          OS ARQUIVOS, ABRÍVEIS.
+          Antes esta caixa dizia só "Comprovante anexado" — o arquivo existia
+          em `fin_anexo_blob`, a rota que o serve existia, e nenhuma tela dava
+          um link. A pessoa fotografa a nota para poder consultá-la depois; sem
+          o link, o upload tinha o custo do armazenamento e nenhum benefício.
+        */}
+        {anexos.length > 0 ? (
+          <ul className="anexo-lista">
+            {anexos.map((a) => (
+              <li key={a.chave}>
+                <span className="anexo-lista-nome">
+                  <strong>{a.nome}</strong>
+                  <small>
+                    {a.kind === "nota_fiscal" ? "nota fiscal" : "comprovante"}
+                    {a.bytes ? ` · ${(a.bytes / 1024).toFixed(0)} KB` : ""}
+                    {` · ${new Date(a.em).toLocaleDateString("pt-BR")}`}
+                  </small>
+                </span>
+                {/* `target=_blank` para PDF e imagem abrirem sem sair da tela,
+                    e `download` no mesmo href para quem quiser guardar. A rota
+                    já manda `nosniff` e confere o dono. */}
+                <a className="anexo-lista-abrir" href={`/api/time/anexo/${a.chave}`} target="_blank" rel="noopener">
+                  abrir
+                </a>
+                <a className="anexo-lista-baixar" href={`/api/time/anexo/${a.chave}?download=1`} download={a.nome}>
+                  baixar
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {temComprovante ? (
           <div className="anexo-ficha fiscal item-gasto-anexo-ok">
-            <strong>Comprovante anexado</strong>
+            <strong>{anexos.length > 0 ? "Comprovante anexado" : "Comprovante registrado"}</strong>
             <small>Arquivo ligado a este item</small>
             {fonte === "app" ? (
               <>
@@ -4308,8 +4376,15 @@ function TelaItemGasto({
               {estorno.parcelasDetalhe.map((p) => (
                 <li key={`${p.mes}-${p.parcela}`}>
                   <span>{formatMesRef(p.mes)}</span>
+                  {/*
+                    O denominador é o número de parcelas DESTE estorno. Vinha de
+                    `historico.parcelasTotal`, outro objeto, e a tela chegou a
+                    renderizar "2/1" — parcela dois de uma. O ramo "?" era
+                    inalcançável: a condição estava dentro do próprio `.map`
+                    sobre o array que ela testava.
+                  */}
                   <span>
-                    {p.parcela}/{estorno.parcelasDetalhe.length > 0 ? historico?.parcelasTotal ?? "?" : "?"}
+                    {p.parcela}/{estorno.parcelasDetalhe.length}
                   </span>
                   <span>{brl(p.valorCents)}</span>
                 </li>
@@ -4324,9 +4399,36 @@ function TelaItemGasto({
               {estorno.brcode ? (
                 <>
                   <PixQr payload={estorno.brcode} />
-                  <button type="button" className="time-botao secundario time-botao-largo" onClick={() => void copiarPix(estorno.brcode!)}>
-                    Copiar PIX copia-e-cola
+                  <button
+                    type="button"
+                    className="time-botao secundario time-botao-largo"
+                    onClick={() => void copiarPix(estorno.brcode!)}
+                  >
+                    {pixCopiado === "copiado" ? "copiado ✓" : "Copiar PIX copia-e-cola"}
                   </button>
+                  {/* `role="status"` e não `alert`: é confirmação, e fica AQUI,
+                      ao lado do que foi copiado — não no topo da tela. */}
+                  <p className="item-estorno-copia" role="status">
+                    {pixCopiado === "copiado"
+                      ? "Código copiado. Cole no app do seu banco."
+                      : pixCopiado === "falhou"
+                        ? "Seu navegador não deixou copiar — o código está aqui embaixo, selecione e copie."
+                        : ""}
+                  </p>
+                  {mostrarBrcode ? (
+                    <textarea
+                      className="item-estorno-brcode"
+                      readOnly
+                      rows={4}
+                      value={estorno.brcode}
+                      aria-label="Código PIX copia-e-cola"
+                      onFocus={(e) => e.currentTarget.select()}
+                    />
+                  ) : (
+                    <button type="button" className="time-link" onClick={() => setMostrarBrcode(true)}>
+                      ver o código em texto
+                    </button>
+                  )}
                 </>
               ) : null}
             </div>

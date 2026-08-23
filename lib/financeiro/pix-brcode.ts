@@ -30,11 +30,67 @@ export type PixEstatico = {
 };
 
 /** Gera payload PIX copia-e-cola com valor fixo (quando informado). */
+/**
+ * ASCII sem acento, como o EMV exige — e por um motivo que não é estético.
+ *
+ * O TLV declara o comprimento em `String(v.length)`, que conta CARACTERES.
+ * O payload trafega em UTF-8, onde "Ç" ocupa dois bytes. "XPE CONSULTORIA E
+ * SERVIÇO" tem 25 caracteres e 26 bytes: o campo diz 25, um leitor que conta
+ * bytes para no meio da última letra, e TODOS os campos seguintes desalinham —
+ * inclusive o CRC. O QR simplesmente não lê.
+ *
+ * Hoje a razão social da casa é ASCII pura, então nada quebrou. Bastava alguém
+ * escrever "MEDIÇÃO" no cadastro para o PIX parar de funcionar sem nenhum erro
+ * no caminho.
+ */
+function somenteAscii(v: string): string {
+  return v
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * A chave, normalizada PELO TIPO que o chamador informou.
+ *
+ * Antes decidia contando dígitos: se houvesse 11 ou mais, tirava tudo que não
+ * fosse número. Duas das cinco formas de chave morriam nisso —
+ * `123e4567-e89b-12d3-a456-426614174000` (aleatória) virava
+ * `123456789123456426614174000`, e `+5581999998888` perdia o `+`, sem o qual
+ * a chave de telefone não existe. Como só CNPJ era usado, nunca apareceu.
+ *
+ * `tipoChave` estava no tipo e não era lido em lugar nenhum — o campo
+ * anunciava uma intenção que o código ignorava.
+ */
+function normalizarChave(chave: string, tipo: PixEstatico["tipoChave"]): string {
+  const bruta = chave.trim();
+  switch (tipo) {
+    case "CPF":
+    case "CNPJ":
+      return bruta.replace(/\D/g, "");
+    case "PHONE": {
+      const d = bruta.replace(/\D/g, "");
+      // O padrão do BCB é E.164 com o "+": +5581999998888.
+      return d.startsWith("55") ? `+${d}` : `+55${d}`;
+    }
+    case "EMAIL":
+    case "EVP":
+    default:
+      // Chave aleatória e e-mail vão como estão. Mexer nelas é destruí-las.
+      return bruta;
+  }
+}
+
 export function gerarPixBrcode(dados: PixEstatico): string {
-  const chave = dados.chave.replace(/\D/g, "").length >= 11 ? dados.chave.replace(/\D/g, "") : dados.chave.trim();
-  const nome = dados.nomeRecebedor.slice(0, 25).toUpperCase();
-  const cidade = dados.cidade.slice(0, 15).toUpperCase();
-  const txid = (dados.txid ?? "***").slice(0, 25);
+  const chave = normalizarChave(dados.chave, dados.tipoChave);
+  const nome = somenteAscii(dados.nomeRecebedor).slice(0, 25).toUpperCase();
+  const cidade = somenteAscii(dados.cidade).slice(0, 15).toUpperCase();
+  // TXID é [A-Za-z0-9] no layout; "***" é o coringa para "sem identificador".
+  // Hífen ou acento aqui faz PSP recusar a leitura.
+  const txidLimpo = (dados.txid ?? "").replace(/[^A-Za-z0-9]/g, "").slice(0, 25);
+  const txid = txidLimpo || "***";
 
   const merchantAccount = tlv("00", "br.gov.bcb.pix") + tlv("01", chave);
   const additional = tlv("05", txid);

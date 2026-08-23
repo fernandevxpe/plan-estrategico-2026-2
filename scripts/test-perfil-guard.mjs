@@ -26,7 +26,7 @@
 //
 //   node scripts/test-perfil-guard.mjs
 //
-import { readFile, readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -142,29 +142,59 @@ const PROIBIDOS = [
   'fin_saldo', 'fin_reserva', 'fin_comissao', 'fin_commission'
 ];
 
+/*
+ * A SUPERFÍCIE É DESCOBERTA NO DISCO, NÃO DIGITADA À MÃO.
+ *
+ * Era uma lista manual, e a auditoria mostrou o custo disso: o commit que
+ * acrescentou `/api/time/inicio`, `/api/time/perfil` e `/api/time/perfil/foto`
+ * esqueceu de incluí-las, e o guard imprimiu ✓ sem nunca ter olhado para elas.
+ * `cartao/ler` e `compartilhado` já faltavam antes. Uma trava que depende de
+ * alguém lembrar de atualizá-la não é uma trava.
+ *
+ * Agora todo `route.ts` sob `app/api/time/` entra sozinho, mais os módulos de
+ * biblioteca que essas rotas importam — porque foi exatamente por um `import`
+ * que o SQL proibido escapou: `estorno-reembolso.ts` lia `fin_transaction` e
+ * `fin_account` e o grep não via, porque o arquivo não estava na lista.
+ */
+async function descobrirRotasDoTime(dir) {
+  const achados = [];
+  for (const item of await readdir(dir, { withFileTypes: true })) {
+    const caminho = path.join(dir, item.name);
+    if (item.isDirectory()) achados.push(...(await descobrirRotasDoTime(caminho)));
+    else if (item.name === 'route.ts') achados.push(path.relative(RAIZ, caminho));
+  }
+  return achados;
+}
+
+/** Os módulos de `lib/financeiro` que as rotas do time alcançam, direta ou indiretamente. */
+async function modulosAlcancados(rotas) {
+  const vistos = new Set();
+  const fila = [...rotas];
+  while (fila.length) {
+    const rel = fila.shift();
+    const fonte = await readFile(path.join(RAIZ, rel), 'utf8').catch(() => null);
+    if (fonte === null) continue;
+    for (const m of fonte.matchAll(/from\s+["'](@\/lib\/financeiro\/[\w-]+|\.\/[\w-]+)["']/g)) {
+      const bruto = m[1];
+      const nome = bruto.startsWith('@/') ? bruto.slice(2) : 'lib/financeiro/' + bruto.slice(2);
+      const arquivo = nome + '.ts';
+      if (vistos.has(arquivo)) continue;
+      vistos.add(arquivo);
+      fila.push(arquivo);
+    }
+  }
+  return [...vistos];
+}
+
+const ROTAS_DO_TIME = await descobrirRotasDoTime(path.join(RAIZ, 'app/api/time'));
 const SUPERFICIE_DO_TIME = [
-  'lib/financeiro/time.ts',
-  'lib/financeiro/notificacoes.ts',
-  'app/api/time/_sessao.ts',
-  'app/api/time/sessao/route.ts',
-  'app/api/time/reembolso/route.ts',
-  'app/api/time/envio/route.ts',
-  'app/api/time/compra/route.ts',
-  'app/api/time/compra/realizar/route.ts',
-  'app/api/time/envios/route.ts',
-  'app/api/time/envios/[origem]/[origemId]/route.ts',
-  'app/api/time/reembolso-item/[fonte]/[itemId]/route.ts',
-  'app/api/time/reembolso-item/[fonte]/[itemId]/cancelar/route.ts',
-  'app/api/time/reembolso-item/app/[itemId]/comprovante/route.ts',
-  'app/api/time/senha/route.ts',
-  'app/api/time/meu-reembolso/route.ts',
-  'app/api/time/ler-comprovante/route.ts',
-  'app/api/time/cartao/route.ts',
-  'app/api/time/sugerir-categoria/route.ts',
-  'app/api/time/anexo/[...chave]/route.ts',
+  ...ROTAS_DO_TIME,
+  ...(await modulosAlcancados(ROTAS_DO_TIME)),
   'app/api/notificacoes/route.ts',
   'app/api/notificacoes/[id]/route.ts'
-];
+].filter((v, i, a) => a.indexOf(v) === i).sort();
+
+console.log(`  (superfície descoberta no disco: ${ROTAS_DO_TIME.length} rotas + ${SUPERFICIE_DO_TIME.length - ROTAS_DO_TIME.length - 2} módulos)`);
 
 console.log('\n=== 2. SUPERFÍCIE: o que os módulos do time podem tocar ===');
 for (const rel of SUPERFICIE_DO_TIME) {
@@ -179,14 +209,56 @@ for (const rel of SUPERFICIE_DO_TIME) {
 
 // A prova negativa mais importante: nenhuma função da superfície do time aceita
 // pessoa como parâmetro solto. É o que sustenta "cada um vê só o que enviou".
-const timeTs = await readFile(path.join(RAIZ, 'lib/financeiro/time.ts'), 'utf8');
-const codigoTime = timeTs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const assinaturasComPessoa = [...codigoTime.matchAll(/export async function (\w+)\(([^)]*)\)/gs)]
-  .filter(([, nome, args]) => /person(Id)?\s*:/i.test(args) && !['abrirSessao'].includes(nome))
-  .map(([, nome]) => nome);
+// Vale para TODA a superfície, não só para `time.ts`.
+//
+// A auditoria achou o furo: `estorno-reembolso.ts` exportava
+// `sugerirMatchEstorno(personId, ...)` e `cancelarItemReembolsoAdmin(personId, ...)`,
+// e era importado por `/api/time/*`. A regra continuava verdadeira no arquivo
+// que o guard olhava e falsa no conjunto — que é o mesmo que ser falsa.
+const assinaturasComPessoa = [];
+for (const rel of SUPERFICIE_DO_TIME) {
+  if (!rel.startsWith('lib/financeiro/')) continue;
+  const fonte = await readFile(path.join(RAIZ, rel), 'utf8').catch(() => null);
+  if (fonte === null) continue;
+  const codigo = fonte.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  for (const [, nome, args] of codigo.matchAll(/export async function (\w+)\(([^)]*)\)/gs)) {
+    /*
+     * Duas exceções declaradas, e só estas:
+     *
+     * `abrirSessao` — é ELA que estabelece quem é a pessoa. Receber a pessoa
+     *   como parâmetro é o próprio trabalho dela.
+     *
+     * `cancelarItemReembolsoInterno` — é o motor compartilhado entre o caminho
+     *   do app (`cancelarItemReembolso(sessao, …)`, que amarra na sessão) e o
+     *   do admin (`estorno-reembolso-admin.ts`, atrás de Basic Auth).
+     *   TypeScript não tem visibilidade de pacote, então ela precisa ser
+     *   `export` para o módulo irmão enxergar. NENHUMA rota a importa: as
+     *   rotas de `/api/time` só alcançam a versão com `sessao`. Se alguém um
+     *   dia importá-la de um route, a verificação 2 acima (tabelas proibidas)
+     *   não pega, mas esta linha aqui é o lembrete de que a porta existe.
+     */
+    const EXCECOES = ['abrirSessao', 'cancelarItemReembolsoInterno'];
+    if (/person(Id)?\s*:/i.test(args) && !EXCECOES.includes(nome)) {
+      assinaturasComPessoa.push(`${rel}:${nome}`);
+    }
+  }
+}
 afirma(assinaturasComPessoa.length === 0,
-  'nenhuma função exportada do time recebe pessoa como parâmetro',
+  'nenhuma função exportada da superfície do time recebe pessoa como parâmetro',
   assinaturasComPessoa.length ? assinaturasComPessoa.join(', ') : 'o escopo vem sempre da Sessao');
+
+// E a exceção acima precisa continuar sendo só um detalhe de implementação:
+// se uma ROTA do time importar o motor sem sessão, o escopo cai.
+const rotasComMotor = [];
+for (const rel of ROTAS_DO_TIME) {
+  const fonte = await readFile(path.join(RAIZ, rel), 'utf8').catch(() => '');
+  if (/cancelarItemReembolsoInterno|cancelarItemReembolsoAdmin|estorno-reembolso-admin/.test(fonte)) {
+    rotasComMotor.push(rel);
+  }
+}
+afirma(rotasComMotor.length === 0,
+  'nenhuma rota de /api/time importa o motor de estorno sem sessão',
+  rotasComMotor.length ? rotasComMotor.join(', ') : 'as rotas do time só alcançam a versão amarrada na Sessao');
 
 // E a rota de listagem não aceita filtro de pessoa vindo da URL.
 const enviosRota = await readFile(path.join(RAIZ, 'app/api/time/envios/route.ts'), 'utf8');

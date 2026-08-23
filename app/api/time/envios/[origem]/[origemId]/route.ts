@@ -1,5 +1,5 @@
 import { exigirContexto, respostaDeErro } from "@/app/api/time/_sessao";
-import { detalharEnvioDoTime } from "@/lib/financeiro/time";
+import { anexosDoRegistro, detalharEnvioDoTime } from "@/lib/financeiro/time";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,13 @@ export async function GET(
       return Response.json({ erro: "id inválido" }, { status: 400 });
     }
     const detalhe = await detalharEnvioDoTime(sessao, origem, id);
-    return Response.json({ detalhe });
+    // A foto que a pessoa tirou da compra vive aqui, presa ao envio. Sem esta
+    // lista ela ficava guardada em `fin_anexo_blob` sem nenhuma tela capaz de
+    // abri-la — custo de armazenamento sem benefício nenhum.
+    const anexos = origem === "custo" || origem === "nota_entrada"
+      ? await anexosDoRegistro(sessao, "fin_time_envio", id)
+      : [];
+    return Response.json({ detalhe, anexos });
   } catch (erro) {
     return respostaDeErro(erro);
   }

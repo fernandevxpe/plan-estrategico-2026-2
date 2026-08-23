@@ -14,6 +14,7 @@
 // com quem estiver em uso), e o estado anterior dela — e-mail, is_admin, linha
 // de acesso, sessões — é fotografado antes e restaurado depois. O teste falha
 // se a restauração não bater.
+import { createHash, randomBytes } from 'node:crypto';
 import pg from 'pg';
 
 import { financeDatabaseUrl } from './lib/artifact-db.mjs';
@@ -411,6 +412,79 @@ try {
   afirma(gp.rows[0]?.parcelas === 12, 'as parcelas ficam', `${gp.rows[0]?.parcelas}×`);
   afirma(gp.rows[0]?.card_last4 === '0343', 'o final digitado fica', gp.rows[0]?.card_last4);
   afirma(gp.rows[0]?.card_id !== null, 'e casou sozinho com o plástico cadastrado', `card_id=${gp.rows[0]?.card_id}`);
+
+  console.log('\n=== 5b2a. CANCELAR REEMBOLSO COM ESTORNO ===');
+  // Esta rota NUNCA funcionou: dois bugs independentes, cada um suficiente.
+  // (1) o SQL usava `t.description` e `t.occurred_at`, que não existem em
+  //     `fin_transaction` — 42703 no parse, mesmo sem nenhuma linha;
+  // (2) a releitura final usava `query()`, que é OUTRA conexão do pool, e não
+  //     enxergava o INSERT não commitado → `throw` → ROLLBACK de tudo.
+  // `fin_reembolso_estorno` ficou com zero linhas desde que a feature subiu, e
+  // nenhum teste chamava a rota. É este bloco que fecha esse buraco.
+  {
+    const alvo = (await db.query(`
+      SELECT v.person_id, v.item_id, v.slug, v.valor_parcela_cents,
+             (SELECT sum(x.valor_parcela_cents)::bigint FROM fin_time_reembolso_parcela_v x
+               WHERE x.person_id = v.person_id AND x.slug = v.slug) AS soma_slug
+        FROM fin_time_reembolso_parcela_v v
+       WHERE v.parcelas_total = 1
+       ORDER BY (SELECT count(*) FROM fin_time_reembolso_parcela_v x
+                  WHERE x.person_id = v.person_id AND x.slug = v.slug) DESC
+       LIMIT 1`)).rows[0];
+
+    if (!alvo) {
+      console.log('  · sem item de reembolso pago na base; bloco pulado.');
+    } else {
+      // Sessão da pessoa dona do item — o escopo do estorno vem da sessão.
+      const tokenEstorno = randomBytes(32).toString('base64url');
+      await db.query(
+        `INSERT INTO fin_time_sessao (token_sha256, person_id, prova, user_agent, expira_em)
+         VALUES ($1, $2, 'senha', 'test-login-estorno', now() + interval '10 min')`,
+        [createHash('sha256').update(tokenEstorno).digest('hex'), alvo.person_id]);
+      const comoDono = (caminho, init) => fetch(`${BASE}${caminho}`, {
+        ...init, headers: { cookie: `xpe_time_sessao=${tokenEstorno}`, 'content-type': 'application/json' } });
+
+      const r = await comoDono(`/api/time/reembolso-item/planilha/${alvo.item_id}/cancelar`, {
+        method: 'POST',
+        body: JSON.stringify({ motivoCategoria: 'devolucao', motivo: 'teste automatizado', confirmar: true })
+      });
+      afirma(r.status === 200 || r.status === 201, 'o cancelamento COMMITA', `status ${r.status}`);
+
+      const g = await db.query(
+        `SELECT valor_cents, brcode, status FROM fin_reembolso_estorno
+          WHERE item_fonte = 'planilha' AND item_id = $1`, [alvo.item_id]);
+      afirma(g.rowCount === 1, 'a linha do estorno existe no banco',
+        `${g.rowCount} linha(s) — zero significa que o ROLLBACK voltou`);
+
+      const e = g.rows[0] ?? {};
+      // O bug de dinheiro: o valor vinha da soma do SLUG inteiro. Medido em
+      // produção, Igor/transporte: R$ 429,97 virava R$ 5.409,26 (12,6×).
+      afirma(Number(e.valor_cents) === Number(alvo.valor_parcela_cents),
+        'o valor é o DO ITEM, não a soma do slug',
+        `R$ ${(Number(e.valor_cents) / 100).toFixed(2)} · o slug inteiro somaria R$ ${(Number(alvo.soma_slug) / 100).toFixed(2)}`);
+      afirma(typeof e.brcode === 'string' && e.brcode.startsWith('000201'),
+        'o BR Code do PIX foi gerado', String(e.brcode).slice(0, 32) + '…');
+      afirma(String(e.brcode).includes((Number(e.valor_cents) / 100).toFixed(2)),
+        'e o valor está dentro do payload', (Number(e.valor_cents) / 100).toFixed(2));
+
+      const dedobro = await comoDono(`/api/time/reembolso-item/planilha/${alvo.item_id}/cancelar`, {
+        method: 'POST',
+        body: JSON.stringify({ motivoCategoria: 'devolucao', motivo: 'segunda vez', confirmar: true })
+      });
+      afirma(dedobro.status === 409, 'cancelar duas vezes é recusado com 409', `status ${dedobro.status}`);
+
+      // A lista do admin também dava 500 pelo mesmo nome de coluna errado.
+      const adm = await c('/api/financeiro/estornos-reembolso');
+      afirma(adm.status === 200, 'a fila de estornos do admin responde', `status ${adm.status}`);
+
+      await db.query(`DELETE FROM fin_document WHERE source = 'reembolso_estorno'`);
+      await db.query(`DELETE FROM fin_reembolso_slug_cancelado WHERE person_id = $1`, [alvo.person_id]);
+      await db.query(`DELETE FROM fin_reembolso_estorno WHERE item_fonte = 'planilha' AND item_id = $1`, [alvo.item_id]);
+      await db.query(`DELETE FROM fin_time_sessao WHERE user_agent = 'test-login-estorno'`);
+      const sobra = await db.query(`SELECT count(*)::int n FROM fin_reembolso_estorno`);
+      afirma(sobra.rows[0].n === 0, 'e o teste não deixou estorno no banco', `${sobra.rows[0].n} restante(s)`);
+    }
+  }
 
   console.log('\n=== 5b2b. CADASTRAR CARTÃO, E RECONHECER O FINAL ===');
   // Esta rota NUNCA funcionou: o INSERT de auditoria passava 5 valores e o SQL

@@ -2415,6 +2415,33 @@ const MIMES_FOTO_PERFIL = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 /** Avatar: só imagem, teto menor que comprovante — 2 MB após encolher no celular. */
 export async function salvarFotoPerfil(sessao: Sessao, anexo: AnexoEntrada): Promise<void> {
+  /*
+   * O MIME VEM DO CLIENTE. Os BYTES, NÃO.
+   *
+   * `anexo.mime` é o `File.type` do multipart — quem envia escolhe o valor.
+   * A auditoria subiu `<html><script>…</script></html>` declarado
+   * `image/png` e a rota aceitou, gravou, e depois devolvia com
+   * `content-type: image/png` sem `X-Content-Type-Options`.
+   *
+   * Hoje o estrago é limitado (só o dono lê a própria foto), mas vira real no
+   * dia em que qualquer tela de admin renderizar a foto do time. A rota irmã
+   * de anexo já fazia a coisa certa; esta nasceu sem.
+   *
+   * A defesa é o número mágico do arquivo, que quem envia não controla.
+   */
+  const assinaturas: [string, (b: Buffer) => boolean][] = [
+    ["image/jpeg", (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff],
+    ["image/png", (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))],
+    ["image/webp", (b) => b.subarray(0, 4).toString("ascii") === "RIFF" && b.subarray(8, 12).toString("ascii") === "WEBP"]
+  ];
+  const real = assinaturas.find(([, ehEste]) => anexo.bytes.length >= 12 && ehEste(anexo.bytes))?.[0];
+  if (!real) {
+    throw new TimeError("isto não é uma imagem JPG, PNG ou WEBP — mande uma foto de verdade", 400);
+  }
+  // Daqui para a frente vale o tipo LIDO DOS BYTES, não o declarado: assim o
+  // que for gravado e o que for servido depois são a mesma coisa.
+  anexo = { ...anexo, mime: real };
+
   if (!MIMES_FOTO_PERFIL.has(anexo.mime)) {
     throw new TimeError("mande uma foto (JPG, PNG ou WebP)", 400);
   }
@@ -2938,6 +2965,56 @@ export async function sugerirCategoria(documento: string) {
  * `funcional` e às vezes o próprio produto denuncia — banner de estande é
  * Comercial, toner é Administrativo. Só o segundo caso é palpite honesto.
  */
+/**
+ * Os arquivos presos a um registro — para a tela poder ABRI-LOS.
+ *
+ * ---------------------------------------------------------------------------
+ * ELES ESTAVAM GUARDADOS E INALCANÇÁVEIS
+ * ---------------------------------------------------------------------------
+ * `fin_anexo_blob` tem os bytes, `fin_payment_attachment` tem o vínculo, e a
+ * rota `/api/time/anexo/[...chave]` serve o arquivo com o escopo certo. O que
+ * faltava era o meio do caminho: NENHUMA tela pedia a lista, então nenhuma
+ * podia mostrar um link. O comprovante entrava e sumia de vista.
+ *
+ * A pessoa fotografa a nota justamente para ter onde consultá-la depois — e é
+ * a evidência que o financeiro precisa abrir para aprovar. Guardar sem exibir
+ * é ter o custo do armazenamento sem o benefício.
+ *
+ * O escopo continua na sessão: a rota que serve o byte confere se o registro é
+ * de quem pede, e esta consulta parte do mesmo par (alvo, pessoa).
+ */
+export async function anexosDoRegistro(
+  sessao: Sessao,
+  alvo: "fin_time_envio" | "fin_reimbursement_item",
+  alvoId: number
+): Promise<{ chave: string; nome: string; tipo: string; kind: string; bytes: number; em: string }[]> {
+  const dono =
+    alvo === "fin_time_envio"
+      ? `EXISTS (SELECT 1 FROM fin_time_envio e WHERE e.id = a.target_id AND e.person_id = $3)`
+      : `EXISTS (SELECT 1 FROM fin_reimbursement_item i
+                   JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+                  WHERE i.id = a.target_id AND r.person_id = $3)`;
+  const linhas = await query<Record<string, unknown>>(
+    `SELECT a.storage_key, a.kind, a.uploaded_at,
+            coalesce(a.file_name, b.file_name, 'arquivo') AS nome,
+            coalesce(a.mime_type, b.content_type, 'application/octet-stream') AS tipo,
+            coalesce(a.file_bytes, b.bytes_originais, 0) AS bytes
+       FROM fin_payment_attachment a
+       LEFT JOIN fin_anexo_blob b ON b.storage_key = a.storage_key
+      WHERE a.target_table = $1 AND a.target_id = $2 AND ${dono}
+      ORDER BY a.uploaded_at`,
+    [alvo, alvoId, sessao.personId]
+  );
+  return linhas.map((l) => ({
+    chave: String(l.storage_key),
+    nome: String(l.nome),
+    tipo: String(l.tipo),
+    kind: String(l.kind),
+    bytes: Number(l.bytes ?? 0),
+    em: new Date(l.uploaded_at as string).toISOString()
+  }));
+}
+
 export async function catalogoDeClassificacao() {
   const [categorias, areas] = await Promise.all([
     query<{ code: string; nome: string }>(

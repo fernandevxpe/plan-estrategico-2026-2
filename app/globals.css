@@ -17009,8 +17009,12 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
    O GRÁFICO EMPILHADO — um componente, dois tamanhos
    =========================================================================== */
 .rec-plot { display: grid; gap: 10px; }
-.rec-plot-cabeca { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.rec-plot-cabeca h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.rec-plot-cabeca { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.rec-plot-cabeca h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; flex-shrink: 0; }
+.rec-plot-acoes {
+  display: flex; align-items: stretch; justify-content: flex-end; gap: 6px;
+  flex: 1; min-width: 0; max-width: 72%;
+}
 
 /* 44px porque é o alvo mínimo, e "abrir em tela cheia" não pode ser o
    ícone de 20px que este tipo de controle costuma virar. */
@@ -17177,7 +17181,7 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
   transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s ease;
 }
 .rec-mes[open] > summary::after { transform: rotate(-135deg) translate(-3px, -3px); }
-.rec-mes-total { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; }
+.rec-mes-total { margin-left: auto; font-size: 14px; font-variant-numeric: tabular-nums; font-weight: 700; }
 .rec-mes-n { color: var(--muted); font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
 
 .rec-linhas { list-style: none; margin: 0; padding: 0 0 8px; }
@@ -17324,8 +17328,6 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 /* O intervalo de dias no cabeçalho do mês: distingue "caiu tudo no dia 1º" de
    "caiu ao longo do mês", que é a primeira coisa que se quer saber ao cruzar
    com o extrato do banco. */
-.rec-mes-periodo { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 1px; }
-
 /* Os dois números no perfil: mesma fonte do cabeçalho de Recebíveis. A
    repetição é deliberada — é onde a pessoa procura "o que a empresa me paga"
    quando está olhando o próprio cadastro. */
@@ -17666,6 +17668,34 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 .rec-nat > :first-of-type:not(summary) { padding-top: 9px; }
 .rec-nat > :last-child { padding-bottom: 10px; }
 
+/* Dentro do mês: lista plana, sem card — o total do mês é o número principal. */
+.rec-naturezas-mes { gap: 0; margin: 0; padding: 2px 0 6px; }
+.rec-nat-linha {
+  display: grid; grid-template-columns: 9px minmax(0, 1fr) auto 14px;
+  align-items: center; gap: 10px;
+  min-height: 40px; padding: 4px 0;
+  list-style: none;
+}
+.rec-naturezas-mes .rec-nat-linha:not(summary) { cursor: default; }
+.rec-nat-mes > summary.rec-nat-linha { cursor: pointer; }
+.rec-nat-mes > summary.rec-nat-linha::-webkit-details-marker { display: none; }
+.rec-nat-mes[open] > summary.rec-nat-linha { margin-bottom: 2px; }
+.rec-naturezas-mes .rec-ponto {
+  display: block; width: 9px; height: 9px; flex: none;
+  justify-self: center; align-self: center;
+}
+.rec-naturezas-mes .rec-nat-nome { font-size: 13px; font-weight: 500; color: var(--ink); }
+.rec-naturezas-mes .rec-nat-nome small { font-size: 10.5px; margin-top: 1px; }
+.rec-naturezas-mes .rec-nat-valor {
+  font-size: 12.5px; font-weight: 600; color: var(--muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.rec-naturezas-mes .rec-seta { width: 14px; justify-self: end; }
+.rec-nat-mes > :not(summary) { padding: 0 14px 6px 20px; }
+.rec-nat-mes .rec-reemb-itens { padding-bottom: 4px; }
+.rec-nat-mes .rec-reemb-valor { font-size: 12px; font-weight: 600; color: var(--muted); }
+.rec-nat-mes .rec-nat-nota { margin: 0 0 6px; padding: 0 14px 0 20px; font-size: 11.5px; }
+
 .rec-nat-nota { margin: 0 0 6px; font-size: 12px; line-height: 1.55; color: var(--muted); }
 .rec-nat-nota strong { color: var(--ink); }
 .rec-nat-nota small { display: block; margin-top: 4px; font-size: 11px; }
@@ -17683,6 +17713,10 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
   width: 100%; min-height: 44px; margin-top: 8px;
   border: 1px dashed var(--line); border-radius: 10px;
   background: none; color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.rec-previsao-botao.compacto {
+  width: auto; flex: 1 1 0; min-width: 0; margin-top: 0;
+  padding: 6px 10px; font-size: 11px; line-height: 1.25; text-align: center;
 }
 .rec-previsao-botao.ativo { border-style: solid; color: var(--ink); background: var(--surface-2); }
 
@@ -17702,7 +17736,7 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 .rec-legenda-filtro li { display: block; padding: 0; width: 100%; min-height: 0; }
 .rec-legenda-filtro button {
   display: grid; grid-template-columns: 9px minmax(0, 1fr) auto auto;
-  align-items: center; gap: 9px; width: 100%; min-height: 44px;
+  align-items: center; gap: 9px; width: 100%; min-height: 36px;
   padding: 0 4px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-align: left;
 }
 .rec-legenda-filtro button[aria-pressed="false"] { color: var(--muted); }
@@ -17726,6 +17760,106 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 .rec-prev-partes { display: flex; gap: 10px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .rec-prev-partes span { display: inline-flex; align-items: center; gap: 5px; }
 .rec-prev-meses b { font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.rec-prev-cats { margin-top: 4px; gap: 0; }
+
+/* Previsões — respiro acima e abaixo para separar do gráfico e do histórico. */
+.rec-secao-previsoes {
+  margin-top: 24px;
+  margin-bottom: 32px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  gap: 12px;
+}
+.rec-secao-cabeca {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 58px; margin-bottom: 0; padding: 15px 14px;
+  border-radius: 10px; background: var(--surface-2);
+  list-style: none; cursor: pointer;
+}
+.rec-secao-dobravel > summary.rec-secao-cabeca::-webkit-details-marker { display: none; }
+.rec-secao-dobravel[open] > summary.rec-secao-cabeca { border-radius: 10px 10px 0 0; margin-bottom: 0; }
+.rec-secao-dobravel[open] > summary.rec-secao-cabeca .rec-seta { transform: rotate(180deg); }
+.rec-secao-dobravel:not([open]) > summary.rec-secao-cabeca { margin-bottom: 0; }
+.rec-secao-cabeca-direita {
+  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.rec-secao-cabeca .rec-seta { color: var(--muted); flex-shrink: 0; transition: transform .16s ease; }
+@media (prefers-reduced-motion: reduce) { .rec-secao-cabeca .rec-seta { transition: none; } }
+.rec-secao-corpo {
+  padding: 4px 0 2px;
+  border: 1px solid var(--line); border-top: 0;
+  border-radius: 0 0 10px 10px; background: var(--surface);
+}
+.rec-secao-dobravel:not([open]) > summary.rec-secao-cabeca { border-radius: 10px; }
+.rec-secao-corpo .rec-mes:first-child { border-top: 0; }
+.rec-secao-corpo .rec-prev-cats { margin-top: 0; padding: 4px 12px 8px; }
+
+/* Histórico — mesmo vocabulário visual das Previsões. */
+.rec-secao-corpo .rec-mes { border-bottom: 1px solid var(--line); }
+.rec-secao-corpo .rec-mes:last-child { border-bottom: 0; }
+/* Especificidade acima de `.rec-mes > summary { padding: 6px 0 }`, que zerava o recuo horizontal. */
+.rec-mes > summary.rec-mes-cabeca {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 44px; padding: 8px 14px 8px 20px;
+  cursor: pointer; list-style: none;
+}
+.rec-mes-cabeca::-webkit-details-marker { display: none; }
+.rec-mes > summary.rec-mes-cabeca::after { display: none; content: none; }
+.rec-mes-titulo {
+  flex: 1; min-width: 0;
+  font-size: 13px; font-weight: 600; line-height: 1.15; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rec-mes-cabeca-direita {
+  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.rec-mes-total-bloco {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  font-variant-numeric: tabular-nums; line-height: 1.15;
+}
+.rec-mes-total-bloco strong { font-size: 13px; font-weight: 750; color: var(--ink); }
+.rec-mes-total-bloco small { font-size: 10px; color: var(--muted); font-weight: 500; }
+.rec-mes-cabeca .rec-seta { color: var(--muted); flex-shrink: 0; transition: transform .16s ease; }
+.rec-mes[open] > summary.rec-mes-cabeca .rec-seta { transform: rotate(180deg); }
+.rec-secao-corpo .rec-naturezas-mes { padding: 0 14px 6px 20px; }
+.rec-secao-corpo .rec-nat-linha { padding: 4px 0; min-height: 36px; }
+.rec-secao-cabeca h2 {
+  margin: 0; flex: 1; min-width: 0;
+  font-size: 14px; font-weight: 650; line-height: 1.15; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rec-secao-total {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  flex-shrink: 0; font-variant-numeric: tabular-nums; line-height: 1.15;
+}
+.rec-secao-total strong { font-size: 14px; font-weight: 750; color: var(--ink); }
+.rec-secao-total small { font-size: 10px; color: var(--muted); font-weight: 500; }
+.rec-secao-previsoes .rec-prev-cats { margin-top: 2px; }
+
+.rec-prev-parcelas { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
+
+.rec-prev-cats .rec-ponto {
+  display: block; width: 9px; height: 9px; flex: none;
+  justify-self: center; align-self: center;
+}
+.rec-prev-cats .rec-nat-nome { font-size: 13px; font-weight: 500; color: var(--ink); }
+.rec-prev-cats .rec-nat-nome small { font-size: 10.5px; margin-top: 1px; }
+.rec-prev-cats .rec-nat-valor {
+  font-size: 12.5px; font-weight: 600; color: var(--muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.rec-prev-cats .rec-nat-linha { min-height: 36px; padding: 4px 0; }
+.rec-nat-prev > summary.rec-nat-linha { cursor: pointer; }
+.rec-nat-prev > summary.rec-nat-linha::-webkit-details-marker { display: none; }
+.rec-nat-prev[open] > summary.rec-nat-linha { margin-bottom: 2px; }
+.rec-nat-prev > :not(summary) { padding: 0 0 6px 19px; }
+.rec-aberto-lista-aninhada { padding: 2px 12px 10px; }
+.rec-prev-meses-aninhada li {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding-left: 12px; padding-right: 12px;
+}
+.rec-prev-meses-aninhada li:last-child { border-bottom: 0; }
 
 /* A linha dos Pix é irmã das naturezas, mas não é uma natureza: ponto neutro,
    contorno em vez de preenchimento. */

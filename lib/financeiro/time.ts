@@ -1474,12 +1474,10 @@ export type MeusRecebiveis = {
    * Reembolso: as parcelas que faltam de cada série, distribuídas nos meses à
    * frente — a série sabe quantas faltam e de quanto é cada uma.
    * Salário: a base contratada, que se repete enquanto a vigência valer.
-   *
-   * Não projeto pró-labore: ele varia de R$ 0 a R$ 6.023 nos oito meses do
-   * Fernando e não há contrato que o fixe. Prever o que não tem regra é
-   * inventar, e a tela ficaria dizendo um número que ninguém prometeu.
+   * Pró-labore: mediana dos meses em que já caiu — não há contrato fixo, mas
+   * é melhor que omitir ou chutar um valor redondo.
    */
-  previsao: { mes: string; salarioCents: number; reembolsoCents: number }[];
+  previsao: { mes: string; salarioCents: number; prolaboreCents: number; reembolsoCents: number }[];
   /** O reembolso de cada competência, item a item — o que compõe a banda. */
   reembolsoPorCompetencia: {
     competencia: string;
@@ -1705,13 +1703,24 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
       : null,
     previsao: (() => {
       const baseCents = base[0] ? Number(base[0].valor_cents) : 0;
+      const prolaboresHistorico = porMes
+        .map((m) => m.porNatureza.prolabore ?? 0)
+        .filter((v) => v > 0)
+        .sort((a, b) => a - b);
+      const meioProlabore = Math.floor(prolaboresHistorico.length / 2);
+      const prolaboreCents =
+        prolaboresHistorico.length === 0
+          ? 0
+          : prolaboresHistorico.length % 2
+            ? prolaboresHistorico[meioProlabore]
+            : Math.round((prolaboresHistorico[meioProlabore - 1] + prolaboresHistorico[meioProlabore]) / 2);
       // Quantos meses à frente vale projetar: até a última parcela em aberto,
       // com teto de 12. Sem teto, uma série de 24 parcelas esticaria a tela
       // por dois anos de meses idênticos.
       const maiorRestante = saldo.reduce((n, r) => Math.max(n, Number(r.parcelas_restantes ?? 0)), 0);
-      const quantos = Math.min(12, Math.max(baseCents > 0 ? 3 : 0, maiorRestante));
+      const quantos = Math.min(12, Math.max(baseCents > 0 || prolaboreCents > 0 ? 3 : 0, maiorRestante));
       const hoje = new Date();
-      const out: { mes: string; salarioCents: number; reembolsoCents: number }[] = [];
+      const out: { mes: string; salarioCents: number; prolaboreCents: number; reembolsoCents: number }[] = [];
       for (let k = 1; k <= quantos; k += 1) {
         const d = new Date(hoje.getFullYear(), hoje.getMonth() + k, 1);
         const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -1719,7 +1728,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
           (t, r) => t + (Number(r.parcelas_restantes ?? 0) >= k ? Number(r.valor_parcela_cents ?? 0) : 0),
           0
         );
-        out.push({ mes, salarioCents: baseCents, reembolsoCents: reembolso });
+        out.push({ mes, salarioCents: baseCents, prolaboreCents, reembolsoCents: reembolso });
       }
       return out;
     })(),

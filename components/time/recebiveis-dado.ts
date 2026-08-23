@@ -17,7 +17,7 @@ export type Recebiveis = {
   mesAtualCents: number;
   medianaRecorrenteCents: number;
   salarioBase: { valorCents: number; vigenteDesde: string; nota: string | null } | null;
-  previsao: { mes: string; salarioCents: number; reembolsoCents: number }[];
+  previsao: { mes: string; salarioCents: number; prolaboreCents: number; reembolsoCents: number }[];
   reembolsoPorCompetencia: {
     competencia: string;
     totalCents: number;
@@ -109,6 +109,11 @@ export function plural(n: number, um: string, muitos: string) {
 }
 
 export const nomeMes = (m: string) => `${MES_LONGO[Number(m.slice(5, 7)) - 1]} de ${m.slice(0, 4)}`;
+/** Título de mês — primeira letra maiúscula ("Agosto de 2026"). */
+export const nomeMesTitulo = (m: string) => {
+  const s = nomeMes(m);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
 export const mesCurto = (m: string) => MES_LONGO[Number(m.slice(5, 7)) - 1].slice(0, 3);
 
 /**

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { brl } from "@/components/financeiro/Certeza";
-import { CLASSE, ROTULO, mesCurto, nomeMes, plural, useRecebiveis } from "@/components/time/recebiveis-dado";
+import { CLASSE, ROTULO, mesCurto, nomeMes, nomeMesTitulo, plural, useRecebiveis } from "@/components/time/recebiveis-dado";
 
 /**
  * O que a casa me paga.
@@ -97,7 +97,6 @@ export function Recebiveis() {
   const { dado, erro, carregando } = useRecebiveis();
   const [ocultas, setOcultas] = useState<Set<string>>(new Set());
   const [mostrarPrevisao, setMostrarPrevisao] = useState(false);
-  const [aberto, setAberto] = useState<string | null>(null);
 
   if (carregando) return <div className="time-aviso">carregando…</div>;
   if (erro) return <p className="time-erro">{erro}</p>;
@@ -154,15 +153,14 @@ export function Recebiveis() {
    * Pedido: "tbm poder mostrar a previsão dos outros meses". Num gráfico à
    * parte a comparação exige memória; na mesma régua ela é visual.
    *
-   * O que se projeta tem contrato por trás: o salário base e as parcelas de
-   * reembolso que faltam (a série sabe quantas e de quanto). Pró-labore não
-   * entra — ele foi de R$ 0 a R$ 6.023 nos oito meses do Fernando, e projetar
-   * o que não tem regra é escrever um número que ninguém prometeu.
+   * O que se projeta tem contrato por trás: salário base, mediana de pró-labore
+   * e as parcelas de reembolso que faltam.
    */
   const mesesPrevistos = mostrarPrevisao
     ? (dado.previsao ?? []).map((p) => {
         const por = soNatureza({
           ...(p.salarioCents > 0 ? { salario: p.salarioCents } : {}),
+          ...(p.prolaboreCents > 0 ? { prolabore: p.prolaboreCents } : {}),
           ...(p.reembolsoCents > 0 ? { reembolso: p.reembolsoCents } : {})
         });
         return { mes: p.mes, porNatureza: por, totalCents: Object.values(por).reduce((a, b) => a + b, 0), previsto: true };
@@ -172,9 +170,6 @@ export function Recebiveis() {
   const meses = mesesBase;
   const colunas = [...mesesBase, ...mesesPrevistos];
   const teto = Math.max(...colunas.map((m) => m.totalCents), 1);
-  const valores = mesesBase.map((m) => m.totalCents);
-  const menor = Math.min(...valores);
-  const maior = Math.max(...valores);
 
   const descricaoGrafico = meses
     .map(
@@ -186,6 +181,13 @@ export function Recebiveis() {
     .join("; ");
 
   const porMesDesc = [...dado.porMes].reverse();
+  const previsaoMeses = dado.previsao ?? [];
+  const proximoMes = previsaoMeses[0];
+  const totalReembolsoPrevisto = dado.emAbertoCents;
+  const totalReembolsoParcelas = previsaoMeses.reduce((a, p) => a + (p.reembolsoCents ?? 0), 0);
+  const remProximoMes = (proximoMes?.salarioCents ?? 0) + (proximoMes?.prolaboreCents ?? 0);
+  const totalPrevisto = remProximoMes + totalReembolsoPrevisto;
+  const temPrevisoes = totalPrevisto > 0 || previsaoMeses.length > 0;
 
   /*
    * A LEGENDA SOMA OS MESES QUE O GRÁFICO MOSTRA — e não somava.
@@ -263,11 +265,25 @@ export function Recebiveis() {
       <section className="rec-plot rec-plot-mini">
         <div className="rec-plot-cabeca">
           <h2>Mês a mês</h2>
-          {dado.porMes.length > 6 ? (
-            <Link className="rec-plot-abrir" href="/time/recebiveis/grafico">
-              Ver tudo
-            </Link>
-          ) : null}
+          <div className="rec-plot-acoes">
+            {previsaoMeses.length > 0 ? (
+              <button
+                type="button"
+                className={mostrarPrevisao ? "rec-previsao-botao compacto ativo" : "rec-previsao-botao compacto"}
+                aria-pressed={mostrarPrevisao}
+                onClick={() => setMostrarPrevisao((v) => !v)}
+              >
+                {mostrarPrevisao
+                  ? "Escondendo o que ainda vai cair"
+                  : `Mostrar o que ainda vai cair (${plural(previsaoMeses.length, "mês", "meses")})`}
+              </button>
+            ) : null}
+            {dado.porMes.length > 6 ? (
+              <Link className="rec-plot-abrir" href="/time/recebiveis/grafico">
+                Ver tudo
+              </Link>
+            ) : null}
+          </div>
         </div>
         <div className="rec-plot-trilho">
           <div className="rec-grade" role="img" aria-label={`Recebido mês a mês. ${descricaoGrafico}`}>
@@ -292,15 +308,6 @@ export function Recebiveis() {
             ))}
           </div>
         </div>
-        {/* A faixa em texto responde "está quebrado?" quando todas as colunas
-            têm a mesma altura — e dá o número exato sem competir com a faixa
-            de cima. */}
-        <p className="rec-plot-nota">
-          {menor === maior
-            ? `O mesmo valor ${meses.length === 1 ? "no único mês" : `nos ${meses.length} meses`}: ${brl(maior)}.`
-            : `${meses.length === 1 ? "No único mês" : `Nos ${meses.length} meses`}: de ${brl(menor)} a ${brl(maior)}.`}
-          {dado.porMes.length > meses.length ? ` Total de ${plural(dado.porMes.length, "mês", "meses")}: ${brl(dado.totalCents)}.` : ""}
-        </p>
         {/* Marcado não é só cor: o ponto fica cheio e o desmarcado fica
             vazado. Quem não distingue as duas cores ainda vê a diferença de
             forma — mesmo motivo de `aria-pressed` estar em cada botão. */}
@@ -320,143 +327,125 @@ export function Recebiveis() {
             );
           })}
         </ul>
-        {(dado.previsao ?? []).length > 0 ? (
-          <button
-            type="button"
-            className={mostrarPrevisao ? "rec-previsao-botao ativo" : "rec-previsao-botao"}
-            aria-pressed={mostrarPrevisao}
-            onClick={() => setMostrarPrevisao((v) => !v)}
-          >
-            {mostrarPrevisao
-              ? `Escondendo o que ainda vai cair`
-              : `Mostrar o que ainda vai cair (${plural(dado.previsao.length, "mês", "meses")})`}
-          </button>
-        ) : null}
       </section>
 
-      {dado.emAbertoCents > 0 ? (
-        <section className="time-secao" id="aberto">
-          {/*
-            ESTA SEÇÃO REPETIA O AZULEJO DO TOPO, PALAVRA POR PALAVRA.
-            
-            Mesmo número, mesmo rótulo, mesma nota — 350px abaixo. E o azulejo
-            é um LINK para cá: a pessoa tocava esperando "quais reembolsos" e
-            recebia "R$ 12.119,51" de novo, maior. Um link que não leva a
-            informação nova é pior que nenhum link, porque gasta o toque.
-            
-            Agora a seção responde a pergunta que o azulejo levanta: de onde
-            vem o saldo, série a série, e quantas parcelas ainda faltam em cada
-            uma. O total continua no topo — aqui ele é o rodapé da conta, não o
-            título.
-          */}
-          <h2>Previsões</h2>
-          <h3 className="rec-prev-sub">Reembolso — o que já está aprovado e ainda não caiu</h3>
-          <ul className="rec-aberto-lista">
-            {dado.emAberto.map((a) => (
-              <li key={a.slug}>
-                <span className="rec-aberto-nome">
-                  {/*
-                    A descrição da planilha JÁ TERMINA na fração — "Ar Cond
-                    8/12", "Notebooks part 2 - 13/24", "notebook estag 2 -
-                    3/12". Conferido nas 13 séries em aberto da base: todas.
-                    Renderizar isso ao lado de "parcela 13 de 24" dizia a mesma
-                    coisa duas vezes na mesma linha, e a versão da planilha é a
-                    pior das duas (não diz que é parcela, e às vezes vem com
-                    hífen solto). Tiro a fração do fim e deixo o texto explicar
-                    O QUE é; a contagem fica na linha de baixo, escrita por
-                    extenso.
-                  */}
-                  {nomeDoItem(a.descricao, a.slug)}
-                  <span className="rec-aberto-parc">
-                    {a.parcelasTotal > 1
-                      ? `parcela ${a.parcela} de ${a.parcelasTotal} · faltam ${plural(a.parcelasRestantes, "parcela", "parcelas")} de ${brl(a.valorParcelaCents)}`
-                      : `${plural(a.parcelasRestantes, "parcela", "parcelas")} de ${brl(a.valorParcelaCents)}`}
+      {temPrevisoes ? (
+        <section className="time-secao rec-secao-previsoes" id="aberto">
+          <details className="rec-secao-dobravel" open>
+            <summary className="rec-secao-cabeca">
+              <h2>Previsões</h2>
+              <span className="rec-secao-cabeca-direita">
+                {totalPrevisto > 0 ? (
+                  <span className="rec-secao-total">
+                    <strong>{brl(totalPrevisto)}</strong>
+                    <small>previsto</small>
                   </span>
-                </span>
-                <span className="rec-aberto-valor">{brl(a.saldoCents)}</span>
+                ) : null}
+                <IconeSeta />
+              </span>
+            </summary>
+            <div className="rec-secao-corpo">
+          <ul className="rec-naturezas rec-prev-cats">
+            {proximoMes && proximoMes.salarioCents > 0 ? (
+              <li>
+                <div className="rec-nat-linha">
+                  <i className={`rec-ponto ${CLASSE.salario}`} aria-hidden />
+                  <span className="rec-nat-nome">
+                    Salário
+                    <small>{nomeMesTitulo(proximoMes.mes)}</small>
+                  </span>
+                  <b className="rec-nat-valor">{brl(proximoMes.salarioCents)}</b>
+                </div>
               </li>
-            ))}
+            ) : null}
+            {proximoMes && proximoMes.prolaboreCents > 0 ? (
+              <li>
+                <div className="rec-nat-linha">
+                  <i className={`rec-ponto ${CLASSE.prolabore}`} aria-hidden />
+                  <span className="rec-nat-nome">
+                    Pró-labore
+                    <small>{nomeMesTitulo(proximoMes.mes)}</small>
+                  </span>
+                  <b className="rec-nat-valor">{brl(proximoMes.prolaboreCents)}</b>
+                </div>
+              </li>
+            ) : null}
+            {totalReembolsoPrevisto > 0 ? (
+              <li>
+                <details className="rec-nat-prev">
+                  <summary className="rec-nat-linha">
+                    <i className={`rec-ponto ${CLASSE.reembolso}`} aria-hidden />
+                    <span className="rec-nat-nome">
+                      Reembolso
+                      <small>aprovado, ainda não pago</small>
+                    </span>
+                    <b className="rec-nat-valor">{brl(totalReembolsoPrevisto)}</b>
+                    <IconeSeta />
+                  </summary>
+                  <ul className="rec-aberto-lista rec-aberto-lista-aninhada">
+                    {dado.emAberto.map((a) => (
+                      <li key={a.slug}>
+                        <span className="rec-aberto-nome">
+                          {nomeDoItem(a.descricao, a.slug)}
+                          <span className="rec-aberto-parc">
+                            {a.parcelasTotal > 1
+                              ? `parcela ${a.parcela} de ${a.parcelasTotal} · faltam ${plural(a.parcelasRestantes, "parcela", "parcelas")} de ${brl(a.valorParcelaCents)}`
+                              : `${plural(a.parcelasRestantes, "parcela", "parcelas")} de ${brl(a.valorParcelaCents)}`}
+                          </span>
+                        </span>
+                        <span className="rec-aberto-valor">{brl(a.saldoCents)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {totalReembolsoParcelas > 0 ? (
+                    <ul className="rec-prev-meses rec-prev-meses-aninhada rec-prev-parcelas">
+                      {previsaoMeses
+                        .filter((p) => p.reembolsoCents > 0)
+                        .map((p) => (
+                          <li key={p.mes}>
+                            <span className="rec-prev-mes">{nomeMesTitulo(p.mes)}</span>
+                            <b>{brl(p.reembolsoCents)}</b>
+                          </li>
+                        ))}
+                    </ul>
+                  ) : null}
+                </details>
+              </li>
+            ) : null}
           </ul>
-          <p className="rec-aberto-rodape">
-            <strong>{brl(dado.emAbertoCents)}</strong>
-            <span>
-              em {plural(dado.emAberto.length, "série", "séries")} · aprovado, ainda não pago
-            </span>
-          </p>
-
-          {/*
-            A PREVISÃO DE SALÁRIO fica ao lado da de reembolso porque a pergunta
-            é a mesma — "com o que eu conto daqui para frente" — e as duas têm
-            contrato por trás. O pró-labore não entra: ele variou de R$ 0 a
-            R$ 6.023 nos oito meses do Fernando, e não há regra que o fixe.
-            Prever o que não tem regra é escrever um número que ninguém
-            prometeu, e num app de dinheiro isso é pior que o silêncio.
-          */}
-          {dado.salarioBase ? (
-            <>
-              <h3 className="rec-prev-sub">Salário — o que se repete todo mês</h3>
-              <p className="rec-prev-salario">
-                <strong>{brl(dado.salarioBase.valorCents)}</strong>
-                <span>por mês, base contratada desde {nomeMes(dado.salarioBase.vigenteDesde.slice(0, 7))}</span>
-                {dado.salarioBase.nota ? <small>{dado.salarioBase.nota}</small> : null}
-              </p>
-            </>
-          ) : null}
-
-          {(dado.previsao ?? []).length > 0 ? (
-            <>
-              <h3 className="rec-prev-sub">Mês a mês, o que está previsto</h3>
-              <ul className="rec-prev-meses">
-                {dado.previsao.map((p) => (
-                  <li key={p.mes}>
-                    <span className="rec-prev-mes">
-                      {nomeMes(p.mes).charAt(0).toUpperCase() + nomeMes(p.mes).slice(1)}
-                    </span>
-                    <span className="rec-prev-partes">
-                      {p.salarioCents > 0 ? (
-                        <span>
-                          <i className={`rec-ponto ${CLASSE.salario}`} />
-                          {brl(p.salarioCents)}
-                        </span>
-                      ) : null}
-                      {p.reembolsoCents > 0 ? (
-                        <span>
-                          <i className={`rec-ponto ${CLASSE.reembolso}`} />
-                          {brl(p.reembolsoCents)}
-                        </span>
-                      ) : null}
-                    </span>
-                    <b>{brl(p.salarioCents + p.reembolsoCents)}</b>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
+            </div>
+          </details>
         </section>
       ) : null}
 
       <section className="time-secao">
-        <h2>Cada pagamento</h2>
+        <details className="rec-secao-dobravel" open>
+          <summary className="rec-secao-cabeca">
+            <h2>Histórico de Recebíveis</h2>
+            <span className="rec-secao-cabeca-direita">
+              <span className="rec-secao-total">
+                <strong>{brl(dado.totalCents)}</strong>
+                <small>acumulado</small>
+              </span>
+              <IconeSeta />
+            </span>
+          </summary>
+          <div className="rec-secao-corpo">
         {porMesDesc.map((m, i) => {
           const doMes = dado.linhas.filter((l) => l.mes === m.mes);
           return (
             // Só o mês mais recente abre. Todos abertos dariam 1.686px de
             // rolagem antes do primeiro mês antigo.
             <details key={m.mes} className="rec-mes" open={i === 0}>
-              <summary>
-                <span>
-                  {nomeMes(m.mes)}
-                  {/* Quando os pagamentos do mês não caíram todos no mesmo dia,
-                      o intervalo aparece fechado: é a diferença entre "recebi
-                      dia 1º" e "recebi ao longo do mês". */}
-                  {doMes.length > 1 && doMes[0].data !== doMes[doMes.length - 1].data ? (
-                    <small className="rec-mes-periodo">
-                      {doMes[doMes.length - 1].data.slice(8, 10)}–{doMes[0].data.slice(8, 10)}
-                    </small>
-                  ) : null}
+              <summary className="rec-mes-cabeca">
+                <span className="rec-mes-titulo">{nomeMesTitulo(m.mes)}</span>
+                <span className="rec-mes-cabeca-direita">
+                  <span className="rec-mes-total-bloco">
+                    <strong>{brl(m.totalCents)}</strong>
+                    <small>{plural(doMes.length, "Pix", "Pix")}</small>
+                  </span>
+                  <IconeSeta />
                 </span>
-                <span className="rec-mes-total">{brl(m.totalCents)}</span>
-                <span className="rec-mes-n">{plural(doMes.length, "Pix", "Pix")}</span>
               </summary>
 
               {/*
@@ -491,7 +480,7 @@ export function Recebiveis() {
                 29% não casa nenhum. Dizer "este Pix é o pró-labore" seria certo
                 em menos da metade das vezes.
               */}
-              <ul className="rec-naturezas">
+              <ul className="rec-naturezas rec-naturezas-mes">
                 {Object.entries(m.porNatureza)
                   .sort((a, b) => b[1] - a[1])
                   .map(([nat, v]) => {
@@ -499,108 +488,60 @@ export function Recebiveis() {
                       nat === "reembolso"
                         ? (dado.reembolsoPorCompetencia ?? []).find((c) => c.competencia === competenciaDe(m.mes))
                         : null;
+                    const temDetalhe =
+                      Boolean(reemb) ||
+                      (nat === "salario" && dado.salarioBase !== null && v < dado.salarioBase.valorCents);
+                    const cabeca = (
+                      <>
+                        <i className={`rec-ponto ${CLASSE[nat] ?? "nat-encargo"}`} aria-hidden />
+                        <span className="rec-nat-nome">
+                          {ROTULO[nat] ?? nat}
+                          {reemb ? <small>competência {nomeMesTitulo(reemb.competencia)}</small> : null}
+                        </span>
+                        <b className="rec-nat-valor">{brl(v)}</b>
+                        {temDetalhe ? <IconeSeta /> : null}
+                      </>
+                    );
                     return (
                       <li key={nat}>
-                        <details className="rec-nat">
-                          <summary>
-                            <i className={`rec-ponto ${CLASSE[nat] ?? "nat-encargo"}`} />
-                            <span className="rec-nat-nome">
-                              {ROTULO[nat] ?? nat}
-                              {reemb ? (
-                                <small>competência {nomeMes(reemb.competencia)}</small>
-                              ) : null}
-                            </span>
-                            <b>{brl(v)}</b>
-                            <IconeSeta />
-                          </summary>
-
-                          {nat === "salario" && dado.salarioBase ? (
-                            <p className="rec-nat-nota">
-                              Base contratada de <strong>{brl(dado.salarioBase.valorCents)}</strong> por mês, desde{" "}
-                              {nomeMes(dado.salarioBase.vigenteDesde.slice(0, 7))}.
-                              {v < dado.salarioBase.valorCents ? (
-                                <> Neste mês caiu menos que a base, então tudo que entrou entrou como salário.</>
-                              ) : null}
-                              {dado.salarioBase.nota ? <small>{dado.salarioBase.nota}</small> : null}
-                            </p>
-                          ) : null}
-
-                          {reemb ? (
-                            <ul className="rec-reemb-itens">
-                              {reemb.itens.map((it, k) => (
-                                <li key={`${it.descricao}-${k}`}>
-                                  <span className="rec-reemb-nome">
-                                    {nomeDoItem(it.descricao, it.descricao)}
-                                    {it.parcelasTotal && it.parcelasTotal > 1 ? (
-                                      <span className="rec-reemb-parc">
-                                        parcela {it.parcela} de {it.parcelasTotal}
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                  <span className="rec-reemb-valor">{brl(it.valorCents)}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-
-                          {nat === "prolabore" ? (
-                            <p className="rec-nat-nota">
-                              O que veio além do salário base neste mês. O valor é do mês inteiro: o app não sabe qual
-                              Pix foi qual, e não inventa.
-                            </p>
-                          ) : null}
-
-                        </details>
+                        {temDetalhe ? (
+                          <details className="rec-nat-mes">
+                            <summary className="rec-nat-linha">{cabeca}</summary>
+                            {nat === "salario" && dado.salarioBase && v < dado.salarioBase.valorCents ? (
+                              <p className="rec-nat-nota">
+                                Neste mês caiu menos que a base contratada de {brl(dado.salarioBase.valorCents)}.
+                              </p>
+                            ) : null}
+                            {reemb ? (
+                              <ul className="rec-reemb-itens">
+                                {reemb.itens.map((it, k) => (
+                                  <li key={`${it.descricao}-${k}`}>
+                                    <span className="rec-reemb-nome">
+                                      {nomeDoItem(it.descricao, it.descricao)}
+                                      {it.parcelasTotal && it.parcelasTotal > 1 ? (
+                                        <span className="rec-reemb-parc">
+                                          parcela {it.parcela} de {it.parcelasTotal}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                    <span className="rec-reemb-valor">{brl(it.valorCents)}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </details>
+                        ) : (
+                          <div className="rec-nat-linha">{cabeca}</div>
+                        )}
                       </li>
                     );
                   })}
-
-                {/*
-                  OS PIX SÃO DO MÊS, NÃO DE UMA NATUREZA.
-
-                  Estiveram dentro de "Pró-labore", e o print do Fernando
-                  mostrou o custo: os três Pix de agosto listados ali incluem o
-                  de R$ 1.281,26, que é o REEMBOLSO. Sob aquele título, os três
-                  liam como se fossem todos pró-labore.
-
-                  Como linha irmã das naturezas a leitura fica certa: as
-                  naturezas dizem QUANTO de cada coisa, esta diz O QUE CAIU na
-                  conta. As duas somam o mesmo e nenhuma finge saber o que não
-                  sabe.
-                */}
-                <li>
-                  <details className="rec-nat rec-nat-pix">
-                    <summary>
-                      <i className="rec-ponto rec-ponto-neutro" />
-                      <span className="rec-nat-nome">
-                        {plural(doMes.length, "Pix recebido", "Pix recebidos")}
-                        <small>o que caiu na conta, para conferir no extrato</small>
-                      </span>
-                      <b>{brl(m.totalCents)}</b>
-                      <IconeSeta />
-                    </summary>
-                    <ul className="rec-linhas rec-linhas-sem-ponto">
-                      {doMes.map((l, k) => (
-                        <li key={`${l.data}-${k}`}>
-                          <span className="rec-linha-dia">
-                            {l.data.slice(8, 10)}/{l.data.slice(5, 7)}
-                          </span>
-                          <span className="rec-linha-nat">
-                            Pix
-                            {dado.linhas.some((x) => x.conta !== l.conta) ? (
-                              <span className="rec-linha-conta">{l.conta}</span>
-                            ) : null}
-                          </span>
-                          <span className="rec-linha-valor">{brl(l.valorCents)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                </li>
               </ul>
             </details>
           );
         })}
+          </div>
+        </details>
       </section>
     </div>
   );

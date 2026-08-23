@@ -4020,35 +4020,40 @@ function TelaItemGasto({
 
   return (
     <form className="time-form time-form-registro time-tela-padrao item-gasto" onSubmit={(e) => void salvar(e)}>
-      <header className="time-form-cabeca">
+      <header className="time-form-cabeca item-gasto-cabeca">
         <Link href={voltar} className="time-link item-gasto-voltar">
           ← Histórico
         </Link>
-        <h1>Item de reembolso</h1>
-        <p>
-          Mesmo cadastro do pedido de reembolso — nome, categoria e parcelas ficam ligados ao que você vê no histórico.
-          {fonte === "planilha" ? " Este item veio da planilha; o app vai substituir aos poucos." : null}
-        </p>
-        <span className={`envios-status envios-status-${statusParte}`}>{STATUS_EXTRATO_ROTULO[statusParte]}</span>
+        <div className="item-gasto-titulo">
+          <h1>Item de reembolso</h1>
+          <span className={`envios-status envios-status-${statusParte}`}>{STATUS_EXTRATO_ROTULO[statusParte]}</span>
+        </div>
+        <p>Detalhes sobre o reembolso</p>
       </header>
+
+      <div className="item-gasto-resumo">
+        <strong className="item-gasto-valor">{brl(valorCents)}</strong>
+        <div className="item-gasto-meta">
+          {[
+            parcelasTotal && parcelasTotal >= 2 ? `parcela ${parcela ?? "?"}/${parcelasTotal}` : null,
+            data ? data.split("-").reverse().join("/") : null,
+            envio?.code ?? null,
+            fonte === "planilha" ? "planilha" : null
+          ]
+            .filter(Boolean)
+            .map((texto, i, arr) => (
+              <span key={`${texto}-${i}`}>
+                {texto}
+                {i < arr.length - 1 ? <span className="item-gasto-meta-sep" aria-hidden> · </span> : null}
+              </span>
+            ))}
+        </div>
+      </div>
 
       <label className="campo">
         <span className="campo-rotulo campo-rotulo-destaque">O que é</span>
         <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="ex.: ar-condicionado sala reunião" required />
       </label>
-
-      <div className="item-gasto-resumo">
-        <span>
-          <strong>{brl(valorCents)}</strong>
-          {parcelasTotal && parcelasTotal >= 2 ? ` · parcela ${parcela ?? "?"}/${parcelasTotal}` : null}
-        </span>
-        {data ? <span className="time-sub">{data.split("-").reverse().join("/")}</span> : null}
-        {envio ? (
-          <span className="time-sub">
-            envio {envio.code}
-          </span>
-        ) : null}
-      </div>
 
       <section className="time-form-classificar">
         {fonte === "app" ? (
@@ -4091,10 +4096,35 @@ function TelaItemGasto({
         </label>
       ) : null}
 
-      <div className="campo">
+      <div className="campo item-gasto-comprovante">
         <span className="campo-rotulo">Comprovante</span>
         {temComprovante ? (
-          <p className="time-sub">Comprovante anexado.</p>
+          <div className="anexo-ficha fiscal item-gasto-anexo-ok">
+            <strong>Comprovante anexado</strong>
+            <small>Arquivo ligado a este item</small>
+            {fonte === "app" ? (
+              <>
+                <input
+                  ref={arquivoRef}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void enviarComprovante(f);
+                    e.target.value = "";
+                  }}
+                />
+                <button type="button" disabled={enviandoAnexo} onClick={() => arquivoRef.current?.click()}>
+                  {enviandoAnexo ? "enviando…" : "Trocar"}
+                </button>
+              </>
+            ) : (
+              <span className="item-gasto-anexo-selo" aria-hidden>
+                ✓
+              </span>
+            )}
+          </div>
         ) : fonte === "app" ? (
           <>
             <input
@@ -4108,20 +4138,34 @@ function TelaItemGasto({
                 e.target.value = "";
               }}
             />
-            <button type="button" className="envios-acao-roxo" disabled={enviandoAnexo} onClick={() => arquivoRef.current?.click()}>
-              {enviandoAnexo ? "enviando…" : "Anexar comprovante"}
+            <button
+              type="button"
+              className="item-gasto-anexo-zona"
+              disabled={enviandoAnexo}
+              onClick={() => arquivoRef.current?.click()}
+            >
+              <span className="item-gasto-anexo-icone" aria-hidden>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M12 16V7" strokeLinecap="round" />
+                  <path d="m8.5 10.5 3.5-3.5 3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M5 17.5v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1" strokeLinecap="round" />
+                </svg>
+              </span>
+              <strong>{enviandoAnexo ? "Enviando…" : "Anexar comprovante"}</strong>
+              <small>Foto da nota ou PDF</small>
             </button>
           </>
         ) : (
-          <p className="time-sub">
-            Itens da planilha ainda não guardam arquivo aqui.{" "}
+          <div className="item-gasto-anexo-zona item-gasto-anexo-zona-texto">
+            <strong>Sem arquivo neste item</strong>
+            <small>Itens da planilha ainda não guardam anexo aqui.</small>
             <Link
               href={`/time/reembolso?descricao=${encodeURIComponent(nome)}&valor=${encodeURIComponent(mascaraDinheiro(String(valorCents)))}`}
-              className="envios-acao-roxo"
+              className="item-gasto-anexo-link"
             >
               Registrar com comprovante
             </Link>
-          </p>
+          </div>
         )}
       </div>
 
@@ -4166,9 +4210,11 @@ function TelaItemGasto({
         </section>
       ) : null}
 
-      <button type="submit" className="time-botao" disabled={salvando}>
-        {salvando ? "Salvando…" : "Salvar"}
-      </button>
+      <div className="item-gasto-rodape">
+        <button type="submit" className="time-botao time-botao-largo" disabled={salvando}>
+          {salvando ? "Salvando…" : "Salvar"}
+        </button>
+      </div>
     </form>
   );
 }

@@ -2111,18 +2111,35 @@ function Inicio({ envios }: { envios: Envio[] }) {
 
       {resumo ? (
         <>
+          {/*
+            DE QUEM É O DINHEIRO — a distinção que os rótulos sozinhos não faziam.
+
+            Os três números já estavam certos: "Reembolso" conta `kind =
+            reembolso`, "Compras" conta `kind = custo`, e "A receber" vem do
+            saldo de reembolso, que não enxerga custo nenhum. Conferido no
+            banco: o custo de R$ 193,83 no cartão da empresa não aparece em
+            nenhum dos dois primeiros.
+
+            Só que a tela não DIZIA isso, e a pergunta apareceu: "compra no
+            cartão da empresa não é reembolso para a pessoa, isso está
+            correto?". Um número certo que precisa ser perguntado está
+            incompleto — a legenda é parte do dado.
+          */}
           <div className="time-faixa">
             <article className="time-faixa-item">
               <span className="time-faixa-rotulo">Reembolso no mês</span>
               <strong className="time-faixa-valor">{brl(resumo.reembolsoMesCents)}</strong>
+              <small className="time-faixa-nota">seu bolso · a empresa devolve</small>
             </article>
             <article className="time-faixa-item">
               <span className="time-faixa-rotulo">Compras no mês</span>
               <strong className="time-faixa-valor">{brl(resumo.comprasMesCents)}</strong>
+              <small className="time-faixa-nota">da empresa · não entra no seu reembolso</small>
             </article>
             <Link href="/time/meu-reembolso" className="time-faixa-item time-faixa-destaque">
               <span className="time-faixa-rotulo">A receber</span>
               <strong className="time-faixa-valor">{brl(resumo.aReceberCents)}</strong>
+              <small className="time-faixa-nota">só reembolso, acumulado</small>
             </Link>
           </div>
 
@@ -4087,11 +4104,34 @@ function TelaItemGasto({
          * o mesmo número aponta para coisas diferentes em cada uma. A tela
          * dizia só "não foi possível carregar" e deixava a pessoa parada.
          */
+        /*
+         * 404 AQUI QUASE SEMPRE É O ID DE OUTRA COISA — E DÁ PARA RESOLVER.
+         *
+         * `/time/item/app/391` não achava nada porque o 391 é um
+         * `fin_time_envio` (uma compra registrada), e a fonte `app` procura em
+         * `fin_reimbursement_item`. São duas sequências de id independentes: o
+         * mesmo número aponta para registros diferentes em cada uma.
+         *
+         * Em vez de mandar a pessoa procurar, procuro por ela: se o id for um
+         * envio dela, levo direto para o detalhe. `/time/envios` já sabe abrir
+         * um item pelo hash `#envio-origem-id`. Uma requisição a mais, e só no
+         * caminho de erro.
+         */
+        if (r.status === 404) {
+          const le = await fetch("/api/time/envios", { cache: "no-store" });
+          const lj = await le.json().catch(() => ({}));
+          const meu = (lj.envios as { origem: string; origemId: number }[] | undefined)?.find(
+            (e) => e.origemId === itemId
+          );
+          if (meu) {
+            window.location.replace(`/time/envios#envio-${meu.origem}-${meu.origemId}`);
+            return;
+          }
+        }
         setErro(
           r.status === 404
             ? `Não achei o item ${itemId} em ${fonte === "app" ? "reembolsos do app" : "reembolsos da planilha"}. ` +
-              "Se você chegou aqui por um link antigo, veja a lista em Histórico — compras registradas ficam lá, " +
-              "não nesta tela."
+              "Veja a lista completa em Histórico."
             : ((j.erro as string) ?? "Não foi possível carregar o item.")
         );
         return;

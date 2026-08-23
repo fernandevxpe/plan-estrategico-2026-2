@@ -16734,3 +16734,10 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
    procura de dedo. */
 .time-perfil-foto-btn { min-height: 44px; padding: 0 14px; }
 .time-perfil-folha:focus-visible { outline: 2px solid var(--neon-purple); outline-offset: -3px; }
+
+/* A legenda é parte do dado: os três números da faixa estavam certos e a tela
+   não dizia de quem era o dinheiro — e a pergunta apareceu. */
+.time-faixa-nota {
+  display: block; margin-top: 3px; font-size: 10.5px; line-height: 1.3;
+  color: var(--muted); font-weight: 400;
+}

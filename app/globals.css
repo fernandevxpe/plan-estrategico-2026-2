@@ -29,9 +29,11 @@
   --ink: #14121a;
   /* #64727a dava 4,44:1 sobre `--surface-2` — reprova o AA por 0,06, e
      `--muted` é a cor de toda legenda, nota e rótulo secundário da plataforma.
-     #606d75 sobe para 4,76 sobre surface-2 e 5,33 sobre o branco, sem mudar o
-     tom percebido. O escuro (#a79fc0) já passava com folga: 7,28. */
-  --muted: #606d75;
+     #606d75 subia para 4,76 — mas ainda dava 4,49 sobre `--res-ouro` (#ddf0e7),
+     o verde-claro da tela de Resultado, que é outra superfície onde `--muted`
+     aparece. #5c6970 cobre as três: 5,06 sobre surface-2, 5,66 sobre branco,
+     4,77 sobre o verde-claro. O escuro (#a79fc0) já passava com folga: 7,28. */
+  --muted: #5c6970;
   --line: #dce5e8;
   --green: #1c9e73;
   /* Acento XPE — roxo do site (#bc13fe), agora usado de verdade */
@@ -515,7 +517,7 @@
 .marketing-creative-summary > div:last-child { min-width: 0; padding: 14px 14px 14px 0; }
 .marketing-creative-summary h3 { margin: 4px 0 7px; font-size: 16px; }
 .marketing-creative-summary p { display: -webkit-box; overflow: hidden; margin: 0 0 10px; color: var(--muted); font-size: 11px; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
-.marketing-creative-summary > div > span { color: #16a34a; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.marketing-creative-summary > div > span { color: var(--ink-green); font-size: 10px; font-weight: 900; text-transform: uppercase; }
 .marketing-creative-summary dl { display: grid; gap: 5px; margin: 0; }
 .marketing-creative-summary dl div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
 .marketing-creative-summary dt { color: var(--muted); font-size: 10px; }
@@ -7549,6 +7551,8 @@ tr:last-child td {
   background: rgba(0, 0, 0, 0.02);
 }
 
+/* Branco sobre `--green` dá 3,39:1; sobre `--ink-green`, 6,10. É um número
+   dentro de um disco — não há outro jeito de ler qual é o gargalo #1. */
 .gestao-bottleneck-rank {
   display: flex;
   align-items: center;
@@ -7556,7 +7560,7 @@ tr:last-child td {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--green);
+  background: var(--ink-green);
   color: var(--on-bright);
   font-size: 13px;
   font-weight: 700;
@@ -7826,7 +7830,7 @@ tr:last-child td {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--green);
+  background: var(--ink-green);
   color: var(--on-bright);
   font-size: 13px;
   font-weight: 700;
@@ -7845,8 +7849,10 @@ tr:last-child td {
   color: var(--muted);
 }
 
+/* Exemplos são TEXTO corrido, e `--green` é cor de gráfico: 3,39:1 sobre o
+   cartão branco. `--ink-green` dá 6,10 e acompanha o tema. */
 .gestao-examples {
-  color: var(--green);
+  color: var(--ink-green);
 }
 
 .gestao-rules-list {
@@ -8158,8 +8164,11 @@ tr:last-child td {
   background: #dc2626;
 }
 
+/* #16a34a como TEXTO dá 3,3:1 sobre branco. Trocado por `--ink-green` (6,10),
+   que além de passar acompanha o tema — o hex cru não acompanhava. Os usos
+   como ponto e borda (não-texto, piso 3:1) ficam como estão. */
 .gestao-bn-ind-row.ok .gestao-bn-valor {
-  color: #16a34a;
+  color: var(--ink-green);
 }
 
 .gestao-bn-ind-row.bad .gestao-bn-valor {
@@ -8589,7 +8598,7 @@ tr:last-child td {
 }
 
 .gestao-ind-growth-cell.up strong {
-  color: #16a34a;
+  color: var(--ink-green);
 }
 
 .gestao-ind-growth-cell.down strong {
@@ -10497,7 +10506,12 @@ button.linkish {
 
 :root {
   --fin-in: var(--green);
-  --fin-out: #c8553d;                /* já existe em mixColors[5]; a paleta não tem vermelho próprio */
+  /* #c8553d dava 4,35:1 sobre o branco e 3,89 sobre a linha zebrada da tabela
+     — reprova o AA nos dois. E `--fin-out` é a cor de TODO valor que sai:
+     dezenas de números por tela, em tabelas densas onde o vermelho é a única
+     marca de direção. #b8482f sobe para 5,24 e 4,69 e continua sendo o mesmo
+     vermelho de terra. O escuro (#ff8a68) já passava com 7,91. */
+  --fin-out: #b8482f;
   --fin-contratado: var(--purple);
   --fin-previsto: #c4b5fd;           /* = chartTheme.purpleSoft */
   --fin-alert: var(--amber);
@@ -10606,8 +10620,8 @@ button.linkish {
 .fin-reliability-item { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }
 .fin-reliability-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .fin-reliability-label { font-size: 13px; font-weight: 600; color: var(--ink); }
-.fin-reliability-value { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--amber); }
-.fin-reliability-item.ok .fin-reliability-value { color: var(--green); }
+.fin-reliability-value { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-amber); }
+.fin-reliability-item.ok .fin-reliability-value { color: var(--ink-green); }
 .fin-reliability-bar { position: relative; height: 7px; border-radius: 99px; background: var(--track); margin: 9px 0 7px; overflow: visible; }
 .fin-reliability-bar span { display: block; height: 100%; border-radius: 99px; background: var(--amber); }
 .fin-reliability-item.ok .fin-reliability-bar span { background: var(--green); }
@@ -10655,9 +10669,12 @@ button.linkish {
 .fin-tag { display: inline-block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--surface-2); border-radius: 5px; padding: 2px 6px; margin-left: 6px; }
 .fin-tag-atencao { color: var(--neon-pink-ink); background: color-mix(in srgb, var(--neon-pink) 14%, var(--surface-2)); }
 
-.fin-badge-ok { color: var(--green); font-size: 12.5px; }
-.fin-badge-atencao { color: var(--amber); font-size: 12.5px; font-weight: 600; }
-.fin-badge-pendente { font-size: 12px; color: var(--amber); background: var(--tint-amber-soft); border-radius: 5px; padding: 2px 7px; }
+.fin-badge-ok { color: var(--ink-green); font-size: 12.5px; }
+/* `--amber` é a cor do GRÁFICO (3,69:1 no claro); quem existe para ser âmbar
+   legível como TEXTO é `--ink-amber` (6,26:1). O par já existia nos três
+   blocos de tema; só não estava sendo usado aqui. */
+.fin-badge-atencao { color: var(--ink-amber); font-size: 12.5px; font-weight: 600; }
+.fin-badge-pendente { font-size: 12px; color: var(--ink-amber); background: var(--tint-amber-soft); border-radius: 5px; padding: 2px 7px; }
 
 /* Barra proporcional na coluna de concentração: o olho compara antes de ler. */
 .fin-share { position: relative; display: inline-block; padding: 2px 6px; font-variant-numeric: tabular-nums; }
@@ -11132,7 +11149,21 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 .fin-matrix tbody tr:hover .fin-matrix-head { background: var(--surface-2); }
 .fin-matrix tfoot td, .fin-matrix tfoot th { border-top: 2px solid var(--line); background: var(--surface-2); }
-.fin-zero { color: #c7d3d9; }
+/* O travessão de "nada aqui" estava em #c7d3d9: 1,37:1 sobre a linha zebrada,
+   1,53:1 sobre o branco — praticamente invisível, em 235 células só de
+   /financeiro/pessoas. Ele é um marcador de ausência, não conteúdo, então o
+   piso justo é o de elemento não-textual (3:1) e não o de texto: #87969e dá
+   3,05 no claro e 5,99 no escuro, e continua mais discreto que qualquer número
+   ao lado — que é o ponto dele. */
+/* `--muted`, não um hex.
+   Nenhum valor fixo serve aos dois temas: #636f77 dá 4,61 no claro e só 3,54 no
+   escuro. E a classe não marca só o travessão de "vazio" — em
+   `FinPayables.tsx` ela envolve as palavras "sem favorecido", que são conteúdo.
+   Então tem de passar em 4,5, e o token que já faz isso nos três blocos de tema
+   é `--muted`: 5,06 sobre a linha zebrada no claro, 7,28 no escuro. Continua
+   mais discreto que o `--ink` dos números ao lado, que é o contraste que
+   importa aqui. */
+.fin-zero { color: var(--muted); }
 
 @media (max-width: 720px) {
   .fin-queue-item { grid-template-columns: auto 1fr; }
@@ -11311,7 +11342,17 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .fin-pessoa-toggle:hover { color: var(--purple-text); }
 /* Previsão em roxo suave: é a única coluna que não aconteceu ainda, e a cor
    diz isso antes de o cabeçalho ser lido. */
-.fin-previsao { color: var(--fin-contratado); background: #faf8ff; }
+/* `#faf8ff` fixo não acompanha o tema: no escuro esta célula ficava um bloco
+   quase branco no meio da tabela escura, e o texto `--fin-contratado` (roxo
+   claro) sobre ela dava 2,38:1. `--tint-purple-soft` é o mesmo roxo suave nos
+   três blocos — #faf5ff no claro, roxo translúcido no escuro. */
+.fin-previsao { color: var(--ink-purple); background: var(--tint-purple-soft); }
+
+/* Nota sobre a tinta: `--fin-contratado` é `--purple`, cor de GRÁFICO. Sobre o
+   fundo branco fixo que esta regra tinha antes, ela até passava — o branco
+   escondia o problema. Com o fundo translúcido correto no escuro, o roxo forte
+   sobre a mesa escura caiu para 3,19:1. `--ink-purple` é o par de leitura:
+   #6d28d9 no claro, #d9a3ff no escuro. */
 
 .fin-gaveta { border-left: 4px solid var(--purple); }
 .fin-gaveta-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -11521,7 +11562,9 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .fin-dre-premissa {
   display: grid; gap: 7px; margin: 0 0 16px;
   padding: 14px 16px; border-radius: 12px;
-  border: 1px dashed var(--purple); background: #faf8ff; color: #40306b;
+  /* Mesma armadilha: o fundo e a tinta eram hex fixos, então no escuro esta
+     caixa era branca com texto roxo-escuro dentro de uma página escura. */
+  border: 1px dashed var(--purple); background: var(--tint-purple-soft); color: var(--ink-purple);
 }
 .fin-dre-premissa strong { font-size: 13px; }
 .fin-dre-premissa p { margin: 0; font-size: 12.5px; line-height: 1.6; }
@@ -15165,7 +15208,10 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 .fin-kpi-nota { font-size: 11.5px; color: var(--muted); }
 
-.tom-bom { color: var(--green); }
+/* Mesma história do âmbar: `--green` dá 3,39:1 sobre branco e 3,03 sobre a
+   superfície. `--ink-green` dá 6,10 e 5,46. Aqui o número é dinheiro numa
+   tabela densa — ler errado custa. */
+.tom-bom { color: var(--ink-green); }
 .tom-ruim { color: var(--red); }
 .tom-neutro { color: var(--ink); }
 /* Na TABELA o texto é 13,5px — texto normal, que exige 4,5:1. --green sobre
@@ -17454,3 +17500,10 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 }
 .anexar-centro.anexar-recolhido { transform: translateX(-50%) translateY(8px); }
 @media (prefers-reduced-motion: reduce) { .anexar-recolhido { transition: none; } }
+
+/* O triângulo que abre uma linha da DRE vinha em 2,55:1 — herdando uma cor
+   apagada de algum ancestral, sem regra própria em lugar nenhum. O botão tem
+   nome acessível (`aria-expanded` + `title`), então o piso é o de elemento
+   não-textual, 3:1; mesmo assim reprovava. `--muted` dá 5,06 no claro e 7,28
+   no escuro, e é o único controle que revela de onde vem cada número. */
+.res-caret { color: var(--muted); }

@@ -121,10 +121,18 @@ const SIMBOLO: Record<EtapaExecucao["estado"], string> = {
   erro: "✗"
 };
 
+/*
+ * As tintas, não as cores de gráfico.
+ *
+ * `--green` sobre o cartão branco dá 3,39:1 e `--purple` 4,0 — os dois abaixo
+ * do mínimo para texto. `--ink-green` e `--ink-purple` existem exatamente para
+ * quando a cor é lida, não vista de longe, e acompanham os três blocos de
+ * tema. O ✓ tem 11,5px e é o único sinal de que a etapa passou.
+ */
 const COR: Record<EtapaExecucao["estado"], string> = {
   pendente: "var(--muted)",
-  rodando: "var(--purple)",
-  ok: "var(--green)",
+  rodando: "var(--ink-purple)",
+  ok: "var(--ink-green)",
   erro: "var(--fin-out)"
 };
 

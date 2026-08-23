@@ -304,6 +304,7 @@ export function TimeApp({
     <div className="time-app">
       <CabecalhoPessoa
         sessao={sessao}
+        aba={aba}
         aoAtualizarNome={(nome) => setSessao((s) => (s ? { ...s, nome } : s))}
         aoSair={async () => {
           await fetch("/api/time/sessao", { method: "DELETE" });
@@ -1918,10 +1919,12 @@ function iniciais(nome: string) {
 
 function CabecalhoPessoa({
   sessao,
+  aba,
   aoAtualizarNome,
   aoSair
 }: {
   sessao: Sessao;
+  aba: AbaTime;
   aoAtualizarNome: (nome: string) => void;
   aoSair: () => Promise<void>;
 }) {
@@ -2128,8 +2131,22 @@ function CabecalhoPessoa({
           canto superior é exatamente onde ação rara deve ficar. Como pílula
           rotulada, não ícone mudo — um "+" sozinho ali não diz o que faz.
         */}
+        {/*
+          A PÍLULA PRECISA DIZER "VOCÊ ESTÁ AQUI".
+
+          `/time/compra` e `/time/comprar` são as duas telas do ciclo de compra,
+          e nenhuma acende aba na barra — foi o preço de tirar "Solicitar" de
+          lá. Sem estado na pílula, essas duas telas são as únicas do app em
+          que NADA no cromo diz onde a pessoa está: as cinco abas apagadas ao
+          mesmo tempo. E em `/time/compra` a pílula ainda era um link para a
+          página em que já se está.
+        */}
         <div className="time-topo-acoes">
-          <Link href="/time/compra" className="time-topo-solicitar">
+          <Link
+            href="/time/compra"
+            className={aba === "compra" || aba === "comprar" ? "time-topo-solicitar aqui" : "time-topo-solicitar"}
+            aria-current={aba === "compra" ? "page" : undefined}
+          >
             <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
               <path d="M12 5v14M5 12h14" strokeLinecap="round" />
             </svg>
@@ -3376,7 +3393,12 @@ function FormEnvio({
           <p>
             {somenteReembolso
               ? "Gasto do seu bolso — mesmo registro de uma compra, mas a empresa te devolve."
-              : "Processo para registro das compras e custos da empresa."}
+              : // Era "Processo para registro das compras e custos da empresa" — a
+                // única frase de manual de procedimento num app que em todo o
+                // resto fala como gente ("Enviar não é aprovar", "Gasto do seu
+                // bolso — a empresa te devolve"). Diz agora o que a tela faz e o
+                // que ela NÃO faz, que é a dúvida real de quem está registrando.
+                "Já comprou? Registre aqui. Não vira lançamento até o financeiro conferir."}
           </p>
         </header>
       ) : (

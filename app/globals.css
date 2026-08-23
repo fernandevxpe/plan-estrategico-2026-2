@@ -17507,3 +17507,15 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
    não-textual, 3:1; mesmo assim reprovava. `--muted` dá 5,06 no claro e 7,28
    no escuro, e é o único controle que revela de onde vem cada número. */
 .res-caret { color: var(--muted); }
+
+/* A pílula "Solicitar" quando a pessoa já está no ciclo de compra. Preenchida,
+   não só contornada: nas duas telas desse ciclo a barra inferior fica com as
+   cinco abas apagadas, e esta é a única marca de lugar que sobra. */
+.time-topo-solicitar.aqui {
+  background: var(--purple);
+  border-color: var(--purple);
+  /* Branco fixo, e NÃO `--on-bright`. Esse token é a tinta do verde neon: no
+     escuro ele vale #0d1a16, que sobre o roxo #9a1de0 dá 3,08:1. Branco dá
+     6,71 no claro e 5,79 no escuro — o roxo é escuro o bastante nos dois. */
+  color: #fff;
+}

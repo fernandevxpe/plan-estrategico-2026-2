@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { FinEstornosReembolso } from "@/components/financeiro/FinEstornosReembolso";
 import { FinShell } from "@/components/financeiro/FinShell";
 import { FinReimbursements } from "@/components/financeiro/FinReimbursements";
 import { getPainelReembolsos } from "@/lib/financeiro/reembolsos";
@@ -23,6 +24,7 @@ export default async function ReembolsosPage() {
         </p>
       </div>
       <FinShell>
+        <FinEstornosReembolso />
         <FinReimbursements dados={dados} />
       </FinShell>
     </AppShell>

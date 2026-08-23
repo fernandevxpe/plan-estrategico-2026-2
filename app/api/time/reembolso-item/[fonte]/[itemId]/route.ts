@@ -1,4 +1,5 @@
 import { exigirContexto, respostaDeErro } from "@/app/api/time/_sessao";
+import { buscarEstornoItem } from "@/lib/financeiro/estorno-reembolso";
 import {
   atualizarItemReembolso,
   detalharItemReembolso,
@@ -30,8 +31,9 @@ export async function GET(
     }
     const historico = await historicoParcelasItem(sessao, fonte, id);
     const item = await detalharItemReembolso(sessao, fonte, id);
+    const estorno = await buscarEstornoItem(sessao, fonte, id);
     const opcoes = await opcoesDoTime();
-    return Response.json({ historico, item, opcoes });
+    return Response.json({ historico, item, estorno, opcoes });
   } catch (erro) {
     return respostaDeErro(erro);
   }

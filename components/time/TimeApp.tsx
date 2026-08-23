@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AnexarFlutuante, type OrigemAnexo } from "@/components/time/AnexarFlutuante";
+import { PixQr } from "@/components/time/PixQr";
 import { BotaoTema } from "@/components/layout/ThemeToggle";
 import { SeloCamada, brl } from "@/components/financeiro/Certeza";
 
@@ -3907,7 +3908,30 @@ function TelaItemGasto({
     parcelas: { id: number; mes: string; parcela: number; parcelasTotal: number; valorCents: number; situacao: StatusExtrato | "previsto" }[];
   } | null>(null);
   const [enviandoAnexo, setEnviandoAnexo] = useState(false);
+  const [estorno, setEstorno] = useState<{
+    id: number;
+    valorCents: number;
+    parcelasPagas: number;
+    parcelasDetalhe: { parcela: number; mes: string; valorCents: number }[];
+    status: string;
+    motivo: string;
+    pixChave: string;
+    pixNomeRecebedor: string;
+    brcode: string | null;
+    quitadoEm: string | null;
+  } | null>(null);
+  const [cancelPasso, setCancelPasso] = useState<null | "motivo" | "confirmar">(null);
+  const [motivoCategoria, setMotivoCategoria] = useState("devolucao");
+  const [motivoTexto, setMotivoTexto] = useState("");
+  const [cancelando, setCancelando] = useState(false);
   const arquivoRef = useRef<HTMLInputElement>(null);
+
+  const MOTIVOS_CANCELAR = [
+    { slug: "devolucao", rotulo: "Devolução da compra" },
+    { slug: "erro_compra", rotulo: "Erro na compra" },
+    { slug: "desistencia", rotulo: "Desisti da compra" },
+    { slug: "outro", rotulo: "Outro" }
+  ] as const;
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
@@ -3955,6 +3979,11 @@ function TelaItemGasto({
           inicioMes: j.historico.inicioMes,
           parcelas: j.historico.parcelas
         });
+      }
+      if (j.estorno) {
+        setEstorno(j.estorno as typeof estorno);
+      } else {
+        setEstorno(null);
       }
     } finally {
       setCarregando(false);
@@ -4012,6 +4041,46 @@ function TelaItemGasto({
     }
   };
 
+  const cancelarCompra = async () => {
+    setCancelando(true);
+    try {
+      const r = await fetch(`/api/time/reembolso-item/${fonte}/${itemId}/cancelar`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          motivoCategoria,
+          motivo: motivoTexto.trim(),
+          confirmar: true
+        })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        aoFalhar({ tom: "erro", texto: (j.erro as string) ?? "Não foi possível cancelar." });
+        return;
+      }
+      setCancelPasso(null);
+      aoFalhar({ tom: "ok", texto: "Compra cancelada. Veja abaixo como devolver o valor." });
+      void recarregar();
+    } finally {
+      setCancelando(false);
+    }
+  };
+
+  const formatarCnpj = (cnpj: string) => {
+    const d = cnpj.replace(/\D/g, "");
+    if (d.length !== 14) return cnpj;
+    return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+  };
+
+  const copiarPix = async (texto: string) => {
+    try {
+      await navigator.clipboard.writeText(texto);
+      aoFalhar({ tom: "ok", texto: "PIX copiado." });
+    } catch {
+      aoFalhar({ tom: "erro", texto: "Não foi possível copiar." });
+    }
+  };
+
   if (carregando) return <div className="time-aviso">carregando…</div>;
   if (erro) return <p className="time-erro">{erro}</p>;
 
@@ -4026,7 +4095,13 @@ function TelaItemGasto({
         </Link>
         <div className="item-gasto-titulo">
           <h1>Item de reembolso</h1>
-          <span className={`envios-status envios-status-${statusParte}`}>{STATUS_EXTRATO_ROTULO[statusParte]}</span>
+          {estorno ? (
+            <span className={`envios-status envios-status-${estorno.status === "quitado" ? "pago" : "aguardando"}`}>
+              {estorno.status === "quitado" ? "Devolvido" : "Cancelado · a devolver"}
+            </span>
+          ) : (
+            <span className={`envios-status envios-status-${statusParte}`}>{STATUS_EXTRATO_ROTULO[statusParte]}</span>
+          )}
         </div>
         <p>Detalhes sobre o reembolso</p>
       </header>
@@ -4052,7 +4127,13 @@ function TelaItemGasto({
 
       <label className="campo">
         <span className="campo-rotulo campo-rotulo-destaque">O que é</span>
-        <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="ex.: ar-condicionado sala reunião" required />
+        <input
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          placeholder="ex.: ar-condicionado sala reunião"
+          required
+          disabled={Boolean(estorno)}
+        />
       </label>
 
       <section className="time-form-classificar">
@@ -4210,11 +4291,144 @@ function TelaItemGasto({
         </section>
       ) : null}
 
+      {estorno ? (
+        <section className="item-estorno-painel">
+          <h2 className="item-estorno-titulo">Devolução à empresa</h2>
+          <p className="time-sub">
+            {estorno.status === "quitado"
+              ? "O financeiro confirmou o recebimento do PIX."
+              : "A compra foi cancelada. Devolva o valor que a empresa já reembolsou — não é faturamento, é recuperação de caixa."}
+          </p>
+          <div className="item-estorno-valor">
+            <strong>{brl(estorno.valorCents)}</strong>
+            <span>{estorno.parcelasPagas} parcela{estorno.parcelasPagas === 1 ? "" : "s"} pagas</span>
+          </div>
+          {estorno.parcelasDetalhe.length > 0 ? (
+            <ul className="item-estorno-parcelas">
+              {estorno.parcelasDetalhe.map((p) => (
+                <li key={`${p.mes}-${p.parcela}`}>
+                  <span>{formatMesRef(p.mes)}</span>
+                  <span>
+                    {p.parcela}/{estorno.parcelasDetalhe.length > 0 ? historico?.parcelasTotal ?? "?" : "?"}
+                  </span>
+                  <span>{brl(p.valorCents)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {estorno.valorCents > 0 && estorno.status !== "quitado" ? (
+            <div className="item-estorno-pix">
+              <p className="campo-rotulo">PIX da empresa (Inter)</p>
+              <p className="item-estorno-recebedor">{estorno.pixNomeRecebedor}</p>
+              <p className="item-estorno-chave">CNPJ {formatarCnpj(estorno.pixChave)}</p>
+              {estorno.brcode ? (
+                <>
+                  <PixQr payload={estorno.brcode} />
+                  <button type="button" className="time-botao secundario time-botao-largo" onClick={() => void copiarPix(estorno.brcode!)}>
+                    Copiar PIX copia-e-cola
+                  </button>
+                </>
+              ) : null}
+            </div>
+          ) : estorno.valorCents === 0 ? (
+            <p className="time-sub">Nenhum valor foi pago ainda — não há devolução financeira.</p>
+          ) : null}
+          <p className="time-sub item-estorno-motivo">
+            <strong>Motivo:</strong> {estorno.motivo}
+          </p>
+        </section>
+      ) : null}
+
       <div className="item-gasto-rodape">
-        <button type="submit" className="time-botao time-botao-largo" disabled={salvando}>
-          {salvando ? "Salvando…" : "Salvar"}
-        </button>
+        {!estorno ? (
+          <>
+            <button type="submit" className="time-botao time-botao-largo" disabled={salvando}>
+              {salvando ? "Salvando…" : "Salvar"}
+            </button>
+            {cancelPasso === null ? (
+              <button
+                type="button"
+                className="time-botao time-botao-largo perigo"
+                onClick={() => setCancelPasso("motivo")}
+              >
+                Cancelar compra
+              </button>
+            ) : null}
+          </>
+        ) : null}
       </div>
+
+      {cancelPasso && !estorno ? (
+        <div className="item-cancelar-folha" role="dialog" aria-labelledby="item-cancelar-titulo">
+          <div className="item-cancelar-painel">
+            {cancelPasso === "motivo" ? (
+              <>
+                <h2 id="item-cancelar-titulo">Cancelar compra</h2>
+                <p className="time-sub">As parcelas futuras param. Se a empresa já pagou algo, você devolve a soma.</p>
+                <div className="item-cancelar-motivos">
+                  {MOTIVOS_CANCELAR.map((m) => (
+                    <button
+                      key={m.slug}
+                      type="button"
+                      className={motivoCategoria === m.slug ? "envios-opcao ativo" : "envios-opcao"}
+                      onClick={() => setMotivoCategoria(m.slug)}
+                    >
+                      {m.rotulo}
+                    </button>
+                  ))}
+                </div>
+                <label className="campo">
+                  <span className="campo-rotulo">Detalhe o motivo</span>
+                  <textarea
+                    value={motivoTexto}
+                    onChange={(e) => setMotivoTexto(e.target.value)}
+                    rows={3}
+                    placeholder="Ex.: devolvi o produto na loja"
+                    required
+                  />
+                </label>
+                <div className="item-cancelar-acoes">
+                  <button type="button" className="time-link" onClick={() => setCancelPasso(null)}>
+                    Voltar
+                  </button>
+                  <button
+                    type="button"
+                    className="time-botao"
+                    disabled={motivoTexto.trim().length < 3}
+                    onClick={() => setCancelPasso("confirmar")}
+                  >
+                    Continuar
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 id="item-cancelar-titulo">Confirmar cancelamento</h2>
+                <p className="item-cancelar-resumo">
+                  {historico && historico.pagoCents > 0 ? (
+                    <>
+                      A empresa já pagou <strong>{brl(historico.pagoCents)}</strong> em{" "}
+                      {historico.parcelas.filter((p) => p.situacao === "pago").length} parcela(s). Você vai devolver esse
+                      valor via PIX para o CNPJ da XPE no Inter. As parcelas futuras serão canceladas.
+                    </>
+                  ) : (
+                    <>As parcelas futuras serão canceladas. Não há valor a devolver porque nada foi pago ainda.</>
+                  )}
+                </p>
+                <p className="time-sub">Esta ação não pode ser desfeita no app.</p>
+                <div className="item-cancelar-acoes">
+                  <button type="button" className="time-link" onClick={() => setCancelPasso("motivo")}>
+                    Voltar
+                  </button>
+                  <button type="button" className="time-botao perigo" disabled={cancelando} onClick={() => void cancelarCompra()}>
+                    {cancelando ? "Cancelando…" : "Confirmar cancelamento"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }

@@ -187,8 +187,27 @@ export function AnexarFlutuante({
    * A regra certa não é geométrica, é de intenção: o flutuante existe para
    * COMEÇAR o formulário ("já começa anexando"). Quando o botão de enviar está
    * na tela, a pessoa está terminando — o flutuante já fez o trabalho dele e
-   * não tem por que continuar disputando o dedo. Some, e leva junto toda a
-   * classe de sobreposição, inclusive as que eu não medi.
+   * não tem por que continuar disputando o dedo.
+   *
+   * ---------------------------------------------------------------------------
+   * MAS "SUMIR" FOI LONGE DEMAIS, E ISSO MATOU O FLUXO NUM APARELHO INTEIRO
+   * ---------------------------------------------------------------------------
+   * A primeira versão desta regra escondia o flutuante. Medido num iPad Air em
+   * retrato (820x1180): a página tem 1390px, o rodapé do formulário nasce em
+   * y=1051 já com scrollY 0, e a rolagem total é de 210px — o rodapé NUNCA sai
+   * da tela. O flutuante nascia escondido e ficava assim para sempre. E o
+   * formulário unificado não tem outro controle de anexo (o bloco `.anexos` só
+   * renderiza quando `!unificado`), então registrar compra por foto ficou
+   * impossível nesse aparelho.
+   *
+   * Varrido: 393x852 ok, 412x915 ok, 768x1024 ok, 1280x800 ok, 1512x982 ok,
+   * 820x1180 morto. O limiar é vh ≳ 1130.
+   *
+   * Agora ele ENCOLHE em vez de sumir: vira um disco de 56px no canto direito.
+   * Ali ele não alcança o centro do botão de enviar em largura nenhuma — em
+   * 393px o disco ocupa x 323–379 e o centro do botão fica em 196 — e continua
+   * a um toque de distância em qualquer altura de tela. Resolve a sobreposição
+   * sem tirar a função de ninguém.
    */
   const [chegouNoFim, setChegouNoFim] = useState(false);
   useEffect(() => {
@@ -201,9 +220,8 @@ export function AnexarFlutuante({
 
   return (
     <div
-      className={`${centralizado ? "anexar anexar-centro" : "anexar"}${chegouNoFim ? " anexar-recolhido" : ""}`}
+      className={`${centralizado ? "anexar anexar-centro" : "anexar"}${chegouNoFim ? " anexar-encolhido" : ""}`}
       ref={caixaRef}
-      aria-hidden={chegouNoFim || undefined}
     >
       {aberto ? (
         <div className="anexar-folha" role="menu" aria-label="De onde vem o comprovante">
@@ -237,13 +255,17 @@ export function AnexarFlutuante({
         // documento. O guard contra o segundo toque é o `lendo` no onClick de
         // quem chama.
         aria-busy={lendo}
+        aria-label={lendo ? "lendo o comprovante" : jaTem ? rotuloAnexado : rotulo}
       >
         {lendo ? (
           <span className="anexar-girando" aria-hidden />
         ) : (
           <Icone origem="camera" />
         )}
-        <span>{lendo ? "lendo…" : jaTem ? rotuloAnexado : rotulo}</span>
+        {/* O rótulo some no estado encolhido, mas o botão continua com nome
+            acessível pelo `aria-label` abaixo — quem usa leitor de tela nunca
+            fica com um botão mudo. */}
+        <span className="anexar-botao-rotulo">{lendo ? "lendo…" : jaTem ? rotuloAnexado : rotulo}</span>
       </button>
 
       {/*

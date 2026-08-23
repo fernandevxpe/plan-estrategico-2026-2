@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { TemaLocal } from "@/components/time/TemaLocal";
+
 /**
  * O 404 do app do time.
  *
@@ -26,6 +28,7 @@ export const metadata = { title: "Não achei — XPE Time" };
 export default function TimeNaoAchei() {
   return (
     <div className="time-tela-padrao">
+      <TemaLocal />
       <header className="time-form-cabeca">
         <h1>Não achei essa tela</h1>
         <p>O endereço pode ter mudado, ou o link que te trouxe já era.</p>

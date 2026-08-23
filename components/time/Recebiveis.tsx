@@ -63,6 +63,21 @@ import { CLASSE, ROTULO, mesCurto, nomeMes, plural, useRecebiveis } from "@/comp
  * o único número conferível contra o extrato do banco da pessoa.
  */
 
+/**
+ * O nome do item, sem o resíduo da planilha.
+ *
+ * As descrições vêm de uma planilha e carregam duas sujeiras que a tela já
+ * mostra em coluna própria: a fração ("Ar Cond 8/12") e, quando a fração está
+ * em coluna separada, o hífen que sobrou dela ("Notebooks part 2 -", "Tv -",
+ * "Gela Água -"). Conferido nas 13 séries em aberto e nos 38 itens do Fernando.
+ *
+ * Tirar os dois deixa o texto dizer O QUE é; quantas parcelas fica na linha de
+ * baixo, escrito por extenso.
+ */
+function nomeDoItem(descricao: string, alternativa: string) {
+  return descricao.replace(/[\s-]*\d+\s*\/\s*\d+\s*$/, "").replace(/[\s\-–—]+$/, "").trim() || alternativa;
+}
+
 /** O mês anterior: gasto de M é reembolsado em M+1, então a competência do
  *  reembolso pago no mês M é M−1. Mesma regra da view 0163 e da folha. */
 function competenciaDe(mes: string) {
@@ -268,7 +283,7 @@ export function Recebiveis() {
                     O QUE é; a contagem fica na linha de baixo, escrita por
                     extenso.
                   */}
-                  {a.descricao.replace(/[\s-]*\d+\s*\/\s*\d+\s*$/, "").trim() || a.slug}
+                  {nomeDoItem(a.descricao, a.slug)}
                   <span className="rec-aberto-parc">
                     {a.parcelasTotal > 1
                       ? `parcela ${a.parcela} de ${a.parcelasTotal} · faltam ${plural(a.parcelasRestantes, "parcela", "parcelas")} de ${brl(a.valorParcelaCents)}`
@@ -400,7 +415,7 @@ export function Recebiveis() {
                       {reemb.itens.map((it, k) => (
                         <li key={`${it.descricao}-${k}`}>
                           <span className="rec-reemb-nome">
-                            {it.descricao.replace(/[\s-]*\d+\s*\/\s*\d+\s*$/, "").trim() || it.descricao}
+                            {nomeDoItem(it.descricao, it.descricao)}
                             {it.parcelasTotal && it.parcelasTotal > 1 ? (
                               <span className="rec-reemb-parc">
                                 parcela {it.parcela} de {it.parcelasTotal}

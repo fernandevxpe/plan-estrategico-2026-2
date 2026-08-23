@@ -12510,6 +12510,12 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .campo-ator { max-width: 320px; }
 
 .time-botao {
+  /* `inline-flex` e `text-decoration: none` porque a classe também é usada em
+     `<a>`, e um link com ela ficava com o texto sublinhado, encostado no canto
+     superior esquerdo da laje — foi assim que "Voltar para Recebíveis" entrou
+     em produção. Em `<button>` nada muda. */
+  display: inline-flex; align-items: center; justify-content: center;
+  text-align: center; text-decoration: none; line-height: 1.2;
   min-height: 46px; padding: 0 20px; border: 0; border-radius: 10px;
   background: var(--cert-firme); color: var(--on-bright); font: inherit; font-size: 15px; font-weight: 600;
   cursor: pointer;
@@ -17210,3 +17216,19 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 .perfil-numeros span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 620; }
 .perfil-numeros strong { display: block; font-size: 18px; font-weight: 680; font-variant-numeric: tabular-nums; margin-top: 3px; }
 .perfil-numeros small { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+
+
+/* A pilha pinta o próprio fundo. Medido: roxo contra `--surface-2` dá 2,99:1 no
+   tema escuro — reprova o mínimo de 3:1 da WCAG 1.4.11 por 0,01, justamente na
+   fronteira entre o topo da barra e o trilho vazio. Contra `--bg` sobe para
+   3,40. Nenhuma cor nova; só o fundo certo atrás. */
+.rec-pilha { background: var(--bg); }
+
+/* A nota do gráfico reserva DUAS linhas.
+   Medido: sem foco ela ocupa 16px, com o mês aberto vai a 32px — e o botão
+   "Ver cada pagamento" descia 16px debaixo do dedo, no instante seguinte ao
+   toque. Alvo que se move depois do toque é como se erra o próximo. */
+.rec-plot-nota { min-height: 32px; }
+
+/* O link do rodapé tinha 170x16px. Ele é a porta para o Histórico inteiro. */
+.time-rodape a { display: inline-flex; align-items: center; min-height: 44px; }

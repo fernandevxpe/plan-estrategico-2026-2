@@ -98,6 +98,33 @@ export function Recebiveis() {
 
   const porMesDesc = [...dado.porMes].reverse();
 
+  /*
+   * A LEGENDA SOMA OS MESES QUE O GRÁFICO MOSTRA — e não somava.
+   *
+   * O gráfico compacto exibe 6 meses; `dado.porNatureza` vem do servidor com o
+   * total dos 8. No Fernando a legenda dizia Pró-labore R$ 41.649,74 enquanto
+   * as seis barras somavam R$ 31.618,52: R$ 10.031,22 que nenhuma barra
+   * explicava, ao lado do próprio gráfico. Número que não fecha com o desenho
+   * ao lado é pior que número ausente.
+   */
+  const legenda = (() => {
+    const m = new Map<string, { cents: number; n: number }>();
+    for (const mes of meses) {
+      for (const [nat, v] of Object.entries(mes.porNatureza)) {
+        const a = m.get(nat) ?? { cents: 0, n: 0 };
+        m.set(nat, { cents: a.cents + v, n: a.n });
+      }
+    }
+    for (const l of dado.linhas) {
+      if (!meses.some((x) => x.mes === l.mes)) continue;
+      const a = m.get(l.natureza);
+      if (a) a.n += 1;
+    }
+    return [...m.entries()]
+      .map(([natureza, v]) => ({ natureza, ...v }))
+      .sort((a, b) => b.cents - a.cents);
+  })();
+
   return (
     <div className="time-tela-padrao">
       <header className="time-form-cabeca">
@@ -177,9 +204,10 @@ export function Recebiveis() {
           {menor === maior
             ? `O mesmo valor nos ${meses.length} meses: ${brl(maior)}.`
             : `Nos ${meses.length} meses: de ${brl(menor)} a ${brl(maior)}.`}
+          {dado.porMes.length > meses.length ? ` Total de ${dado.porMes.length} meses: ${brl(dado.totalCents)}.` : ""}
         </p>
         <ul className="rec-legenda">
-          {dado.porNatureza.map((n) => (
+          {legenda.map((n) => (
             <li key={n.natureza}>
               <i className={`rec-ponto ${CLASSE[n.natureza] ?? "nat-encargo"}`} />
               <span>{ROTULO[n.natureza] ?? n.natureza}</span>

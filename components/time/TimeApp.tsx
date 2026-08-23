@@ -6,6 +6,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AnexarFlutuante, type OrigemAnexo } from "@/components/time/AnexarFlutuante";
 import { Recebiveis } from "@/components/time/Recebiveis";
+import {
+  CLASSE as CLASSE_REC,
+  ROTULO as ROTULO_REC,
+  mesCurto as mesCurtoRec,
+  nomeMes as nomeMesRec,
+  type Recebiveis as DadoRecebiveis
+} from "@/components/time/recebiveis-dado";
 import { RecebiveisGrafico } from "@/components/time/RecebiveisGrafico";
 import { PixQr } from "@/components/time/PixQr";
 import { BotaoTema } from "@/components/layout/ThemeToggle";
@@ -2356,6 +2363,34 @@ function CabecalhoPessoa({
 // ---------------------------------------------------------------------------
 
 function Inicio({ envios }: { envios: Envio[] }) {
+  /*
+   * O INÍCIO PASSA A ABRIR PELO DINHEIRO QUE ENTROU, e a razão é medida.
+   *
+   * Os três KPIs antigos davam R$ 0,00 para 28 de 28 pessoas: "Reembolso no
+   * mês" e "Compras no mês" leem `fin_time_envio`, que tem UMA linha na base
+   * inteira. E o gráfico `pedido × pago` desenhava seis tocos de 2px, porque a
+   * série "pedido" é estruturalmente zero — não existe pedido de reembolso pelo
+   * app ainda. 176px para dizer nada, e só renderizava para 14 de 28.
+   *
+   * `fin_time_recebivel_v` tem 449 pagamentos para 28 de 28, em 8 meses. É o
+   * único dado com conteúdo para todo mundo no dia 1.
+   *
+   * As duas ações urgentes — Registrar e Reembolso — já têm assento permanente
+   * na barra inferior, ao alcance do polegar em toda rota. O que NÃO tem outro
+   * lugar é a resposta a "a casa me pagou o que devia?", e é ela que a tela
+   * principal passa a responder.
+   */
+  const [rec, setRec] = useState<DadoRecebiveis | null>(null);
+  const [mesFoco, setMesFoco] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const r = await fetch("/api/time/recebiveis", { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (j.recebiveis) setRec(j.recebiveis as DadoRecebiveis);
+    })();
+  }, []);
+
   const aguardando = envios.filter((e) => e.estado === "aguardando");
   const voltaram = envios.filter((e) => e.estado === "devolvido" || e.estado === "recusado");
   const [resumo, setResumo] = useState<{
@@ -2379,13 +2414,12 @@ function Inicio({ envios }: { envios: Envio[] }) {
       ? Math.max(1, ...resumo.historico.flatMap((h) => [h.solicitadoCents, h.recebidoCents]))
       : 1;
 
-  const temGrafico = resumo?.historico.some((h) => h.solicitadoCents > 0 || h.recebidoCents > 0);
 
   return (
     <div className="time-tela-padrao">
       <header className="time-form-cabeca">
         <h1>Início</h1>
-        <p>Resumo do mês, atalhos e o que está pendente com o financeiro.</p>
+        <p>O que a XPE te pagou, e o que falta enviar.</p>
       </header>
 
       {resumo ? (
@@ -2404,25 +2438,48 @@ function Inicio({ envios }: { envios: Envio[] }) {
             correto?". Um número certo que precisa ser perguntado está
             incompleto — a legenda é parte do dado.
           */}
+          {/*
+            Os três números formam uma frase: caiu X · o normal é Y · faltam Z.
+            E o terceiro TROCA DE PERGUNTA quando não há saldo, para nenhum
+            azulejo nascer zerado — que era o defeito dos anteriores.
+          */}
           <div className="time-faixa">
-            <article className="time-faixa-item">
-              <span className="time-faixa-rotulo">Reembolso no mês</span>
-              <strong className="time-faixa-valor">{brl(resumo.reembolsoMesCents)}</strong>
-              <small className="time-faixa-nota">seu bolso · a empresa devolve</small>
-            </article>
-            <article className="time-faixa-item">
-              <span className="time-faixa-rotulo">Compras no mês</span>
-              <strong className="time-faixa-valor">{brl(resumo.comprasMesCents)}</strong>
-              <small className="time-faixa-nota">da empresa · não entra no seu reembolso</small>
-            </article>
-            <Link href="/time/recebiveis#aberto" className="time-faixa-item time-faixa-destaque">
-              <span className="time-faixa-rotulo">A receber</span>
-              <strong className="time-faixa-valor">{brl(resumo.aReceberCents)}</strong>
-              <small className="time-faixa-nota">só reembolso, acumulado</small>
+            <Link href="/time/recebiveis" className="time-faixa-item time-faixa-destaque">
+              <span className="time-faixa-rotulo">
+                Caiu em {rec && rec.porMes.length ? mesCurtoRec(rec.porMes[rec.porMes.length - 1].mes) : "—"}
+              </span>
+              <strong className="time-faixa-valor">
+                {brl(rec && rec.porMes.length ? rec.porMes[rec.porMes.length - 1].totalCents : 0)}
+              </strong>
+              <small className="time-faixa-nota">
+                {rec && rec.porMes.length
+                  ? `${rec.linhas.filter((l) => l.mes === rec.porMes[rec.porMes.length - 1].mes).length} pagamentos`
+                  : "nada ainda"}
+              </small>
             </Link>
+            <article className="time-faixa-item">
+              <span className="time-faixa-rotulo">De hábito</span>
+              <strong className="time-faixa-valor">{brl(rec?.medianaRecorrenteCents ?? 0)}</strong>
+              <small className="time-faixa-nota">mediana, {rec?.porMes.length ?? 0} meses</small>
+            </article>
+            {rec && rec.emAbertoCents > 0 ? (
+              <Link href="/time/recebiveis#aberto" className="time-faixa-item">
+                <span className="time-faixa-rotulo">Ainda a receber</span>
+                <strong className="time-faixa-valor">{brl(rec.emAbertoCents)}</strong>
+                <small className="time-faixa-nota">reembolso parcelado</small>
+              </Link>
+            ) : (
+              <article className="time-faixa-item">
+                <span className="time-faixa-rotulo">Em 2026</span>
+                <strong className="time-faixa-valor">{brl(rec?.totalCents ?? 0)}</strong>
+                <small className="time-faixa-nota">nada em aberto</small>
+              </article>
+            )}
           </div>
 
-          {temGrafico ? <GraficoReembolso historico={resumo.historico} pico={pico} /> : null}
+          {rec && rec.porMes.length > 0 ? (
+            <GraficoRecebido rec={rec} mesFoco={mesFoco} aoFocar={setMesFoco} />
+          ) : null}
         </>
       ) : null}
 
@@ -2436,12 +2493,9 @@ function Inicio({ envios }: { envios: Envio[] }) {
             texto="Foto, nota fiscal ou os dois"
             tipo="custo"
           />
-          <Atalho
-            href="/time/compra"
-            titulo="Solicitar compra"
-            texto="Links, valores e por que precisa"
-            tipo="compra"
-          />
+          {/* "Solicitar compra" saiu da grade: virou pílula no cabeçalho,
+              presente em TODA rota. Aqui era a terceira porta para a mesma
+              tela, gastando 63px numa grade de uma coluna. */}
           {/*
             O PASSO QUE TINHA FICADO SEM PORTA.
             `/time/comprar` fecha a solicitação aprovada com a compra que foi
@@ -2541,117 +2595,100 @@ function IconeAtalho({ tipo }: { tipo: "reembolso" | "custo" | "nota" | "compra"
   );
 }
 
-function GraficoReembolso({
-  historico,
-  pico
-}: {
-  historico: { mes: string; solicitadoCents: number; recebidoCents: number }[];
-  pico: number;
-}) {
-  const [dica, setDica] = useState<{
-    mes: string;
-    solicitado: number;
-    recebido: number;
-    indice: number;
-  } | null>(null);
 
-  const cols = historico.length;
-  const largura = cols * 52 + 8;
-  const grafAltura = 48;
-  const grafBase = 72;
-  const grafViewH = 92;
-  const grafMesY = 86;
+/**
+ * O gráfico empilhado do Início — o mesmo de Recebíveis, em versão compacta.
+ *
+ * UM componente, não dois: duas implementações do mesmo gráfico divergem na
+ * primeira mudança de paleta, e este app já viveu isso esta semana (o
+ * componente emitia `.nat-recorrente` e o CSS definia `.nat-prolabore`, e uma
+ * banda de R$ 72.022 renderizou invisível).
+ *
+ * TOCAR NO MÊS não navega: a nota vira o resumo daquele mês e a legenda passa
+ * a somar só ele. É de propósito que a legenda ENCOLHE em vez de crescer — as
+ * naturezas de um mês são subconjunto das da janela, então o botão de baixo
+ * nunca desce quando alguém toca numa coluna.
+ */
+function GraficoRecebido({
+  rec,
+  mesFoco,
+  aoFocar
+}: {
+  rec: DadoRecebiveis;
+  mesFoco: string | null;
+  aoFocar: (m: string | null) => void;
+}) {
+  const meses = rec.porMes.slice(-6);
+  const teto = Math.max(...meses.map((m) => m.totalCents), 1);
+  const foco = mesFoco ? meses.find((m) => m.mes === mesFoco) : null;
+
+  // A legenda soma exatamente o que está desenhado: a janela, ou o mês em foco.
+  const base = foco ? [foco] : meses;
+  const soma = new Map<string, number>();
+  for (const m of base) {
+    for (const [nat, v] of Object.entries(m.porNatureza)) soma.set(nat, (soma.get(nat) ?? 0) + v);
+  }
+  const legenda = [...soma.entries()].sort((a, b) => b[1] - a[1]);
 
   return (
-    <section className="time-grafico-secao" aria-labelledby="time-grafico-titulo">
-      <div className="time-grafico-cabeca">
-        <h2 id="time-grafico-titulo" className="time-grafico-titulo">Reembolsos</h2>
-        <div className="time-grafico-legenda">
-          <span><i className="time-leg-solicitado" /> pedido</span>
-          <span><i className="time-leg-recebido" /> pago</span>
+    <section className="rec-plot rec-plot-mini" aria-labelledby="tit-rec-inicio">
+      <div className="rec-plot-cabeca">
+        <h2 id="tit-rec-inicio">O que eu recebo</h2>
+      </div>
+      <div className="rec-plot-trilho">
+        <div
+          className="rec-grade"
+          role="img"
+          aria-label={`O que a XPE me pagou, mês a mês. ${meses
+            .map((m) => `${mesCurtoRec(m.mes)}: ${brl(m.totalCents)}`)
+            .join("; ")}`}
+        >
+          {meses.map((m) => (
+            <button
+              key={m.mes}
+              type="button"
+              className={mesFoco === m.mes ? "rec-col ativa" : "rec-col"}
+              aria-pressed={mesFoco === m.mes}
+              aria-label={`${nomeMesRec(m.mes)}: ${brl(m.totalCents)}`}
+              onClick={() => aoFocar(mesFoco === m.mes ? null : m.mes)}
+            >
+              <span className="rec-col-area">
+                <span className="rec-pilha" style={{ height: `${(m.totalCents / teto) * 100}%` }}>
+                  {Object.entries(m.porNatureza)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([nat, v]) => (
+                      <i
+                        key={nat}
+                        className={CLASSE_REC[nat] ?? "nat-encargo"}
+                        style={{ height: `${(v / m.totalCents) * 100}%` }}
+                      />
+                    ))}
+                </span>
+              </span>
+              <span className="rec-col-mes">{mesCurtoRec(m.mes)}</span>
+            </button>
+          ))}
         </div>
       </div>
-
-      <div className="time-grafico-area">
-        {dica ? (
-          <div
-            className="time-grafico-dica"
-            style={{ left: `${((dica.indice + 0.5) / cols) * 100}%` }}
-            role="status"
-          >
-            <strong>{MES_CURTO(dica.mes)}</strong>
-            <span className="time-dica-linha time-dica-solic">
-              Pedido <em>{brl(dica.solicitado)}</em>
-            </span>
-            <span className="time-dica-linha time-dica-rec">
-              Pago <em>{brl(dica.recebido)}</em>
-            </span>
-          </div>
-        ) : null}
-
-        <svg
-          className="time-grafico"
-          viewBox={`0 0 ${largura} ${grafViewH}`}
-          role="img"
-          aria-label="Histórico de reembolsos nos últimos seis meses"
-        >
-          {[0.25, 0.5, 0.75].map((f) => (
-            <line
-              key={f}
-              x1={4}
-              y1={grafBase - grafAltura * f}
-              x2={largura - 4}
-              y2={grafBase - grafAltura * f}
-              className="time-grafico-guia"
-            />
-          ))}
-
-          {historico.map((h, i) => {
-            const altS = Math.max(2, Math.round((h.solicitadoCents / pico) * grafAltura));
-            const altR = Math.max(2, Math.round((h.recebidoCents / pico) * grafAltura));
-            const x = i * 52 + 10;
-            const ativo = dica?.mes === h.mes;
-
-            return (
-              <g
-                key={h.mes}
-                className={ativo ? "time-barra-grupo ativo" : "time-barra-grupo"}
-                onMouseEnter={() =>
-                  setDica({ mes: h.mes, solicitado: h.solicitadoCents, recebido: h.recebidoCents, indice: i })
-                }
-                onMouseLeave={() => setDica(null)}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  setDica({ mes: h.mes, solicitado: h.solicitadoCents, recebido: h.recebidoCents, indice: i });
-                }}
-                tabIndex={0}
-                role="button"
-                aria-label={`${MES_CURTO(h.mes)}: pedido ${brl(h.solicitadoCents)}, pago ${brl(h.recebidoCents)}`}
-              >
-                <rect
-                  x={x}
-                  y={grafBase - altS}
-                  width={14}
-                  height={altS}
-                  rx={4}
-                  className="time-bar-solicitado"
-                />
-                <rect
-                  x={x + 18}
-                  y={grafBase - altR}
-                  width={14}
-                  height={altR}
-                  rx={4}
-                  className="time-bar-recebido"
-                />
-                <text x={x + 16} y={grafMesY} className="time-grafico-mes">
-                  {MES_CURTO(h.mes).slice(0, 3)}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
+      {/* Fora do `role="img"`: um leitor de tela não anuncia mudança dentro de
+          uma imagem, e esta linha muda quando a pessoa toca num mês. */}
+      <p className="rec-plot-nota" role="status">
+        {foco
+          ? `${nomeMesRec(foco.mes)} · ${brl(foco.totalCents)} em ${rec.linhas.filter((l) => l.mes === foco.mes).length} pagamentos. Toque de novo para fechar.`
+          : `Últimos ${meses.length} meses. Toque num mês para ver só ele.`}
+      </p>
+      <ul className="rec-legenda">
+        {legenda.map(([nat, v]) => (
+          <li key={nat}>
+            <i className={`rec-ponto ${CLASSE_REC[nat] ?? "nat-encargo"}`} />
+            <span>{ROTULO_REC[nat] ?? nat}</span>
+            <b>{brl(v)}</b>
+          </li>
+        ))}
+      </ul>
+      <Link href="/time/recebiveis" className="time-botao secundario time-botao-largo">
+        Ver cada pagamento
+      </Link>
     </section>
   );
 }

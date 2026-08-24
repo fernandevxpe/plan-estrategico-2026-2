@@ -82,6 +82,7 @@ export type ContaDaPessoa = {
 } | null;
 
 export type SalarioBaseLinha = { id: number; valorCents: number; vigenteDesde: string; nota: string | null };
+export type ProlaboreEsperadoLinha = { id: number; valorCents: number; vigenteDesde: string; nota: string | null };
 export type ComissaoDeclaradaLinha = { id: number; valorCents: number; competencia: string; nota: string | null };
 
 export type PerfilPessoa = {
@@ -107,6 +108,8 @@ export type PerfilPessoa = {
   pagamentos: PagamentoPessoa[];
   salarioBaseAtual: SalarioBaseLinha | null;
   salarioBaseHistorico: SalarioBaseLinha[];
+  prolaboreEsperadoAtual: ProlaboreEsperadoLinha | null;
+  prolaboreEsperadoHistorico: ProlaboreEsperadoLinha[];
   comissaoDeclarada: ComissaoDeclaradaLinha[];
 };
 
@@ -124,7 +127,7 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
   );
   if (!pessoa) return null;
 
-  const [pagamentos, conta, saldo, bandas, salarioBase, comissaoDeclarada] = await Promise.all([
+  const [pagamentos, conta, saldo, bandas, salarioBase, prolaboreEsperado, comissaoDeclarada] = await Promise.all([
     query<Record<string, unknown>>(
       `SELECT transaction_id, data, to_char(mes, 'YYYY-MM') AS mes, valor_cents,
               natureza, categoria, conta, descricao
@@ -158,6 +161,11 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
          FROM fin_pessoa_salario_base WHERE person_id = $1 ORDER BY vigente_desde DESC`,
       [personId]
     ),
+    query<{ id: number; valor_cents: string; vigente_desde: string; nota: string | null }>(
+      `SELECT id, valor_cents, to_char(vigente_desde, 'YYYY-MM-DD') AS vigente_desde, nota
+         FROM fin_pessoa_prolabore_esperado WHERE person_id = $1 ORDER BY vigente_desde DESC`,
+      [personId]
+    ).catch(() => []),
     query<{ id: number; valor_cents: string; competencia: string; nota: string | null }>(
       `SELECT id, valor_cents, to_char(competencia, 'YYYY-MM') AS competencia, nota
          FROM fin_pessoa_comissao_declarada WHERE person_id = $1 ORDER BY competencia DESC`,
@@ -273,6 +281,20 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
       valorCents: Number(s.valor_cents),
       vigenteDesde: s.vigente_desde,
       nota: s.nota
+    })),
+    prolaboreEsperadoAtual: prolaboreEsperado[0]
+      ? {
+          id: prolaboreEsperado[0].id,
+          valorCents: Number(prolaboreEsperado[0].valor_cents),
+          vigenteDesde: prolaboreEsperado[0].vigente_desde,
+          nota: prolaboreEsperado[0].nota
+        }
+      : null,
+    prolaboreEsperadoHistorico: prolaboreEsperado.map((p) => ({
+      id: p.id,
+      valorCents: Number(p.valor_cents),
+      vigenteDesde: p.vigente_desde,
+      nota: p.nota
     })),
     comissaoDeclarada: comissaoDeclarada.map((c) => ({
       id: c.id,

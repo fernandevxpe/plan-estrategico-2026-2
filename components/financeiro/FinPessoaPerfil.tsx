@@ -1,8 +1,11 @@
 import { brl } from "@/components/financeiro/Certeza";
 import {
+  FinCalculadoraRemuneracao,
   FinComissaoForm,
+  FinProlaboreEsperadoForm,
   FinSalarioBaseForm,
   TabelaComissao,
+  TabelaProlaboreEsperado,
   TabelaSalarioBase
 } from "@/components/financeiro/FinRemuneracaoForms";
 import type { PerfilPessoa } from "@/lib/financeiro/pessoa-perfil";
@@ -180,8 +183,15 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
         </p>
         <FinSalarioBaseForm personId={perfil.id} atual={perfil.salarioBaseAtual} />
         <TabelaSalarioBase historico={perfil.salarioBaseHistorico} />
+        <FinProlaboreEsperadoForm personId={perfil.id} atual={perfil.prolaboreEsperadoAtual} />
+        <TabelaProlaboreEsperado historico={perfil.prolaboreEsperadoHistorico} />
         <FinComissaoForm personId={perfil.id} temSalarioBase={Boolean(perfil.salarioBaseAtual)} />
         <TabelaComissao historico={perfil.comissaoDeclarada} />
+        <FinCalculadoraRemuneracao
+          salarioBaseAtual={perfil.salarioBaseAtual}
+          prolaboreEsperadoAtual={perfil.prolaboreEsperadoAtual}
+          comissaoDeclarada={perfil.comissaoDeclarada}
+        />
       </section>
 
       {/* 3. Os números que resumem. */}

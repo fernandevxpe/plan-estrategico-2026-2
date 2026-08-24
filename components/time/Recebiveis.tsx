@@ -1,10 +1,25 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
 import { brl } from "@/components/financeiro/Certeza";
-import { CLASSE, ROTULO, mesCurto, nomeMes, nomeMesTitulo, plural, useRecebiveis } from "@/components/time/recebiveis-dado";
+import {
+  CLASSE,
+  ROTULO,
+  mesCurto,
+  mesNome,
+  nomeMes,
+  nomeMesTitulo,
+  plural,
+  useRecebiveis
+} from "@/components/time/recebiveis-dado";
+import {
+  competenciaDe,
+  IconePrevisao,
+  nomeDoItem,
+  RecebiveisPlot,
+  type FocoPlot
+} from "@/components/time/recebiveis-plot";
 
 /**
  * O que a casa me paga.
@@ -63,21 +78,6 @@ import { CLASSE, ROTULO, mesCurto, nomeMes, nomeMesTitulo, plural, useRecebiveis
  * o único número conferível contra o extrato do banco da pessoa.
  */
 
-/**
- * O nome do item, sem o resíduo da planilha.
- *
- * As descrições vêm de uma planilha e carregam duas sujeiras que a tela já
- * mostra em coluna própria: a fração ("Ar Cond 8/12") e, quando a fração está
- * em coluna separada, o hífen que sobrou dela ("Notebooks part 2 -", "Tv -",
- * "Gela Água -"). Conferido nas 13 séries em aberto e nos 38 itens do Fernando.
- *
- * Tirar os dois deixa o texto dizer O QUE é; quantas parcelas fica na linha de
- * baixo, escrito por extenso.
- */
-function nomeDoItem(descricao: string, alternativa: string) {
-  return descricao.replace(/[\s-]*\d+\s*\/\s*\d+\s*$/, "").replace(/[\s\-–—]+$/, "").trim() || alternativa;
-}
-
 function IconeSeta() {
   return (
     <svg className="rec-seta" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -86,17 +86,11 @@ function IconeSeta() {
   );
 }
 
-/** O mês anterior: gasto de M é reembolsado em M+1, então a competência do
- *  reembolso pago no mês M é M−1. Mesma regra da view 0163 e da folha. */
-function competenciaDe(mes: string) {
-  const [a, m] = mes.split("-").map(Number);
-  return m === 1 ? `${a - 1}-12` : `${a}-${String(m - 1).padStart(2, "0")}`;
-}
-
 export function Recebiveis() {
   const { dado, erro, carregando } = useRecebiveis();
   const [ocultas, setOcultas] = useState<Set<string>>(new Set());
   const [mostrarPrevisao, setMostrarPrevisao] = useState(false);
+  const [foco, setFoco] = useState<FocoPlot>(null);
 
   if (carregando) return <div className="time-aviso">carregando…</div>;
   if (erro) return <p className="time-erro">{erro}</p>;
@@ -106,7 +100,7 @@ export function Recebiveis() {
     return (
       <div className="time-tela-padrao">
         <header className="time-form-cabeca">
-          <h1>O que eu recebo</h1>
+          <h1>Recebíveis</h1>
           <p>
             Nenhum pagamento seu aparece aqui ainda. A base começa em janeiro de 2026 — se você recebeu antes disso, ou
             se falta algum mês, o acerto é com o financeiro; não é algo que se resolva pelo aplicativo.
@@ -128,7 +122,6 @@ export function Recebiveis() {
    * nada e deixa a pessoa sem caminho de volta óbvio.
    */
   const naturezasExistentes = dado.porNatureza.map((n) => n.natureza);
-  const ligadas = naturezasExistentes.filter((n) => !ocultas.has(n));
   const alternar = (nat: string) =>
     setOcultas((antes) => {
       const novo = new Set(antes);
@@ -156,20 +149,26 @@ export function Recebiveis() {
    * O que se projeta tem contrato por trás: salário base, mediana de pró-labore
    * e as parcelas de reembolso que faltam.
    */
+  /*
+   * Todos os meses previstos entram no gráfico; o trilho rola. Limitar a 3
+   * escondia o restante sem aviso — a seção Previsões lista o detalhe, mas a
+   * comparação visual precisa da série completa.
+   */
   const mesesPrevistos = mostrarPrevisao
-    ? (dado.previsao ?? []).map((p) => {
-        const por = soNatureza({
-          ...(p.salarioCents > 0 ? { salario: p.salarioCents } : {}),
-          ...(p.prolaboreCents > 0 ? { prolabore: p.prolaboreCents } : {}),
-          ...(p.reembolsoCents > 0 ? { reembolso: p.reembolsoCents } : {})
-        });
-        return { mes: p.mes, porNatureza: por, totalCents: Object.values(por).reduce((a, b) => a + b, 0), previsto: true };
-      }).filter((m) => m.totalCents > 0)
+    ? (dado.previsao ?? [])
+        .map((p) => {
+          const por = soNatureza({
+            ...(p.salarioCents > 0 ? { salario: p.salarioCents } : {}),
+            ...(p.prolaboreCents > 0 ? { prolabore: p.prolaboreCents } : {}),
+            ...(p.reembolsoCents > 0 ? { reembolso: p.reembolsoCents } : {})
+          });
+          return { mes: p.mes, porNatureza: por, totalCents: Object.values(por).reduce((a, b) => a + b, 0), previsto: true };
+        })
+        .filter((m) => m.totalCents > 0)
     : [];
 
   const meses = mesesBase;
   const colunas = [...mesesBase, ...mesesPrevistos];
-  const teto = Math.max(...colunas.map((m) => m.totalCents), 1);
 
   const descricaoGrafico = meses
     .map(
@@ -186,52 +185,22 @@ export function Recebiveis() {
   const totalReembolsoPrevisto = dado.emAbertoCents;
   const totalReembolsoParcelas = previsaoMeses.reduce((a, p) => a + (p.reembolsoCents ?? 0), 0);
   const remProximoMes = (proximoMes?.salarioCents ?? 0) + (proximoMes?.prolaboreCents ?? 0);
+  const previstoProximoMes = remProximoMes + (proximoMes?.reembolsoCents ?? 0);
+  const reembolsosFuturosCents =
+    dado.emAbertoCents > 0 ? dado.emAbertoCents : totalReembolsoParcelas;
   const totalPrevisto = remProximoMes + totalReembolsoPrevisto;
   const temPrevisoes = totalPrevisto > 0 || previsaoMeses.length > 0;
-
-  /*
-   * A LEGENDA SOMA OS MESES QUE O GRÁFICO MOSTRA — e não somava.
-   *
-   * O gráfico compacto exibe 6 meses; `dado.porNatureza` vem do servidor com o
-   * total dos 8. No Fernando a legenda dizia Pró-labore R$ 41.649,74 enquanto
-   * as seis barras somavam R$ 31.618,52: R$ 10.031,22 que nenhuma barra
-   * explicava, ao lado do próprio gráfico. Número que não fecha com o desenho
-   * ao lado é pior que número ausente.
-   */
-  const legenda = (() => {
-    /*
-     * O VALOR E A CONTAGEM PRECISAM FALAR DA MESMA JANELA.
-     *
-     * O valor já era escopado nos meses desenhados; a contagem vinha de
-     * `dado.linhas`, que é a lista inteira. Enquanto o `n` significava
-     * "quantos Pix" isso passava despercebido; quando virou "quantos meses"
-     * ficou absurdo na cara: "Pró-labore · 19 meses" para quem tem 8, e
-     * "Comissão · 5 meses" para quem tem 2.
-     *
-     * Agora conta os meses da janela, que é o que as barras ao lado mostram.
-     */
-    const m = new Map<string, { cents: number; n: number }>();
-    for (const mes of meses) {
-      for (const [nat, v] of Object.entries(mes.porNatureza)) {
-        const a = m.get(nat) ?? { cents: 0, n: 0 };
-        m.set(nat, { cents: a.cents + v, n: a.n + 1 });
-      }
-    }
-    return [...m.entries()]
-      .map(([natureza, v]) => ({ natureza, ...v }))
-      .sort((a, b) => b.cents - a.cents);
-  })();
 
   return (
     <div className="time-tela-padrao">
       <header className="time-form-cabeca">
-        <h1>O que eu recebo</h1>
+        <h1>Recebíveis</h1>
         <p>Tudo que a XPE te pagou desde {dado.desde ? nomeMes(dado.desde) : "janeiro de 2026"}.</p>
       </header>
 
       <div className="time-faixa">
         <article className="time-faixa-item time-faixa-destaque">
-          <span className="time-faixa-rotulo">{porMesDesc[0] ? mesCurto(porMesDesc[0].mes) : "no mês"}</span>
+          <span className="time-faixa-rotulo">{porMesDesc[0] ? mesNome(porMesDesc[0].mes) : "no mês"}</span>
           <strong className="time-faixa-valor">{brl(porMesDesc[0]?.totalCents ?? 0)}</strong>
           <small className="time-faixa-nota">
             {porMesDesc[0]
@@ -239,19 +208,18 @@ export function Recebiveis() {
               : "nada ainda"}
           </small>
         </article>
-        <article className="time-faixa-item">
-          <span className="time-faixa-rotulo">De hábito</span>
-          <strong className="time-faixa-valor">{brl(dado.medianaRecorrenteCents)}</strong>
-          {/* "mediana" escrito na tela de propósito: não é o contrato, é o que
-              costuma cair. A média seria puxada pelos extremos — no Fernando os
-              oito meses vão de R$ 2.386 a R$ 7.644. */}
-          <small className="time-faixa-nota">mediana, {plural(dado.porMes.length, "mês", "meses")}</small>
+        <article className="time-faixa-item time-faixa-previsto">
+          <span className="time-faixa-rotulo">
+            {proximoMes ? mesNome(proximoMes.mes) : "Próximo mês"}
+          </span>
+          <strong className="time-faixa-valor">{brl(previstoProximoMes)}</strong>
+          <small className="time-faixa-nota">previsto</small>
         </article>
-        {dado.emAbertoCents > 0 ? (
-          <a className="time-faixa-item" href="#aberto">
-            <span className="time-faixa-rotulo">Ainda a receber</span>
-            <strong className="time-faixa-valor">{brl(dado.emAbertoCents)}</strong>
-            <small className="time-faixa-nota">aprovado, ainda não pago</small>
+        {reembolsosFuturosCents > 0 ? (
+          <a className="time-faixa-item time-faixa-reembolso" href="#aberto">
+            <span className="time-faixa-rotulo">Reembolso</span>
+            <strong className="time-faixa-valor">{brl(reembolsosFuturosCents)}</strong>
+            <small className="time-faixa-nota">à receber</small>
           </a>
         ) : (
           <article className="time-faixa-item">
@@ -262,71 +230,42 @@ export function Recebiveis() {
         )}
       </div>
 
-      <section className="rec-plot rec-plot-mini">
-        <div className="rec-plot-cabeca">
-          <h2>Mês a mês</h2>
-          <div className="rec-plot-acoes">
-            {previsaoMeses.length > 0 ? (
-              <button
-                type="button"
-                className={mostrarPrevisao ? "rec-previsao-botao compacto ativo" : "rec-previsao-botao compacto"}
-                aria-pressed={mostrarPrevisao}
-                onClick={() => setMostrarPrevisao((v) => !v)}
-              >
-                {mostrarPrevisao
-                  ? "Escondendo o que ainda vai cair"
-                  : `Mostrar o que ainda vai cair (${plural(previsaoMeses.length, "mês", "meses")})`}
-              </button>
-            ) : null}
-            {dado.porMes.length > 6 ? (
-              <Link className="rec-plot-abrir" href="/time/recebiveis/grafico">
-                Ver tudo
-              </Link>
-            ) : null}
-          </div>
-        </div>
-        <div className="rec-plot-trilho">
-          <div className="rec-grade" role="img" aria-label={`Recebido mês a mês. ${descricaoGrafico}`}>
-            {colunas.map((m) => (
-              <div key={m.mes} className={m.previsto ? "rec-col rec-col-previsto" : "rec-col"}>
-                <span className="rec-col-area">
-                  <span className="rec-pilha" style={{ height: `${(m.totalCents / teto) * 100}%` }}>
-                    {Object.entries(m.porNatureza)
-                      .sort((a, b) => b[1] - a[1])
-                      .map(([nat, v]) => (
-                        <i
-                          key={nat}
-                          className={CLASSE[nat] ?? "nat-encargo"}
-                          style={{ height: `${(v / m.totalCents) * 100}%` }}
-                          title={`${ROTULO[nat] ?? nat}: ${brl(v)}${m.previsto ? " (previsto)" : ""}`}
-                        />
-                      ))}
-                  </span>
-                </span>
-                <span className="rec-col-mes">{mesCurto(m.mes)}</span>
+      <section
+        className={`rec-plot rec-plot-mini${mostrarPrevisao && mesesPrevistos.length > 0 ? " rec-plot-rolagem" : ""}`}
+      >
+        <RecebiveisPlot
+          dado={dado}
+          colunas={colunas}
+          mesesLegenda={meses}
+          ocultas={ocultas}
+          alternar={alternar}
+          foco={foco}
+          onFoco={setFoco}
+          rolagem={mostrarPrevisao && mesesPrevistos.length > 0}
+          ariaDescricao={descricaoGrafico}
+          cabeca={
+            previsaoMeses.length > 0 ? (
+              <div className="rec-plot-cabeca rec-plot-cabeca-acoes">
+                <div className="rec-plot-acoes">
+                  <button
+                    type="button"
+                    className={mostrarPrevisao ? "rec-plot-acao ativo" : "rec-plot-acao"}
+                    aria-pressed={mostrarPrevisao}
+                    aria-label={
+                      mostrarPrevisao
+                        ? "Esconder previsão no gráfico"
+                        : `Mostrar previsão nos próximos ${plural(previsaoMeses.length, "mês", "meses")}`
+                    }
+                    onClick={() => setMostrarPrevisao((v) => !v)}
+                  >
+                    <IconePrevisao />
+                    <span>Previsão</span>
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-        {/* Marcado não é só cor: o ponto fica cheio e o desmarcado fica
-            vazado. Quem não distingue as duas cores ainda vê a diferença de
-            forma — mesmo motivo de `aria-pressed` estar em cada botão. */}
-        <ul className="rec-legenda rec-legenda-filtro">
-          {dado.porNatureza.map((n) => {
-            const dentro = legenda.find((l) => l.natureza === n.natureza);
-            const liga = !ocultas.has(n.natureza);
-            return (
-              <li key={n.natureza}>
-                <button type="button" aria-pressed={liga} onClick={() => alternar(n.natureza)}>
-                  <i className={`rec-ponto ${CLASSE[n.natureza] ?? "nat-encargo"}${liga ? "" : " vazado"}`} />
-                  <span>{ROTULO[n.natureza] ?? n.natureza}</span>
-                  <b>{liga ? brl(dentro?.cents ?? 0) : "—"}</b>
-                  <em>{liga ? plural(dentro?.n ?? 0, "mês", "meses") : "oculto"}</em>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+            ) : undefined
+          }
+        />
       </section>
 
       {temPrevisoes ? (

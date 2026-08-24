@@ -115,6 +115,11 @@ export const nomeMesTitulo = (m: string) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 export const mesCurto = (m: string) => MES_LONGO[Number(m.slice(5, 7)) - 1].slice(0, 3);
+/** Nome do mês por extenso, capitalizado — "Agosto", "Setembro". */
+export const mesNome = (m: string) => {
+  const s = MES_LONGO[Number(m.slice(5, 7)) - 1];
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
 
 /**
  * O carregador, único.

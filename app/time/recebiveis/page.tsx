@@ -1,7 +1,7 @@
 import { TimeApp } from "@/components/time/TimeApp";
 import { estadoDoTime } from "@/lib/financeiro/time";
 
-export const metadata = { title: "O que eu recebo — XPE" };
+export const metadata = { title: "Recebíveis — XPE" };
 export const dynamic = "force-dynamic";
 
 export default async function RecebiveisPage() {

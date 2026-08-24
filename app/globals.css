@@ -12015,6 +12015,7 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 
 /* ---- Abertura: faixa + gráfico abertos, sem cartões ---- */
+.time-tela-padrao .time-faixa { margin-top: 14px; }
 .time-faixa {
   display: flex;
   align-items: stretch;
@@ -12036,7 +12037,7 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   border-left: 1px solid var(--line);
 }
 .time-faixa-rotulo {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--muted);
   line-height: 1.25;
@@ -12051,6 +12052,16 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   overflow-wrap: anywhere;
 }
 .time-faixa-destaque .time-faixa-valor { color: var(--purple-text); }
+.time-faixa-previsto .time-faixa-valor {
+  color: var(--neon-purple);
+  font-weight: 800;
+  text-shadow: 0 0 20px color-mix(in srgb, var(--neon-purple) 35%, transparent);
+}
+:root:not([data-theme="claro"]) .time-faixa-previsto .time-faixa-valor {
+  color: var(--neon-purple);
+}
+.time-faixa-reembolso .time-faixa-valor { color: var(--neon-green-ink); }
+:root:not([data-theme="claro"]) .time-faixa-reembolso .time-faixa-valor { color: var(--neon-green); }
 .time-faixa-destaque:active { opacity: 0.72; }
 
 .time-grafico-secao {
@@ -17009,15 +17020,37 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
    O GRÁFICO EMPILHADO — um componente, dois tamanhos
    =========================================================================== */
 .rec-plot { display: grid; gap: 10px; }
-.rec-plot-cabeca { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.rec-plot-cabeca h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; flex-shrink: 0; }
-.rec-plot-acoes {
-  display: flex; align-items: stretch; justify-content: flex-end; gap: 6px;
-  flex: 1; min-width: 0; max-width: 72%;
+.rec-plot-mini { margin-top: 12px; }
+.rec-plot-cabeca {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 44px;
 }
+.rec-plot-cabeca-acoes { justify-content: flex-end; }
+.rec-plot-acoes {
+  display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+  flex-shrink: 0;
+}
+.rec-plot-acao {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 36px; padding: 0 11px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--ink);
+  font-family: var(--font-body), sans-serif;
+  font-size: 12.5px; font-weight: 600; line-height: 1;
+  text-decoration: none; white-space: nowrap;
+  cursor: pointer;
+}
+button.rec-plot-acao {
+  font-family: var(--font-body), sans-serif;
+  font-size: 12.5px; font-weight: 600; line-height: 1;
+}
+.rec-plot-acao.ativo {
+  border-color: var(--tint-purple-line); background: var(--tint-purple-soft);
+}
+.rec-plot-acao:active { background: var(--surface-2); }
+.rec-plot-icone { flex-shrink: 0; display: block; }
 
-/* 44px porque é o alvo mínimo, e "abrir em tela cheia" não pode ser o
-   ícone de 20px que este tipo de controle costuma virar. */
+/* Legado — só a tela cheia ainda referencia `.rec-plot-abrir` em comentário. */
 .rec-plot-abrir {
   display: inline-flex; align-items: center; gap: 6px;
   min-height: 44px; padding: 0 14px;
@@ -17051,7 +17084,28 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
    coluna — acima dos 44px de alvo. Com doze meses a mesma conta dá 24,6px, e
    por isso a janela é fixa em seis: o resto está na tela cheia. */
 .rec-plot-mini .rec-grade { grid-template-columns: repeat(6, 1fr); }
-.rec-plot-mini .rec-col-area { height: 72px; }
+.rec-plot-mini .rec-col-area { height: 108px; }
+/* Com previsão: série completa no trilho. Colunas ~22px (metade dos 44px de
+   toque) para caber mais meses antes de rolar; o rótulo curto (mar/set) ainda
+   cabe. */
+.rec-plot-rolagem .rec-plot-trilho {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.rec-plot-rolagem .rec-grade {
+  display: grid;
+  grid-template-columns: unset;
+  grid-auto-flow: column;
+  grid-auto-columns: 22px;
+  width: max-content;
+  min-width: 100%;
+  gap: 4px;
+}
+.rec-plot-rolagem .rec-col-mes {
+  font-size: 9px;
+  letter-spacing: -0.02em;
+}
 /* Cheio: 44px de largura mínima por coluna, o mesmo alvo de toque. A partir de
    oito meses o trilho passa a rolar — e é o comportamento certo, porque o
    número de meses só cresce. */
@@ -17088,6 +17142,35 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 .rec-col-mes { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
 .rec-col.ativa .rec-col-mes { color: var(--ink); }
 .rec-col.ativa .rec-pilha { outline: 2px solid var(--purple); outline-offset: 2px; }
+.rec-pilha i.foco {
+  outline: 2px solid var(--ink); outline-offset: -1px; position: relative; z-index: 1;
+}
+.rec-plot-dica {
+  margin: 0; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface-2);
+}
+.rec-plot-dica-cabeca {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin-bottom: 8px;
+}
+.rec-plot-dica-cabeca strong { font-size: 13px; font-weight: 650; }
+.rec-plot-dica-cabeca b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rec-plot-dica-vazio { margin: 0; font-size: 12px; color: var(--muted); }
+.rec-plot-dica-grupos { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rec-plot-dica-nat {
+  display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 8px;
+  font-size: 12.5px; font-weight: 600;
+}
+.rec-plot-dica-nat b { font-variant-numeric: tabular-nums; }
+.rec-plot-dica-itens { list-style: none; margin: 4px 0 0; padding: 0 0 0 17px; display: grid; gap: 4px; }
+.rec-plot-dica-itens li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start;
+  font-size: 12px; color: var(--muted);
+}
+.rec-plot-dica-nome { min-width: 0; }
+.rec-plot-dica-nome small { display: block; font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+.rec-plot-dica-itens b { font-size: 12px; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rec-plot-dica-nota { margin: 8px 0 0; font-size: 11px; line-height: 1.4; color: var(--muted); }
 
 /* NÃO EXISTE RÉGUA NO EMPILHADO. Foi desenhada, renderizada e removida: uma
    linha de mediana atravessando uma pilha de naturezas convida a comparar o
@@ -17703,11 +17786,15 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 .rec-reemb-itens { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
 .rec-reemb-itens li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12.5px; }
 
-/* A coluna prevista: contornada em vez de preenchida — o olho separa "caiu" de
-   "vai cair" sem precisar de legenda para isso. */
-.rec-col-previsto .rec-pilha { opacity: .48; }
-.rec-col-previsto .rec-pilha i { border: 1px dashed var(--card); }
-.rec-col-previsto .rec-col-mes { font-style: italic; }
+/* Previsto: mesma pilha sólida; contorno tracejado na pilha inteira. */
+.rec-col-previsto .rec-pilha {
+  opacity: .72;
+  outline: 1.5px dashed color-mix(in srgb, var(--muted) 65%, transparent);
+  outline-offset: 1px;
+  border-radius: 5px 5px 2px 2px;
+}
+.rec-col-previsto .rec-pilha i { border: none; }
+.rec-col-previsto .rec-col-mes { font-style: italic; color: var(--muted); }
 
 .rec-previsao-botao {
   width: 100%; min-height: 44px; margin-top: 8px;
@@ -17763,17 +17850,17 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 
 .rec-prev-cats { margin-top: 4px; gap: 0; }
 
-/* Previsões — respiro acima e abaixo para separar do gráfico e do histórico. */
+/* Previsões — respiro acima do gráfico; pouco entre ela e o histórico. */
 .rec-secao-previsoes {
   margin-top: 24px;
-  margin-bottom: 32px;
+  margin-bottom: 10px;
   padding-top: 6px;
-  padding-bottom: 6px;
-  gap: 12px;
+  padding-bottom: 0;
+  gap: 8px;
 }
 .rec-secao-cabeca {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  min-height: 58px; margin-bottom: 0; padding: 15px 14px;
+  min-height: 76px; margin-bottom: 0; padding: 20px 14px;
   border-radius: 10px; background: var(--surface-2);
   list-style: none; cursor: pointer;
 }
@@ -17788,7 +17875,6 @@ body:has(.time-page):not(:has(.time-app)) .theme-toggle {
 @media (prefers-reduced-motion: reduce) { .rec-secao-cabeca .rec-seta { transition: none; } }
 .rec-secao-corpo {
   padding: 4px 0 2px;
-  border: 1px solid var(--line); border-top: 0;
   border-radius: 0 0 10px 10px; background: var(--surface);
 }
 .rec-secao-dobravel:not([open]) > summary.rec-secao-cabeca { border-radius: 10px; }

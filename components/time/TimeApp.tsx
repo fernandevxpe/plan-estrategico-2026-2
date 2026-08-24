@@ -2535,8 +2535,30 @@ function Inicio({ envios }: { envios: Envio[] }) {
    */
   const { dado: rec } = useRecebiveis();
 
-  const aguardando = envios.filter((e) => e.estado === "aguardando");
-  const voltaram = envios.filter((e) => e.estado === "devolvido" || e.estado === "recusado");
+  /*
+   * AS DUAS CONTAS TÊM DE SER A MESMA CONTA.
+   *
+   * Isto contava por `estado` e mandava para `/time/envios#status-aguardando`,
+   * que filtra por `statusExtrato`. São dois vocabulários, e não um deles
+   * dentro do outro:
+   *
+   *   estado         rascunho · aguardando · aprovado · concluído · devolvido · recusado
+   *   statusExtrato  registrado · aguardando · pago · não pago
+   *
+   * `aprovado` — aprovado, esperando só o pagamento — vira `aguardando` no
+   * extrato. E `aguardando` cujo status é "enviado"/"em análise" vira
+   * `registrado`. O Início dizia "1 aguardando análise" e a tela abria com 2.
+   *
+   * Pior que a diferença de mapa: `statusExtrato` pode vir PRONTO do banco
+   * (`status_extrato`) em vez de derivado de `estado`, então nem a equivalência
+   * que ainda existe é garantida no futuro.
+   *
+   * Contar pelo MESMO campo que o destino filtra é o que faz o número e a
+   * lista não poderem mais discordar — inclusive em `nao_pago`, que hoje casa
+   * com devolvido|recusado por coincidência do mapa, não por construção.
+   */
+  const aguardando = envios.filter((e) => e.statusExtrato === "aguardando");
+  const voltaram = envios.filter((e) => e.statusExtrato === "nao_pago");
 
   const ultimoMes = rec && rec.porMes.length > 0 ? rec.porMes[rec.porMes.length - 1] : null;
   const nCompras = envios.filter((e) => e.origem === "custo" || e.origem === "compra").length;
@@ -2627,15 +2649,18 @@ function Inicio({ envios }: { envios: Envio[] }) {
             tipo="compra"
             cor="branco"
           />
+          {/*
+            Era "aguardando análise", e deixou de ser verdade quando a conta
+            passou a ser a do extrato: `aprovado` entra aqui, e esse já foi
+            analisado — falta só o dinheiro sair. "Aguardando" é a palavra que
+            o selo de cada linha usa na tela de destino, então é a que não
+            contradiz o que a pessoa vai ler quando chegar lá.
+          */}
           {aguardando.length > 0 ? (
             <Atalho
               href="/time/envios#status-aguardando"
-              titulo={
-                aguardando.length === 1
-                  ? "1 aguardando análise"
-                  : `${aguardando.length} aguardando análise`
-              }
-              texto="O financeiro ainda não respondeu"
+              titulo={aguardando.length === 1 ? "1 aguardando" : `${aguardando.length} aguardando`}
+              texto="Em análise ou já aprovado — ainda não caiu"
               tipo="aguardando"
               tom="alerta"
             />

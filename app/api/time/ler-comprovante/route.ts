@@ -2,7 +2,7 @@ import { exigirContexto, lerCorpo, respostaDeErro } from "@/app/api/time/_sessao
 import { ComprovanteIndisponivel, lerComprovante, leituraDeComprovanteDisponivel } from "@/lib/financeiro/ler-comprovante";
 import { XmlNaoEhNota, lerNotaXml, pareceXml } from "@/lib/financeiro/ler-nfe-xml";
 import { lerQrCode } from "@/lib/financeiro/ler-qrcode";
-import { TimeError, catalogoDeClassificacao } from "@/lib/financeiro/time";
+import { TimeError, buscarPadraoCategoriaFornecedor, catalogoDeClassificacao } from "@/lib/financeiro/time";
 
 /**
  * POST /api/time/ler-comprovante — a foto vira campos preenchidos.
@@ -101,13 +101,44 @@ export async function POST(request: Request) {
 
     const chaveDoQr = qr?.chaveNfe ?? null;
 
+    // -----------------------------------------------------------------------
+    // APRENDIZADO: o que a equipe já escolheu para fornecedor parecido.
+    // -----------------------------------------------------------------------
+    // Busca por PROXIMIDADE (pg_trgm), não igualdade — "Auto Posto Petrobras"
+    // e "AUTOPOSTO PETROBRAS FILIAL 2" são o mesmo fornecedor. `vezes >= 2` e
+    // `similaridade > 0.35` são o corte de confiança: uma única confirmação
+    // passada pode ter sido ela mesma um erro, e nome pouco parecido é
+    // coincidência de letras comuns, não o mesmo estabelecimento. Abaixo
+    // disso, o palpite da foto continua sozinho — sem histórico suficiente
+    // para valer mais que ele.
+    let padrao: Awaited<ReturnType<typeof buscarPadraoCategoriaFornecedor>>[number] | null = null;
+    if (lido.estabelecimento) {
+      const achados = await buscarPadraoCategoriaFornecedor(lido.estabelecimento).catch(() => []);
+      const melhor = achados[0];
+      if (melhor && melhor.vezes >= 2 && melhor.similaridade > 0.35) padrao = melhor;
+    }
+
+    const lidoComAprendizado = padrao
+      ? {
+          ...lido,
+          categoriaCode: padrao.categoriaCode,
+          porQue: `Categoria de ${padrao.vezes} compra${padrao.vezes === 1 ? "" : "s"} anterior${padrao.vezes === 1 ? "" : "es"} de fornecedor parecido ("${padrao.fornecedorParecido}").`.slice(
+            0,
+            120
+          )
+        }
+      : lido;
+
     return Response.json({
-      lido: chaveDoQr ? { ...lido, chaveNfe: chaveDoQr } : lido,
+      lido: chaveDoQr ? { ...lidoComAprendizado, chaveNfe: chaveDoQr } : lidoComAprendizado,
       fonte: "ia",
       // A tela usa isto para mostrar "chave conferida pelo QR" em vez de só
       // "lida" — a diferença de confiança entre as duas fontes é real e a
       // pessoa que vai conferir o reembolso merece saber qual foi usada.
-      qr: chaveDoQr ? { chaveConferida: true, url: qr!.url } : null
+      qr: chaveDoQr ? { chaveConferida: true, url: qr!.url } : null,
+      // Idem para a categoria: "baseado em compras anteriores" é uma garantia
+      // diferente de "a IA olhou a foto e achou parecido".
+      aprendizado: padrao ? { vezes: padrao.vezes, fornecedorParecido: padrao.fornecedorParecido } : null
     });
   } catch (erro) {
     if (erro instanceof ComprovanteIndisponivel) {

@@ -686,6 +686,97 @@ async function entidadeId(client: { query: (t: string, p?: unknown[]) => Promise
   return Number(id);
 }
 
+/** Minúsculo, sem acento, espaços colapsados — mesma disciplina de slugArea (lib/financeiro/pessoas.ts). */
+function normalizarFornecedor(v: string): string {
+  return v
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * REGISTRA UM VOTO — a cada envio confirmado, não a cada sugestão.
+ *
+ * "Confirmado" é o que a pessoa deixou no campo categoria na hora de enviar,
+ * já tendo tido a chance de corrigir o palpite da IA. É por isso que a fonte
+ * do aprendizado é `fin_time_envio`, não a resposta do Haiku: o modelo pode
+ * errar; o que a equipe de fato usou é fato, não palpite.
+ *
+ * ON CONFLICT soma — cinco envios de "Auto Posto X" como 5.03 viram uma linha
+ * com `vezes = 5`, não cinco linhas. É o contador que decide "esta é a
+ * categoria de sempre" na hora de sugerir de novo.
+ */
+async function registrarPadraoCategoria(
+  client: { query: (t: string, p?: unknown[]) => Promise<unknown> },
+  entityId: number,
+  fornecedor: string | null | undefined,
+  categoryId: number | null | undefined
+): Promise<void> {
+  if (!fornecedor?.trim() || !categoryId) return;
+  const norm = normalizarFornecedor(fornecedor);
+  if (!norm) return;
+  await client.query(
+    `INSERT INTO fin_padrao_categoria_fornecedor (entity_id, fornecedor_norm, category_id, vezes, ultima_vez_em)
+     VALUES ($1, $2, $3, 1, now())
+     ON CONFLICT (entity_id, fornecedor_norm, category_id)
+       DO UPDATE SET vezes = fin_padrao_categoria_fornecedor.vezes + 1, ultima_vez_em = now()`,
+    [entityId, norm, categoryId]
+  );
+}
+
+export type PadraoCategoriaFornecedor = {
+  categoriaCode: string;
+  categoriaNome: string;
+  vezes: number;
+  fornecedorParecido: string;
+  similaridade: number;
+};
+
+/**
+ * BUSCA POR PROXIMIDADE — não por igualdade.
+ *
+ * `pg_trgm` mede quão parecidos dois textos são por trigrama, então "Auto
+ * Posto Petrobras" e "AUTOPOSTO PETROBRAS FILIAL 2" casam mesmo sem serem
+ * idênticos — é a mesma ideia por trás de busca tipo Algolia, só que rodando
+ * dentro do Postgres, sem precisar de outro serviço.
+ *
+ * `0.3` de corte veio de teste manual: abaixo disso o "parecido" vira
+ * coincidência de letras comuns (todo estabelecimento tem "de", "ltda"), não
+ * o mesmo fornecedor. Devolve as até 3 categorias mais fortes, ordenadas por
+ * quão parecido é o nome E quantas vezes essa categoria já foi usada — é o
+ * placar que decide o que entra no prompt como "aprendido".
+ */
+export async function buscarPadraoCategoriaFornecedor(fornecedorLido: string): Promise<PadraoCategoriaFornecedor[]> {
+  const norm = normalizarFornecedor(fornecedorLido);
+  if (!norm) return [];
+  const linhas = await query<{
+    categoria_code: string;
+    categoria_nome: string;
+    vezes: number;
+    fornecedor_norm: string;
+    sim: number;
+  }>(
+    `SELECT c.code AS categoria_code, c.name AS categoria_nome, p.vezes, p.fornecedor_norm,
+            similarity(p.fornecedor_norm, $2) AS sim
+       FROM fin_padrao_categoria_fornecedor p
+       JOIN fin_category c ON c.id = p.category_id AND c.is_active
+       JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $1
+      WHERE similarity(p.fornecedor_norm, $2) > 0.3
+      ORDER BY sim DESC, p.vezes DESC
+      LIMIT 3`,
+    [ENTITY, norm]
+  );
+  return linhas.map((l) => ({
+    categoriaCode: l.categoria_code,
+    categoriaNome: l.categoria_nome,
+    vezes: Number(l.vezes),
+    fornecedorParecido: l.fornecedor_norm,
+    similaridade: Number(l.sim)
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Validação de entrada — o vocabulário compartilhado
 // ---------------------------------------------------------------------------
@@ -817,6 +908,14 @@ export async function criarReembolsoDoTime(sessao: Sessao, corpo: NovoReembolso)
       );
       if (!cat.rows[0]) throw new TimeError("categoria inválida");
     }
+    // Aprendizado: mesmo princípio de criarEnvioDoTime — o fornecedor que a
+    // pessoa digitou, com a categoria que ficou confirmada neste reembolso.
+    await registrarPadraoCategoria(
+      client,
+      entityId,
+      typeof corpo.fornecedor === "string" ? corpo.fornecedor : null,
+      categoryId
+    );
 
     // O reembolso do mês da pessoa. Volta para 'rascunho' → 'enviado' abaixo;
     // um reembolso já pago não pode receber item novo, senão o total muda
@@ -1025,6 +1124,10 @@ export async function criarEnvioDoTime(sessao: Sessao, corpo: NovoEnvio) {
       );
       categoriaId = c.rows[0]?.id ?? null;
     }
+    // Aprendizado: o que a pessoa deixou no campo categoria, para o mesmo
+    // fornecedor pesar mais da próxima vez que alguém fotografar uma nota
+    // parecida. Best-effort — nunca derruba o envio por causa disto.
+    await registrarPadraoCategoria(client, entityId, fornecedor, categoriaId);
 
     // O eixo DESTINO. Os dois são opcionais de propósito: campo obrigatório num
     // formulário preenchido na rua é campo preenchido com qualquer coisa, e

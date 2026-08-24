@@ -11976,6 +11976,63 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   display: grid;
   gap: 18px;
 }
+
+/* Instalar na tela inicial. Cartão, não linha de texto: é a única ação da tela
+   que muda como o app inteiro se comporta depois. */
+.instalar-caixa {
+  display: grid;
+  gap: 12px;
+  padding: 15px 16px;
+  border: 1px solid var(--tint-purple-line);
+  border-radius: 14px;
+  background: var(--tint-purple-soft);
+}
+.instalar-texto strong { display: block; font-size: 14.5px; font-weight: 680; }
+.instalar-texto p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.instalar-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  /* 48px: o alvo fica sob o polegar de quem segura o celular com uma mão, e
+     esta é ação de uma vez só — não compensa economizar altura aqui. */
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--purple);
+  /* Branco fixo, NÃO `--on-bright`: aquele token é a tinta do verde neon e no
+     escuro vale #0d1a16, que sobre o roxo dá 3,08:1. Mesma armadilha da
+     pílula do cabeçalho. */
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.instalar-botao:active { opacity: 0.9; }
+/* iPhone: os dois toques do Safari, porque não existe botão possível ali. */
+.instalar-passos {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 7px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.instalar-passos strong { color: var(--ink); font-weight: 640; }
+.instalar-passos-sub { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+/* Já instalado: confirmação de uma linha, sem cartão. */
+.instalar-ok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 560;
+  color: var(--muted);
+}
 .time-perfil-foto-linha {
   display: flex;
   align-items: center;

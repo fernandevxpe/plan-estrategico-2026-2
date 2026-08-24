@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AnexarFlutuante, type OrigemAnexo } from "@/components/time/AnexarFlutuante";
+import { InstalarApp } from "@/components/time/InstalarApp";
 import { Recebiveis } from "@/components/time/Recebiveis";
 import {
   CLASSE as CLASSE_REC,
@@ -2285,6 +2286,17 @@ function TelaPerfil({
         <h1>Meu perfil</h1>
         <p>Seus dados, a conta que recebe o seu dinheiro e os ajustes do app.</p>
       </header>
+
+      {/*
+        INSTALAR VEM PRIMEIRO, e some sozinho depois de instalado.
+
+        É a única coisa desta tela que se faz UMA vez, e quem não fez está
+        usando o app pior do que ele é — com barra de endereço comendo 60px de
+        uma tela de 852px, sem os atalhos do ícone e sem receber comprovante
+        pelo compartilhar do Android. Enterrado embaixo do cadastro de PIX,
+        ninguém encontraria; instalado, vira uma linha discreta de confirmação.
+      */}
+      <InstalarApp />
 
       <div className="time-perfil-foto-linha">
         {/*

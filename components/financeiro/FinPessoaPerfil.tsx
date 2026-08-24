@@ -1,4 +1,10 @@
 import { brl } from "@/components/financeiro/Certeza";
+import {
+  FinComissaoForm,
+  FinSalarioBaseForm,
+  TabelaComissao,
+  TabelaSalarioBase
+} from "@/components/financeiro/FinRemuneracaoForms";
 import type { PerfilPessoa } from "@/lib/financeiro/pessoa-perfil";
 
 /**
@@ -149,7 +155,22 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
         )}
       </section>
 
-      {/* 2. Os números que resumem. */}
+      {/* 2. Definir e ajustar — o que era só relatório vira registro. */}
+      <section className="fin-card">
+        <div className="fin-card-head">
+          <h2>Salário e comissão</h2>
+        </div>
+        <p className="pp-remuneracao-intro">
+          O que está aqui vale para o mês seguinte e é a MESMA conta que a pessoa vê no próprio app, em Meu Perfil —
+          nunca um número em paralelo.
+        </p>
+        <FinSalarioBaseForm personId={perfil.id} atual={perfil.salarioBaseAtual} />
+        <TabelaSalarioBase historico={perfil.salarioBaseHistorico} />
+        <FinComissaoForm personId={perfil.id} temSalarioBase={Boolean(perfil.salarioBaseAtual)} />
+        <TabelaComissao historico={perfil.comissaoDeclarada} />
+      </section>
+
+      {/* 3. Os números que resumem. */}
       <section className="fin-card">
         <div className="fin-card-head">
           <h2>Desde 2026</h2>
@@ -208,6 +229,15 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
           )}
         </div>
 
+        {/* A MESMA informação do gráfico, em número exato — é o que dá para
+            somar de cabeça e conferir contra o combinado com a pessoa. */}
+        {perfil.porMes.length > 0 ? (
+          <div className="pp-bloco">
+            <h3>Mês a mês, em números</h3>
+            <TabelaMesNatureza porMes={perfil.porMes} />
+          </div>
+        ) : null}
+
         <div className="pp-cortes">
           <div className="pp-bloco">
             <h3>Por natureza</h3>
@@ -242,7 +272,7 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
         </div>
       </section>
 
-      {/* 3. Pagamento a pagamento. */}
+      {/* 4. Pagamento a pagamento. */}
       <section className="fin-card">
         <div className="fin-card-head">
           <h2>
@@ -282,5 +312,48 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
         </div>
       </section>
     </>
+  );
+}
+
+/** A ORDEM É FIXA, não alfabética — dinheiro que efetivamente é remuneração
+    primeiro, reembolso (devolução, não remuneração) por último. Colunas que a
+    pessoa nunca recebeu somem: uma tabela com "Comissão" zerada em toda linha
+    não ajuda ninguém a ler. */
+const ORDEM_NATUREZA = ["salario", "prolabore", "comissao", "estagio", "encargo_beneficio", "extra", "reembolso"];
+
+function TabelaMesNatureza({ porMes }: { porMes: PerfilPessoa["porMes"] }) {
+  const colunas = ORDEM_NATUREZA.filter((nat) => porMes.some((m) => (m.porNatureza[nat] ?? 0) > 0));
+
+  return (
+    <div className="pp-tabela-caixa">
+      <table className="pp-tabela">
+        <thead>
+          <tr>
+            <th scope="col">Mês</th>
+            {colunas.map((nat) => (
+              <th scope="col" className="num" key={nat}>
+                {NATUREZA_ROTULO[nat] ?? nat}
+              </th>
+            ))}
+            <th scope="col" className="num">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {porMes.map((m) => (
+            <tr key={m.mes}>
+              <td>{mesCurto(m.mes)}</td>
+              {colunas.map((nat) => (
+                <td className="num" key={nat}>
+                  {m.porNatureza[nat] ? brl(m.porNatureza[nat]) : "—"}
+                </td>
+              ))}
+              <td className="num">
+                <strong>{brl(m.cents)}</strong>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

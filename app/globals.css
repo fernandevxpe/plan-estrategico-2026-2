@@ -17093,6 +17093,36 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 .pp-vazio-alerta strong, .pp-aviso strong { font-weight: 660; }
 .pp-vazio { margin: 0; font-size: 13px; color: var(--muted); }
 
+/* Definir/ajustar salário-base e comissão — a seção que passou de relatório
+   a registro. Um cartão por conceito: cada um tem valor atual (ou vazio),
+   botão de ação e, quando aberto, o formulário. */
+.pp-remuneracao-intro { margin: 0 0 16px; font-size: 12.5px; line-height: 1.5; color: var(--muted); max-width: 68ch; }
+.pp-remuneracao-card {
+  border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; background: var(--card);
+}
+.pp-remuneracao-topo { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.pp-remuneracao-rotulo {
+  display: block; font-size: 11px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
+}
+.pp-remuneracao-valor {
+  display: block; margin-top: 4px; font-size: 18px; font-weight: 680; font-variant-numeric: tabular-nums;
+}
+.pp-remuneracao-valor small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+.pp-remuneracao-valor.pp-remuneracao-vazio { font-size: 13px; font-weight: 550; color: var(--muted); }
+.pp-remuneracao-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
+.pp-remuneracao-explicacao { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.pp-remuneracao-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.pp-remuneracao-campos label, .pp-remuneracao-nota { display: grid; gap: 5px; }
+.pp-remuneracao-campos label > span, .pp-remuneracao-nota > span {
+  font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
+}
+.pp-remuneracao-campos .fin-input, .pp-remuneracao-nota .fin-input { width: 100%; }
+.pp-remuneracao-erro { margin: 0; padding: 8px 11px; border-radius: 8px; background: var(--tint-red); color: var(--ink-red); font-size: 12.5px; }
+.pp-remuneracao-aviso {
+  margin: 10px 0 0; padding: 9px 11px; border-radius: 8px; background: var(--tint-amber); color: var(--ink-amber); font-size: 12px; line-height: 1.5;
+}
+.pp-remuneracao-acoes { display: flex; gap: 10px; }
+
 .pp-numeros {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1px;
   background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 20px;

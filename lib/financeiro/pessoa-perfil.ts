@@ -33,6 +33,24 @@ const ENTITY = "xpe";
  * E ela cobre só salário, pró-labore e estágio: comissão varia com venda e
  * reembolso é devolução, não remuneração. Somar os três daria um número maior
  * e menos útil.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE "POR MÊS" E "POR NATUREZA" NÃO VÊM MAIS DE `fin_pessoa_remuneracao_v`
+ * ---------------------------------------------------------------------------
+ * Aquela view (0160) classifica cada TRANSAÇÃO pela própria categoria — não
+ * sabe nada de salário-base nem de comissão declarada (0164/0165). Antes desta
+ * mudança, esta tela mostrava o pró-labore do Fernando inteiro sem separar o
+ * salário, e a Audrey (que recebe tudo no mesmo PIX) apareceria com "salário"
+ * = o PIX inteiro, sem comissão nem reembolso separados — dois números que
+ * DIVERGIRIAM do que a pessoa vê em Meu Perfil no app do time, que já usa
+ * `fin_time_remuneracao_mes_v`.
+ *
+ * A régua da casa é: o que o admin vê tem de ser 100% a mesma conta que a
+ * pessoa vê na própria tela. Por isso "por mês" e "por natureza" agora somam
+ * `fin_time_remuneracao_mes_v` — a mesma view, a mesma fonte. `pagamentos`
+ * continua vindo de `fin_pessoa_remuneracao_v`: é o extrato bruto, linha a
+ * linha, útil para conferir "de qual conta saiu" — não precisa (e não deveria)
+ * saber separar natureza.
  */
 
 export type PagamentoPessoa = {
@@ -63,6 +81,9 @@ export type ContaDaPessoa = {
   atualizadoEm: string | null;
 } | null;
 
+export type SalarioBaseLinha = { id: number; valorCents: number; vigenteDesde: string; nota: string | null };
+export type ComissaoDeclaradaLinha = { id: number; valorCents: number; competencia: string; nota: string | null };
+
 export type PerfilPessoa = {
   id: number;
   nome: string;
@@ -84,6 +105,9 @@ export type PerfilPessoa = {
   ultimoPagamento: string | null;
   reembolsoAbertoCents: number;
   pagamentos: PagamentoPessoa[];
+  salarioBaseAtual: SalarioBaseLinha | null;
+  salarioBaseHistorico: SalarioBaseLinha[];
+  comissaoDeclarada: ComissaoDeclaradaLinha[];
 };
 
 /** As naturezas que se repetem todo mês — a base da previsão. */
@@ -100,7 +124,7 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
   );
   if (!pessoa) return null;
 
-  const [pagamentos, conta, saldo] = await Promise.all([
+  const [pagamentos, conta, saldo, bandas, salarioBase, comissaoDeclarada] = await Promise.all([
     query<Record<string, unknown>>(
       `SELECT transaction_id, data, to_char(mes, 'YYYY-MM') AS mes, valor_cents,
               natureza, categoria, conta, descricao
@@ -120,7 +144,25 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
       `SELECT coalesce(sum(saldo_cents), 0)::text AS total
          FROM fin_reembolso_saldo_v WHERE person_id = $1 AND NOT quitado`,
       [personId]
-    ).catch(() => [{ total: "0" }])
+    ).catch(() => [{ total: "0" }]),
+    // A MESMA view que /time/perfil usa — ver o comentário no topo do arquivo.
+    query<{ mes: string; natureza: string; valor_cents: string }>(
+      `SELECT to_char(mes, 'YYYY-MM') AS mes, natureza, valor_cents
+         FROM fin_time_remuneracao_mes_v
+        WHERE person_id = $1
+        ORDER BY mes`,
+      [personId]
+    ),
+    query<{ id: number; valor_cents: string; vigente_desde: string; nota: string | null }>(
+      `SELECT id, valor_cents, to_char(vigente_desde, 'YYYY-MM-DD') AS vigente_desde, nota
+         FROM fin_pessoa_salario_base WHERE person_id = $1 ORDER BY vigente_desde DESC`,
+      [personId]
+    ),
+    query<{ id: number; valor_cents: string; competencia: string; nota: string | null }>(
+      `SELECT id, valor_cents, to_char(competencia, 'YYYY-MM') AS competencia, nota
+         FROM fin_pessoa_comissao_declarada WHERE person_id = $1 ORDER BY competencia DESC`,
+      [personId]
+    )
   ]);
 
   const linhas: PagamentoPessoa[] = pagamentos.map((l) => ({
@@ -134,7 +176,7 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
     descricao: String(l.descricao ?? "")
   }));
 
-  const somar = <T extends string>(chave: (p: PagamentoPessoa) => T) => {
+  const somarPagamentos = <T extends string>(chave: (p: PagamentoPessoa) => T) => {
     const m = new Map<T, { cents: number; n: number }>();
     for (const p of linhas) {
       const k = chave(p);
@@ -144,16 +186,27 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
     return [...m.entries()].sort((a, b) => b[1].cents - a[1].cents);
   };
 
-  const meses = new Map<string, { cents: number; porNatureza: Record<string, number> }>();
-  for (const p of linhas) {
-    const a = meses.get(p.mes) ?? { cents: 0, porNatureza: {} };
-    a.cents += p.valorCents;
-    a.porNatureza[p.natureza] = (a.porNatureza[p.natureza] ?? 0) + p.valorCents;
-    meses.set(p.mes, a);
+  // "Por natureza" e "por mês" vêm das BANDAS (fin_time_remuneracao_mes_v),
+  // não do extrato bruto — é o que faz este número bater com o app do time.
+  const natMap = new Map<string, { cents: number; n: number }>();
+  const mesMap = new Map<string, { cents: number; porNatureza: Record<string, number> }>();
+  for (const b of bandas) {
+    const cents = Number(b.valor_cents);
+    const a = natMap.get(b.natureza) ?? { cents: 0, n: 0 };
+    natMap.set(b.natureza, { cents: a.cents + cents, n: a.n + 1 });
+
+    const m = mesMap.get(b.mes) ?? { cents: 0, porNatureza: {} };
+    m.cents += cents;
+    m.porNatureza[b.natureza] = (m.porNatureza[b.natureza] ?? 0) + cents;
+    mesMap.set(b.mes, m);
   }
-  const porMes = [...meses.entries()]
+  const porNatureza = [...natMap.entries()]
+    .sort((a, b) => b[1].cents - a[1].cents)
+    .map(([natureza, v]) => ({ natureza, ...v }));
+  const porMes = [...mesMap.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([mes, v]) => ({ mes, ...v }));
+  const totalBandasCents = bandas.reduce((s, b) => s + Number(b.valor_cents), 0);
 
   // A mediana dos meses recorrentes. Com número par de meses, a média dos dois
   // do meio — o padrão, e o que evita saltar para um dos extremos.
@@ -204,14 +257,29 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
           atualizadoEm: c.atualizado_em ? new Date(c.atualizado_em as string).toISOString() : null
         }
       : null,
-    totalCents: linhas.reduce((s, p) => s + p.valorCents, 0),
-    porNatureza: somar((p) => p.natureza).map(([natureza, v]) => ({ natureza, ...v })),
+    totalCents: totalBandasCents,
+    porNatureza,
     porMes,
-    porConta: somar((p) => p.conta).map(([conta, v]) => ({ conta, ...v })),
+    porConta: somarPagamentos((p) => p.conta).map(([conta, v]) => ({ conta, ...v })),
     mediaRecorrenteCents,
     ultimoPagamento: linhas[0]?.data ?? null,
     reembolsoAbertoCents: Number(saldo[0]?.total ?? 0),
-    pagamentos: linhas.slice(0, 200)
+    pagamentos: linhas.slice(0, 200),
+    salarioBaseAtual: salarioBase[0]
+      ? { id: salarioBase[0].id, valorCents: Number(salarioBase[0].valor_cents), vigenteDesde: salarioBase[0].vigente_desde, nota: salarioBase[0].nota }
+      : null,
+    salarioBaseHistorico: salarioBase.map((s) => ({
+      id: s.id,
+      valorCents: Number(s.valor_cents),
+      vigenteDesde: s.vigente_desde,
+      nota: s.nota
+    })),
+    comissaoDeclarada: comissaoDeclarada.map((c) => ({
+      id: c.id,
+      valorCents: Number(c.valor_cents),
+      competencia: c.competencia,
+      nota: c.nota
+    }))
   };
 }
 

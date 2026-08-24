@@ -3065,6 +3065,10 @@ function FormEnvio({
   // novo é um campo a mais entre a pessoa e o botão de enviar.
   const [fornecedor, setFornecedor] = useState("");
   const [nfeKey, setNfeKey] = useState("");
+  // Decodificada do QR (jsqr, determinístico) em vez de lida por OCR do
+  // Haiku — mais confiável que o resto do formulário, e a pessoa que vai
+  // conferir o reembolso merece saber qual das duas foi usada.
+  const [chaveConferidaPorQr, setChaveConferidaPorQr] = useState(false);
   const [nfeNumero, setNfeNumero] = useState("");
   const [categoria, setCategoria] = useState("");
   const [categoriaProposta, setCategoriaProposta] = useState("");
@@ -3183,6 +3187,7 @@ function FormEnvio({
       if (!f.type.startsWith("image/") && f.type !== "application/pdf") return;
       setLendo(true);
       setLeitura(null);
+      setChaveConferidaPorQr(false);
       try {
         const form = new FormData();
         form.append("arquivo", await encolherImagem(f));
@@ -3219,6 +3224,10 @@ function FormEnvio({
         por(data === HOJE() ? "" : data, l.data, setData, "data");
         por(fornecedor, l.estabelecimento ?? l.emitente, setFornecedor, "fornecedor");
         por(nfeKey, l.chaveNfe, setNfeKey, "chave da NF-e");
+        // O QR só existe em imagem, e só quando decodifica de verdade — sem
+        // chave nenhuma no `por` teria feito nada, então aqui só é preciso
+        // marcar o selo quando a rota confirma a origem.
+        if ((j.qr as { chaveConferida?: boolean } | null)?.chaveConferida) setChaveConferidaPorQr(true);
 
         // O CARTÃO SAI DA FOTO. "Mastercard **** 5585" é o dado mais chato de
         // digitar e o mais fácil de ler — e é ele que casa com a fatura depois.
@@ -3831,8 +3840,19 @@ function FormEnvio({
               </label>
               <div className="campo-par">
                 <label className="campo">
-                  <span>Chave da NF-e</span>
-                  <input value={nfeKey} onChange={(e) => setNfeKey(e.target.value)} inputMode="numeric" placeholder="44 dígitos" />
+                  <span>
+                    Chave da NF-e
+                    {chaveConferidaPorQr ? <em className="selo-qr">conferida pelo QR</em> : null}
+                  </span>
+                  <input
+                    value={nfeKey}
+                    onChange={(e) => {
+                      setNfeKey(e.target.value);
+                      setChaveConferidaPorQr(false);
+                    }}
+                    inputMode="numeric"
+                    placeholder="44 dígitos"
+                  />
                 </label>
                 <label className="campo">
                   <span>Número</span>
@@ -4038,8 +4058,19 @@ function FormEnvio({
           {nota ? (
             <div className="campo-par">
               <label className="campo">
-                <span>Chave da NF-e</span>
-                <input value={nfeKey} onChange={(e) => setNfeKey(e.target.value)} inputMode="numeric" placeholder="44 dígitos" />
+                <span>
+                  Chave da NF-e
+                  {chaveConferidaPorQr ? <em className="selo-qr">conferida pelo QR</em> : null}
+                </span>
+                <input
+                  value={nfeKey}
+                  onChange={(e) => {
+                    setNfeKey(e.target.value);
+                    setChaveConferidaPorQr(false);
+                  }}
+                  inputMode="numeric"
+                  placeholder="44 dígitos"
+                />
               </label>
               <label className="campo">
                 <span>Número</span>

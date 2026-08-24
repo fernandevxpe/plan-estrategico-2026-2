@@ -12966,6 +12966,14 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 
 .campo { display: grid; gap: 5px; }
 .campo > span { font-size: 12px; color: var(--muted); letter-spacing: .02em; }
+/* A chave decodificada do QR (jsqr, sem chute) é mais confiável que o resto
+   do formulário, lido por OCR — o selo diz qual das duas foi usada. Some
+   sozinho se a pessoa editar o campo à mão (perde a garantia). */
+.selo-qr {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+  background: var(--tint-green-soft); color: var(--ink-green); font-size: 10px; font-weight: 650;
+  font-style: normal; letter-spacing: .02em; vertical-align: middle;
+}
 .campo input, .campo select, .campo textarea {
   min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px;
   background: var(--surface); color: var(--ink); font: inherit; font-size: 15px; width: 100%;

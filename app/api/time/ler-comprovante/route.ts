@@ -1,6 +1,7 @@
 import { exigirContexto, lerCorpo, respostaDeErro } from "@/app/api/time/_sessao";
 import { ComprovanteIndisponivel, lerComprovante, leituraDeComprovanteDisponivel } from "@/lib/financeiro/ler-comprovante";
 import { XmlNaoEhNota, lerNotaXml, pareceXml } from "@/lib/financeiro/ler-nfe-xml";
+import { lerQrCode } from "@/lib/financeiro/ler-qrcode";
 import { TimeError, catalogoDeClassificacao } from "@/lib/financeiro/time";
 
 /**
@@ -84,9 +85,29 @@ export async function POST(request: Request) {
     // no banco de verdade. Sem ele a leitura ainda funciona; só não classifica.
     const catalogo = await catalogoDeClassificacao();
 
+    // ---------------------------------------------------------------------
+    // QR CODE: decodificado de verdade, em paralelo com o Haiku.
+    // ---------------------------------------------------------------------
+    // Só imagem tem QR — PDF de nota não traz o código impresso como pixel
+    // fotografável, e `lerQrCode` devolve vazio sozinho se o sharp não
+    // conseguir decodificar (sem lançar, sem atrasar o resto). A chave que
+    // sai daqui é DECODIFICADA, não lida: substitui a do OCR quando existe,
+    // porque é a fonte mais confiável das duas — ver o comentário em
+    // `ler-qrcode.ts`.
+    const [lido, qr] = await Promise.all([
+      lerComprovante(arquivo.bytes, arquivo.mime, catalogo),
+      IMAGENS.has(arquivo.mime) ? lerQrCode(arquivo.bytes) : Promise.resolve(null)
+    ]);
+
+    const chaveDoQr = qr?.chaveNfe ?? null;
+
     return Response.json({
-      lido: await lerComprovante(arquivo.bytes, arquivo.mime, catalogo),
-      fonte: "ia"
+      lido: chaveDoQr ? { ...lido, chaveNfe: chaveDoQr } : lido,
+      fonte: "ia",
+      // A tela usa isto para mostrar "chave conferida pelo QR" em vez de só
+      // "lida" — a diferença de confiança entre as duas fontes é real e a
+      // pessoa que vai conferir o reembolso merece saber qual foi usada.
+      qr: chaveDoQr ? { chaveConferida: true, url: qr!.url } : null
     });
   } catch (erro) {
     if (erro instanceof ComprovanteIndisponivel) {

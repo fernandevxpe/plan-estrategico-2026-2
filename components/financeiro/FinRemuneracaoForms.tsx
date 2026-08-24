@@ -1,24 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import { brl } from "@/components/financeiro/Certeza";
 import type { ComissaoDeclaradaLinha, ProlaboreEsperadoLinha, SalarioBaseLinha } from "@/lib/financeiro/pessoa-perfil";
-
-/**
- * Os dois formulários que fazem "definir salário atual" e "declarar comissão"
- * virar dado — não conversa perdida.
- *
- * SÃO DOIS COMPONENTES, NÃO UM: salário-base é VIGÊNCIA (vale a partir de uma
- * data, até a próxima mudança); comissão é COMPETÊNCIA (um valor por mês,
- * declarado mês a mês). Misturar os dois num formulário só faria a pessoa
- * confundir "quando isto entra em vigor" com "de que mês é isto".
- *
- * MÁSCARA DE DINHEIRO A PARTIR DOS CENTAVOS — mesma disciplina do app do time
- * (`mascaraDinheiro` em TimeApp.tsx): digitar "500000" vira R$ 5.000,00 sem
- * exigir que ninguém lembre da vírgula.
- */
 
 function mascaraDinheiro(bruto: string): string {
   const digitos = bruto.replace(/\D/g, "").slice(0, 11);
@@ -35,7 +21,109 @@ function mesAtualISO(): string {
   return new Date().toISOString().slice(0, 7);
 }
 
-export function FinSalarioBaseForm({ personId, atual }: { personId: number; atual: SalarioBaseLinha | null }) {
+function dataCurta(iso: string) {
+  return iso.split("-").reverse().join("/");
+}
+
+function IconeLapis() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function ChipRemuneracao({
+  rotulo,
+  valor,
+  detalhe,
+  cor,
+  historico,
+  editando,
+  onEditar,
+  formulario
+}: {
+  rotulo: string;
+  valor: ReactNode;
+  detalhe?: string | null;
+  cor?: string;
+  historico?: ReactNode;
+  editando: boolean;
+  onEditar: () => void;
+  formulario?: ReactNode;
+}) {
+  const [histAberto, setHistAberto] = useState(false);
+  const temHistorico = Boolean(historico);
+
+  return (
+    <article className="pp-chip" style={cor ? { ["--pp-chip-cor" as string]: cor } : undefined}>
+      <div className="pp-chip-topo">
+        <div className="pp-chip-corpo">
+          <span className="pp-chip-rotulo">{rotulo}</span>
+          <strong className="pp-chip-valor">{valor}</strong>
+          {detalhe ? <span className="pp-chip-detalhe">{detalhe}</span> : null}
+        </div>
+        <div className="pp-chip-acoes">
+          <button type="button" className="pp-btn-icone" onClick={onEditar} aria-label={`Editar ${rotulo.toLowerCase()}`} title="Editar">
+            <IconeLapis />
+          </button>
+          {temHistorico ? (
+            <button
+              type="button"
+              className="pp-btn-icone"
+              onClick={() => setHistAberto((v) => !v)}
+              aria-expanded={histAberto}
+              aria-label={histAberto ? "Ocultar histórico" : "Ver histórico"}
+              title="Histórico"
+            >
+              {histAberto ? "▴" : "▾"}
+            </button>
+          ) : null}
+        </div>
+      </div>
+      {editando && formulario ? <div className="pp-chip-form">{formulario}</div> : null}
+      {histAberto && historico ? <div className="pp-chip-hist">{historico}</div> : null}
+    </article>
+  );
+}
+
+function FormSalvar({
+  campos,
+  erro,
+  salvando,
+  onCancelar
+}: {
+  campos: ReactNode;
+  erro: string | null;
+  salvando: boolean;
+  onCancelar: () => void;
+}) {
+  return (
+    <>
+      {campos}
+      {erro ? <p className="pp-remuneracao-erro">{erro}</p> : null}
+      <div className="pp-remuneracao-acoes">
+        <button type="submit" className="fin-btn-primary fin-btn-sm" disabled={salvando}>
+          {salvando ? "Salvando…" : "Salvar"}
+        </button>
+        <button type="button" className="fin-btn-ghost fin-btn-sm" onClick={onCancelar}>
+          Cancelar
+        </button>
+      </div>
+    </>
+  );
+}
+
+export function FinSalarioBaseForm({
+  personId,
+  atual,
+  historico = []
+}: {
+  personId: number;
+  atual: SalarioBaseLinha | null;
+  historico?: SalarioBaseLinha[];
+}) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [valor, setValor] = useState("");
@@ -50,7 +138,7 @@ export function FinSalarioBaseForm({ personId, atual }: { personId: number; atua
     setErro(null);
     const valorCents = centavosDoTexto(valor);
     if (valorCents <= 0) return setErro("informe um valor maior que zero");
-    if (!nota.trim()) return setErro("diga a origem do número — quem afirmou, e quando");
+    if (!nota.trim()) return setErro("diga a origem do número");
 
     setSalvando(true);
     const r = await fetch(`/api/financeiro/pessoas/${personId}/salario-base`, {
@@ -69,39 +157,20 @@ export function FinSalarioBaseForm({ personId, atual }: { personId: number; atua
   }
 
   return (
-    <div className="pp-remuneracao-card">
-      <div className="pp-remuneracao-topo">
-        <div>
-          <span className="pp-remuneracao-rotulo">Salário-base atual</span>
-          {atual ? (
-            <strong className="pp-remuneracao-valor">
-              {brl(atual.valorCents)} <small>desde {atual.vigenteDesde.split("-").reverse().join("/")}</small>
-            </strong>
-          ) : (
-            <strong className="pp-remuneracao-valor pp-remuneracao-vazio">Nenhum definido</strong>
-          )}
-        </div>
-        <button type="button" className="fin-btn-primary" onClick={() => setAberto((v) => !v)}>
-          {atual ? "Definir novo valor" : "Definir salário"}
-        </button>
-      </div>
-
-      {aberto ? (
+    <ChipRemuneracao
+      rotulo="Salário-base"
+      cor="var(--nat-salario)"
+      valor={atual ? brl(atual.valorCents) : "—"}
+      detalhe={atual ? `desde ${dataCurta(atual.vigenteDesde)}` : "não definido"}
+      editando={aberto}
+      onEditar={() => setAberto((v) => !v)}
+      historico={historico.length > 1 ? <HistoricoSalarioBase historico={historico} /> : null}
+      formulario={
         <form className="pp-remuneracao-form" onSubmit={salvar}>
-          <p className="pp-remuneracao-explicacao">
-            Não substitui o valor antigo — cria uma vigência nova. Os meses já fechados continuam calculando com o
-            que valia neles.
-          </p>
           <div className="pp-remuneracao-campos">
             <label>
               <span>Valor mensal</span>
-              <input
-                className="fin-input"
-                value={valor}
-                onChange={(e) => setValor(mascaraDinheiro(e.target.value))}
-                inputMode="numeric"
-                placeholder="0,00"
-              />
+              <input className="fin-input" value={valor} onChange={(e) => setValor(mascaraDinheiro(e.target.value))} inputMode="numeric" placeholder="0,00" />
             </label>
             <label>
               <span>Vigente desde</span>
@@ -109,34 +178,25 @@ export function FinSalarioBaseForm({ personId, atual }: { personId: number; atua
             </label>
           </div>
           <label className="pp-remuneracao-nota">
-            <span>Nota — de onde vem este número</span>
-            <input className="fin-input" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ex.: combinado com o Fernando em 24/08/2026" />
+            <span>Nota</span>
+            <input className="fin-input" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ex.: combinado em 24/08/2026" />
           </label>
-          {erro ? <p className="pp-remuneracao-erro">{erro}</p> : null}
-          <div className="pp-remuneracao-acoes">
-            <button type="submit" className="fin-btn-primary" disabled={salvando}>
-              {salvando ? "Salvando…" : "Salvar"}
-            </button>
-            <button type="button" className="fin-btn-ghost" onClick={() => setAberto(false)}>
-              Cancelar
-            </button>
-          </div>
+          <FormSalvar campos={null} erro={erro} salvando={salvando} onCancelar={() => setAberto(false)} />
         </form>
-      ) : null}
-    </div>
+      }
+    />
   );
 }
 
-/**
- * PRÓ-LABORE ESPERADO — não é o pró-labore real.
- *
- * O pró-labore de um mês fechado é o resto por construção (0164/0165):
- * sobra depois de reembolso, salário-base e comissão, provada igual ao que
- * caiu na conta. Não dá para "definir" isso para o passado sem inventar
- * dinheiro que não existiu. O que dá para definir é uma EXPECTATIVA, para
- * projetar o mês seguinte — antes de qualquer transação existir.
- */
-export function FinProlaboreEsperadoForm({ personId, atual }: { personId: number; atual: ProlaboreEsperadoLinha | null }) {
+export function FinProlaboreEsperadoForm({
+  personId,
+  atual,
+  historico = []
+}: {
+  personId: number;
+  atual: ProlaboreEsperadoLinha | null;
+  historico?: ProlaboreEsperadoLinha[];
+}) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [valor, setValor] = useState("");
@@ -151,7 +211,7 @@ export function FinProlaboreEsperadoForm({ personId, atual }: { personId: number
     setErro(null);
     const valorCents = centavosDoTexto(valor);
     if (valorCents <= 0) return setErro("informe um valor maior que zero");
-    if (!nota.trim()) return setErro("diga a origem do número — quem afirmou, e quando");
+    if (!nota.trim()) return setErro("diga a origem do número");
 
     setSalvando(true);
     const r = await fetch(`/api/financeiro/pessoas/${personId}/prolabore-esperado`, {
@@ -170,40 +230,20 @@ export function FinProlaboreEsperadoForm({ personId, atual }: { personId: number
   }
 
   return (
-    <div className="pp-remuneracao-card">
-      <div className="pp-remuneracao-topo">
-        <div>
-          <span className="pp-remuneracao-rotulo">Pró-labore esperado</span>
-          {atual ? (
-            <strong className="pp-remuneracao-valor">
-              {brl(atual.valorCents)} <small>desde {atual.vigenteDesde.split("-").reverse().join("/")}</small>
-            </strong>
-          ) : (
-            <strong className="pp-remuneracao-valor pp-remuneracao-vazio">Nenhum definido</strong>
-          )}
-        </div>
-        <button type="button" className="fin-btn-primary" onClick={() => setAberto((v) => !v)}>
-          {atual ? "Atualizar expectativa" : "Definir expectativa"}
-        </button>
-      </div>
-
-      <p className="pp-remuneracao-explicacao" style={{ marginTop: atual || aberto ? 10 : 0 }}>
-        Só usado para PREVER o mês seguinte — o pró-labore de meses já fechados continua sendo calculado pelo que
-        sobrou de verdade, não por este número.
-      </p>
-
-      {aberto ? (
+    <ChipRemuneracao
+      rotulo="Pró-labore esperado"
+      cor="var(--nat-recorrente)"
+      valor={atual ? brl(atual.valorCents) : "—"}
+      detalhe={atual ? `desde ${dataCurta(atual.vigenteDesde)}` : "só previsão"}
+      editando={aberto}
+      onEditar={() => setAberto((v) => !v)}
+      historico={historico.length > 1 ? <HistoricoProlaboreEsperado historico={historico} /> : null}
+      formulario={
         <form className="pp-remuneracao-form" onSubmit={salvar}>
           <div className="pp-remuneracao-campos">
             <label>
-              <span>Valor esperado por mês</span>
-              <input
-                className="fin-input"
-                value={valor}
-                onChange={(e) => setValor(mascaraDinheiro(e.target.value))}
-                inputMode="numeric"
-                placeholder="0,00"
-              />
+              <span>Valor esperado</span>
+              <input className="fin-input" value={valor} onChange={(e) => setValor(mascaraDinheiro(e.target.value))} inputMode="numeric" placeholder="0,00" />
             </label>
             <label>
               <span>Vigente desde</span>
@@ -211,35 +251,26 @@ export function FinProlaboreEsperadoForm({ personId, atual }: { personId: number
             </label>
           </div>
           <label className="pp-remuneracao-nota">
-            <span>Nota — de onde vem este número</span>
-            <input
-              className="fin-input"
-              value={nota}
-              onChange={(e) => setNota(e.target.value)}
-              placeholder="Ex.: mediana dos últimos meses, combinado em 24/08/2026"
-            />
+            <span>Nota</span>
+            <input className="fin-input" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ex.: mediana dos últimos meses" />
           </label>
-          {erro ? <p className="pp-remuneracao-erro">{erro}</p> : null}
-          <div className="pp-remuneracao-acoes">
-            <button type="submit" className="fin-btn-primary" disabled={salvando}>
-              {salvando ? "Salvando…" : "Salvar"}
-            </button>
-            <button type="button" className="fin-btn-ghost" onClick={() => setAberto(false)}>
-              Cancelar
-            </button>
-          </div>
+          <FormSalvar campos={null} erro={erro} salvando={salvando} onCancelar={() => setAberto(false)} />
         </form>
-      ) : null}
-    </div>
+      }
+    />
   );
 }
 
 export function FinComissaoForm({
   personId,
-  temSalarioBase
+  temSalarioBase,
+  comissaoAtual,
+  historico = []
 }: {
   personId: number;
   temSalarioBase: boolean;
+  comissaoAtual: ComissaoDeclaradaLinha | null;
+  historico?: ComissaoDeclaradaLinha[];
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -255,13 +286,13 @@ export function FinComissaoForm({
     setErro(null);
     const valorCents = centavosDoTexto(valor);
     if (valorCents <= 0) return setErro("informe um valor maior que zero");
-    if (!nota.trim()) return setErro("diga de onde veio o número");
+    if (!nota.trim()) return setErro("descrição obrigatória — a que se refere?");
 
     setSalvando(true);
     const r = await fetch(`/api/financeiro/pessoas/${personId}/comissao`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ valorCents, competencia, nota: nota.trim() })
+      body: JSON.stringify({ valorCents, competencia, descricao: nota.trim(), nota: nota.trim() })
     });
     const j = await r.json().catch(() => ({}));
     setSalvando(false);
@@ -274,36 +305,27 @@ export function FinComissaoForm({
   }
 
   return (
-    <div className="pp-remuneracao-card">
-      <div className="pp-remuneracao-topo">
-        <div>
-          <span className="pp-remuneracao-rotulo">Comissão</span>
-          <strong className="pp-remuneracao-valor pp-remuneracao-vazio">Declarada mês a mês, veja a tabela abaixo</strong>
-        </div>
-        <button type="button" className="fin-btn-primary" onClick={() => setAberto((v) => !v)}>
-          Declarar comissão
-        </button>
-      </div>
-
-      {!temSalarioBase ? (
-        <p className="pp-remuneracao-aviso">
-          Esta pessoa ainda não tem salário-base definido. Sem ele, a comissão declarada não aparece separada —
-          o PIX inteiro continua contando como salário. Defina o salário-base primeiro.
-        </p>
-      ) : null}
-
-      {aberto ? (
+    <ChipRemuneracao
+      rotulo="Comissão"
+      cor="var(--nat-comissao)"
+      valor={comissaoAtual ? brl(comissaoAtual.valorCents) : "—"}
+      detalhe={comissaoAtual ? comissaoAtual.competencia : temSalarioBase ? "mês a mês" : "defina salário-base antes"}
+      editando={aberto}
+      onEditar={() => setAberto((v) => !v)}
+      historico={historico.length > 0 ? <HistoricoComissao historico={historico} /> : null}
+      formulario={
         <form className="pp-remuneracao-form" onSubmit={salvar}>
+          {!temSalarioBase ? (
+            <p className="pp-remuneracao-aviso">Defina o salário-base primeiro — sem ele a comissão não separa do PIX.</p>
+          ) : null}
+          <p className="pp-remuneracao-aviso">
+            Para várias no mês ou parcelar, use{" "}
+            <a href="/financeiro/comissoes">Comissões</a>.
+          </p>
           <div className="pp-remuneracao-campos">
             <label>
-              <span>Valor da comissão</span>
-              <input
-                className="fin-input"
-                value={valor}
-                onChange={(e) => setValor(mascaraDinheiro(e.target.value))}
-                inputMode="numeric"
-                placeholder="0,00"
-              />
+              <span>Valor</span>
+              <input className="fin-input" value={valor} onChange={(e) => setValor(mascaraDinheiro(e.target.value))} inputMode="numeric" placeholder="0,00" />
             </label>
             <label>
               <span>Mês</span>
@@ -311,168 +333,173 @@ export function FinComissaoForm({
             </label>
           </div>
           <label className="pp-remuneracao-nota">
-            <span>Nota — de onde vem este número</span>
-            <input className="fin-input" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ex.: planilha de comissionamento, linha da Audrey" />
+            <span>Descrição</span>
+            <input className="fin-input" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ex.: comissão obra X" />
           </label>
-          {erro ? <p className="pp-remuneracao-erro">{erro}</p> : null}
-          <div className="pp-remuneracao-acoes">
-            <button type="submit" className="fin-btn-primary" disabled={salvando}>
-              {salvando ? "Salvando…" : "Salvar"}
-            </button>
-            <button type="button" className="fin-btn-ghost" onClick={() => setAberto(false)}>
-              Cancelar
-            </button>
-          </div>
+          <FormSalvar campos={null} erro={erro} salvando={salvando} onCancelar={() => setAberto(false)} />
         </form>
-      ) : null}
-    </div>
+      }
+    />
   );
 }
 
-export function TabelaSalarioBase({ historico }: { historico: SalarioBaseLinha[] }) {
-  if (historico.length === 0) return null;
+function TabelaHistoricoCompacta({
+  colunas,
+  linhas
+}: {
+  colunas: string[];
+  linhas: { id: number; cells: ReactNode[] }[];
+}) {
+  if (linhas.length === 0) return null;
   return (
-    <div className="pp-tabela-caixa">
-      <table className="pp-tabela">
-        <thead>
-          <tr>
-            <th scope="col">Vigente desde</th>
-            <th scope="col" className="num">Valor</th>
-            <th scope="col">Nota</th>
-          </tr>
-        </thead>
-        <tbody>
-          {historico.map((h) => (
-            <tr key={h.id}>
-              <td className="num">{h.vigenteDesde.split("-").reverse().join("/")}</td>
-              <td className="num">{brl(h.valorCents)}</td>
-              <td className="pp-meta">{h.nota}</td>
-            </tr>
+    <table className="pp-tabela pp-tabela-compacta">
+      <thead>
+        <tr>
+          {colunas.map((c) => (
+            <th key={c} scope="col">
+              {c}
+            </th>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </tr>
+      </thead>
+      <tbody>
+        {linhas.map((l) => (
+          <tr key={l.id}>
+            {l.cells.map((cell, i) => (
+              <td key={i} className={i > 0 && i < l.cells.length - 1 ? "num" : undefined}>
+                {cell}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
-export function TabelaProlaboreEsperado({ historico }: { historico: ProlaboreEsperadoLinha[] }) {
-  if (historico.length === 0) return null;
+export function HistoricoSalarioBase({ historico }: { historico: SalarioBaseLinha[] }) {
   return (
-    <div className="pp-tabela-caixa">
-      <table className="pp-tabela">
-        <thead>
-          <tr>
-            <th scope="col">Vigente desde</th>
-            <th scope="col" className="num">Valor</th>
-            <th scope="col">Nota</th>
-          </tr>
-        </thead>
-        <tbody>
-          {historico.map((h) => (
-            <tr key={h.id}>
-              <td className="num">{h.vigenteDesde.split("-").reverse().join("/")}</td>
-              <td className="num">{brl(h.valorCents)}</td>
-              <td className="pp-meta">{h.nota}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <TabelaHistoricoCompacta
+      colunas={["Desde", "Valor", "Nota"]}
+      linhas={historico.map((h) => ({
+        id: h.id,
+        cells: [dataCurta(h.vigenteDesde), brl(h.valorCents), h.nota ?? "—"]
+      }))}
+    />
   );
 }
 
-/**
- * A CALCULADORA — soma o que já foi definido, para o mês seguinte.
- *
- * DUAS SOMAS, NÃO UMA: "Salário + Pró-labore" é o fixo esperado, o que dá
- * para contar mesmo sem venda nem comissão nenhuma. "+ Comissão" soma em cima
- * a comissão já declarada PARA O MÊS SEGUINTE especificamente — não a mais
- * recente qualquer, senão a calculadora prometeria em agosto um número que
- * era de julho.
- *
- * Cada parcela ausente aparece como "— (não definido)" em vez de contar como
- * zero silenciosamente: a soma de baixo existir não pode esconder que falta
- * uma peça.
- */
+export function HistoricoProlaboreEsperado({ historico }: { historico: ProlaboreEsperadoLinha[] }) {
+  return (
+    <TabelaHistoricoCompacta
+      colunas={["Desde", "Valor", "Nota"]}
+      linhas={historico.map((h) => ({
+        id: h.id,
+        cells: [dataCurta(h.vigenteDesde), brl(h.valorCents), h.nota ?? "—"]
+      }))}
+    />
+  );
+}
+
+export function HistoricoComissao({ historico }: { historico: ComissaoDeclaradaLinha[] }) {
+  if (historico.length === 0) return <p className="pp-vazio">Nenhuma comissão declarada.</p>;
+  return (
+    <TabelaHistoricoCompacta
+      colunas={["Mês", "Valor", "Descrição"]}
+      linhas={historico.map((h) => ({
+        id: h.id,
+        cells: [h.competencia, brl(h.valorCents), h.descricao || h.nota || "—"]
+      }))}
+    />
+  );
+}
+
 export function FinCalculadoraRemuneracao({
   salarioBaseAtual,
   prolaboreEsperadoAtual,
-  comissaoDeclarada
+  comissaoDeclarada,
+  reembolsoPrevistoProximoMesCents,
+  compacto = false
 }: {
   salarioBaseAtual: SalarioBaseLinha | null;
   prolaboreEsperadoAtual: ProlaboreEsperadoLinha | null;
   comissaoDeclarada: ComissaoDeclaradaLinha[];
+  reembolsoPrevistoProximoMesCents: number;
+  compacto?: boolean;
 }) {
   const hoje = new Date();
   const proximoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
   const competenciaProxima = `${proximoMes.getFullYear()}-${String(proximoMes.getMonth() + 1).padStart(2, "0")}`;
-  const comissaoProxima = comissaoDeclarada.find((c) => c.competencia === competenciaProxima) ?? null;
+  const comissaoProximaSoma = comissaoDeclarada
+    .filter((c) => c.competencia === competenciaProxima)
+    .reduce((s, c) => s + c.valorCents, 0);
 
   const salario = salarioBaseAtual?.valorCents ?? null;
   const prolabore = prolaboreEsperadoAtual?.valorCents ?? null;
-  const comissao = comissaoProxima?.valorCents ?? null;
+  const comissao = comissaoProximaSoma > 0 ? comissaoProximaSoma : null;
+  const reembolsoPrevisto = reembolsoPrevistoProximoMesCents;
 
-  const linha = (v: number | null) => (v === null ? "— (não definido)" : brl(v));
   const somaOuNull = (...vs: (number | null)[]) => (vs.some((v) => v === null) ? null : vs.reduce((a, b) => a! + b!, 0));
-
   const somaFixa = somaOuNull(salario, prolabore);
   const somaComComissao = somaOuNull(salario, prolabore, comissao ?? 0);
+  const somaComReembolso = somaComComissao === null ? null : somaComComissao + reembolsoPrevisto;
 
-  const mesNome = proximoMes.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const mesNome = proximoMes.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+
+  if (compacto) {
+    return (
+      <article className="pp-chip pp-chip-calc">
+        <span className="pp-chip-rotulo">Previsão {mesNome}</span>
+        <strong className="pp-chip-valor">{somaComReembolso === null ? "—" : brl(somaComReembolso)}</strong>
+        <span className="pp-chip-detalhe">
+          {somaFixa === null ? "falta salário ou pró-labore" : `${brl(somaFixa)} fixo`}
+          {comissao ? ` + ${brl(comissao)} comissão` : ""}
+          {reembolsoPrevisto > 0 ? ` + ${brl(reembolsoPrevisto)} reembolso` : ""}
+        </span>
+      </article>
+    );
+  }
 
   return (
     <div className="pp-calc">
-      <h3>Previsão de {mesNome}</h3>
+      <h3>Previsão de {proximoMes.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</h3>
       <dl className="pp-calc-linhas">
         <div>
           <dt>Salário-base</dt>
-          <dd>{linha(salario)}</dd>
+          <dd>{salario === null ? "—" : brl(salario)}</dd>
         </div>
         <div>
           <dt>+ Pró-labore esperado</dt>
-          <dd>{linha(prolabore)}</dd>
+          <dd>{prolabore === null ? "—" : brl(prolabore)}</dd>
         </div>
         <div className="pp-calc-total">
-          <dt>= Salário + Pró-labore</dt>
-          <dd>{somaFixa === null ? "— falta definir algum dos dois" : brl(somaFixa)}</dd>
+          <dt>= Fixo</dt>
+          <dd>{somaFixa === null ? "—" : brl(somaFixa)}</dd>
         </div>
         <div>
-          <dt>+ Comissão de {mesNome}</dt>
-          <dd>{comissaoProxima ? brl(comissaoProxima.valorCents) : "— (nenhuma declarada ainda para este mês)"}</dd>
+          <dt>+ Comissão</dt>
+          <dd>{comissao === null ? "—" : brl(comissao)}</dd>
+        </div>
+        <div>
+          <dt>+ Reembolso previsto</dt>
+          <dd>{reembolsoPrevisto > 0 ? brl(reembolsoPrevisto) : "—"}</dd>
         </div>
         <div className="pp-calc-total pp-calc-total-final">
-          <dt>= Salário + Pró-labore + Comissão</dt>
-          <dd>{somaComComissao === null ? "— falta definir salário ou pró-labore" : brl(somaComComissao)}</dd>
+          <dt>= Total previsto</dt>
+          <dd>{somaComReembolso === null ? "—" : brl(somaComReembolso)}</dd>
         </div>
       </dl>
     </div>
   );
 }
 
+/** @deprecated use HistoricoSalarioBase — mantido para imports antigos */
+export function TabelaSalarioBase({ historico }: { historico: SalarioBaseLinha[] }) {
+  return <HistoricoSalarioBase historico={historico} />;
+}
+export function TabelaProlaboreEsperado({ historico }: { historico: ProlaboreEsperadoLinha[] }) {
+  return <HistoricoProlaboreEsperado historico={historico} />;
+}
 export function TabelaComissao({ historico }: { historico: ComissaoDeclaradaLinha[] }) {
-  if (historico.length === 0) {
-    return <p className="pp-vazio">Nenhuma comissão declarada ainda.</p>;
-  }
-  return (
-    <div className="pp-tabela-caixa">
-      <table className="pp-tabela">
-        <thead>
-          <tr>
-            <th scope="col">Mês</th>
-            <th scope="col" className="num">Valor</th>
-            <th scope="col">Nota</th>
-          </tr>
-        </thead>
-        <tbody>
-          {historico.map((h) => (
-            <tr key={h.id}>
-              <td className="num">{h.competencia}</td>
-              <td className="num">{brl(h.valorCents)}</td>
-              <td className="pp-meta">{h.nota}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  return <HistoricoComissao historico={historico} />;
 }

@@ -32,13 +32,9 @@ export default async function PessoaPage({ params }: { params: Promise<{ id: str
 
   return (
     <AppShell>
-      <div className="page-header">
+      <div className="page-header page-header-compact">
         <h1>{perfil.nome}</h1>
-        <p>
-          Para onde o dinheiro dela vai, e tudo que a casa já pagou desde 2026 — salário, pró-labore, comissão,
-          reembolso e extras, mês a mês e por conta de origem. O histórico é lido do próprio ledger: nada aqui é
-          digitado duas vezes.
-        </p>
+        <p>Perfil financeiro unificado — pagamento, remuneração, previsão e extrato desde 2026.</p>
       </div>
       <FinShell>
         <FinPessoaPerfil perfil={perfil} />

@@ -21,6 +21,14 @@ const ROTULO_VINCULO: Record<string, string> = {
   estagiario: "estágio"
 };
 
+function cabecalhoMes(iso: string) {
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
+  return {
+    mes: d.toLocaleDateString("pt-BR", { month: "long" }),
+    ano: d.toLocaleDateString("pt-BR", { year: "numeric" })
+  };
+}
+
 function paraCentavos(texto: string): number | null {
   const limpo = texto.trim().replace(/[R$\s]/g, "");
   if (!limpo) return null;
@@ -41,8 +49,9 @@ function paraCentavos(texto: string): number | null {
  *
  *  · PARCELAMENTO COM SALDO. "Impressora 3D 7/12 — faltam 5, R$ 1.424,55" é caixa
  *    já comprometido. Na planilha isso vivia na cabeça de alguém.
- *  · PREVISÃO DO MÊS SEGUINTE. Parcelas ativas + média dos avulsos dos últimos 3
- *    meses. É a linha de reembolso que entra em contas a pagar ANTES do PIX.
+ *  · PREVISÃO DO MÊS SEGUINTE. Soma das próximas cotas em fin_reembolso_saldo_v
+ *    (mesma conta do perfil). É a linha de reembolso que entra em contas a pagar
+ *    ANTES do PIX.
  *  · APROVAR GERA A CONTA A PAGAR. O reembolso aprovado vira documento a pagar
  *    com data de planejamento carimbada, em vez de aparecer no extrato no fim do
  *    mês como surpresa.
@@ -62,11 +71,19 @@ export function FinReimbursements({ dados }: { dados: PainelReembolsos }) {
 
   const totalColuna = useMemo(() => pessoas.reduce((s, p) => s + p.totalCents, 0), [pessoas]);
   const previsaoTotal = useMemo(() => pessoas.reduce((s, p) => s + p.previsaoCents, 0), [pessoas]);
+  const restanteTotal = useMemo(() => pessoas.reduce((s, p) => s + p.restanteCents, 0), [pessoas]);
   const totalPorMes = useMemo(() => {
     const mapa: Record<string, number> = {};
     for (const mes of dados.meses) mapa[mes] = pessoas.reduce((s, p) => s + (p.porMes[mes] ?? 0), 0);
     return mapa;
   }, [dados.meses, pessoas]);
+  // Corta só o prefixo de meses todos zerados (set–dez/2025). O mês corrente
+  // fica sempre, mesmo em —, para não pular de julho para setembro.
+  const mesesVisiveis = useMemo(() => {
+    const primeiroComValor = dados.meses.findIndex((mes) => (totalPorMes[mes] ?? 0) > 0);
+    return primeiroComValor <= 0 ? dados.meses : dados.meses.slice(primeiroComValor);
+  }, [dados.meses, totalPorMes]);
+  const cabecalhoProximo = cabecalhoMes(dados.mesSeguinte);
 
   async function enviar(url: string, metodo: string, corpo?: unknown) {
     setErro(null);
@@ -118,7 +135,7 @@ export function FinReimbursements({ dados }: { dados: PainelReembolsos }) {
         <article className="fin-kpi-card">
           <p className="fin-kpi-label">Previsão {monthKeyLabel(dados.mesSeguinte)}</p>
           <p className="fin-kpi-value">{brlCents(previsaoTotal)}</p>
-          <p className="fin-kpi-hint">parcelas em curso + média dos avulsos de 3 meses</p>
+          <p className="fin-kpi-hint">próximas cotas das séries em aberto</p>
         </article>
       </section>
 
@@ -148,8 +165,9 @@ export function FinReimbursements({ dados }: { dados: PainelReembolsos }) {
       <section className="card">
         <h2 className="card-title">Reembolso por pessoa, mês a mês</h2>
         <p className="fin-card-hint">
-          Clique numa pessoa para abrir os itens do mês corrente, os parcelamentos em curso e o histórico. A primeira
-          coluna fica fixa — role na horizontal para ver os meses anteriores.
+          Cada coluna é o mês em que o dinheiro saiu no extrato (PIX), não a competência do pedido. Pedido de julho
+          pago em agosto aparece em agosto. Restante é o saldo ainda a pagar das séries parceladas; a última coluna de
+          mês é previsão.
         </p>
 
         <div className="fin-matrix-wrap">
@@ -157,31 +175,47 @@ export function FinReimbursements({ dados }: { dados: PainelReembolsos }) {
             <thead>
               <tr>
                 <th className="fin-matrix-head">Pessoa</th>
-                {dados.meses.map((mes) => (
+                {mesesVisiveis.map((mes) => (
                   <th key={mes} className="num">
-                    {monthKeyLabel(mes)}
+                    <span className="fin-mes-head">
+                      <span>{cabecalhoMes(mes).mes}</span>
+                      <small>{cabecalhoMes(mes).ano}</small>
+                    </span>
                   </th>
                 ))}
-                <th className="num">Total</th>
-                <th className="num">Previsão {monthKeyLabel(dados.mesSeguinte)}</th>
+                <th className="num">
+                  <span className="fin-mes-head">
+                    <span>{cabecalhoProximo.mes}</span>
+                    <small>{cabecalhoProximo.ano}</small>
+                  </span>
+                </th>
+                <th className="num">Restante</th>
               </tr>
             </thead>
             <tbody>
               {pessoas.map((pessoa) => (
                 <tr key={pessoa.id} className={aberta === pessoa.id ? "fin-linha-aberta" : undefined}>
                   <th className="fin-matrix-head">
-                    <button
-                      type="button"
-                      className="fin-pessoa-toggle"
-                      aria-expanded={aberta === pessoa.id}
-                      onClick={() => setAberta(aberta === pessoa.id ? null : pessoa.id)}
-                    >
-                      {aberta === pessoa.id ? "▾" : "▸"} {pessoa.nome}
-                      <span className="fin-tag">{ROTULO_VINCULO[pessoa.employmentType] ?? pessoa.employmentType}</span>
-                      {pessoa.status !== "ativo" ? <span className="fin-tag">inativo</span> : null}
-                    </button>
+                    {pessoa.itensMesAtual.length || pessoa.planos.length || pessoa.historico.length ? (
+                      <button
+                        type="button"
+                        className="fin-pessoa-toggle"
+                        aria-expanded={aberta === pessoa.id}
+                        onClick={() => setAberta(aberta === pessoa.id ? null : pessoa.id)}
+                      >
+                        {aberta === pessoa.id ? "▾" : "▸"} {pessoa.nome}
+                        <span className="fin-tag">{ROTULO_VINCULO[pessoa.employmentType] ?? pessoa.employmentType}</span>
+                        {pessoa.status !== "ativo" ? <span className="fin-tag">inativo</span> : null}
+                      </button>
+                    ) : (
+                      <span className="fin-pessoa-toggle fin-pessoa-toggle-estatico">
+                        {pessoa.nome}
+                        <span className="fin-tag">{ROTULO_VINCULO[pessoa.employmentType] ?? pessoa.employmentType}</span>
+                        {pessoa.status !== "ativo" ? <span className="fin-tag">inativo</span> : null}
+                      </span>
+                    )}
                   </th>
-                  {dados.meses.map((mes) => {
+                  {mesesVisiveis.map((mes) => {
                     const valor = pessoa.porMes[mes] ?? 0;
                     const status = pessoa.statusPorMes[mes];
                     return (
@@ -194,17 +228,17 @@ export function FinReimbursements({ dados }: { dados: PainelReembolsos }) {
                       </td>
                     );
                   })}
-                  <td className="num fin-table-money">
-                    <strong>{brlPrecise(pessoa.totalCents)}</strong>
-                  </td>
                   <td className="num fin-table-money fin-previsao">
                     {pessoa.previsaoCents ? brlPrecise(pessoa.previsaoCents) : <span className="fin-zero">—</span>}
+                  </td>
+                  <td className="num fin-table-money">
+                    {pessoa.restanteCents ? brlPrecise(pessoa.restanteCents) : <span className="fin-zero">—</span>}
                   </td>
                 </tr>
               ))}
               {!pessoas.length ? (
                 <tr>
-                  <td colSpan={dados.meses.length + 3} className="fin-empty-row">
+                  <td colSpan={mesesVisiveis.length + 3} className="fin-empty-row">
                     Nenhuma pessoa cadastrada.
                   </td>
                 </tr>
@@ -213,16 +247,16 @@ export function FinReimbursements({ dados }: { dados: PainelReembolsos }) {
             <tfoot>
               <tr>
                 <th className="fin-matrix-head">Total</th>
-                {dados.meses.map((mes) => (
+                {mesesVisiveis.map((mes) => (
                   <td key={mes} className="num fin-table-money">
                     {totalPorMes[mes] ? brlPrecise(totalPorMes[mes]) : <span className="fin-zero">—</span>}
                   </td>
                 ))}
-                <td className="num fin-table-money">
-                  <strong>{brlPrecise(totalColuna)}</strong>
-                </td>
                 <td className="num fin-table-money fin-previsao">
                   <strong>{brlPrecise(previsaoTotal)}</strong>
+                </td>
+                <td className="num fin-table-money">
+                  <strong>{brlPrecise(restanteTotal)}</strong>
                 </td>
               </tr>
             </tfoot>
@@ -230,9 +264,9 @@ export function FinReimbursements({ dados }: { dados: PainelReembolsos }) {
         </div>
 
         <p className="fin-card-hint">
-          A coluna de previsão soma {brlPrecise(previsaoTotal)} — é o valor que deve constar em contas a pagar para{" "}
-          {monthKeyLabel(dados.mesSeguinte)}. Aprovar um reembolso cria essa conta a pagar automaticamente, com a data
-          de planejamento carimbada.
+          Colunas de mês = movimentação no caixa. A previsão de {cabecalhoProximo.mes} {cabecalhoProximo.ano} soma{" "}
+          {brlPrecise(previsaoTotal)} (próximas cotas das séries). Restante das séries:{" "}
+          {brlPrecise(restanteTotal)}.
         </p>
       </section>
 
@@ -406,8 +440,8 @@ function GavetaPessoa({
 
       <h3 className="fin-sub-titulo">Previsão de {monthKeyLabel(dados.mesSeguinte)}</h3>
       <p className="fin-previsao-detalhe">
-        <strong>{brlPrecise(pessoa.previsaoCents)}</strong> = {brlPrecise(pessoa.previsaoParcelasCents)} de parcelas em
-        curso + {brlPrecise(pessoa.previsaoAvulsosCents)} de média dos avulsos dos últimos 3 meses.
+        <strong>{brlPrecise(pessoa.previsaoCents)}</strong> = soma das próximas cotas das séries ainda em aberto
+        (mesma conta do perfil).
       </p>
 
       <h3 className="fin-sub-titulo">Histórico</h3>

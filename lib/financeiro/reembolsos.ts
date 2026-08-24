@@ -99,10 +99,18 @@ export type PessoaReembolso = {
   statusPorMes: Record<string, StatusReembolso>;
   reimbursementIdPorMes: Record<string, number>;
   totalCents: number;
-  /** Previsão do mês seguinte: parcelas ativas + média de 3 meses de avulsos. */
+  /**
+   * Previsão do mês seguinte: soma das parcelas em aberto em
+   * `fin_reembolso_saldo_v` — a mesma conta do perfil da pessoa.
+   */
   previsaoCents: number;
   previsaoParcelasCents: number;
   previsaoAvulsosCents: number;
+  /**
+   * Saldo ainda a pagar das séries parceladas — mesma fonte do perfil
+   * (`fin_reembolso_saldo_v`, NOT quitado). Não soma com `fin_installment_plan`.
+   */
+  restanteCents: number;
   planos: PlanoParcelamento[];
   itensMesAtual: ItemReembolso[];
   historico: MesReembolso[];
@@ -157,7 +165,7 @@ export async function getPainelReembolsos(): Promise<PainelReembolsos> {
     }
   }
 
-  const [pessoas, reembolsos, itens, planos, tipos, categorias] = await Promise.all([
+  const [pessoas, reembolsos, itens, planos, tipos, categorias, saldos] = await Promise.all([
     query<{ id: number; name: string; employment_type: string; status: string }>(
       `SELECT p.id, p.name, p.employment_type, p.status
          FROM fin_person p JOIN fin_entity e ON e.id = p.entity_id
@@ -165,21 +173,103 @@ export async function getPainelReembolsos(): Promise<PainelReembolsos> {
         ORDER BY p.status DESC, p.name`,
       [ENTITY]
     ),
-    query<{ id: number; person_id: number; mes: string; total_cents: number; status: StatusReembolso }>(
-      // Teto no mês corrente, e não só piso: um parcelamento de 12 meses cria
-      // reembolsos até o ano que vem, e sem o teto a coluna "Total" somaria
-      // meses que a matriz não mostra — um total que não fecha com as células
-      // visíveis é um total que mente. O futuro comprometido aparece na coluna
-      // de previsão e na gaveta de parcelamentos, onde é o assunto.
-      `SELECT r.id, r.person_id, r.reference_month::text AS mes, r.total_cents, r.status
-         FROM fin_reimbursement r JOIN fin_entity e ON e.id = r.entity_id
-        WHERE e.slug = $1 AND r.reference_month >= $2::date AND r.reference_month <= $3::date
-        ORDER BY r.reference_month`,
+    query<{
+      id: number;
+      person_id: number;
+      mes: string;
+      mes_referencia: string;
+      total_cents: number;
+      status: StatusReembolso;
+    }>(
+      // Eixo da matriz = mês do PIX no extrato, não a competência do pedido.
+      // Julho lançado e pago em 01/08 entra na coluna agosto — é o mês em que
+      // saiu o dinheiro. A mesma regra da folha (0077): casa pelo valor total
+      // contra fin_transaction; cada lançamento casa com no máximo um pedido
+      // (o de competência mais próxima) para o PIX de R$ 1.046,35 não puxar
+      // março e abril juntos para maio.
+      //
+      // Sem par no extrato: cai na competência. Piso 4 meses antes do início
+      // da janela porque o casamento da folha olha até +4 meses à frente.
+      `WITH link AS (
+         SELECT person_id, counterparty_id
+           FROM fin_person_counterparty
+          WHERE status = 'confirmado'
+       ),
+       pares_total AS (
+         SELECT r.id AS reimbursement_id,
+                t.id AS tx_id,
+                t.posted_on,
+                row_number() OVER (
+                  PARTITION BY t.id
+                  ORDER BY abs(EXTRACT(epoch FROM (t.posted_on::timestamp - r.reference_month::timestamp))),
+                           r.id
+                ) AS rn_tx
+           FROM fin_reimbursement r
+           JOIN fin_entity e ON e.id = r.entity_id
+           JOIN link l ON l.person_id = r.person_id
+           JOIN fin_transaction t
+             ON t.counterparty_id = l.counterparty_id
+            AND t.amount_cents = -r.total_cents
+            AND t.posted_on >= r.reference_month
+            AND t.posted_on < r.reference_month + interval '4 months'
+          WHERE e.slug = $1
+            AND r.total_cents > 0
+            AND r.reference_month >= ($2::date - interval '4 months')
+            AND r.reference_month <= $3::date
+       ),
+       casa_total AS (
+         SELECT reimbursement_id, posted_on
+           FROM (
+             SELECT reimbursement_id, posted_on,
+                    row_number() OVER (PARTITION BY reimbursement_id ORDER BY posted_on, tx_id) AS rn
+               FROM pares_total
+              WHERE rn_tx = 1
+           ) x
+          WHERE rn = 1
+       ),
+       casa_item AS (
+         SELECT r.id AS reimbursement_id, min(t.posted_on) AS posted_on
+           FROM fin_reimbursement r
+           JOIN fin_entity e ON e.id = r.entity_id
+           JOIN fin_reimbursement_item i ON i.reimbursement_id = r.id
+           JOIN link l ON l.person_id = r.person_id
+           JOIN fin_transaction t
+             ON t.counterparty_id = l.counterparty_id
+            AND t.amount_cents = -i.amount_cents
+            AND t.posted_on >= r.reference_month
+            AND t.posted_on < r.reference_month + interval '4 months'
+          WHERE e.slug = $1
+            AND r.reference_month >= ($2::date - interval '4 months')
+            AND r.reference_month <= $3::date
+            AND NOT EXISTS (SELECT 1 FROM casa_total c WHERE c.reimbursement_id = r.id)
+          GROUP BY r.id
+       )
+       SELECT r.id, r.person_id,
+              to_char(
+                date_trunc(
+                  'month',
+                  COALESCE(ct.posted_on, ci.posted_on, r.reference_month)
+                )::date,
+                'YYYY-MM-DD'
+              ) AS mes,
+              r.reference_month::text AS mes_referencia,
+              r.total_cents, r.status
+         FROM fin_reimbursement r
+         JOIN fin_entity e ON e.id = r.entity_id
+         LEFT JOIN casa_total ct ON ct.reimbursement_id = r.id
+         LEFT JOIN casa_item ci ON ci.reimbursement_id = r.id
+        WHERE e.slug = $1
+          AND r.reference_month >= ($2::date - interval '4 months')
+          AND r.reference_month <= $3::date
+          AND date_trunc(
+                'month',
+                COALESCE(ct.posted_on, ci.posted_on, r.reference_month)
+              )::date BETWEEN $2::date AND $3::date
+        ORDER BY mes, r.id`,
       [ENTITY, mesInicial, mesAtual]
     ),
-    // Só os itens do mês corrente: a gaveta de cada pessoa abre com o mês que
-    // está sendo montado. Puxar 12 meses de itens para todos multiplicaria o
-    // payload por ~40 para alimentar uma gaveta que quase nunca é aberta.
+    // Itens cujo pedido caiu no mês corrente pelo eixo de caixa (PIX), não
+    // pela competência — a gaveta acompanha a coluna que a matriz mostra.
     query<{
       id: number;
       reimbursement_id: number;
@@ -196,17 +286,79 @@ export async function getPainelReembolsos(): Promise<PainelReembolsos> {
       nfe_key: string | null;
       status: string;
     }>(
-      `SELECT i.id, i.reimbursement_id, r.person_id,
+      `WITH link AS (
+         SELECT person_id, counterparty_id
+           FROM fin_person_counterparty
+          WHERE status = 'confirmado'
+       ),
+       pares_total AS (
+         SELECT r.id AS reimbursement_id,
+                t.id AS tx_id,
+                t.posted_on,
+                row_number() OVER (
+                  PARTITION BY t.id
+                  ORDER BY abs(EXTRACT(epoch FROM (t.posted_on::timestamp - r.reference_month::timestamp))),
+                           r.id
+                ) AS rn_tx
+           FROM fin_reimbursement r
+           JOIN fin_entity e ON e.id = r.entity_id
+           JOIN link l ON l.person_id = r.person_id
+           JOIN fin_transaction t
+             ON t.counterparty_id = l.counterparty_id
+            AND t.amount_cents = -r.total_cents
+            AND t.posted_on >= r.reference_month
+            AND t.posted_on < r.reference_month + interval '4 months'
+          WHERE e.slug = $1 AND r.total_cents > 0
+            AND r.reference_month >= ($2::date - interval '4 months')
+            AND r.reference_month <= $2::date
+       ),
+       casa_total AS (
+         SELECT reimbursement_id, posted_on
+           FROM (
+             SELECT reimbursement_id, posted_on,
+                    row_number() OVER (PARTITION BY reimbursement_id ORDER BY posted_on, tx_id) AS rn
+               FROM pares_total WHERE rn_tx = 1
+           ) x WHERE rn = 1
+       ),
+       casa_item AS (
+         SELECT r.id AS reimbursement_id, min(t.posted_on) AS posted_on
+           FROM fin_reimbursement r
+           JOIN fin_entity e ON e.id = r.entity_id
+           JOIN fin_reimbursement_item i ON i.reimbursement_id = r.id
+           JOIN link l ON l.person_id = r.person_id
+           JOIN fin_transaction t
+             ON t.counterparty_id = l.counterparty_id
+            AND t.amount_cents = -i.amount_cents
+            AND t.posted_on >= r.reference_month
+            AND t.posted_on < r.reference_month + interval '4 months'
+          WHERE e.slug = $1
+            AND r.reference_month >= ($2::date - interval '4 months')
+            AND r.reference_month <= $2::date
+            AND NOT EXISTS (SELECT 1 FROM casa_total c WHERE c.reimbursement_id = r.id)
+          GROUP BY r.id
+       ),
+       no_mes AS (
+         SELECT r.id
+           FROM fin_reimbursement r
+           JOIN fin_entity e ON e.id = r.entity_id
+           LEFT JOIN casa_total ct ON ct.reimbursement_id = r.id
+           LEFT JOIN casa_item ci ON ci.reimbursement_id = r.id
+          WHERE e.slug = $1
+            AND date_trunc(
+                  'month',
+                  COALESCE(ct.posted_on, ci.posted_on, r.reference_month)
+                )::date = $2::date
+       )
+       SELECT i.id, i.reimbursement_id, r.person_id,
               i.reimbursement_type AS tipo, t.name AS tipo_nome,
               i.description, i.expense_date::text, i.amount_cents,
               c.code AS categoria_code, i.installment_plan_id, i.installment_number, i.installment_total,
               i.nfe_key, i.status
          FROM fin_reimbursement_item i
          JOIN fin_reimbursement r ON r.id = i.reimbursement_id
-         JOIN fin_entity e ON e.id = r.entity_id
+         JOIN no_mes n ON n.id = r.id
          LEFT JOIN fin_reimbursement_type t ON t.slug = i.reimbursement_type
          LEFT JOIN fin_category c ON c.id = i.category_id
-        WHERE e.slug = $1 AND r.reference_month = $2::date
         ORDER BY i.expense_date NULLS LAST, i.id`,
       [ENTITY, mesAtual]
     ),
@@ -253,26 +405,30 @@ export async function getPainelReembolsos(): Promise<PainelReembolsos> {
       `SELECT c.code, c.name FROM fin_category c JOIN fin_entity e ON e.id = c.entity_id
         WHERE e.slug = $1 AND c.is_active ORDER BY c.code`,
       [ENTITY]
+    ),
+    // Mesma fonte do perfil (`fin_reembolso_saldo_v`): restante = saldo das
+    // séries; previsão = soma das próximas cotas (parcelas_restantes >= 1).
+    // Não usa fin_installment_plan: os itens históricos estão com
+    // installment_plan_id NULL, então "parcelas futuras" do plano zera e a
+    // média antiga de "avulsos" engolia as séries (Fernando 773,93 em vez de
+    // 1.276,76).
+    query<{ person_id: number; restante_cents: number; previsao_parcelas_cents: number }>(
+      `SELECT person_id,
+              COALESCE(SUM(saldo_cents), 0)::bigint AS restante_cents,
+              COALESCE(
+                SUM(valor_parcela_cents) FILTER (WHERE parcelas_restantes >= 1),
+                0
+              )::bigint AS previsao_parcelas_cents
+         FROM fin_reembolso_saldo_v
+        WHERE NOT quitado
+        GROUP BY person_id`
     )
   ]);
 
-  // Média dos 3 últimos meses de itens NÃO parcelados, por pessoa. Fica no SQL
-  // porque a divisão por 3 tem de ser sobre os meses do calendário, não sobre os
-  // meses com movimento — um mês sem despesa é zero, não é ausência de dado.
-  const avulsos = await query<{ person_id: number; media: number }>(
-    `SELECT r.person_id,
-            COALESCE(SUM(i.amount_cents), 0) / 3.0 AS media
-       FROM fin_reimbursement r
-       JOIN fin_entity e ON e.id = r.entity_id
-       LEFT JOIN fin_reimbursement_item i
-              ON i.reimbursement_id = r.id AND i.installment_plan_id IS NULL
-      WHERE e.slug = $1
-        AND r.reference_month >= (date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') - interval '2 months')::date
-        AND r.reference_month <= date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo')::date
-      GROUP BY r.person_id`,
-    [ENTITY]
+  const restantePorPessoa = new Map(saldos.map((s) => [s.person_id, Number(s.restante_cents)]));
+  const previsaoParcelasPorPessoa = new Map(
+    saldos.map((s) => [s.person_id, Number(s.previsao_parcelas_cents)])
   );
-  const mediaPorPessoa = new Map(avulsos.map((a) => [a.person_id, Math.round(a.media)]));
 
   const totalPorMes: Record<string, number> = {};
   for (const mes of meses) totalPorMes[mes] = 0;
@@ -289,12 +445,14 @@ export async function getPainelReembolsos(): Promise<PainelReembolsos> {
     const historico: MesReembolso[] = [];
     for (const r of reembolsos) {
       if (r.person_id !== pessoa.id) continue;
-      porMes[r.mes] = r.total_cents;
+      // Dois pedidos (competências distintas) podem cair no mesmo mês de
+      // caixa — soma na célula; o id fica o do último para a gaveta.
+      porMes[r.mes] = (porMes[r.mes] ?? 0) + Number(r.total_cents);
       statusPorMes[r.mes] = r.status;
       reimbursementIdPorMes[r.mes] = r.id;
-      total += r.total_cents;
-      totalPorMes[r.mes] = (totalPorMes[r.mes] ?? 0) + r.total_cents;
-      historico.push({ mes: r.mes, reimbursementId: r.id, totalCents: r.total_cents, status: r.status });
+      total += Number(r.total_cents);
+      totalPorMes[r.mes] = (totalPorMes[r.mes] ?? 0) + Number(r.total_cents);
+      historico.push({ mes: r.mes, reimbursementId: r.id, totalCents: Number(r.total_cents), status: r.status });
     }
     totalGeralCents += total;
 
@@ -323,12 +481,10 @@ export async function getPainelReembolsos(): Promise<PainelReembolsos> {
         };
       });
 
-    // Previsão = parcelas que caem no mês seguinte + média dos avulsos.
-    const previsaoParcelas = planos
-      .filter((p) => p.person_id === pessoa.id && p.parcelas_futuras > 0)
-      .reduce((soma, p) => soma + p.monthly_amount_cents, 0);
-    const previsaoAvulsos = mediaPorPessoa.get(pessoa.id) ?? 0;
-    const previsao = previsaoParcelas + previsaoAvulsos;
+    // Mesma conta do perfil: próximas cotas das séries em fin_reembolso_saldo_v.
+    const previsaoParcelas = previsaoParcelasPorPessoa.get(pessoa.id) ?? 0;
+    const previsaoAvulsos = 0;
+    const previsao = previsaoParcelas;
     previsaoTotalCents += previsao;
 
     return {
@@ -343,6 +499,7 @@ export async function getPainelReembolsos(): Promise<PainelReembolsos> {
       previsaoCents: previsao,
       previsaoParcelasCents: previsaoParcelas,
       previsaoAvulsosCents: previsaoAvulsos,
+      restanteCents: restantePorPessoa.get(pessoa.id) ?? 0,
       planos: planosPessoa,
       itensMesAtual: itens
         .filter((i) => i.person_id === pessoa.id)

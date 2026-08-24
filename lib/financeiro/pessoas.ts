@@ -199,6 +199,26 @@ const ORDEM_TIME = ["consultoria", "obras", "software", "hardware", "sem_time"];
  * esta tela poderia contar. O nome do rótulo declara a origem ("sem categoria no
  * extrato") para que ninguém leia o filtro como se fosse classificação.
  */
+const ROTULO_BANDA: Record<string, string> = {
+  salario: "Salário",
+  prolabore: "Pró-labore",
+  comissao: "Comissão",
+  estagio: "Estágio",
+  extra: "Extra",
+  encargo_beneficio: "Encargo / benefício",
+  reembolso: "Reembolso"
+};
+
+const ORDEM_BANDA = [
+  "salario",
+  "prolabore",
+  "comissao",
+  "estagio",
+  "extra",
+  "encargo_beneficio",
+  "reembolso"
+];
+
 const ROTULO_NATUREZA: Record<string, string> = {
   folha: "Folha (salário / pró-labore)",
   variavel: "Variável (comissão / obra / deslocamento)",
@@ -321,6 +341,19 @@ export type Celula = {
 };
 
 /**
+ * Composição do que a pessoa recebeu no mês — a mesma conta do perfil
+ * (`fin_time_remuneracao_mes_v`). Separada de `Celula` porque o extrato não
+ * sabe cortar salário × pró-labore × comissão; a view reconstrói a fatia a
+ * partir da base, da comissão declarada e do reembolso (competência + 1 mês).
+ */
+export type BandaRemuneracao = {
+  personId: number;
+  mes: string;
+  natureza: string;
+  cents: number;
+};
+
+/**
  * O pactuado da planilha de comissionamento: pessoa × mês.
  *
  * Separado do realizado porque são medidas de coisas diferentes. `contratado` é
@@ -430,8 +463,12 @@ export type CustoPessoas = {
   times: Opcao[];
   vinculos: Opcao[];
   naturezas: Opcao[];
+  /** Tipos da composição (salário, pró-labore, comissão…). */
+  tiposRemuneracao: Opcao[];
   pessoas: Pessoa[];
   celulas: Celula[];
+  /** Composição por natureza — mesma fonte do perfil da pessoa. */
+  bandas: BandaRemuneracao[];
   pactuado: Pactuado[];
   componentes: Componente[];
   cobertura: Cobertura;
@@ -467,8 +504,10 @@ function indisponivel(): CustoPessoas {
     times: [],
     vinculos: [],
     naturezas: [],
+    tiposRemuneracao: [],
     pessoas: [],
     celulas: [],
+    bandas: [],
     pactuado: [],
     componentes: [],
     cobertura: {
@@ -529,6 +568,7 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       pessoasRows,
       linksRows,
       celulasRows,
+      bandasRows,
       pactuadoRows,
       componentesRows,
       buracoRows,
@@ -628,6 +668,22 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
             GROUP BY 1, 2, 3, 4`,
           [ENTITY]
         ),
+
+        // Mesma composição do perfil (/financeiro/pessoas/[id]): salário,
+        // pró-labore, comissão, reembolso… O mês é o do PIX; o reembolso entra
+        // como competência + 1 mês. Sem isso a matriz só tinha "tudo que saiu"
+        // e não batia com a conta pessoal.
+        query<{ person_id: number; mes: string; natureza: string; valor_cents: number }>(
+          `SELECT r.person_id,
+                  to_char(r.mes, 'YYYY-MM-01') AS mes,
+                  r.natureza,
+                  r.valor_cents
+             FROM fin_time_remuneracao_mes_v r
+             JOIN fin_entity e ON e.id = r.entity_id
+            WHERE e.slug = $1
+            ORDER BY r.mes, r.person_id, r.natureza`,
+          [ENTITY]
+        ).catch(() => [] as { person_id: number; mes: string; natureza: string; valor_cents: number }[]),
 
         query<{
           person_id: number;
@@ -862,6 +918,13 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       n: linha.n
     }));
 
+    const bandas: BandaRemuneracao[] = bandasRows.map((linha) => ({
+      personId: Number(linha.person_id),
+      mes: linha.mes,
+      natureza: linha.natureza,
+      cents: Number(linha.valor_cents)
+    }));
+
     const pactuado: Pactuado[] = pactuadoRows.map((linha) => ({
       personId: linha.person_id,
       mes: linha.mes,
@@ -890,6 +953,7 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
     // que não existe. Quando o Nubank de 2025 for importado, o seletor cresce
     // sozinho.
     const mesesSet = new Set<string>(celulas.map((c) => c.mes));
+    for (const linha of bandas) mesesSet.add(linha.mes);
     for (const linha of buracoRows) mesesSet.add(linha.mes);
     for (const linha of pactuado) mesesSet.add(linha.mes);
     const meses = [...mesesSet].sort();
@@ -974,6 +1038,12 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
     const naturezas: Opcao[] = ORDEM_NATUREZA.filter((slug) => naturezasPresentes.has(slug)).map((slug) => ({
       slug,
       nome: ROTULO_NATUREZA[slug]
+    }));
+
+    const tiposPresentes = new Set(bandas.map((b) => b.natureza));
+    const tiposRemuneracao: Opcao[] = ORDEM_BANDA.filter((slug) => tiposPresentes.has(slug)).map((slug) => ({
+      slug,
+      nome: ROTULO_BANDA[slug] ?? slug
     }));
 
     // ── Lacunas declaradas ─────────────────────────────────────────────────
@@ -1064,8 +1134,10 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       times,
       vinculos,
       naturezas,
+      tiposRemuneracao,
       pessoas,
       celulas,
+      bandas,
       pactuado,
       componentes,
       cobertura,
@@ -1088,5 +1160,6 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
 export const ROTULOS = {
   vinculo: ROTULO_VINCULO,
   time: ROTULO_TIME,
-  natureza: ROTULO_NATUREZA
+  natureza: ROTULO_NATUREZA,
+  banda: ROTULO_BANDA
 };

@@ -11331,15 +11331,30 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .fin-btn-perigo:hover:not(:disabled) { background: #fdf1ee; }
 
 /* --- Reembolsos --- */
-.fin-matrix-reembolso { min-width: 1100px; }
-.fin-matrix-reembolso .fin-matrix-head { min-width: 200px; font-weight: 500; }
+.fin-matrix-reembolso { min-width: 1500px; table-layout: fixed; }
+.fin-matrix-reembolso .fin-matrix-head { min-width: 200px; width: 200px; font-weight: 500; }
+.fin-matrix-reembolso th.num,
+.fin-matrix-reembolso td.num { width: 101px; min-width: 101px; max-width: 101px; }
 .fin-linha-aberta { background: #f7f4ff; }
 .fin-linha-aberta .fin-matrix-head { background: #f7f4ff; }
+.fin-linha-detalhe td,
+.fin-linha-detalhe th {
+  background: #faf9f7;
+  font-weight: 400;
+  color: var(--muted, #5c5a57);
+}
+.fin-linha-detalhe .fin-matrix-head {
+  padding-left: 1.75rem;
+}
 .fin-pessoa-toggle {
   display: inline-flex; align-items: center; gap: 6px; padding: 0; border: none; background: none;
   font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink); cursor: pointer; text-align: left;
 }
 .fin-pessoa-toggle:hover { color: var(--purple-text); }
+.fin-pessoa-toggle-estatico { cursor: default; }
+.fin-mes-head { display: inline-grid; justify-items: center; gap: 1px; line-height: 1.1; }
+.fin-mes-head span { text-transform: capitalize; }
+.fin-mes-head small { font-size: 10px; font-weight: 600; color: var(--muted); }
 /* Previsão em roxo suave: é a única coluna que não aconteceu ainda, e a cor
    diz isso antes de o cabeçalho ser lido. */
 /* `#faf8ff` fixo não acompanha o tema: no escuro esta célula ficava um bloco
@@ -17077,6 +17092,136 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 /* ===========================================================================
    PERFIL FINANCEIRO DA PESSOA
    =========================================================================== */
+/* ===========================================================================
+   PERFIL FINANCEIRO DA PESSOA — layout compacto unificado
+   =========================================================================== */
+.pp-unificado { display: grid; gap: 12px; }
+
+.pp-card-compacta { padding: 14px 16px !important; }
+.pp-card-compacta .fin-card-head { margin-bottom: 10px; }
+
+.pp-cabecalho {
+  display: grid; grid-template-columns: 1fr; gap: 8px;
+}
+
+.pp-identidade, .pp-pagamento {
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: linear-gradient(180deg, var(--card), var(--surface-2));
+}
+
+.pp-bloco-eyebrow {
+  display: block; font-size: 9.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px;
+}
+.pp-linha-resumo {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-width: 0;
+}
+.pp-resumo-principal {
+  font-size: 14px; font-weight: 700; color: var(--ink); margin-right: 2px;
+}
+.pp-tag {
+  font-size: 10.5px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px; background: var(--tint-purple-soft); color: var(--purple-text);
+  border: 1px solid var(--tint-purple-line);
+}
+.pp-tag.neutro { background: var(--surface-2); color: var(--muted); border-color: var(--line); }
+.pp-item-inline {
+  display: inline-flex; align-items: center; gap: 5px; min-width: 0;
+  font-size: 12px; color: var(--ink); line-height: 1.3;
+}
+.pp-item-inline b {
+  font-size: 10px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
+}
+.pp-chave-curta {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.pp-truncar { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; display: inline-block; vertical-align: bottom; }
+
+.pp-kpis {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 12px;
+}
+.pp-kpi { background: var(--card); padding: 10px 12px; min-width: 0; }
+.pp-kpi b { display: block; font-size: 15px; font-weight: 680; font-variant-numeric: tabular-nums; }
+.pp-kpi span { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+.pp-kpi.destaque b { color: var(--ink-green); }
+.pp-link { color: var(--purple-text); text-decoration: underline; text-underline-offset: 2px; }
+
+.pp-rem-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 6px;
+}
+
+.pp-chip {
+  border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; background: var(--card);
+  border-left: 3px solid var(--pp-chip-cor, var(--line)); min-width: 0;
+}
+.pp-chip-calc { background: var(--surface-2); }
+.pp-chip-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.pp-chip-corpo { min-width: 0; }
+.pp-chip-rotulo {
+  display: block; font-size: 10px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
+}
+.pp-chip-valor {
+  display: block; margin-top: 2px; font-size: 16px; font-weight: 720; font-variant-numeric: tabular-nums;
+  font-family: var(--font-display), var(--font-body), sans-serif; letter-spacing: -0.02em;
+}
+.pp-chip-detalhe { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+.pp-chip-acoes { display: flex; gap: 2px; flex-shrink: 0; }
+.pp-btn-icone {
+  display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px;
+  border: 1px solid var(--line); border-radius: 7px; background: var(--surface-2); color: var(--muted);
+  cursor: pointer; font-size: 11px; padding: 0;
+}
+.pp-btn-icone:hover { color: var(--ink); border-color: var(--line-strong, var(--line)); }
+
+.pp-chip-form, .pp-chip-hist { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.pp-chip-hist .pp-tabela-compacta { font-size: 11px; }
+.pp-chip-hist .pp-tabela-compacta td, .pp-chip-hist .pp-tabela-compacta th { padding: 5px 8px; }
+
+.pp-secao-topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.pp-secao-topo h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.pp-secao-acoes { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pp-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.pp-btn-texto {
+  border: 0; background: none; padding: 0; font-size: 12px; color: var(--purple-text); cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pp-resumo-linha { margin-bottom: 10px; font-size: 12.5px; color: var(--muted); }
+.pp-resumo-linha strong { color: var(--ink); font-weight: 650; }
+
+.pp-historico-compacto { height: 120px; margin-bottom: 12px; }
+.pp-mes-previsao { opacity: .72; }
+.pp-mes-previsao .pp-coluna { outline: 1px dashed var(--line); outline-offset: -1px; }
+
+.pp-cortes-compacto { margin: 10px 0 14px; gap: 14px !important; }
+.pp-cortes-compacto .pp-bloco { margin-bottom: 0; }
+
+.pp-extrato { margin-top: 12px; }
+.pp-filtros { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.pp-filtro {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface-2); font-size: 11.5px; cursor: pointer; color: var(--muted);
+}
+.pp-filtro.ativo { background: var(--tint-purple-soft); border-color: var(--tint-purple-line); color: var(--purple-text); font-weight: 620; }
+.pp-filtro-n {
+  font-size: 10px; font-variant-numeric: tabular-nums; opacity: .75;
+}
+
+.pp-tabela-caixa-alta { max-height: 420px; }
+.pp-tabela-caixa-media { max-height: 260px; margin-top: 8px; }
+.pp-tabela-compacta { width: 100%; border-collapse: collapse; }
+.pp-nat-badge {
+  display: inline-block; font-size: 10px; font-weight: 620; padding: 2px 7px; border-radius: 999px; color: #fff;
+}
+.pp-vazio-celula { text-align: center; color: var(--muted); padding: 20px !important; }
+.pp-nota-rodape { margin: 8px 0 0; font-size: 11px; color: var(--muted); }
+.pp-pix-bloco { margin-top: 10px; }
+
+.fin-btn-sm { padding: 5px 12px !important; font-size: 12px !important; }
+
+.page-header-compact p { max-width: 56ch; }
+
 .pp-selo {
   font-size: 11.5px; font-weight: 650; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
 }
@@ -17125,7 +17270,7 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 }
 .pp-remuneracao-valor small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; }
 .pp-remuneracao-valor.pp-remuneracao-vazio { font-size: 13px; font-weight: 550; color: var(--muted); }
-.pp-remuneracao-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
+.pp-remuneracao-form { margin-top: 0; padding-top: 0; border-top: 0; display: grid; gap: 10px; }
 .pp-remuneracao-explicacao { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
 .pp-cada-pagamento-nota { margin-bottom: 14px; max-width: 72ch; }
 .pp-remuneracao-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }

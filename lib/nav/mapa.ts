@@ -127,6 +127,7 @@ export const FINANCEIRO_GRUPOS: Grupo[] = [
     label: "Pessoas",
     rotas: [
       { href: "/financeiro/pessoas", label: "Custo com pessoas" },
+      { href: "/financeiro/comissoes", label: "Comissões" },
       { href: "/financeiro/reembolsos", label: "Reembolsos" },
       // "Fila do time" é a caixa de entrada do ADMIN. O oposto dela, o que a
       // pessoa envia, chama-se "Minhas solicitações" — os dois

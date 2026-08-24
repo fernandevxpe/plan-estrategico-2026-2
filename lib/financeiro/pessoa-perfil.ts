@@ -83,7 +83,13 @@ export type ContaDaPessoa = {
 
 export type SalarioBaseLinha = { id: number; valorCents: number; vigenteDesde: string; nota: string | null };
 export type ProlaboreEsperadoLinha = { id: number; valorCents: number; vigenteDesde: string; nota: string | null };
-export type ComissaoDeclaradaLinha = { id: number; valorCents: number; competencia: string; nota: string | null };
+export type ComissaoDeclaradaLinha = {
+  id: number;
+  valorCents: number;
+  competencia: string;
+  descricao: string;
+  nota: string | null;
+};
 
 export type PerfilPessoa = {
   id: number;
@@ -97,6 +103,8 @@ export type PerfilPessoa = {
   status: string;
   desde: string | null;
   admin: boolean;
+  /** Reservado — coluna ainda não existe no banco; a tela já mostra o campo. */
+  dataNascimento: string | null;
   conta: ContaDaPessoa;
   totalCents: number;
   porNatureza: { natureza: string; cents: number; n: number }[];
@@ -105,6 +113,11 @@ export type PerfilPessoa = {
   mediaRecorrenteCents: number;
   ultimoPagamento: string | null;
   reembolsoAbertoCents: number;
+  /**
+   * Reembolso previsto para o mês seguinte (parcelas restantes >= 1).
+   * Isso é "o que ainda falta cair" de cada série, sem chute de avulsos.
+   */
+  reembolsoPrevistoProximoMesCents: number;
   pagamentos: PagamentoPessoa[];
   salarioBaseAtual: SalarioBaseLinha | null;
   salarioBaseHistorico: SalarioBaseLinha[];
@@ -143,11 +156,13 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
          FROM fin_person_pagamento WHERE person_id = $1`,
       [personId]
     ).catch(() => []),
-    query<{ total: string }>(
-      `SELECT coalesce(sum(saldo_cents), 0)::text AS total
-         FROM fin_reembolso_saldo_v WHERE person_id = $1 AND NOT quitado`,
+    query<{ valor_parcela_cents: string | number; parcelas_restantes: string | number; saldo_cents: string | number }>(
+      `SELECT valor_parcela_cents, parcelas_restantes, saldo_cents
+         FROM fin_reembolso_saldo_v
+        WHERE person_id = $1 AND NOT quitado
+        ORDER BY saldo_cents DESC`,
       [personId]
-    ).catch(() => [{ total: "0" }]),
+    ).catch(() => []),
     // A MESMA view que /time/perfil usa — ver o comentário no topo do arquivo.
     query<{ mes: string; natureza: string; valor_cents: string }>(
       `SELECT to_char(mes, 'YYYY-MM') AS mes, natureza, valor_cents
@@ -166,9 +181,9 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
          FROM fin_pessoa_prolabore_esperado WHERE person_id = $1 ORDER BY vigente_desde DESC`,
       [personId]
     ).catch(() => []),
-    query<{ id: number; valor_cents: string; competencia: string; nota: string | null }>(
-      `SELECT id, valor_cents, to_char(competencia, 'YYYY-MM') AS competencia, nota
-         FROM fin_pessoa_comissao_declarada WHERE person_id = $1 ORDER BY competencia DESC`,
+    query<{ id: number; valor_cents: string; competencia: string; descricao: string; nota: string | null }>(
+      `SELECT id, valor_cents, to_char(competencia, 'YYYY-MM') AS competencia, descricao, nota
+         FROM fin_pessoa_comissao_declarada WHERE person_id = $1 ORDER BY competencia DESC, id DESC`,
       [personId]
     )
   ]);
@@ -235,6 +250,11 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
         : Math.round((recorrentePorMes[meio - 1] + recorrentePorMes[meio]) / 2);
 
   const c = conta[0];
+  const reembolsoAbertoCents = saldo.reduce((t: number, r: any) => t + Number(r.saldo_cents ?? 0), 0);
+  const reembolsoPrevistoProximoMesCents = saldo.reduce((t: number, r: any) => {
+    const restantes = Number(r.parcelas_restantes ?? 0);
+    return t + (restantes >= 1 ? Number(r.valor_parcela_cents ?? 0) : 0);
+  }, 0);
   return {
     id: Number(pessoa.id),
     nome: String(pessoa.name),
@@ -247,6 +267,7 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
     status: String(pessoa.status),
     desde: pessoa.start_date ? String(pessoa.start_date).slice(0, 10) : null,
     admin: Boolean(pessoa.is_admin),
+    dataNascimento: null,
     conta: c
       ? {
           metodo: String(c.metodo),
@@ -271,7 +292,8 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
     porConta: somarPagamentos((p) => p.conta).map(([conta, v]) => ({ conta, ...v })),
     mediaRecorrenteCents,
     ultimoPagamento: linhas[0]?.data ?? null,
-    reembolsoAbertoCents: Number(saldo[0]?.total ?? 0),
+    reembolsoAbertoCents,
+    reembolsoPrevistoProximoMesCents,
     pagamentos: linhas.slice(0, 200),
     salarioBaseAtual: salarioBase[0]
       ? { id: salarioBase[0].id, valorCents: Number(salarioBase[0].valor_cents), vigenteDesde: salarioBase[0].vigente_desde, nota: salarioBase[0].nota }
@@ -300,6 +322,7 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
       id: c.id,
       valorCents: Number(c.valor_cents),
       competencia: c.competencia,
+      descricao: c.descricao,
       nota: c.nota
     }))
   };

@@ -166,6 +166,15 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
     [dados.celulas, mesDe, mesAte, conta, natureza, pessoaPassa, pessoaPorId]
   );
 
+  const bandasFiltradas = useMemo(
+    () =>
+      dados.bandas.filter((banda) => {
+        if (banda.mes < mesDe || banda.mes > mesAte) return false;
+        return pessoaPassa(pessoaPorId.get(banda.personId));
+      }),
+    [dados.bandas, mesDe, mesAte, pessoaPassa, pessoaPorId]
+  );
+
   const totalCents = celulasFiltradas.reduce((s, c) => s + c.cents, 0);
   const totalLancamentos = celulasFiltradas.reduce((s, c) => s + c.n, 0);
 
@@ -829,7 +838,7 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
 
       <FinPessoasMatriz
         dados={dados}
-        celulas={celulasFiltradas}
+        bandas={bandasFiltradas}
         meses={mesesNoPeriodo}
         pessoaPorId={pessoaPorId}
         mesAtual={dados.mesAtual}

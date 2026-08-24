@@ -162,16 +162,19 @@ numa página que responde sem credencial.
 ```
 app/time/                 o PWA — custo, reembolso, comprar, enviados
 app/financeiro/           a plataforma (admin)
+app/financeiro/comissoes/ variável declarado — ver docs/COMISSOES.md
 app/api/time/             a única superfície de escrita do perfil comum
 components/time/TimeApp.tsx    ~2000 linhas: todos os formulários do app
 lib/financeiro/time.ts         o núcleo do app do time
+lib/financeiro/comissoes.ts    painel/escrita de comissão declarada (0167)
 lib/financeiro/ler-comprovante.ts   foto/PDF → campos, via Haiku
 lib/financeiro/ler-nfe-xml.ts       XML de NF-e → campos, sem IA
 lib/financeiro/ler-cartao.ts        foto do cartão → banco/bandeira/cor
 lib/financeiro/gasto-descrito.ts    o painel de gasto (cortes)
-db/migrations/            152 arquivos, aplicados em ordem, congelados
+db/migrations/            arquivos aplicados em ordem, congelados
 scripts/                  testes e utilitários (todos `node`, sem framework)
 docs/AGENTE_APP_TIME.md   o histórico longo das decisões do app
+docs/COMISSOES.md         comissão declarada: regras, API, armadilhas
 ```
 
 ---

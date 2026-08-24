@@ -11920,22 +11920,23 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   gap: 2px;
   flex: none;
 }
-/* Volta ao hub sem a barra: alvo separado do perfil (foto/nome). */
-.time-topo-inicio {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+/* A seta de voltar: primeiro alvo da linha, à esquerda da foto.
+   44px é o mínimo tocável da Apple e da WCAG — o ícone desenha 22px, o resto
+   é área de toque. `margin-left: -10px` puxa o GLIFO para a margem do
+   conteúdo: sem isso a seta parece deslocada para dentro, porque o olho
+   alinha pelo desenho e não pela caixa invisível em volta dele. */
+.time-topo-voltar {
+  display: grid;
+  place-items: center;
   flex: none;
-  min-height: 40px;
-  padding: 0 10px;
-  border-radius: 10px;
-  color: var(--purple-text);
-  font-size: 13px;
-  font-weight: 650;
+  width: 44px;
+  height: 44px;
+  margin-left: -10px;
+  border-radius: 12px;
+  color: var(--ink);
   text-decoration: none;
-  white-space: nowrap;
 }
-.time-topo-inicio:active { background: var(--surface-2); opacity: 0.85; }
+.time-topo-voltar:active { background: var(--surface-2); opacity: 0.85; }
 .time-topo-tema.theme-toggle {
   position: static;
   width: 40px;
@@ -17517,9 +17518,12 @@ button.rec-plot-acao {
 /* Vazio de verdade: nunca recebeu nada. Uma frase e a razão. */
 .rec-vazio { margin: 0; padding: 16px 0; font-size: 13px; line-height: 1.55; color: var(--muted); }
 
-/* "Solicitar" no cabeçalho: pílula rotulada, não ícone mudo.
-   Ação rara (zero pedidos em 7 meses) pertence ao canto difícil — mas um "+"
-   sozinho ali não diz o que faz. */
+/* "+ Reembolso" no cabeçalho: pílula rotulada, não ícone mudo — um "+"
+   sozinho não diz o que cria. É o único atalho fixo do app depois que a barra
+   inferior e o sol saíram do topo, e por isso carrega a ação semanal do time,
+   não a rara (Pedir compra desceu para o bloco Compras do Início).
+   A classe mantém o nome antigo: renomeá-la mexeria em regra de tema, de
+   estado `.aqui` e no seletor de largura, sem mudar um pixel. */
 .time-topo-solicitar {
   display: inline-flex; align-items: center; gap: 6px;
   min-height: 44px; padding: 0 14px;
@@ -17813,9 +17817,9 @@ button.rec-plot-acao {
    no escuro, e é o único controle que revela de onde vem cada número. */
 .res-caret { color: var(--muted); }
 
-/* A pílula "Solicitar" quando a pessoa já está no ciclo de compra. Preenchida,
-   não só contornada: nas duas telas desse ciclo a barra inferior fica com as
-   cinco abas apagadas, e esta é a única marca de lugar que sobra. */
+/* A pílula quando a pessoa já está em `/time/reembolso`. Preenchida, não só
+   contornada: sem barra inferior e sem "Início" no topo, ela é a única marca
+   de lugar que o cromo ainda dá. */
 .time-topo-solicitar.aqui {
   background: var(--purple);
   border-color: var(--purple);

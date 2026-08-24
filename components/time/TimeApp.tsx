@@ -1917,6 +1917,34 @@ function iniciais(nome: string) {
   return (p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
 
+/**
+ * PARA ONDE A SETA VOLTA, POR TELA.
+ *
+ * É um mapa fixo e não `router.back()`. A volta do navegador depende de haver
+ * um passo anterior NOSSO no histórico, e neste app é comum não haver: atalho
+ * do PWA na tela inicial do celular, link colado no WhatsApp, recarregamento
+ * da página. Nesses casos `back()` joga a pessoa para FORA do app — para onde
+ * ela estava antes de abrir. Um destino declarado sempre cai dentro de casa.
+ *
+ * O app tem dois níveis (hub → tela) e um terceiro só em `item`, que se abre
+ * do detalhe no Histórico — por isso ele volta para lá, não para o hub.
+ *
+ * `inicio` é `null`: o hub é o topo, não há para onde subir.
+ */
+const VOLTA: Record<AbaTime, string | null> = {
+  inicio: null,
+  recebiveis: "/time",
+  reembolso: "/time",
+  custo: "/time",
+  nota: "/time",
+  compra: "/time",
+  comprar: "/time/compra",
+  envios: "/time",
+  "meu-reembolso": "/time",
+  compras: "/time",
+  item: "/time/envios"
+};
+
 function CabecalhoPessoa({
   sessao,
   aba,
@@ -2102,6 +2130,30 @@ function CabecalhoPessoa({
   return (
     <>
       <header className="time-topo">
+        {/*
+          A SETA VEM ANTES DE TUDO, E É A PRIMEIRA COISA DA LINHA.
+
+          Antes havia uma pílula "Início" com ícone de casa no meio do
+          cabeçalho, entre o nome e o tema. Duas coisas quebravam ali: voltar
+          não é "ir para o Início" (de `/time/item/…` a pessoa quer o
+          Histórico de onde veio, não o hub), e o alvo ficava no meio de uma
+          fila de cinco elementos — foto, nome, casa, sol, pílula —, onde
+          nenhum é o óbvio. Seta à esquerda é o lugar que todo app usa e o
+          único que o polegar encontra sem ler.
+
+          Ícone sozinho, sem rótulo: é a exceção justificada da regra deste
+          cabeçalho ("pílula rotulada, não ícone mudo"). A seta para a
+          esquerda no canto superior esquerdo é o glifo mais aprendido da
+          plataforma, e o rótulo custaria a largura que faz o nome da pessoa
+          caber — era ele que aparecia truncado como "Fer…".
+        */}
+        {VOLTA[aba] ? (
+          <Link href={VOLTA[aba]!} className="time-topo-voltar" aria-label="Voltar">
+            <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+              <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Link>
+        ) : null}
         <button type="button" className="time-topo-perfil" onClick={() => setFolha(true)}>
           <span className="time-topo-foto">
             {fotoSrc ? (
@@ -2116,50 +2168,47 @@ function CabecalhoPessoa({
           </span>
         </button>
         {/*
-          Sem a barra inferior, a única volta ao hub é daqui. Perfil continua
-          na foto/nome; Início é alvo separado — misturar os dois faria a
-          pessoa abrir o perfil quando queria só voltar.
-        */}
-        {aba !== "inicio" ? (
-          <Link href="/time" className="time-topo-inicio" aria-label="Voltar ao Início">
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z" strokeLinejoin="round" />
-            </svg>
-            <span>Início</span>
-          </Link>
-        ) : null}
-        {/*
           "Sair" não fica aqui: a folha de perfil já tem "Sair da conta",
           rotulado e menos sujeito a toque errado.
 
-          O tema VOLTA ao cabeçalho. No perfil ele sumia da vista cotidiana, e
-          o botão flutuante global só aparecia na transição de rotas — quando
-          `.time-app` desmontava por um frame. Aqui ele fica fixo em toda tela
-          logada, ao lado de "Pedir compra".
+          O SOL SAIU DAQUI — e desta vez fica fora.
 
-          "Pedir compra" (antes "Solicitar"): ação rara — zero pedidos em 7
-          meses. Canto superior é onde cabe; o texto diz compra, não reembolso.
-        */}
-        {/*
-          A PÍLULA PRECISA DIZER "VOCÊ ESTÁ AQUI".
+          O tema já esteve na folha de perfil, voltou ao cabeçalho porque "no
+          perfil ele sumia da vista cotidiana", e o problema real era outro: um
+          cabeçalho de cinco alvos (foto, nome, casa, sol, pílula) numa tela de
+          415px, onde o nome da pessoa aparecia truncado como "Fer…". Claro e
+          escuro é escolha que se faz uma vez e não se toca mais — não pode
+          custar largura fixa em toda tela do app, todo dia.
 
-          `/time/compra` e `/time/comprar` são as duas telas do ciclo de compra
-          e não têm destino próprio no hub. Sem estado na pílula, nessas telas
-          nada no cromo diz onde a pessoa está — só o link Início no topo.
-          Em `/time/compra` a pílula não pode ser um link para a página em
-          que já se está.
+          Ele continua a um toque, em "Meu perfil" → Aparência (logo abaixo,
+          em `.time-perfil-rodape`), que é onde ajuste de conta mora.
+
+          A PÍLULA É REEMBOLSO, NÃO "PEDIR COMPRA".
+
+          O canto superior direito é o único atalho fixo que sobrou depois que
+          a barra inferior saiu, e ele tem de carregar o que o time faz toda
+          semana. Pedir compra é o oposto disso: `fin_purchase_request` teve
+          zero linhas em 7 meses. Estava ali por ser "ação rara que não compete
+          por pixel", e o resultado foi um pixel fixo gasto com a ação mais
+          rara do app — enquanto o reembolso, que é o motivo de a maioria
+          abrir isto, só existia dentro do hub.
+
+          Pedir compra não sumiu: virou atalho no bloco Compras do Início,
+          junto das outras portas do ciclo.
+
+          A pílula continua dizendo "você está aqui" em `/time/reembolso` —
+          preenchida, e sem link para a página em que já se está.
         */}
         <div className="time-topo-acoes">
-          <BotaoTema className="time-topo-tema" />
           <Link
-            href="/time/compra"
-            className={aba === "compra" || aba === "comprar" ? "time-topo-solicitar aqui" : "time-topo-solicitar"}
-            aria-current={aba === "compra" ? "page" : undefined}
+            href="/time/reembolso"
+            className={aba === "reembolso" ? "time-topo-solicitar aqui" : "time-topo-solicitar"}
+            aria-current={aba === "reembolso" ? "page" : undefined}
           >
             <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
               <path d="M12 5v14M5 12h14" strokeLinecap="round" />
             </svg>
-            <span>Pedir compra</span>
+            <span>Reembolso</span>
           </Link>
         </div>
       </header>
@@ -2413,10 +2462,10 @@ function Inicio({ envios }: { envios: Envio[] }) {
    * O INÍCIO É O ÍNDICE DO APP — a barra inferior saiu.
    *
    * Toda rota que a barra cobria mora aqui: Recebíveis (faixa + atalho),
-   * Registrar, Reembolso, Histórico, mais Minhas compras (nunca teve aba).
-   * Pedir compra fica no topo (ação rara, zero pedidos em 7 meses).
+   * Registrar, Reembolso, Histórico, mais Minhas compras (nunca teve aba) e
+   * Pedir compra, que desceu do cabeçalho.
    *
-   * Ordem: dinheiro (faixa) → compras (reembolso, registrar, minhas,
+   * Ordem: dinheiro (faixa) → compras (reembolso, registrar, minhas, pedir,
    * pendências) → histórico. Recebíveis: faixa + atalho verde abaixo.
    */
   const { dado: rec } = useRecebiveis();
@@ -2498,6 +2547,19 @@ function Inicio({ envios }: { envios: Envio[] }) {
                   : `${nCompras} compras registradas`
             }
             tipo="compras"
+            cor="branco"
+          />
+          {/*
+            Pedir compra desceu do cabeçalho para cá. É a ação mais rara do
+            app — zero pedidos em 7 meses —, e ocupar um dos dois lugares
+            fixos do topo custava o atalho de reembolso, que é semanal. Aqui
+            ela fica na ordem certa do ciclo: peço, gasto do bolso, registro.
+          */}
+          <Atalho
+            href="/time/compra"
+            titulo="Pedir compra"
+            texto="Precisa de algo que a XPE compra para você"
+            tipo="compra"
             cor="branco"
           />
           {aguardando.length > 0 ? (

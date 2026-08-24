@@ -280,6 +280,15 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
             {perfil.pagamentos.length >= 200 ? <em> — os 200 mais recentes</em> : null}
           </h2>
         </div>
+        {perfil.salarioBaseAtual ? (
+          <p className="pp-remuneracao-explicacao pp-cada-pagamento-nota">
+            Esta lista mostra a categoria do lançamento no banco — não a separação de cima. Quando a base
+            (salário/comissão) mora numa categoria que também recebe outra coisa (aqui, Pró-labore), o razão não
+            distingue as duas PIX a PIX: a separação certa é a do resumo acima, calculada pelo mês inteiro. Alguns
+            meses até batem linha a linha por coincidência de valor; outros dividem um único PIX entre duas naturezas,
+            e aí nenhuma linha isolada representa o número de cima.
+          </p>
+        ) : null}
         <div className="pp-tabela-caixa">
           <table className="pp-tabela">
             <thead>

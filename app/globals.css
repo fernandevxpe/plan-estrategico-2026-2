@@ -17111,6 +17111,7 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 .pp-remuneracao-valor.pp-remuneracao-vazio { font-size: 13px; font-weight: 550; color: var(--muted); }
 .pp-remuneracao-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
 .pp-remuneracao-explicacao { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.pp-cada-pagamento-nota { margin-bottom: 14px; max-width: 72ch; }
 .pp-remuneracao-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
 .pp-remuneracao-campos label, .pp-remuneracao-nota { display: grid; gap: 5px; }
 .pp-remuneracao-campos label > span, .pp-remuneracao-nota > span {

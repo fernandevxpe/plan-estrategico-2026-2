@@ -50,6 +50,17 @@ const PIX_ROTULO: Record<string, string> = {
 const FILTROS = ["todos", "salario", "prolabore", "comissao", "reembolso", "estagio", "extra"] as const;
 type Filtro = (typeof FILTROS)[number];
 
+/** Ordem dos chips do gráfico — mesma da matriz. */
+const GRAFICO_NATUREZAS = [
+  "salario",
+  "prolabore",
+  "comissao",
+  "estagio",
+  "extra",
+  "encargo_beneficio",
+  "reembolso"
+] as const;
+
 function mesCurto(m: string) {
   const [ano, mes] = m.split("-");
   return `${mes}/${ano.slice(2)}`;
@@ -65,29 +76,90 @@ function competenciaProxima() {
   return `${prox.getFullYear()}-${String(prox.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function mesSeguinteYm(ym: string) {
+  const [y, m] = ym.split("-").map(Number);
+  const ny = m === 12 ? y + 1 : y;
+  const nm = m === 12 ? 1 : m + 1;
+  return `${ny}-${String(nm).padStart(2, "0")}`;
+}
+
+/**
+ * Uma cota por mês a partir de `inicioMes`, até acabar cada série.
+ * Notebook 13/24 com 11 restantes → 11 barras futuras, não só o mês que vem.
+ */
+function projetarReembolsosFuturos(
+  series: { quitado: boolean; parcelasRestantes: number; valorParcelaCents: number }[],
+  inicioMes: string
+): { mes: string; cents: number }[] {
+  const mapa = new Map<string, number>();
+  for (const s of series) {
+    if (s.quitado || s.parcelasRestantes < 1) continue;
+    let mes = inicioMes;
+    for (let i = 0; i < s.parcelasRestantes; i += 1) {
+      mapa.set(mes, (mapa.get(mes) ?? 0) + s.valorParcelaCents);
+      mes = mesSeguinteYm(mes);
+    }
+  }
+  return [...mapa.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([mes, cents]) => ({ mes, cents }));
+}
+
 export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
   const [filtro, setFiltro] = useState<Filtro>("todos");
-  const [mostrarPrevisao, setMostrarPrevisao] = useState(true);
+  /** Reembolso começa desligado — o previsto futuro só entra se a pessoa pedir. */
+  const [ativos, setAtivos] = useState<Record<string, boolean>>(() => {
+    const base: Record<string, boolean> = {};
+    for (const slug of GRAFICO_NATUREZAS) base[slug] = slug !== "reembolso";
+    return base;
+  });
   const [detalhesAbertos, setDetalhesAbertos] = useState(false);
   const [mostrarPix, setMostrarPix] = useState(false);
+  const [reembolsosAbertos, setReembolsosAbertos] = useState(true);
 
   const c = perfil.conta;
   const proxMes = competenciaProxima();
   const comissaoProxima = perfil.comissaoDeclarada.find((x) => x.competencia === proxMes) ?? null;
-  // 0167: várias no mesmo mês — a previsão e o chip somam.
   const comissaoProximaSoma = perfil.comissaoDeclarada
     .filter((x) => x.competencia === proxMes)
     .reduce((s, x) => s + x.valorCents, 0);
   const reembolsoPrevistoProximoMesCents = perfil.reembolsoPrevistoProximoMesCents;
 
-  const previsaoFixa =
-    perfil.salarioBaseAtual && perfil.prolaboreEsperadoAtual
-      ? perfil.salarioBaseAtual.valorCents + perfil.prolaboreEsperadoAtual.valorCents
-      : null;
-  const previsaoTotal =
-    previsaoFixa !== null
-      ? previsaoFixa + comissaoProximaSoma + reembolsoPrevistoProximoMesCents
-      : null;
+  const reembolsoFuturoPorMes = useMemo(
+    () => projetarReembolsosFuturos(perfil.reembolsoSeries, proxMes),
+    [perfil.reembolsoSeries, proxMes]
+  );
+
+  const naturezasGrafico = useMemo(() => {
+    const presentes = new Set(perfil.porNatureza.map((n) => n.natureza));
+    if (perfil.salarioBaseAtual) presentes.add("salario");
+    if (perfil.prolaboreEsperadoAtual) presentes.add("prolabore");
+    if (comissaoProximaSoma > 0 || perfil.comissaoDeclarada.length) presentes.add("comissao");
+    if (perfil.reembolsoSeries.some((s) => !s.quitado) || reembolsoPrevistoProximoMesCents > 0) {
+      presentes.add("reembolso");
+    }
+    return GRAFICO_NATUREZAS.filter((slug) => presentes.has(slug));
+  }, [perfil, comissaoProximaSoma, reembolsoPrevistoProximoMesCents]);
+
+  /** Previsão do mês seguinte só com chips ligados. */
+  const previsaoProximoPorNatureza = useMemo(() => {
+    const por: Record<string, number> = {};
+    if (ativos.salario && perfil.salarioBaseAtual) por.salario = perfil.salarioBaseAtual.valorCents;
+    if (ativos.prolabore && perfil.prolaboreEsperadoAtual) {
+      por.prolabore = perfil.prolaboreEsperadoAtual.valorCents;
+    }
+    if (ativos.comissao && comissaoProximaSoma > 0) por.comissao = comissaoProximaSoma;
+    if (ativos.reembolso && reembolsoPrevistoProximoMesCents > 0) {
+      por.reembolso = reembolsoPrevistoProximoMesCents;
+    }
+    return por;
+  }, [ativos, perfil, comissaoProximaSoma, reembolsoPrevistoProximoMesCents]);
+
+  const previsaoTotal = (() => {
+    const vals = Object.values(previsaoProximoPorNatureza);
+    if (!vals.length) return null;
+    return vals.reduce((s, v) => s + v, 0);
+  })();
 
   const mesMaisRecente = perfil.porMes.length ? perfil.porMes[perfil.porMes.length - 1] : null;
   const mesMaisRecenteCents = mesMaisRecente?.cents ?? null;
@@ -109,29 +181,79 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
     [filtro, perfil.porMes]
   );
 
-  const tetoMes = Math.max(...perfil.porMes.map((m) => m.cents), previsaoTotal ?? 0, 1);
-  const tetoNat = Math.max(...perfil.porNatureza.map((n) => n.cents), 1);
+  const seriesAbertas = useMemo(
+    () => perfil.reembolsoSeries.filter((s) => !s.quitado),
+    [perfil.reembolsoSeries]
+  );
+  const seriesQuitadas = useMemo(
+    () => perfil.reembolsoSeries.filter((s) => s.quitado),
+    [perfil.reembolsoSeries]
+  );
 
   const mesesGrafico = useMemo(() => {
-    const base = [...perfil.porMes];
-    if (!mostrarPrevisao || previsaoTotal === null || previsaoTotal <= 0) return base;
-
-    const porNatureza: Record<string, number> = {};
-    if (perfil.salarioBaseAtual) porNatureza.salario = perfil.salarioBaseAtual.valorCents;
-    if (perfil.prolaboreEsperadoAtual) porNatureza.prolabore = perfil.prolaboreEsperadoAtual.valorCents;
-    if (comissaoProximaSoma) porNatureza.comissao = comissaoProximaSoma;
-    if (reembolsoPrevistoProximoMesCents > 0) porNatureza.reembolso = reembolsoPrevistoProximoMesCents;
-
-    return [
-      ...base,
-      {
-        mes: proxMes,
-        cents: previsaoTotal,
-        porNatureza,
-        previsao: true as const
+    const filtrar = (por: Record<string, number>) => {
+      const porNatureza: Record<string, number> = {};
+      let cents = 0;
+      for (const [nat, v] of Object.entries(por)) {
+        if (ativos[nat] && v > 0) {
+          porNatureza[nat] = v;
+          cents += v;
+        }
       }
-    ];
-  }, [perfil, mostrarPrevisao, previsaoTotal, comissaoProximaSoma, reembolsoPrevistoProximoMesCents, proxMes]);
+      return { porNatureza, cents };
+    };
+
+    const base = perfil.porMes
+      .map((m) => {
+        const f = filtrar(m.porNatureza);
+        return { mes: m.mes, ...f, previsao: false as const };
+      })
+      .filter((m) => m.cents > 0);
+
+    const futuros = new Map<
+      string,
+      { mes: string; cents: number; porNatureza: Record<string, number>; previsao: true }
+    >();
+
+    const garantir = (mes: string) => {
+      let f = futuros.get(mes);
+      if (!f) {
+        f = { mes, cents: 0, porNatureza: {}, previsao: true };
+        futuros.set(mes, f);
+      }
+      return f;
+    };
+
+    // Remuneração cadastrada no mês seguinte (chips ligados).
+    for (const [nat, v] of Object.entries(previsaoProximoPorNatureza)) {
+      if (nat === "reembolso") continue; // reembolso entra pelo horizonte das séries
+      const f = garantir(proxMes);
+      f.porNatureza[nat] = (f.porNatureza[nat] ?? 0) + v;
+      f.cents += v;
+    }
+
+    // Cotas futuras — só com o chip Reembolso ligado.
+    if (ativos.reembolso) {
+      for (const { mes, cents } of reembolsoFuturoPorMes) {
+        const f = garantir(mes);
+        f.porNatureza.reembolso = (f.porNatureza.reembolso ?? 0) + cents;
+        f.cents += cents;
+      }
+    }
+
+    const extras = [...futuros.values()]
+      .filter((f) => f.cents > 0)
+      .sort((a, b) => a.mes.localeCompare(b.mes));
+
+    return [...base, ...extras];
+  }, [perfil.porMes, ativos, previsaoProximoPorNatureza, reembolsoFuturoPorMes, proxMes]);
+
+  const tetoMes = Math.max(...mesesGrafico.map((m) => m.cents), 1);
+  const tetoNat = Math.max(...perfil.porNatureza.map((n) => n.cents), 1);
+
+  function alternarNatureza(slug: string) {
+    setAtivos((antes) => ({ ...antes, [slug]: !antes[slug] }));
+  }
 
   return (
     <div className="pp-unificado">
@@ -202,14 +324,18 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
           </div>
           <div className="pp-kpi">
             <b>{previsaoTotal === null ? "—" : brl(previsaoTotal)}</b>
-            <span>previsto {mesCurto(proxMes)} (com reembolso)</span>
+            <span>previsto {mesCurto(proxMes)}</span>
           </div>
           <div className={`pp-kpi${perfil.reembolsoAbertoCents > 0 ? " destaque" : ""}`}>
             <b>{brl(perfil.reembolsoAbertoCents)}</b>
             <span>
               reembolso em aberto ·{" "}
-              <Link href="/financeiro/reembolsos" className="pp-link">
-                ver reembolsos
+              <a href="#pp-reembolsos" className="pp-link">
+                ver séries
+              </a>
+              {" · "}
+              <Link href={`/financeiro/reembolsos?pessoa=${perfil.id}`} className="pp-link">
+                tela completa
               </Link>
             </span>
           </div>
@@ -244,7 +370,16 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
                 <span className="pp-chip-rotulo">Reembolso previsto</span>
                 <strong className="pp-chip-valor">{brl(reembolsoPrevistoProximoMesCents)}</strong>
                 <span className="pp-chip-detalhe">
-                  parcelas do mês {mesCurto(proxMes)}
+                  próximas cotas · {seriesAbertas.reduce((s, x) => s + x.parcelasRestantes, 0)} parcelas
+                  {reembolsoFuturoPorMes.length
+                    ? ` até ${mesCurto(reembolsoFuturoPorMes[reembolsoFuturoPorMes.length - 1].mes)}`
+                    : ""}
+                  {" · "}
+                  <a href="#pp-reembolsos" className="pp-link">
+                    {seriesAbertas.length
+                      ? `${seriesAbertas.length} série${seriesAbertas.length === 1 ? "" : "s"}`
+                      : "sem séries"}
+                  </a>
                 </span>
               </div>
               <div className="pp-chip-acoes" aria-hidden />
@@ -265,14 +400,36 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
         <div className="pp-secao-topo">
           <h2>Histórico e extrato</h2>
           <div className="pp-secao-acoes">
-            <label className="pp-toggle">
-              <input type="checkbox" checked={mostrarPrevisao} onChange={(e) => setMostrarPrevisao(e.target.checked)} />
-              incluir previsão {mesCurto(proxMes)}
-            </label>
             <button type="button" className="pp-btn-texto" onClick={() => setDetalhesAbertos((v) => !v)}>
               {detalhesAbertos ? "Ocultar detalhes" : "Ver por natureza/conta"}
             </button>
           </div>
+        </div>
+
+        <div className="fin-pessoas-matriz-chips pp-grafico-chips" role="group" aria-label="Componentes do gráfico">
+          {naturezasGrafico.map((slug) => {
+            const ligado = Boolean(ativos[slug]);
+            return (
+              <button
+                key={slug}
+                type="button"
+                className={ligado ? "fin-pessoas-matriz-chip ativo" : "fin-pessoas-matriz-chip"}
+                style={{ ["--chip-cor" as string]: NATUREZA_COR[slug] ?? "var(--muted)" }}
+                aria-pressed={ligado}
+                title={
+                  slug === "reembolso"
+                    ? "Histórico + cotas futuras até o fim das séries"
+                    : slug === "salario" || slug === "prolabore" || slug === "comissao"
+                      ? "Histórico e previsão do mês seguinte (cadastro)"
+                      : "Histórico"
+                }
+                onClick={() => alternarNatureza(slug)}
+              >
+                <i className="fin-pessoas-matriz-chip-ponto" aria-hidden />
+                {NATUREZA_ROTULO[slug] ?? slug}
+              </button>
+            );
+          })}
         </div>
 
         <div className="pp-resumo-linha">
@@ -281,7 +438,7 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
           </span>
         </div>
 
-        {perfil.porMes.length > 0 || (mostrarPrevisao && previsaoTotal) ? (
+        {mesesGrafico.length > 0 ? (
           <div
             className="pp-historico pp-historico-compacto"
             role="img"
@@ -457,6 +614,157 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
           </div>
         </div>
       </section>
+
+      {/* Reembolsos cadastrados — depois do histórico; sanfona */}
+      <section id="pp-reembolsos" className={"fin-card pp-card-compacta" + (reembolsosAbertos ? "" : " pp-sanfona-fechada")}>
+        <div className="pp-secao-topo">
+          <button
+            type="button"
+            className="pp-sanfona-botao"
+            aria-expanded={reembolsosAbertos}
+            onClick={() => setReembolsosAbertos((v) => !v)}
+          >
+            <span className="pp-sanfona-seta" aria-hidden>
+              {reembolsosAbertos ? "▾" : "▸"}
+            </span>
+            <h2>Reembolsos cadastrados</h2>
+            {!reembolsosAbertos ? (
+              <span className="pp-sanfona-resumo">
+                {brl(perfil.reembolsoAbertoCents)} em aberto
+                {reembolsoFuturoPorMes.length
+                  ? ` · ${reembolsoFuturoPorMes.length} m. previstos`
+                  : ""}
+              </span>
+            ) : null}
+          </button>
+          <div className="pp-secao-acoes">
+            <Link href={`/financeiro/reembolsos?pessoa=${perfil.id}`} className="pp-btn-texto">
+              Abrir tela de reembolsos →
+            </Link>
+          </div>
+        </div>
+        {reembolsosAbertos ? (
+        <>
+        <p className="pp-resumo-linha">
+          <span>
+            <strong>{brl(perfil.reembolsoAbertoCents)}</strong> em aberto
+            {reembolsoPrevistoProximoMesCents > 0
+              ? ` · ${brl(reembolsoPrevistoProximoMesCents)} em ${mesCurto(proxMes)}`
+              : null}
+            {reembolsoFuturoPorMes.length > 1
+              ? ` · ${reembolsoFuturoPorMes.length} meses até ${mesCurto(reembolsoFuturoPorMes[reembolsoFuturoPorMes.length - 1].mes)}`
+              : null}
+          </span>
+        </p>
+
+        {seriesAbertas.length || seriesQuitadas.length ? (
+          <div className="pp-tabela-caixa">
+            <table className="pp-tabela">
+              <thead>
+                <tr>
+                  <th scope="col">Série</th>
+                  <th scope="col">Desde</th>
+                  <th scope="col" className="num">
+                    Parcela
+                  </th>
+                  <th scope="col" className="num">
+                    Pago
+                  </th>
+                  <th scope="col" className="num">
+                    Falta
+                  </th>
+                  <th scope="col" className="num">
+                    Próx. cota
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {seriesAbertas.map((s) => (
+                  <tr key={s.slug}>
+                    <td>
+                      <span className="pp-meta">{s.descricao}</span>
+                      {s.categoria ? <span className="fin-desc-sub">{s.categoria}</span> : null}
+                      {s.cadastradoEm ? (
+                        <span className="fin-desc-sub">cadastrado {dataCurta(s.cadastradoEm)}</span>
+                      ) : null}
+                    </td>
+                    <td className="num">{s.desde ? mesCurto(s.desde) : "—"}</td>
+                    <td className="num">
+                      {s.parcela}/{s.parcelasTotal}
+                    </td>
+                    <td className="num">{brl(s.pagoCents)}</td>
+                    <td className="num">
+                      <strong>{brl(s.saldoCents)}</strong>
+                      {s.parcelasRestantes > 0 ? (
+                        <span className="fin-desc-sub">{s.parcelasRestantes}×</span>
+                      ) : null}
+                    </td>
+                    <td className="num" style={{ color: "var(--nat-reembolso)" }}>
+                      {s.parcelasRestantes >= 1 ? brl(s.valorParcelaCents) : "—"}
+                    </td>
+                  </tr>
+                ))}
+                {seriesQuitadas.map((s) => (
+                  <tr key={s.slug} className="pp-linha-quitada">
+                    <td>
+                      <span className="pp-meta">{s.descricao}</span>
+                      <span className="fin-desc-sub">quitado</span>
+                    </td>
+                    <td className="num">{s.desde ? mesCurto(s.desde) : "—"}</td>
+                    <td className="num">
+                      {s.parcela}/{s.parcelasTotal}
+                    </td>
+                    <td className="num">{brl(s.pagoCents)}</td>
+                    <td className="num">
+                      <span className="fin-zero">—</span>
+                    </td>
+                    <td className="num">
+                      <span className="fin-zero">—</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="pp-vazio">Nenhuma série de reembolso cadastrada para esta pessoa.</p>
+        )}
+
+        {perfil.reembolsoPedidos.length ? (
+          <>
+            <h3 className="pp-sub">Pedidos mensais</h3>
+            <div className="pp-tabela-caixa pp-tabela-caixa-media">
+              <table className="pp-tabela">
+                <thead>
+                  <tr>
+                    <th scope="col">Mês</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Cadastrado</th>
+                    <th scope="col" className="num">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {perfil.reembolsoPedidos.map((p) => (
+                    <tr key={p.id}>
+                      <td>{mesCurto(p.mes)}</td>
+                      <td>
+                        <span className="fin-tag">{p.status}</span>
+                      </td>
+                      <td className="num">{dataCurta(p.cadastradoEm)}</td>
+                      <td className="num">{brl(p.totalCents)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : null}
+              </>
+        ) : null}
+      </section>
+
     </div>
   );
 }

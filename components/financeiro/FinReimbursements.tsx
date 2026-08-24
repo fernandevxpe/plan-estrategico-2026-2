@@ -56,11 +56,21 @@ function paraCentavos(texto: string): number | null {
  *    com data de planejamento carimbada, em vez de aparecer no extrato no fim do
  *    mês como surpresa.
  */
-export function FinReimbursements({ dados }: { dados: PainelReembolsos }) {
+export function FinReimbursements({
+  dados,
+  pessoaInicial = null
+}: {
+  dados: PainelReembolsos;
+  /** Abre a gaveta desta pessoa ao carregar — vem de `?pessoa=` no perfil. */
+  pessoaInicial?: number | null;
+}) {
   const router = useRouter();
   const [pendente, startTransition] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
-  const [aberta, setAberta] = useState<number | null>(null);
+  const [aberta, setAberta] = useState<number | null>(() => {
+    if (pessoaInicial && dados.pessoas.some((p) => p.id === pessoaInicial)) return pessoaInicial;
+    return null;
+  });
   const [mostrarForm, setMostrarForm] = useState(false);
   const [somenteAtivos, setSomenteAtivos] = useState(true);
 

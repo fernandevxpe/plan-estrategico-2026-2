@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { brl } from "@/components/financeiro/Certeza";
 import type { ComissaoDeclaradaLinha, ProlaboreEsperadoLinha, SalarioBaseLinha } from "@/lib/financeiro/pessoa-perfil";
+import { urlDaOrigem } from "@/lib/url-origem";
 
 function mascaraDinheiro(bruto: string): string {
   const digitos = bruto.replace(/\D/g, "").slice(0, 11);
@@ -141,7 +142,7 @@ export function FinSalarioBaseForm({
     if (!nota.trim()) return setErro("diga a origem do número");
 
     setSalvando(true);
-    const r = await fetch(`/api/financeiro/pessoas/${personId}/salario-base`, {
+    const r = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${personId}/salario-base`), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ valorCents, vigenteDesde, nota: nota.trim() })
@@ -214,7 +215,7 @@ export function FinProlaboreEsperadoForm({
     if (!nota.trim()) return setErro("diga a origem do número");
 
     setSalvando(true);
-    const r = await fetch(`/api/financeiro/pessoas/${personId}/prolabore-esperado`, {
+    const r = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${personId}/prolabore-esperado`), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ valorCents, vigenteDesde, nota: nota.trim() })
@@ -289,7 +290,7 @@ export function FinComissaoForm({
     if (!nota.trim()) return setErro("descrição obrigatória — a que se refere?");
 
     setSalvando(true);
-    const r = await fetch(`/api/financeiro/pessoas/${personId}/comissao`, {
+    const r = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${personId}/comissao`), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ valorCents, competencia, descricao: nota.trim(), nota: nota.trim() })

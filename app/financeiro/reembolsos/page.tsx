@@ -10,8 +10,14 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function ReembolsosPage() {
+export default async function ReembolsosPage({
+  searchParams
+}: {
+  searchParams: Promise<{ pessoa?: string }>;
+}) {
   const dados = await getPainelReembolsos();
+  const sp = await searchParams;
+  const pessoaInicial = sp.pessoa && /^\d+$/.test(sp.pessoa) ? Number(sp.pessoa) : null;
 
   return (
     <AppShell>
@@ -25,7 +31,7 @@ export default async function ReembolsosPage() {
       </div>
       <FinShell>
         <FinEstornosReembolso />
-        <FinReimbursements dados={dados} />
+        <FinReimbursements dados={dados} pessoaInicial={pessoaInicial} />
       </FinShell>
     </AppShell>
   );

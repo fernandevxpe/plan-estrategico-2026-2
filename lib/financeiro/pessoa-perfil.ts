@@ -91,6 +91,35 @@ export type ComissaoDeclaradaLinha = {
   nota: string | null;
 };
 
+/** Série parcelada em `fin_reembolso_saldo_v` — o que falta e o que já caiu. */
+export type ReembolsoSerie = {
+  slug: string;
+  descricao: string;
+  categoria: string | null;
+  parcela: number;
+  parcelasTotal: number;
+  parcelasRestantes: number;
+  valorParcelaCents: number;
+  /** Já pago = parcela × valor (última parcela vista). */
+  pagoCents: number;
+  saldoCents: number;
+  quitado: boolean;
+  ultimaCompetencia: string;
+  /** Primeira competência da série na planilha. */
+  desde: string | null;
+  /** Data do primeiro registro em `fin_reembolso_item`. */
+  cadastradoEm: string | null;
+};
+
+/** Pedido mensal em `fin_reimbursement` (fluxo rascunho → pago). */
+export type ReembolsoPedido = {
+  id: number;
+  mes: string;
+  status: string;
+  totalCents: number;
+  cadastradoEm: string;
+};
+
 export type PerfilPessoa = {
   id: number;
   nome: string;
@@ -118,6 +147,10 @@ export type PerfilPessoa = {
    * Isso é "o que ainda falta cair" de cada série, sem chute de avulsos.
    */
   reembolsoPrevistoProximoMesCents: number;
+  /** Séries cadastradas (abertas e quitadas recentes). */
+  reembolsoSeries: ReembolsoSerie[];
+  /** Pedidos mensais (fin_reimbursement) — status e total. */
+  reembolsoPedidos: ReembolsoPedido[];
   pagamentos: PagamentoPessoa[];
   salarioBaseAtual: SalarioBaseLinha | null;
   salarioBaseHistorico: SalarioBaseLinha[];
@@ -140,7 +173,8 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
   );
   if (!pessoa) return null;
 
-  const [pagamentos, conta, saldo, bandas, salarioBase, prolaboreEsperado, comissaoDeclarada] = await Promise.all([
+  const [pagamentos, conta, saldo, bandas, salarioBase, prolaboreEsperado, comissaoDeclarada, reembolsoPedidosRows] =
+    await Promise.all([
     query<Record<string, unknown>>(
       `SELECT transaction_id, data, to_char(mes, 'YYYY-MM') AS mes, valor_cents,
               natureza, categoria, conta, descricao
@@ -156,11 +190,33 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
          FROM fin_person_pagamento WHERE person_id = $1`,
       [personId]
     ).catch(() => []),
-    query<{ valor_parcela_cents: string | number; parcelas_restantes: string | number; saldo_cents: string | number }>(
-      `SELECT valor_parcela_cents, parcelas_restantes, saldo_cents
-         FROM fin_reembolso_saldo_v
-        WHERE person_id = $1 AND NOT quitado
-        ORDER BY saldo_cents DESC`,
+    query<{
+      slug: string;
+      descricao: string;
+      categoria_livre: string | null;
+      valor_parcela_cents: string | number;
+      parcela: string | number;
+      parcelas_total: string | number;
+      parcelas_restantes: string | number;
+      saldo_cents: string | number;
+      quitado: boolean;
+      ultima_competencia: string;
+      desde: string | null;
+      cadastrado_em: string | null;
+    }>(
+      `SELECT s.slug, s.descricao, s.categoria_livre,
+              s.valor_parcela_cents, s.parcela, s.parcelas_total, s.parcelas_restantes,
+              s.saldo_cents, s.quitado,
+              to_char(s.ultima_competencia, 'YYYY-MM') AS ultima_competencia,
+              (SELECT to_char(min(i.competencia), 'YYYY-MM')
+                 FROM fin_reembolso_item i
+                WHERE i.person_id = s.person_id AND i.slug = s.slug) AS desde,
+              (SELECT to_char(min(i.criado_em), 'YYYY-MM-DD')
+                 FROM fin_reembolso_item i
+                WHERE i.person_id = s.person_id AND i.slug = s.slug) AS cadastrado_em
+         FROM fin_reembolso_saldo_v s
+        WHERE s.person_id = $1
+        ORDER BY s.quitado ASC, s.saldo_cents DESC, s.descricao`,
       [personId]
     ).catch(() => []),
     // A MESMA view que /time/perfil usa — ver o comentário no topo do arquivo.
@@ -185,7 +241,15 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
       `SELECT id, valor_cents, to_char(competencia, 'YYYY-MM') AS competencia, descricao, nota
          FROM fin_pessoa_comissao_declarada WHERE person_id = $1 ORDER BY competencia DESC, id DESC`,
       [personId]
-    )
+    ),
+    query<{ id: number; mes: string; status: string; total_cents: string; cadastrado_em: string }>(
+      `SELECT id, to_char(reference_month, 'YYYY-MM') AS mes, status, total_cents,
+              to_char(created_at, 'YYYY-MM-DD') AS cadastrado_em
+         FROM fin_reimbursement
+        WHERE person_id = $1
+        ORDER BY reference_month DESC`,
+      [personId]
+    ).catch(() => [])
   ]);
 
   const linhas: PagamentoPessoa[] = pagamentos.map((l) => ({
@@ -250,11 +314,40 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
         : Math.round((recorrentePorMes[meio - 1] + recorrentePorMes[meio]) / 2);
 
   const c = conta[0];
-  const reembolsoAbertoCents = saldo.reduce((t: number, r: any) => t + Number(r.saldo_cents ?? 0), 0);
-  const reembolsoPrevistoProximoMesCents = saldo.reduce((t: number, r: any) => {
-    const restantes = Number(r.parcelas_restantes ?? 0);
-    return t + (restantes >= 1 ? Number(r.valor_parcela_cents ?? 0) : 0);
-  }, 0);
+  const reembolsoSeries: ReembolsoSerie[] = saldo.map((r) => {
+    const parcela = Number(r.parcela);
+    const parcelasTotal = Number(r.parcelas_total);
+    const valorParcela = Number(r.valor_parcela_cents);
+    const restantes = Number(r.parcelas_restantes);
+    return {
+      slug: r.slug,
+      descricao: r.descricao,
+      categoria: r.categoria_livre,
+      parcela,
+      parcelasTotal,
+      parcelasRestantes: restantes,
+      valorParcelaCents: valorParcela,
+      pagoCents: parcela * valorParcela,
+      saldoCents: Number(r.saldo_cents),
+      quitado: Boolean(r.quitado),
+      ultimaCompetencia: r.ultima_competencia,
+      desde: r.desde,
+      cadastradoEm: r.cadastrado_em
+    };
+  });
+  const reembolsoAbertoCents = reembolsoSeries
+    .filter((s) => !s.quitado)
+    .reduce((t, s) => t + s.saldoCents, 0);
+  const reembolsoPrevistoProximoMesCents = reembolsoSeries
+    .filter((s) => !s.quitado && s.parcelasRestantes >= 1)
+    .reduce((t, s) => t + s.valorParcelaCents, 0);
+  const reembolsoPedidos: ReembolsoPedido[] = reembolsoPedidosRows.map((r) => ({
+    id: Number(r.id),
+    mes: r.mes,
+    status: r.status,
+    totalCents: Number(r.total_cents),
+    cadastradoEm: r.cadastrado_em
+  }));
   return {
     id: Number(pessoa.id),
     nome: String(pessoa.name),
@@ -294,6 +387,8 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
     ultimoPagamento: linhas[0]?.data ?? null,
     reembolsoAbertoCents,
     reembolsoPrevistoProximoMesCents,
+    reembolsoSeries,
+    reembolsoPedidos,
     pagamentos: linhas.slice(0, 200),
     salarioBaseAtual: salarioBase[0]
       ? { id: salarioBase[0].id, valorCents: Number(salarioBase[0].valor_cents), vigenteDesde: salarioBase[0].vigente_desde, nota: salarioBase[0].nota }

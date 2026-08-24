@@ -3,48 +3,66 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  ArrowDownToLine,
+  BarChart3,
+  ChevronRight,
+  CreditCard,
+  Database,
+  Landmark,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PieChart,
+  Users,
+  type LucideIcon
+} from "lucide-react";
 
 import { FINANCEIRO_GRUPOS, financeiroAtivo, rotaAtiva, type Rota } from "@/lib/nav/mapa";
+
+const CHAVE_COMPACTA = "fin-nav-compacta";
+
+const ICONE_GRUPO: Record<string, LucideIcon> = {
+  Caixa: Landmark,
+  Receber: ArrowDownToLine,
+  Pagar: CreditCard,
+  Pessoas: Users,
+  Resultado: PieChart,
+  Dados: Database
+};
 
 /**
  * A barra lateral do módulo financeiro.
  *
- * O QUE ELA SUBSTITUI
+ * Seis grupos; o da página aberta começa expandido. Compactar reduz a coluna a
+ * ícones — útil em tela estreita de notebook sem perder o mapa. A preferência
+ * fica em localStorage para não resetar a cada navegação.
  *
- * Uma fila única de 23 abas, em ordem de chegada, quebrando em três linhas.
- * Uma fila é uma boa navegação até ~7 itens; depois disso ela deixa de ser
- * navegação e vira busca visual — o usuário lê a barra inteira toda vez, e o
- * custo de achar uma tela passa a crescer com o número de telas que ele NÃO
- * quer. Foi assim que `/financeiro/resultado` (a DRE) ficou de fora do menu
- * sem ninguém notar: numa fila de 23, o 24º item não tem lugar óbvio.
- *
- * Seis grupos, e o da página aberta é o único expandido. Quem está em "Custos
- * do mês" vê quatro itens de PAGAR e cinco rótulos de grupo — nove linhas em
- * vez de vinte e três — sem perder o mapa do resto.
- *
- * `<details>`/`<summary>` em vez de estado próprio: recolher e expandir é
- * comportamento nativo do HTML, com teclado e leitor de tela já resolvidos. O
- * `open` inicial vem da rota; se o usuário abrir outro grupo à mão, ele fica
- * aberto — a escolha explícita dele vence a nossa.
- *
- * NOMES
- *
- * Nenhum rótulo mora aqui. Todos vêm de `lib/nav/mapa.ts`, o mesmo arquivo que
- * alimenta o menu de cima e a trilha, para que uma rota não possa ter dois
- * nomes na mesma plataforma.
+ * `<details>`/`<summary>` cuidam de abrir/fechar cada tema: teclado e leitor
+ * de tela já resolvidos. O estado "compacta" é nosso porque o HTML não tem
+ * modo ícone-só.
  */
 export function FinShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [gavetaAberta, setGavetaAberta] = useState(false);
+  const [compacta, setCompacta] = useState(false);
+  /** Grupos que o usuário abriu/fechou à mão — prevalecem sobre o da rota. */
+  const [abertosManual, setAbertosManual] = useState<Record<string, boolean>>({});
   const atual = financeiroAtivo(pathname);
-  // `/financeiro` (a visão geral) não pertence a grupo nenhum. Deixar os seis
-  // fechados ali entregaria, na porta do módulo, seis rótulos e nenhuma tela —
-  // o primeiro grupo aberto dá um lugar por onde começar.
-  const grupoAberto = atual?.grupo.label ?? FINANCEIRO_GRUPOS[0]?.label;
+  const grupoDaRota = atual?.grupo.label ?? FINANCEIRO_GRUPOS[0]?.label;
 
-  // Navegou, fecha. Sem isto a gaveta continua por cima da tela que o usuário
-  // acabou de pedir, e ele tem de fechá-la para ver o que clicou.
-  useEffect(() => setGavetaAberta(false), [pathname]);
+  useEffect(() => {
+    try {
+      setCompacta(window.localStorage.getItem(CHAVE_COMPACTA) === "1");
+    } catch {
+      /* private mode */
+    }
+  }, []);
+
+  // Nova rota: limpa overrides manuais para o tema da página voltar a abrir.
+  useEffect(() => {
+    setAbertosManual({});
+    setGavetaAberta(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!gavetaAberta) return;
@@ -55,10 +73,26 @@ export function FinShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", aoTeclar);
   }, [gavetaAberta]);
 
+  function alternarCompacta() {
+    setCompacta((antes) => {
+      const proximo = !antes;
+      try {
+        window.localStorage.setItem(CHAVE_COMPACTA, proximo ? "1" : "0");
+      } catch {
+        /* private mode */
+      }
+      return proximo;
+    });
+  }
+
+  function grupoEstaAberto(label: string) {
+    if (compacta) return false;
+    if (label in abertosManual) return abertosManual[label];
+    return label === grupoDaRota;
+  }
+
   return (
-    <div className="fin-layout">
-      {/* Só existe em tela estreita (CSS). Em tela larga a barra está sempre
-          visível e um botão para abri-la seria um clique para nada. */}
+    <div className={compacta ? "fin-layout compacta" : "fin-layout"}>
       <button
         type="button"
         className="fin-nav-abrir"
@@ -82,22 +116,81 @@ export function FinShell({ children }: { children: React.ReactNode }) {
         id="fin-nav"
         className={gavetaAberta ? "fin-nav aberta" : "fin-nav"}
         aria-label="Seções do financeiro"
+        data-compacta={compacta ? "sim" : "nao"}
       >
-        {FINANCEIRO_GRUPOS.map((grupo) => (
-          <details key={grupo.label} className="fin-nav-grupo" open={grupoAberto === grupo.label}>
-            <summary>{grupo.label}</summary>
-            <div className="fin-nav-itens">
-              {grupo.rotas.map((rota) => (
-                <ItemDeRota key={rota.href} rota={rota} pathname={pathname} />
-              ))}
-            </div>
-          </details>
-        ))}
+        <div className="fin-nav-topo">
+          {!compacta ? <span className="fin-nav-topo-rotulo">Financeiro</span> : null}
+          <button
+            type="button"
+            className="fin-nav-compactar"
+            onClick={alternarCompacta}
+            aria-pressed={compacta}
+            title={compacta ? "Expandir menu" : "Comprimir menu"}
+            aria-label={compacta ? "Expandir menu" : "Comprimir menu"}
+          >
+            {compacta ? <PanelLeftOpen size={16} strokeWidth={2} /> : <PanelLeftClose size={16} strokeWidth={2} />}
+          </button>
+        </div>
+
+        {FINANCEIRO_GRUPOS.map((grupo) => {
+          const Icone = ICONE_GRUPO[grupo.label] ?? Database;
+          const aberto = grupoEstaAberto(grupo.label);
+          const temAtivo = grupo.rotas.some(
+            (rota) =>
+              rotaAtiva(rota.href, pathname) ||
+              rota.filhos?.some((f) => rotaAtiva(f.href, pathname))
+          );
+
+          return (
+            <details
+              key={grupo.label}
+              className={temAtivo ? "fin-nav-grupo ativo" : "fin-nav-grupo"}
+              open={aberto}
+              onToggle={(e) => {
+                if (compacta) return;
+                const el = e.currentTarget;
+                setAbertosManual((antes) => ({ ...antes, [grupo.label]: el.open }));
+              }}
+            >
+              <summary
+                className={temAtivo ? "fin-nav-summary ativo" : "fin-nav-summary"}
+                title={compacta ? grupo.label : undefined}
+                onClick={
+                  compacta
+                    ? (e) => {
+                        e.preventDefault();
+                        setCompacta(false);
+                        setAbertosManual({ [grupo.label]: true });
+                        try {
+                          window.localStorage.setItem(CHAVE_COMPACTA, "0");
+                        } catch {
+                          /* */
+                        }
+                      }
+                    : undefined
+                }
+              >
+                <span className="fin-nav-summary-icone" aria-hidden>
+                  <Icone size={16} strokeWidth={2} />
+                </span>
+                <span className="fin-nav-summary-texto">{grupo.label}</span>
+                <span className="fin-nav-summary-seta" aria-hidden>
+                  <ChevronRight size={14} strokeWidth={2} />
+                </span>
+                {compacta && temAtivo ? <span className="fin-nav-summary-ponto" aria-hidden /> : null}
+              </summary>
+              {!compacta ? (
+                <div className="fin-nav-itens">
+                  {grupo.rotas.map((rota) => (
+                    <ItemDeRota key={rota.href} rota={rota} pathname={pathname} />
+                  ))}
+                </div>
+              ) : null}
+            </details>
+          );
+        })}
       </nav>
 
-      {/* `fin-shell` continua sendo a coluna de conteúdo: o espaçamento de 18px
-          entre os blocos das telas depende dela, e o app do time reusa a mesma
-          classe. Trocar o significado dela aqui quebraria `/time` sem aviso. */}
       <div className="fin-shell">{children}</div>
     </div>
   );
@@ -116,10 +209,6 @@ function ItemDeRota({ rota, pathname }: { rota: Rota; pathname: string }) {
       >
         {rota.label}
       </Link>
-      {/* As telas irmãs só aparecem quando a conversa já é essa. Categorização,
-          Qualificar e Revisão são três telas para a mesma pergunta ("onde isto
-          entra?") e a fusão delas é etapa posterior; até lá, o menu mostra uma
-          porta e as outras duas ficam a um clique de quem está classificando. */}
       {rota.filhos && (ativa || filhoAtivo) ? (
         <div className="fin-nav-filhos">
           {rota.filhos.map((filho) => {

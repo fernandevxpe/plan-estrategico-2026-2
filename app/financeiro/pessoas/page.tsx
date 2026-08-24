@@ -25,11 +25,6 @@ export default async function PessoasPage() {
     <AppShell>
       <div className="page-header">
         <h1>Custo com pessoas</h1>
-        <p>
-          O que cada pessoa custa, de qual conta saiu e como o valor se divide — por natureza, time e vínculo, mês a
-          mês. Uma pessoa que recebe no CNPJ e no CPF aparece uma vez, somando os dois. E, ao lado do total, o que
-          ainda não pôde ser atribuído a ninguém: sem esse número, o total vem menor e ninguém percebe.
-        </p>
       </div>
       <FinShell>
         <FinPessoas dados={dados} />

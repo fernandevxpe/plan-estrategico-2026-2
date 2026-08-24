@@ -122,11 +122,12 @@ export function vinculoValido(valor: string): boolean {
  *
  * O dono precisa poder criar "Pré-vendas" numa quinta-feira sem migration, o
  * que descarta enum. O que não pode acontecer é "Obras", "obras" e "obras "
- * virarem três times na mesma tabela: `TIME_SQL` compara `p.area IN
- * ('hardware','software')` literalmente, e um "Hardware" com maiúscula sairia
- * de Hardware e cairia em "Sem time" sem erro nenhum. A normalização é o preço
- * de manter o campo aberto — mesma receita de slug da migração 0009, com `_` no
- * lugar de `-` para casar com os valores que já existem no banco.
+ * virarem três times na mesma tabela: `TIME_SQL` compara slugs minúsculos
+ * (`consultoria`, `obras`, e ainda `hardware`/`software` como alias de
+ * consultoria). Um "Hardware" com maiúscula sairia do CASE e cairia em
+ * "Sem time" sem erro nenhum. A normalização é o preço de manter o campo
+ * aberto — mesma receita de slug da migração 0009, com `_` no lugar de `-`
+ * para casar com os valores que já existem no banco.
  */
 export function slugArea(valor: string): string {
   return valor
@@ -189,7 +190,8 @@ const ROTULO_TIME: Record<string, string> = {
   sem_time: "Sem time"
 };
 
-const ORDEM_TIME = ["consultoria", "obras", "software", "hardware", "sem_time"];
+/** Ordem do filtro "Por time". Software/hardware saíram do eixo (viram consultoria). */
+const ORDEM_TIME = ["consultoria", "obras", "sem_time"];
 
 /**
  * Natureza lida do razão, com o rótulo dizendo de onde ela vem.
@@ -250,17 +252,21 @@ export const GUARDAS_SAIDA = `
  * Time da pessoa, derivado em SQL para que a tabela, a matriz e a cobertura
  * usem literalmente a mesma expressão.
  *
- * `area` vence `default_nucleo` porque são coisas diferentes: Diogo tem
- * area='hardware' e default_nucleo='consultoria' — ele constrói medidor e é PAGO
- * pela via de Consultoria. A pergunta do dono ("quanto custa Hardware?") é sobre
- * onde a pessoa trabalha, não sobre por qual conta o dinheiro passa. Obras só
- * existe em `default_nucleo`, e era exatamente o time que não existia na
- * planilha dele.
+ * Em 24/08/2026 a casa consolidou em dois times de entrega + residual:
+ * consultoria, obras e sem_time. Software e hardware deixam de ser times
+ * próprios — quem estava neles conta como consultoria (Flavio, Diogo, Belo…).
+ * Leon (sócio investidor) e Tiago não entregam em nenhum: cadastro sem área
+ * nem núcleo, caem no ELSE.
+ *
+ * Antes (0168): `area IN (hardware, software)` vencia e abria quatro times.
+ * Isso contradizia "hoje são dois times". Núcleo obras/consultoria e area
+ * obras/consultoria continuam valendo para quem não veio de software/hardware.
  */
 const TIME_SQL = `
   CASE
-    WHEN p.area IN ('hardware', 'software') THEN p.area
+    WHEN p.area IN ('hardware', 'software') THEN 'consultoria'
     WHEN p.default_nucleo IN ('obras', 'consultoria') THEN p.default_nucleo
+    WHEN p.area IN ('obras', 'consultoria') THEN p.area
     ELSE 'sem_time'
   END
 `;
@@ -354,6 +360,20 @@ export type BandaRemuneracao = {
 };
 
 /**
+ * Previsão do mês seguinte a partir dos cadastros da pessoa — a mesma base do
+ * perfil (`fin_pessoa_salario_base`, `fin_pessoa_prolabore_esperado`,
+ * `fin_pessoa_comissao_declarada`, parcelas abertas de reembolso). Não é a
+ * mediana observada de `fin_folha_previsao_v`.
+ */
+export type PrevisaoCadastro = {
+  personId: number;
+  /** Primeiro dia do mês previsto, no mesmo formato das bandas (`YYYY-MM-01`). */
+  mes: string;
+  porNatureza: Record<string, number>;
+  totalCents: number;
+};
+
+/**
  * O pactuado da planilha de comissionamento: pessoa × mês.
  *
  * Separado do realizado porque são medidas de coisas diferentes. `contratado` é
@@ -426,11 +446,22 @@ export type LinkProposto = {
 
 export type Cobertura = {
   buracos: BuracoMes[];
+  /** Maiores saídas sem favorecido — para a fila ver o texto do extrato. */
+  saidasSemDono: SaidaSemDono[];
   suspeitos: Suspeito[];
   linksPropostos: LinkProposto[];
   pessoasSemContraparte: { id: number; nome: string; vinculo: string; vinculoRotulo: string }[];
   faturaCartaoCents: number;
   faturaCartaoN: number;
+};
+
+/** Uma saída sem contraparte, linha a linha. */
+export type SaidaSemDono = {
+  id: number;
+  data: string;
+  conta: string;
+  cents: number;
+  descricao: string;
 };
 
 /** Uma categoria de custo oferecível como padrão de pessoa. */
@@ -469,6 +500,10 @@ export type CustoPessoas = {
   celulas: Celula[];
   /** Composição por natureza — mesma fonte do perfil da pessoa. */
   bandas: BandaRemuneracao[];
+  /** Mês seguinte ao corrente (fuso da empresa), chave `YYYY-MM-01`. */
+  mesPrevisto: string;
+  /** Previsão por pessoa a partir dos cadastros — alimenta a coluna da matriz. */
+  previsaoCadastro: PrevisaoCadastro[];
   pactuado: Pactuado[];
   componentes: Componente[];
   cobertura: Cobertura;
@@ -508,10 +543,13 @@ function indisponivel(): CustoPessoas {
     pessoas: [],
     celulas: [],
     bandas: [],
+    mesPrevisto: "",
+    previsaoCadastro: [],
     pactuado: [],
     componentes: [],
     cobertura: {
       buracos: [],
+      saidasSemDono: [],
       suspeitos: [],
       linksPropostos: [],
       pessoasSemContraparte: [],
@@ -572,12 +610,14 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       pactuadoRows,
       componentesRows,
       buracoRows,
+      saidasSemDonoRows,
       suspeitoRows,
       faturaRows,
       contasRows,
       categoriasRows,
       nucleosRows,
-      usoCategoriaRows
+      usoCategoriaRows,
+      previsaoCadastroRows
     ] = await Promise.all([
         query<{
           id: number;
@@ -749,6 +789,26 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
           [ENTITY]
         ),
 
+        // As saídas sem dono, uma a uma — o texto do extrato é o que a fila
+        // precisa para decidir se é gente, fornecedor ou fatura mal etiquetada.
+        // Top 40 por valor: cobre o buraco típico sem despejar o ledger inteiro.
+        query<{ id: number; data: string; conta: string; cents: number; descricao: string }>(
+          `SELECT t.id,
+                  to_char(t.posted_on, 'YYYY-MM-DD') AS data,
+                  a.slug AS conta,
+                  (-t.amount_cents)::bigint AS cents,
+                  left(coalesce(t.description_raw, t.description_norm, ''), 160) AS descricao
+             FROM fin_transaction t
+             JOIN fin_entity e ON e.id = t.entity_id
+             JOIN fin_account a ON a.id = t.account_id
+            WHERE e.slug = $1 AND ${GUARDAS_SAIDA}
+              AND t.counterparty_id IS NULL
+              AND a.kind = 'conta_corrente'
+            ORDER BY (-t.amount_cents) DESC, t.posted_on DESC
+            LIMIT 40`,
+          [ENTITY]
+        ),
+
         query<{ person_id: number; pessoa: string; mes: string; conta: string; cents: number; n: number; amostra: string }>(
           `WITH chave AS (
              SELECT DISTINCT p.id AS person_id, p.name AS pessoa, left(c.normalized_name, 18) AS prefixo
@@ -850,6 +910,66 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
             GROUP BY 1, 2, 3
             ORDER BY 5 DESC`,
           [ENTITY]
+        ),
+
+        // Previsão do mês seguinte pelos cadastros — a mesma base do perfil.
+        // Salário e pró-labore: vigência mais recente. Comissão: competência do
+        // mês previsto (soma se houver várias, 0167). Reembolso: próxima parcela
+        // de cada série ainda aberta (`fin_reembolso_saldo_v`).
+        query<{
+          person_id: number;
+          mes: string;
+          salario_cents: number;
+          prolabore_cents: number;
+          comissao_cents: number;
+          reembolso_cents: number;
+        }>(
+          `WITH mes AS (
+             SELECT (date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo')
+                       + interval '1 month')::date AS mes_previsto
+           ),
+           sal AS (
+             SELECT DISTINCT ON (person_id) person_id, valor_cents
+               FROM fin_pessoa_salario_base
+              ORDER BY person_id, vigente_desde DESC
+           ),
+           pro AS (
+             SELECT DISTINCT ON (person_id) person_id, valor_cents
+               FROM fin_pessoa_prolabore_esperado
+              ORDER BY person_id, vigente_desde DESC
+           ),
+           com AS (
+             SELECT cd.person_id, SUM(cd.valor_cents)::bigint AS valor_cents
+               FROM fin_pessoa_comissao_declarada cd
+               CROSS JOIN mes
+              WHERE cd.competencia = mes.mes_previsto
+              GROUP BY cd.person_id
+           ),
+           ree AS (
+             SELECT person_id, SUM(valor_parcela_cents)::bigint AS valor_cents
+               FROM fin_reembolso_saldo_v
+              WHERE NOT quitado AND parcelas_restantes >= 1
+              GROUP BY person_id
+           )
+           SELECT p.id AS person_id,
+                  to_char(mes.mes_previsto, 'YYYY-MM-01') AS mes,
+                  COALESCE(sal.valor_cents, 0)::bigint AS salario_cents,
+                  COALESCE(pro.valor_cents, 0)::bigint AS prolabore_cents,
+                  COALESCE(com.valor_cents, 0)::bigint AS comissao_cents,
+                  COALESCE(ree.valor_cents, 0)::bigint AS reembolso_cents
+             FROM fin_person p
+             JOIN fin_entity e ON e.id = p.entity_id
+             CROSS JOIN mes
+             LEFT JOIN sal ON sal.person_id = p.id
+             LEFT JOIN pro ON pro.person_id = p.id
+             LEFT JOIN com ON com.person_id = p.id
+             LEFT JOIN ree ON ree.person_id = p.id
+            WHERE e.slug = $1
+              AND (COALESCE(sal.valor_cents, 0)
+                 + COALESCE(pro.valor_cents, 0)
+                 + COALESCE(com.valor_cents, 0)
+                 + COALESCE(ree.valor_cents, 0)) > 0`,
+          [ENTITY]
         )
       ]);
 
@@ -925,6 +1045,32 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       cents: Number(linha.valor_cents)
     }));
 
+    const previsaoCadastro: PrevisaoCadastro[] = previsaoCadastroRows.map((linha) => {
+      const porNatureza: Record<string, number> = {};
+      const salario = Number(linha.salario_cents);
+      const prolabore = Number(linha.prolabore_cents);
+      const comissao = Number(linha.comissao_cents);
+      const reembolso = Number(linha.reembolso_cents);
+      if (salario > 0) porNatureza.salario = salario;
+      if (prolabore > 0) porNatureza.prolabore = prolabore;
+      if (comissao > 0) porNatureza.comissao = comissao;
+      if (reembolso > 0) porNatureza.reembolso = reembolso;
+      return {
+        personId: Number(linha.person_id),
+        mes: linha.mes,
+        porNatureza,
+        totalCents: salario + prolabore + comissao + reembolso
+      };
+    });
+    // Mês seguinte a `mesAtual` (`YYYY-MM-01`) — mesmo fuso da query acima.
+    const mesPrevisto = (() => {
+      if (previsaoCadastro[0]?.mes) return previsaoCadastro[0].mes;
+      const [y, m] = mesAtual.slice(0, 7).split("-").map(Number);
+      const ny = m === 12 ? y + 1 : y;
+      const nm = m === 12 ? 1 : m + 1;
+      return `${ny}-${String(nm).padStart(2, "0")}-01`;
+    })();
+
     const pactuado: Pactuado[] = pactuadoRows.map((linha) => ({
       personId: linha.person_id,
       mes: linha.mes,
@@ -968,6 +1114,14 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       semContraparteN: linha.n
     }));
 
+    const saidasSemDono: SaidaSemDono[] = saidasSemDonoRows.map((linha) => ({
+      id: Number(linha.id),
+      data: linha.data,
+      conta: linha.conta,
+      cents: Number(linha.cents),
+      descricao: linha.descricao
+    }));
+
     const suspeitos: Suspeito[] = suspeitoRows.map((linha) => ({
       personId: linha.person_id,
       pessoa: linha.pessoa,
@@ -1006,6 +1160,7 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
 
     const cobertura: Cobertura = {
       buracos,
+      saidasSemDono,
       suspeitos,
       linksPropostos,
       pessoasSemContraparte,
@@ -1098,11 +1253,17 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       }
     ];
 
-    // As áreas EM USO, para o combo sugerir antes de deixar digitar. Sai do dado
-    // e não de uma lista fixa: no dia em que o dono criar "Pré-vendas" pela tela,
-    // ela aparece aqui para a próxima pessoa sem ninguém tocar em código.
-    const areasEmUso = [...new Set(pessoas.map((p) => p.area).filter((a): a is string => Boolean(a)))].sort();
-    const areas: Opcao[] = areasEmUso.map((slug) => ({
+    // Eixo canônico pós-0170: consultoria | obras. Extra no dado (ex. software
+    // em inativos) entra no fim para poder corrigir na própria tabela.
+    const areasCanonicas = ["consultoria", "obras"];
+    const areasExtras = [
+      ...new Set(
+        pessoas
+          .map((p) => p.area)
+          .filter((a): a is string => Boolean(a) && !areasCanonicas.includes(a))
+      )
+    ].sort();
+    const areas: Opcao[] = [...areasCanonicas, ...areasExtras].map((slug) => ({
       slug,
       nome: ROTULO_TIME[slug] ?? rotuloArea(slug)
     }));
@@ -1138,6 +1299,8 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       pessoas,
       celulas,
       bandas,
+      mesPrevisto,
+      previsaoCadastro,
       pactuado,
       componentes,
       cobertura,

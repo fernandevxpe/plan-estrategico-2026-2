@@ -1,14 +1,29 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
+import { ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-import type { CustoPessoas, Pactuado, Pessoa } from "@/lib/financeiro/pessoas";
+import type {
+  BandaRemuneracao,
+  CustoPessoas,
+  Pactuado,
+  Pessoa,
+  SaidaSemDono
+} from "@/lib/financeiro/pessoas";
 import { brlCents, brlPrecise, monthKeyLabel, pct } from "@/lib/financeiro/format";
+import {
+  TIPOS_SAIDA_SEM_DONO,
+  nomeSugeridoDoExtrato,
+  type TipoSaidaSemDono
+} from "@/lib/financeiro/saida-sem-dono-ui";
+import { urlDaOrigem } from "@/lib/url-origem";
 
 import { Nota } from "@/components/ui/Nota";
 
-import { FinLigacaoPropostaAcoes, FinPessoaCadastro, FinPessoaEditor } from "./FinPessoaEditor";
+import { FinLigacaoPropostaAcoes, FinPessoaCadastro } from "./FinPessoaEditor";
 import { FinPessoasMatriz } from "./FinPessoasMatriz";
+import { FinSecaoColapsavel } from "./FinSecaoColapsavel";
 
 /**
  * Custo com pessoas.
@@ -53,6 +68,75 @@ function chave(personId: number, mes: string) {
   return `${personId}|${mes}`;
 }
 
+type ComposicaoMes = {
+  mes: string;
+  salarioCents: number;
+  prolaboreCents: number;
+  comissaoCents: number;
+  reembolsoCents: number;
+  estagioCents: number;
+  extraCents: number;
+};
+
+/**
+ * Composição do ÚLTIMO mês com banda — a mesma régua do perfil individual.
+ *
+ * As seis naturezas vêm do MESMO mês. Antes só salário/pró-labore/comissão/
+ * reembolso apareciam na tabela: Paulo, Dante e Sandro (bolsa em `estagio`) e
+ * Kevin/Rita (`extra`, categorias 5.05 e 4.03) ficavam com as colunas vazias
+ * embora o dinheiro estivesse na view — a mesma que o perfil usa.
+ */
+function composicaoUltimoMes(bandas: BandaRemuneracao[], personId: number): ComposicaoMes | null {
+  const daPessoa = bandas.filter((b) => b.personId === personId && b.cents > 0);
+  if (!daPessoa.length) return null;
+  let mes = daPessoa[0].mes;
+  for (const b of daPessoa) if (b.mes > mes) mes = b.mes;
+  const doMes = daPessoa.filter((b) => b.mes === mes);
+  const soma = (natureza: string) =>
+    doMes.filter((b) => b.natureza === natureza).reduce((s, b) => s + b.cents, 0);
+  return {
+    mes,
+    salarioCents: soma("salario"),
+    prolaboreCents: soma("prolabore"),
+    comissaoCents: soma("comissao"),
+    reembolsoCents: soma("reembolso"),
+    estagioCents: soma("estagio"),
+    extraCents: soma("extra")
+  };
+}
+
+function CelulaBanda({ cents }: { cents: number }) {
+  if (!cents) return <span className="fin-zero">—</span>;
+  return <span className="fin-pessoas-ultimo">{brlPrecise(cents)}</span>;
+}
+
+/**
+ * Delta de CUSTO: subir é ruim, cair é bom. Neutro abaixo de 0,05 p.p. para
+ * não pintar ruído de centavos como tendência.
+ */
+function DeltaCusto({
+  atual,
+  anterior,
+  contra
+}: {
+  atual: number;
+  anterior: number | null;
+  contra: string;
+}) {
+  if (anterior === null || !anterior) {
+    return <p className="fin-delta neutro">sem base para comparar</p>;
+  }
+  const variacao = ((atual - anterior) / Math.abs(anterior)) * 100;
+  const classe =
+    Math.abs(variacao) < 0.05 ? "fin-delta neutro" : variacao > 0 ? "fin-delta ruim" : "fin-delta bom";
+  return (
+    <p className={classe}>
+      {variacao >= 0 ? "+" : "−"}
+      {pct(Math.abs(variacao), 1)} <span>vs. {contra}</span>
+    </p>
+  );
+}
+
 export function FinPessoas({ dados }: { dados: CustoPessoas }) {
   // O padrão é TODO o período, não o mês recente: a primeira pergunta do dono é
   // "quanto custa o time", e responder isso com um mês parcial (ago/26 vai só
@@ -64,7 +148,6 @@ export function FinPessoas({ dados }: { dados: CustoPessoas }) {
   const [time, setTime] = useState("");
   const [vinculo, setVinculo] = useState("");
   const [natureza, setNatureza] = useState("");
-  const [aberta, setAberta] = useState<number | null>(null);
 
   if (!dados.disponivel) {
     return (
@@ -81,8 +164,8 @@ export function FinPessoas({ dados }: { dados: CustoPessoas }) {
   return (
     <ConteudoPessoas
       dados={dados}
-      estado={{ mesDe, mesAte, busca, conta, time, vinculo, natureza, aberta }}
-      set={{ setMesDe, setMesAte, setBusca, setConta, setTime, setVinculo, setNatureza, setAberta }}
+      estado={{ mesDe, mesAte, busca, conta, time, vinculo, natureza }}
+      set={{ setMesDe, setMesAte, setBusca, setConta, setTime, setVinculo, setNatureza }}
     />
   );
 }
@@ -95,7 +178,6 @@ type Estado = {
   time: string;
   vinculo: string;
   natureza: string;
-  aberta: number | null;
 };
 
 type Setters = {
@@ -106,7 +188,6 @@ type Setters = {
   setTime: (v: string) => void;
   setVinculo: (v: string) => void;
   setNatureza: (v: string) => void;
-  setAberta: (v: number | null) => void;
 };
 
 /**
@@ -114,7 +195,8 @@ type Setters = {
  * `return` de indisponibilidade. É a mesma tela.
  */
 function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: Estado; set: Setters }) {
-  const { mesDe, mesAte, busca, conta, time, vinculo, natureza, aberta } = estado;
+  const { mesDe, mesAte, busca, conta, time, vinculo, natureza } = estado;
+  const [vinculoAberto, setVinculoAberto] = useState<string | null>(null);
 
   const pessoaPorId = useMemo(() => new Map(dados.pessoas.map((p) => [p.id, p])), [dados.pessoas]);
 
@@ -176,7 +258,6 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
   );
 
   const totalCents = celulasFiltradas.reduce((s, c) => s + c.cents, 0);
-  const totalLancamentos = celulasFiltradas.reduce((s, c) => s + c.n, 0);
 
   // ── Linhas da tabela: uma por pessoa, somando TODAS as contrapartes dela ──
   const linhas = useMemo(() => {
@@ -238,11 +319,14 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
           mesesComValor: mesesComValor.length,
           primeiroMes: primeiro ?? null,
           ultimoMes: ultimo ?? null,
-          variacaoPct
+          variacaoPct,
+          // Mesma composição do perfil: as quatro naturezas do ÚLTIMO mês com
+          // banda, nunca "o último de cada tipo" em meses diferentes.
+          ultimoMesBanda: composicaoUltimoMes(dados.bandas, linha.pessoa.id)
         };
       })
       .sort((a, b) => b.totalCents - a.totalCents);
-  }, [celulasFiltradas, pessoaPorId, mesesNoPeriodo, pactuadoPorChave]);
+  }, [celulasFiltradas, pessoaPorId, mesesNoPeriodo, pactuadoPorChave, dados.bandas]);
 
   /**
    * Quem tem fixo contratado e não aparece em nenhuma linha da tabela.
@@ -293,35 +377,107 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
     [dados.naturezas, celulasFiltradas]
   );
 
+  // Último mês COM lançamento no recorte filtrado — base do "custo mensal" e da fatia.
+  const mesUltimoNoRecorte = useMemo(() => {
+    let max = "";
+    for (const celula of celulasFiltradas) {
+      if (celula.mes > max) max = celula.mes;
+    }
+    return max || mesAte;
+  }, [celulasFiltradas, mesAte]);
+
+  const totalMesUltimoCents = useMemo(
+    () =>
+      celulasFiltradas
+        .filter((c) => c.mes === mesUltimoNoRecorte)
+        .reduce((s, c) => s + c.cents, 0),
+    [celulasFiltradas, mesUltimoNoRecorte]
+  );
+
   const porTime = useMemo(() => {
-    const mapa = new Map<string, { nome: string; cents: number; pessoas: Set<number> }>();
+    const mapa = new Map<
+      string,
+      { nome: string; centsTotal: number; centsMes: number; pessoas: Set<number> }
+    >();
     for (const celula of celulasFiltradas) {
       const pessoa = pessoaPorId.get(celula.personId);
       if (!pessoa) continue;
-      const atual = mapa.get(pessoa.time) ?? { nome: pessoa.timeRotulo, cents: 0, pessoas: new Set<number>() };
-      atual.cents += celula.cents;
+      const atual = mapa.get(pessoa.time) ?? {
+        nome: pessoa.timeRotulo,
+        centsTotal: 0,
+        centsMes: 0,
+        pessoas: new Set<number>()
+      };
+      atual.centsTotal += celula.cents;
+      if (celula.mes === mesUltimoNoRecorte) atual.centsMes += celula.cents;
       atual.pessoas.add(pessoa.id);
       mapa.set(pessoa.time, atual);
     }
     return [...mapa.entries()]
-      .map(([slug, v]) => ({ slug, nome: v.nome, cents: v.cents, pessoas: v.pessoas.size }))
-      .sort((a, b) => b.cents - a.cents);
-  }, [celulasFiltradas, pessoaPorId]);
+      .map(([slug, v]) => ({
+        slug,
+        nome: v.nome,
+        centsTotal: v.centsTotal,
+        centsMes: v.centsMes,
+        pessoas: v.pessoas.size
+      }))
+      .sort((a, b) => b.centsMes - a.centsMes || b.centsTotal - a.centsTotal);
+  }, [celulasFiltradas, pessoaPorId, mesUltimoNoRecorte]);
 
   const porVinculo = useMemo(() => {
-    const mapa = new Map<string, { nome: string; cents: number; pessoas: Set<number> }>();
+    type PessoaLinha = { id: number; nome: string; centsTotal: number; centsMes: number };
+    const mapa = new Map<
+      string,
+      {
+        nome: string;
+        centsTotal: number;
+        centsMes: number;
+        pessoas: Map<number, PessoaLinha>;
+      }
+    >();
     for (const celula of celulasFiltradas) {
       const pessoa = pessoaPorId.get(celula.personId);
       if (!pessoa) continue;
-      const atual = mapa.get(pessoa.vinculo) ?? { nome: pessoa.vinculoRotulo, cents: 0, pessoas: new Set<number>() };
-      atual.cents += celula.cents;
-      atual.pessoas.add(pessoa.id);
+      const atual = mapa.get(pessoa.vinculo) ?? {
+        nome: pessoa.vinculoRotulo,
+        centsTotal: 0,
+        centsMes: 0,
+        pessoas: new Map()
+      };
+      atual.centsTotal += celula.cents;
+      if (celula.mes === mesUltimoNoRecorte) atual.centsMes += celula.cents;
+      const pl =
+        atual.pessoas.get(pessoa.id) ??
+        ({ id: pessoa.id, nome: pessoa.nome, centsTotal: 0, centsMes: 0 } satisfies PessoaLinha);
+      pl.centsTotal += celula.cents;
+      if (celula.mes === mesUltimoNoRecorte) pl.centsMes += celula.cents;
+      atual.pessoas.set(pessoa.id, pl);
       mapa.set(pessoa.vinculo, atual);
     }
     return [...mapa.entries()]
-      .map(([slug, v]) => ({ slug, nome: v.nome, cents: v.cents, pessoas: v.pessoas.size }))
-      .sort((a, b) => b.cents - a.cents);
-  }, [celulasFiltradas, pessoaPorId]);
+      .map(([slug, v]) => ({
+        slug,
+        nome: v.nome,
+        centsTotal: v.centsTotal,
+        centsMes: v.centsMes,
+        pessoas: v.pessoas.size,
+        lista: [...v.pessoas.values()].sort(
+          (a, b) => b.centsMes - a.centsMes || b.centsTotal - a.centsTotal
+        )
+      }))
+      .sort((a, b) => b.centsMes - a.centsMes || b.centsTotal - a.centsTotal);
+  }, [celulasFiltradas, pessoaPorId, mesUltimoNoRecorte]);
+
+  const saidasSemDonoNoPeriodo = useMemo(
+    () =>
+      dados.cobertura.saidasSemDono.filter((s) => {
+        const mes = `${s.data.slice(0, 7)}-01`;
+        if (mes < mesDe || mes > mesAte) return false;
+        if (conta && s.conta !== conta) return false;
+        return true;
+      }),
+    [dados.cobertura.saidasSemDono, mesDe, mesAte, conta]
+  );
 
   // ── Cobertura no mesmo recorte de período e conta ───────────────────────
   const buracosNoPeriodo = useMemo(
@@ -363,7 +519,6 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
   );
   const universoCents = totalDoUniversoCents + naoAtribuidoCents;
   const pctAtribuido = universoCents ? (totalDoUniversoCents / universoCents) * 100 : 100;
-  const filtroDePessoaAtivo = Boolean(time || vinculo || busca.trim() || natureza);
 
   // ── Mês recente e a comparação com o anterior ───────────────────────────
   const mesesComCusto = mesesNoPeriodo.filter((mes) =>
@@ -375,14 +530,78 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
     mes ? celulasFiltradas.filter((c) => c.mes === mes).reduce((s, c) => s + c.cents, 0) : 0;
   const ultimoMesCents = totalMes(ultimoMes);
   const penultimoMesCents = totalMes(penultimoMes);
-  const variacaoMes = penultimoMesCents ? ((ultimoMesCents - penultimoMesCents) / penultimoMesCents) * 100 : null;
   // O mês corrente é parcial por definição: o extrato do Inter vai até o dia 4 e
   // o do Nubank até o 7. Sem essa marca, todo início de mês a tela mostraria uma
   // "queda" que é só calendário.
   const ultimoMesParcial = ultimoMes === dados.mesAtual;
 
   const pessoasNoRecorte = linhas.length;
-  const contaAtiva = dados.contas.find((c) => c.slug === conta);
+
+  // Média mensal por pessoa = (total ÷ meses ÷ pessoas). Dividir só pelo
+  // headcount dava o custo acumulado do período por cabeça — R$ 24 mil lidos
+  // como "custa isso por mês" quando eram oito meses somados.
+  const mediaMensalPorPessoaCents =
+    pessoasNoRecorte && mesesComCusto.length
+      ? Math.round(totalCents / (pessoasNoRecorte * mesesComCusto.length))
+      : 0;
+
+  // Pessoas distintas no mês recente / anterior — para Δ da média mensal/pessoa.
+  const pessoasNoMes = (mes: string | null) => {
+    if (!mes) return 0;
+    const ids = new Set(
+      celulasFiltradas.filter((c) => c.mes === mes && c.cents > 0).map((c) => c.personId)
+    );
+    return ids.size;
+  };
+  const mediaPessoaUltimo =
+    ultimoMes && pessoasNoMes(ultimoMes) ? Math.round(ultimoMesCents / pessoasNoMes(ultimoMes)) : null;
+  const mediaPessoaPenultimo =
+    penultimoMes && pessoasNoMes(penultimoMes)
+      ? Math.round(penultimoMesCents / pessoasNoMes(penultimoMes))
+      : null;
+
+  // Período anterior de mesmo comprimento — Δ do total.
+  let totalPeriodoAnteriorCents: number | null = null;
+  {
+    const iDe = dados.meses.indexOf(mesDe);
+    const iAte = dados.meses.indexOf(mesAte);
+    const len = iAte >= iDe && iDe >= 0 ? iAte - iDe + 1 : 0;
+    if (len > 0 && iDe > 0) {
+      const ateAnt = iDe - 1;
+      const deAnt = Math.max(0, ateAnt - len + 1);
+      const de = dados.meses[deAnt];
+      const ate = dados.meses[ateAnt];
+      const celulasAnt = dados.celulas.filter((celula) => {
+        if (celula.mes < de || celula.mes > ate) return false;
+        if (conta && celula.conta !== conta) return false;
+        if (natureza && celula.natureza !== natureza) return false;
+        return pessoaPassa(pessoaPorId.get(celula.personId));
+      });
+      totalPeriodoAnteriorCents = celulasAnt.reduce((s, c) => s + c.cents, 0);
+    }
+  }
+
+  const totaisUltimoMes = useMemo(() => {
+    const acc = {
+      salario: 0,
+      prolabore: 0,
+      estagio: 0,
+      comissao: 0,
+      reembolso: 0,
+      extra: 0
+    };
+    for (const l of linhas) {
+      const u = l.ultimoMesBanda;
+      if (!u) continue;
+      acc.salario += u.salarioCents;
+      acc.prolabore += u.prolaboreCents;
+      acc.estagio += u.estagioCents;
+      acc.comissao += u.comissaoCents;
+      acc.reembolso += u.reembolsoCents;
+      acc.extra += u.extraCents;
+    }
+    return acc;
+  }, [linhas]);
 
   function aplicarAtalho(atalho: Atalho) {
     const todos = dados.meses;
@@ -402,76 +621,82 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
 
   return (
     <>
-      <section className="fin-kpi-row" aria-label="Indicadores de custo com pessoas">
-        <article className="fin-kpi-card">
-          <p className="fin-kpi-label">Custo atribuído a pessoas</p>
-          <p className="fin-kpi-value">{brlCents(totalCents)}</p>
-          <p className="fin-kpi-hint">
-            {pessoasNoRecorte} {pessoasNoRecorte === 1 ? "pessoa" : "pessoas"} · {totalLancamentos} lançamentos ·{" "}
-            {mesesNoPeriodo.length === 1
-              ? monthKeyLabel(mesDe)
-              : `${monthKeyLabel(mesDe)} a ${monthKeyLabel(mesAte)}`}
-          </p>
-        </article>
+      <section className="fin-pessoas-kpis" aria-label="Indicadores de custo com pessoas">
+        <div className="fin-pessoas-kpi-faixa">
+          <article className="fin-pessoas-kpi-item destaque">
+            <p className="fin-pessoas-kpi-rotulo">Total com pessoas</p>
+            <p className="fin-pessoas-kpi-valor">{brlCents(totalCents)}</p>
+            <DeltaCusto
+              atual={totalCents}
+              anterior={totalPeriodoAnteriorCents}
+              contra="período anterior"
+            />
+          </article>
 
-        <article className={naoAtribuidoCents > 0 ? "fin-kpi-card alerta" : "fin-kpi-card"}>
-          <p className="fin-kpi-label">Não atribuído a ninguém</p>
-          <p className="fin-kpi-value">{brlCents(naoAtribuidoCents)}</p>
-          <p className="fin-kpi-hint">
-            {naoAtribuidoN} saídas de conta corrente sem favorecido. Cobertura: {pct(pctAtribuido, 1)} do dinheiro que
-            saiu {contaAtiva ? `do ${contaAtiva.nome}` : "das contas correntes"} no período tem dono.
-            {filtroDePessoaAtivo
-              ? " Este número não responde aos filtros de pessoa — saída sem favorecido não pertence a time nem a vínculo nenhum."
-              : ""}
-          </p>
-        </article>
+          <article className="fin-pessoas-kpi-item">
+            <p className="fin-pessoas-kpi-rotulo">
+              Mês {ultimoMes ? monthKeyLabel(ultimoMes) : "—"}
+              {ultimoMesParcial ? <span className="fin-tag">parcial</span> : null}
+            </p>
+            <p className="fin-pessoas-kpi-valor">{brlCents(ultimoMesCents)}</p>
+            <DeltaCusto
+              atual={ultimoMesCents}
+              anterior={penultimoMes ? penultimoMesCents : null}
+              contra={penultimoMes ? monthKeyLabel(penultimoMes) : ""}
+            />
+          </article>
 
-        <article className="fin-kpi-card">
-          <p className="fin-kpi-label">Como se divide por conta</p>
-          <p className="fin-kpi-value">
-            {porConta.length && porConta[0].cents ? `${porConta[0].nome} ${pct((porConta[0].cents / (totalCents || 1)) * 100, 0)}` : "—"}
-          </p>
-          <p className="fin-kpi-hint">
-            {porConta
-              .map((c) => `${c.nome} ${brlCents(c.cents)} (${pct((c.cents / (totalCents || 1)) * 100, 0)})`)
-              .join(" · ")}
-          </p>
-        </article>
-
-        <article className="fin-kpi-card">
-          <p className="fin-kpi-label">
-            Mês {ultimoMes ? monthKeyLabel(ultimoMes) : "—"}
-            {ultimoMesParcial ? <span className="fin-tag">parcial</span> : null}
-          </p>
-          <p className="fin-kpi-value">{brlCents(ultimoMesCents)}</p>
-          <p className="fin-kpi-hint">
-            {variacaoMes === null || !penultimoMes
-              ? "sem mês anterior no recorte para comparar"
-              : `${variacaoMes >= 0 ? "+" : "−"}${pct(Math.abs(variacaoMes), 1)} contra ${monthKeyLabel(penultimoMes)} (${brlCents(penultimoMesCents)})`}
-            {ultimoMesParcial ? ` · o extrato vai até ${dados.hoje.slice(8, 10)}/${dados.hoje.slice(5, 7)}, o mês não fechou` : ""}
-          </p>
-        </article>
+          <article className="fin-pessoas-kpi-item">
+            <p className="fin-pessoas-kpi-rotulo">Média mensal / pessoa</p>
+            <p className="fin-pessoas-kpi-valor">{brlCents(mediaMensalPorPessoaCents)}</p>
+            {mediaPessoaUltimo !== null ? (
+              <DeltaCusto
+                atual={mediaPessoaUltimo}
+                anterior={mediaPessoaPenultimo}
+                contra={penultimoMes ? monthKeyLabel(penultimoMes) : ""}
+              />
+            ) : (
+              <p className="fin-delta neutro">sem base</p>
+            )}
+          </article>
+        </div>
       </section>
 
-      <section className="card">
-        <div className="fin-escopo-tabs" role="group" aria-label="Período rápido">
-          {ATALHOS.map((atalho) => (
-            <button
-              key={atalho.slug}
-              type="button"
-              className={atalhoAtivo(atalho.slug) ? "fin-escopo-tab active" : "fin-escopo-tab"}
-              onClick={() => aplicarAtalho(atalho.slug)}
-            >
-              {atalho.rotulo}
-            </button>
-          ))}
-        </div>
+      <FinSecaoColapsavel
+        className="fin-pessoas-recorte"
+        titulo="Recorte"
+        abertoPadrao
+        meta={
+          mesesNoPeriodo.length === 1
+            ? monthKeyLabel(mesDe)
+            : `${monthKeyLabel(mesDe)} → ${monthKeyLabel(mesAte)}`
+        }
+      >
+        <header className="fin-pessoas-recorte-topo">
+          <div className="fin-escopo-tabs" role="group" aria-label="Período rápido">
+            {ATALHOS.map((atalho) => (
+              <button
+                key={atalho.slug}
+                type="button"
+                className={atalhoAtivo(atalho.slug) ? "fin-escopo-tab active" : "fin-escopo-tab"}
+                onClick={() => aplicarAtalho(atalho.slug)}
+              >
+                {atalho.rotulo}
+              </button>
+            ))}
+          </div>
+          <p className="fin-pessoas-recorte-periodo">
+            {mesesNoPeriodo.length === 1
+              ? monthKeyLabel(mesDe)
+              : `${monthKeyLabel(mesDe)} → ${monthKeyLabel(mesAte)}`}
+          </p>
+        </header>
 
-        <div className="fin-filters">
+        <div className="fin-pessoas-filtros">
           <input
             type="search"
             className="fin-input"
-            placeholder="Buscar pessoa, nome de cartório ou contraparte…"
+            placeholder="Buscar pessoa…"
             value={busca}
             onChange={(e) => set.setBusca(e.target.value)}
             aria-label="Buscar pessoa"
@@ -529,255 +754,217 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
           </select>
         </div>
 
-        <p className="fin-filters-summary">
-          <strong>{brlPrecise(totalCents)}</strong> em {mesesNoPeriodo.length}{" "}
-          {mesesNoPeriodo.length === 1 ? "mês" : "meses"} · {pessoasNoRecorte} pessoas ·{" "}
-          {contaAtiva ? contaAtiva.nome : "todas as contas"} · média de{" "}
-          <strong>{brlPrecise(mesesComCusto.length ? Math.round(totalCents / mesesComCusto.length) : 0)}</strong> por
-          mês
-          {naoAtribuidoCents > 0 ? (
-            <>
-              {" "}
-              · <strong className="fin-out">{brlPrecise(naoAtribuidoCents)}</strong> fora da conta por falta de
-              favorecido
-            </>
-          ) : null}
-        </p>
-
-        <div className="fin-two-col">
-          <div>
-            <p className="fin-subtitulo">Por conta — de onde o dinheiro saiu</p>
-            <div className="table-wrap">
-              <table className="fin-table">
-                <thead>
-                  <tr>
-                    <th>Conta</th>
-                    <th className="num">Lanç.</th>
-                    <th className="num">Valor</th>
-                    <th className="num">Fatia</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {porConta.map((linha) => {
-                    const fatia = totalCents ? (linha.cents / totalCents) * 100 : 0;
-                    return (
-                      <tr key={linha.slug}>
-                        <td>{linha.nome}</td>
-                        <td className="num">{linha.n || <span className="fin-zero">—</span>}</td>
-                        <td className="num fin-table-money">
-                          {linha.cents ? brlPrecise(linha.cents) : <span className="fin-zero">R$ 0,00</span>}
-                        </td>
-                        <td className="num">
-                          <span className="fin-share" style={{ ["--share" as string]: `${fatia.toFixed(1)}%` }}>
-                            {pct(fatia, 1)}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p className="fin-card-hint">
-              O gateway aparece com R$ 0,00 de propósito: nenhum pagamento a pessoa sai do Asaas — de lá o dinheiro vai
-              para os bancos e é nos bancos que a folha acontece. Uma planilha que olhasse só o Inter perderia{" "}
-              {brlCents(porConta.find((c) => c.slug === "nubank")?.cents ?? 0)} pagos pelo Nubank.
-            </p>
+        <div className="fin-pessoas-divisao">
+          <div className="fin-pessoas-painel">
+            <h3 className="fin-pessoas-painel-titulo">Por conta</h3>
+            <ul className="fin-pessoas-fatias">
+              {porConta.map((linha) => {
+                const fatia = totalCents ? (linha.cents / totalCents) * 100 : 0;
+                return (
+                  <li key={linha.slug} className={linha.cents ? undefined : "zerada"}>
+                    <div className="fin-pessoas-fatia-topo">
+                      <span className="fin-pessoas-fatia-nome">{linha.nome}</span>
+                      <span className="fin-pessoas-fatia-valor">
+                        {linha.cents ? brlPrecise(linha.cents) : "R$ 0,00"}
+                      </span>
+                    </div>
+                    <div className="fin-pessoas-fatia-trilha" aria-hidden="true">
+                      <span className="fin-pessoas-fatia-barra" style={{ width: `${Math.max(fatia, 0)}%` }} />
+                    </div>
+                    <div className="fin-pessoas-fatia-meta">
+                      <span>{pct(fatia, 1)}</span>
+                      <span>{linha.n ? `${linha.n} lanç.` : "—"}</span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
 
-          <div>
-            <p className="fin-subtitulo">Por natureza — o que o razão sabe dizer</p>
-            <div className="table-wrap">
-              <table className="fin-table">
-                <thead>
-                  <tr>
-                    <th>Natureza</th>
-                    <th className="num">Lanç.</th>
-                    <th className="num">Valor</th>
-                    <th className="num">Fatia</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {porNatureza.map((linha) => {
-                    const fatia = totalCents ? (linha.cents / totalCents) * 100 : 0;
-                    return (
-                      <tr key={linha.slug}>
-                        <td>{linha.nome}</td>
-                        <td className="num">{linha.n || <span className="fin-zero">—</span>}</td>
-                        <td className="num fin-table-money">
-                          {linha.cents ? brlPrecise(linha.cents) : <span className="fin-zero">R$ 0,00</span>}
-                        </td>
-                        <td className="num">
-                          <span className="fin-share" style={{ ["--share" as string]: `${fatia.toFixed(1)}%` }}>
-                            {pct(fatia, 1)}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {!porNatureza.length ? (
-                    <tr>
-                      <td colSpan={4} className="fin-empty-row">
-                        Nada neste recorte.
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-            <p className="fin-card-hint">
-              Reembolso e benefício aparecem aqui quando existirem: hoje nenhum lançamento das categorias 6.04 e 6.05
-              tem contraparte ligada a alguém do roster, então valem R$ 0,00 — zerados, não escondidos. A separação
-              entre fixo e variável NÃO vem daqui: vem da planilha de comissionamento, na coluna "acima do fixo" da
-              tabela abaixo.
-            </p>
+          <div className="fin-pessoas-painel">
+            <h3 className="fin-pessoas-painel-titulo">Por natureza</h3>
+            {porNatureza.length ? (
+              <ul className="fin-pessoas-fatias">
+                {porNatureza.map((linha) => {
+                  const fatia = totalCents ? (linha.cents / totalCents) * 100 : 0;
+                  return (
+                    <li key={linha.slug} className={linha.cents ? undefined : "zerada"}>
+                      <div className="fin-pessoas-fatia-topo">
+                        <span className="fin-pessoas-fatia-nome">{linha.nome}</span>
+                        <span className="fin-pessoas-fatia-valor">
+                          {linha.cents ? brlPrecise(linha.cents) : "R$ 0,00"}
+                        </span>
+                      </div>
+                      <div className="fin-pessoas-fatia-trilha" aria-hidden="true">
+                        <span className="fin-pessoas-fatia-barra" style={{ width: `${Math.max(fatia, 0)}%` }} />
+                      </div>
+                      <div className="fin-pessoas-fatia-meta">
+                        <span>{pct(fatia, 1)}</span>
+                        <span>{linha.n ? `${linha.n} lanç.` : "—"}</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="fin-pessoas-vazio">Nada neste recorte.</p>
+            )}
           </div>
         </div>
-      </section>
+      </FinSecaoColapsavel>
 
-      <section className="card">
-        <h2 className="card-title">Cada pessoa, somando todas as contrapartes dela</h2>
-        <p className="fin-card-hint">
-          Seis MEIs recebem no CNPJ e no CPF. A coluna "contrapartes" mostra quantas cada pessoa tem — clicar em
-          "detalhar" abre quanto entrou por cada uma. Somar por contraparte, e não por pessoa, cortaria o custo desses
-          seis pela metade sem produzir erro nenhum: só um número menor.
-        </p>
+      <FinPessoasMatriz
+        dados={dados}
+        bandas={bandasFiltradas}
+        meses={mesesNoPeriodo}
+        pessoaPorId={pessoaPorId}
+        mesAtual={dados.mesAtual}
+      />
 
-        <div className="table-wrap">
-          <table className="fin-table">
+      <FinSecaoColapsavel
+        className="fin-pessoas-lista"
+        titulo="Geral do time"
+        meta={`${pessoasNoRecorte} ${pessoasNoRecorte === 1 ? "pessoa" : "pessoas"} · ${brlPrecise(totalCents)}`}
+      >
+        <div className="fin-pessoas-tabela-wrap">
+          <table className="fin-table fin-pessoas-tabela">
             <thead>
               <tr>
                 <th>Pessoa</th>
                 <th>Vínculo</th>
                 <th>Time</th>
-                <th className="num">Contrap.</th>
-                {dados.contas.map((c) => (
-                  <th key={c.slug} className="num">
-                    {c.nome}
-                  </th>
-                ))}
+                <th>Último mês</th>
+                <th className="num">Salário</th>
+                <th className="num">Pró-labore</th>
+                <th className="num">Estágio</th>
+                <th className="num">Comissão</th>
+                <th className="num">Reembolso</th>
+                <th className="num" title="Pago sem cair em salário/pró-labore/comissão/bolsa — em geral categoria errada ou serviço (4.03, 5.05)">
+                  Extra
+                </th>
                 <th className="num">Total</th>
                 <th className="num">Média/mês</th>
-                {/* O rótulo carrega o recorte do pactuado porque ele quase nunca
-                    é o mesmo do total ao lado: a planilha de comissionamento
-                    cobre um mês e o total cobre oito. Sem os meses no cabeçalho,
-                    R$ 7.500 de fixo ao lado de R$ 80.920 de total lê-se como
-                    "recebeu 10× o combinado". */}
-                <th className="num" title="Fixo contratado na planilha de comissionamento, somado apenas nos meses em que ela existe">
-                  Fixo pactuado
-                  {mesesComPactuadoNoPeriodo.length
-                    ? ` (${mesesComPactuadoNoPeriodo.map(monthKeyLabel).join(", ")})`
-                    : ""}
+                <th
+                  className="num"
+                  title="Fixo contratado na planilha de comissionamento, só nos meses em que ela existe"
+                >
+                  Fixo
+                  {mesesComPactuadoNoPeriodo.length === 1
+                    ? ` (${monthKeyLabel(mesesComPactuadoNoPeriodo[0])})`
+                    : mesesComPactuadoNoPeriodo.length
+                      ? ` (${mesesComPactuadoNoPeriodo.length} m.)`
+                      : ""}
                 </th>
                 <th className="num" title="Realizado menos o fixo contratado, nos mesmos meses">
-                  Acima do fixo
+                  Acima
                 </th>
-                <th className="num">Variação</th>
+                <th className="num">Δ</th>
               </tr>
             </thead>
             <tbody>
               {linhas.map((linha) => (
-                <Fragment key={linha.pessoa.id}>
-                  <tr>
-                    <td>
-                      <span className="fin-desc">{linha.pessoa.nome}</span>
-                      {linha.pessoa.nomeLegal && linha.pessoa.nomeLegal !== linha.pessoa.nome ? (
-                        <span className="fin-desc-sub">{linha.pessoa.nomeLegal}</span>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="fin-why"
-                        onClick={() => set.setAberta(aberta === linha.pessoa.id ? null : linha.pessoa.id)}
-                        aria-expanded={aberta === linha.pessoa.id}
-                      >
-                        detalhar
-                      </button>
-                      {/* O perfil completo: para onde o dinheiro dela vai,
-                          histórico mês a mês e cada pagamento desde 2026.
-                          "detalhar" abre a composição do custo aqui na tabela;
-                          isto abre a pessoa. */}
-                      <a className="fin-why" href={`/financeiro/pessoas/${linha.pessoa.id}`}>
-                        perfil e conta →
-                      </a>
-                    </td>
-                    <td>{linha.pessoa.vinculoRotulo}</td>
-                    <td>{linha.pessoa.timeRotulo}</td>
-                    <td className="num">
-                      {linha.pessoa.contrapartes.length}
-                      {linha.pessoa.contrapartes.length > 1 ? (
-                        <span className="fin-tag" title="Recebe em mais de um documento (CNPJ do MEI e CPF)">
-                          CNPJ+CPF
+                <tr key={linha.pessoa.id}>
+                  <td>
+                    <a
+                      className="fin-pessoas-nome-link"
+                      href={`/financeiro/pessoas/${linha.pessoa.id}`}
+                    >
+                      <span className="fin-pessoas-nome">
+                        <span className="fin-pessoas-nome-texto">
+                          <span className="fin-desc">{linha.pessoa.nome}</span>
+                          {linha.pessoa.nomeLegal &&
+                          linha.pessoa.nomeLegal !== linha.pessoa.nome ? (
+                            <span className="fin-desc-sub">{linha.pessoa.nomeLegal}</span>
+                          ) : null}
                         </span>
-                      ) : null}
-                    </td>
-                    {dados.contas.map((c) => (
-                      <td key={c.slug} className="num fin-table-money">
-                        {linha.porConta[c.slug] ? (
-                          brlPrecise(linha.porConta[c.slug])
-                        ) : (
-                          <span className="fin-zero">—</span>
-                        )}
-                      </td>
-                    ))}
-                    <td className="num fin-table-money">
-                      <strong>{brlPrecise(linha.totalCents)}</strong>
-                    </td>
-                    <td className="num fin-table-money">{brlPrecise(linha.mediaMensalCents)}</td>
-                    <td className="num fin-table-money fin-previsao">
-                      {linha.fixoContratadoCents === null ? (
-                        <span className="fin-zero" title="Sem fixo contratado na planilha para os meses deste recorte">
-                          —
-                        </span>
-                      ) : (
-                        <span title={`Soma do fixo contratado em ${linha.mesesPactuados.map(monthKeyLabel).join(", ")}`}>
-                          {brlPrecise(linha.fixoContratadoCents)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="num fin-table-money">
-                      {linha.excedenteCents === null ? (
-                        <span className="fin-zero">—</span>
-                      ) : (
-                        <span
-                          className={linha.excedenteCents > 0 ? "fin-out" : undefined}
-                          title={`Realizado em ${linha.mesesPactuados.map(monthKeyLabel).join(", ")} menos o fixo contratado dos mesmos meses`}
-                        >
-                          {brlPrecise(linha.excedenteCents)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="num">
-                      {linha.variacaoPct === null ? (
-                        <span className="fin-zero">—</span>
-                      ) : (
-                        <span
-                          className={linha.variacaoPct > 5 ? "fin-badge-atencao" : undefined}
-                          title={`${monthKeyLabel(linha.primeiroMes!)} → ${monthKeyLabel(linha.ultimoMes!)}`}
-                        >
-                          {linha.variacaoPct >= 0 ? "+" : "−"}
-                          {pct(Math.abs(linha.variacaoPct), 0)}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                  {aberta === linha.pessoa.id ? (
-                    <tr>
-                      <td colSpan={dados.contas.length + 8}>
-                        <Detalhe
-                          pessoa={linha.pessoa}
-                          dados={dados}
-                          porMes={linha.porMes}
-                          meses={mesesNoPeriodo}
-                          pactuadoPorChave={pactuadoPorChave}
+                        <ChevronRight
+                          className="fin-pessoas-nome-seta"
+                          size={15}
+                          strokeWidth={2.2}
+                          aria-hidden
                         />
-                      </td>
-                    </tr>
-                  ) : null}
-                </Fragment>
+                      </span>
+                    </a>
+                  </td>
+                  <td>
+                    <span className="fin-pessoas-pill">{linha.pessoa.vinculoRotulo}</span>
+                  </td>
+                  <td>{linha.pessoa.timeRotulo}</td>
+                  <td className="fin-nowrap">
+                    {linha.ultimoMesBanda ? (
+                      <span className="fin-pessoas-ultimo-mes">
+                        {monthKeyLabel(linha.ultimoMesBanda.mes)}
+                      </span>
+                    ) : (
+                      <span className="fin-zero">—</span>
+                    )}
+                  </td>
+                  <td className="num fin-table-money">
+                    <CelulaBanda cents={linha.ultimoMesBanda?.salarioCents ?? 0} />
+                  </td>
+                  <td className="num fin-table-money">
+                    <CelulaBanda cents={linha.ultimoMesBanda?.prolaboreCents ?? 0} />
+                  </td>
+                  <td className="num fin-table-money">
+                    <CelulaBanda cents={linha.ultimoMesBanda?.estagioCents ?? 0} />
+                  </td>
+                  <td className="num fin-table-money">
+                    <CelulaBanda cents={linha.ultimoMesBanda?.comissaoCents ?? 0} />
+                  </td>
+                  <td className="num fin-table-money">
+                    <CelulaBanda cents={linha.ultimoMesBanda?.reembolsoCents ?? 0} />
+                  </td>
+                  <td className="num fin-table-money">
+                    <CelulaBanda cents={linha.ultimoMesBanda?.extraCents ?? 0} />
+                  </td>
+                  <td className="num fin-table-money">
+                    <strong>{brlPrecise(linha.totalCents)}</strong>
+                  </td>
+                  <td className="num fin-table-money">{brlPrecise(linha.mediaMensalCents)}</td>
+                  <td className="num fin-table-money fin-previsao">
+                    {linha.fixoContratadoCents === null ? (
+                      <span className="fin-zero">—</span>
+                    ) : (
+                      <span
+                        title={`Soma do fixo em ${linha.mesesPactuados.map(monthKeyLabel).join(", ")}`}
+                      >
+                        {brlPrecise(linha.fixoContratadoCents)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="num fin-table-money">
+                    {linha.excedenteCents === null ? (
+                      <span className="fin-zero">—</span>
+                    ) : (
+                      <span className={linha.excedenteCents > 0 ? "fin-out" : undefined}>
+                        {brlPrecise(linha.excedenteCents)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="num">
+                    {linha.variacaoPct === null ? (
+                      <span className="fin-zero">—</span>
+                    ) : (
+                      <span
+                        className={
+                          Math.abs(linha.variacaoPct) < 0.5
+                            ? "fin-pessoas-delta neutro"
+                            : linha.variacaoPct > 0
+                              ? "fin-pessoas-delta sobe"
+                              : "fin-pessoas-delta desce"
+                        }
+                        title={`${monthKeyLabel(linha.primeiroMes!)} → ${monthKeyLabel(linha.ultimoMes!)}`}
+                      >
+                        {linha.variacaoPct >= 0 ? "+" : "−"}
+                        {pct(Math.abs(linha.variacaoPct), 0)}
+                      </span>
+                    )}
+                  </td>
+                </tr>
               ))}
               {!linhas.length ? (
                 <tr>
-                  <td colSpan={dados.contas.length + 8} className="fin-empty-row">
+                  <td colSpan={15} className="fin-empty-row">
                     Nenhuma pessoa com lançamento neste recorte.
                   </td>
                 </tr>
@@ -788,16 +975,51 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
                 <th>Total</th>
                 <td />
                 <td />
-                <td className="num">{linhas.reduce((s, l) => s + l.pessoa.contrapartes.length, 0)}</td>
-                {dados.contas.map((c) => (
-                  <td key={c.slug} className="num fin-table-money">
-                    {porConta.find((x) => x.slug === c.slug)?.cents ? (
-                      <strong>{brlPrecise(porConta.find((x) => x.slug === c.slug)!.cents)}</strong>
-                    ) : (
-                      <span className="fin-zero">—</span>
-                    )}
-                  </td>
-                ))}
+                <td className="num" title="Soma do último mês de cada pessoa — meses podem diferir">
+                  <span className="fin-zero">último</span>
+                </td>
+                <td className="num fin-table-money">
+                  {totaisUltimoMes.salario ? (
+                    <strong>{brlPrecise(totaisUltimoMes.salario)}</strong>
+                  ) : (
+                    <span className="fin-zero">—</span>
+                  )}
+                </td>
+                <td className="num fin-table-money">
+                  {totaisUltimoMes.prolabore ? (
+                    <strong>{brlPrecise(totaisUltimoMes.prolabore)}</strong>
+                  ) : (
+                    <span className="fin-zero">—</span>
+                  )}
+                </td>
+                <td className="num fin-table-money">
+                  {totaisUltimoMes.estagio ? (
+                    <strong>{brlPrecise(totaisUltimoMes.estagio)}</strong>
+                  ) : (
+                    <span className="fin-zero">—</span>
+                  )}
+                </td>
+                <td className="num fin-table-money">
+                  {totaisUltimoMes.comissao ? (
+                    <strong>{brlPrecise(totaisUltimoMes.comissao)}</strong>
+                  ) : (
+                    <span className="fin-zero">—</span>
+                  )}
+                </td>
+                <td className="num fin-table-money">
+                  {totaisUltimoMes.reembolso ? (
+                    <strong>{brlPrecise(totaisUltimoMes.reembolso)}</strong>
+                  ) : (
+                    <span className="fin-zero">—</span>
+                  )}
+                </td>
+                <td className="num fin-table-money">
+                  {totaisUltimoMes.extra ? (
+                    <strong>{brlPrecise(totaisUltimoMes.extra)}</strong>
+                  ) : (
+                    <span className="fin-zero">—</span>
+                  )}
+                </td>
                 <td className="num fin-table-money">
                   <strong>{brlPrecise(totalCents)}</strong>
                 </td>
@@ -806,14 +1028,18 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
                 </td>
                 <td className="num fin-table-money fin-previsao">
                   {linhas.some((l) => l.fixoContratadoCents !== null) ? (
-                    <strong>{brlPrecise(linhas.reduce((s, l) => s + (l.fixoContratadoCents ?? 0), 0))}</strong>
+                    <strong>
+                      {brlPrecise(linhas.reduce((s, l) => s + (l.fixoContratadoCents ?? 0), 0))}
+                    </strong>
                   ) : (
                     <span className="fin-zero">—</span>
                   )}
                 </td>
                 <td className="num fin-table-money">
                   {linhas.some((l) => l.excedenteCents !== null) ? (
-                    <strong>{brlPrecise(linhas.reduce((s, l) => s + (l.excedenteCents ?? 0), 0))}</strong>
+                    <strong>
+                      {brlPrecise(linhas.reduce((s, l) => s + (l.excedenteCents ?? 0), 0))}
+                    </strong>
                   ) : (
                     <span className="fin-zero">—</span>
                   )}
@@ -827,48 +1053,46 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
         <Nota rotulo="Por que as colunas de pactuado às vezes não fecham com o total">
           <p>
             {mesesComPactuadoNoPeriodo.length
-              ? `As duas últimas colunas de dinheiro cobrem só ${mesesComPactuadoNoPeriodo.map(monthKeyLabel).join(", ")} — os meses em que a planilha de comissionamento existe. O total ao lado cobre ${mesesNoPeriodo.length} ${mesesNoPeriodo.length === 1 ? "mês" : "meses"}: são recortes diferentes de propósito, e por isso a comparação entre eles não fecha. "Acima do fixo" negativo significa que a pessoa recebeu MENOS que o combinado no mês.`
+              ? `Fixo e "acima" cobrem só ${mesesComPactuadoNoPeriodo.map(monthKeyLabel).join(", ")} — meses com planilha de comissionamento. O total cobre ${mesesNoPeriodo.length} ${mesesNoPeriodo.length === 1 ? "mês" : "meses"}.`
               : "Nenhum mês deste recorte tem fixo contratado na planilha de comissionamento, então as colunas de pactuado vêm vazias."}{" "}
             {pactuadosSemLancamento.length
-              ? `O rodapé soma apenas quem teve lançamento. ${pactuadosSemLancamento.map((p) => p.nome).join(", ")} ${pactuadosSemLancamento.length === 1 ? "tem fixo contratado e não aparece" : "têm fixo contratado e não aparecem"} em nenhuma linha: ${brlPrecise(fixoSemLancamentoCents)} por mês de compromisso que esta tabela não mostra porque o dinheiro não foi visto saindo.`
-              : "Todo mundo com fixo contratado na planilha tem ao menos um lançamento neste recorte."}
+              ? `${pactuadosSemLancamento.map((p) => p.nome).join(", ")} ${pactuadosSemLancamento.length === 1 ? "tem" : "têm"} fixo sem saída vista: ${brlPrecise(fixoSemLancamentoCents)}.`
+              : "Todo mundo com fixo contratado tem ao menos um lançamento neste recorte."}
           </p>
         </Nota>
-      </section>
-
-      <FinPessoasMatriz
-        dados={dados}
-        bandas={bandasFiltradas}
-        meses={mesesNoPeriodo}
-        pessoaPorId={pessoaPorId}
-        mesAtual={dados.mesAtual}
-      />
+      </FinSecaoColapsavel>
 
       <section className="fin-two-col">
-        <section className="card">
-          <h2 className="card-title">Por time</h2>
-          <p className="fin-card-hint">
-            O time vem do cadastro da pessoa (área para Hardware e Software, via de pagamento para Obras e
-            Consultoria), não do trabalho do mês. Quem atua nos dois lados aparece inteiro num só.
-          </p>
+        <FinSecaoColapsavel
+          titulo="Por time"
+          meta={`${porTime.length} ${porTime.length === 1 ? "time" : "times"} · ${monthKeyLabel(mesUltimoNoRecorte)}`}
+        >
           <div className="table-wrap">
             <table className="fin-table">
               <thead>
                 <tr>
                   <th>Time</th>
                   <th className="num">Pessoas</th>
-                  <th className="num">Custo</th>
-                  <th className="num">Fatia</th>
+                  <th className="num" title={monthKeyLabel(mesUltimoNoRecorte)}>
+                    Custo mensal
+                  </th>
+                  <th className="num">Custo total</th>
+                  <th className="num" title={`Fatia de ${monthKeyLabel(mesUltimoNoRecorte)}`}>
+                    Fatia
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {porTime.map((linha) => {
-                  const fatia = totalCents ? (linha.cents / totalCents) * 100 : 0;
+                  const fatia = totalMesUltimoCents
+                    ? (linha.centsMes / totalMesUltimoCents) * 100
+                    : 0;
                   return (
                     <tr key={linha.slug}>
                       <td>{linha.nome}</td>
                       <td className="num">{linha.pessoas}</td>
-                      <td className="num fin-table-money">{brlPrecise(linha.cents)}</td>
+                      <td className="num fin-table-money">{brlPrecise(linha.centsMes)}</td>
+                      <td className="num fin-table-money">{brlPrecise(linha.centsTotal)}</td>
                       <td className="num">
                         <span className="fin-share" style={{ ["--share" as string]: `${fatia.toFixed(1)}%` }}>
                           {pct(fatia, 1)}
@@ -879,7 +1103,7 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
                 })}
                 {!porTime.length ? (
                   <tr>
-                    <td colSpan={4} className="fin-empty-row">
+                    <td colSpan={5} className="fin-empty-row">
                       Nada neste recorte.
                     </td>
                   </tr>
@@ -887,46 +1111,97 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
               </tbody>
             </table>
           </div>
-        </section>
+        </FinSecaoColapsavel>
 
-        <section className="card">
-          <h2 className="card-title">Por vínculo</h2>
-          <p className="fin-card-hint">
-            Vínculo decide linha de DRE e encargo: sócio adm. é pró-labore (6.02), MEI é nota contra CNPJ próprio,
-            estágio é bolsa (6.06). "Irregular" é quem presta serviço, recebe e não tem enquadramento nenhum — e o
-            valor ao lado é o tamanho da exposição.
-          </p>
+        <FinSecaoColapsavel
+          titulo="Por vínculo"
+          meta={`${porVinculo.length} ${porVinculo.length === 1 ? "tipo" : "tipos"} · ${monthKeyLabel(mesUltimoNoRecorte)}`}
+        >
           <div className="table-wrap">
             <table className="fin-table">
               <thead>
                 <tr>
                   <th>Vínculo</th>
                   <th className="num">Pessoas</th>
-                  <th className="num">Custo</th>
-                  <th className="num">Fatia</th>
+                  <th className="num" title={monthKeyLabel(mesUltimoNoRecorte)}>
+                    Custo mensal
+                  </th>
+                  <th className="num">Custo total</th>
+                  <th className="num" title={`Fatia de ${monthKeyLabel(mesUltimoNoRecorte)}`}>
+                    Fatia
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {porVinculo.map((linha) => {
-                  const fatia = totalCents ? (linha.cents / totalCents) * 100 : 0;
+                  const fatia = totalMesUltimoCents
+                    ? (linha.centsMes / totalMesUltimoCents) * 100
+                    : 0;
+                  const aberto = vinculoAberto === linha.slug;
                   return (
-                    <tr key={linha.slug}>
-                      <td className={linha.slug === "irregular" || linha.slug === "indefinido" ? "fin-badge-atencao" : undefined}>
-                        {linha.nome}
-                      </td>
-                      <td className="num">{linha.pessoas}</td>
-                      <td className="num fin-table-money">{brlPrecise(linha.cents)}</td>
-                      <td className="num">
-                        <span className="fin-share" style={{ ["--share" as string]: `${fatia.toFixed(1)}%` }}>
-                          {pct(fatia, 1)}
-                        </span>
-                      </td>
-                    </tr>
+                    <Fragment key={linha.slug}>
+                      <tr
+                        className="fin-row-expandivel"
+                        onClick={() => setVinculoAberto(aberto ? null : linha.slug)}
+                        aria-expanded={aberto}
+                      >
+                        <td
+                          className={
+                            linha.slug === "irregular" || linha.slug === "indefinido"
+                              ? "fin-badge-atencao"
+                              : undefined
+                          }
+                        >
+                          <span className="fin-row-expand-label">
+                            <ChevronRight
+                              size={14}
+                              className={aberto ? "fin-chevron-aberto" : undefined}
+                              aria-hidden
+                            />
+                            {linha.nome}
+                          </span>
+                        </td>
+                        <td className="num">{linha.pessoas}</td>
+                        <td className="num fin-table-money">{brlPrecise(linha.centsMes)}</td>
+                        <td className="num fin-table-money">{brlPrecise(linha.centsTotal)}</td>
+                        <td className="num">
+                          <span className="fin-share" style={{ ["--share" as string]: `${fatia.toFixed(1)}%` }}>
+                            {pct(fatia, 1)}
+                          </span>
+                        </td>
+                      </tr>
+                      {aberto ? (
+                        <tr className="fin-row-detalhe">
+                          <td colSpan={5}>
+                            <table className="fin-table fin-table-aninhada">
+                              <thead>
+                                <tr>
+                                  <th>Pessoa</th>
+                                  <th className="num">Mensal</th>
+                                  <th className="num">Total</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {linha.lista.map((p) => (
+                                  <tr key={p.id}>
+                                    <td>
+                                      <a href={`/financeiro/pessoas/${p.id}`}>{p.nome}</a>
+                                    </td>
+                                    <td className="num fin-table-money">{brlPrecise(p.centsMes)}</td>
+                                    <td className="num fin-table-money">{brlPrecise(p.centsTotal)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   );
                 })}
                 {!porVinculo.length ? (
                   <tr>
-                    <td colSpan={4} className="fin-empty-row">
+                    <td colSpan={5} className="fin-empty-row">
                       Nada neste recorte.
                     </td>
                   </tr>
@@ -934,9 +1209,10 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
               </tbody>
             </table>
           </div>
-        </section>
+        </FinSecaoColapsavel>
       </section>
 
+      <FinPessoaCadastro dados={dados} />
       <Cobertura
         dados={dados}
         totalCents={totalDoUniversoCents}
@@ -945,191 +1221,11 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
         pctAtribuido={pctAtribuido}
         suspeitos={suspeitosNoPeriodo}
         suspeitoCents={suspeitoCents}
+        saidasSemDono={saidasSemDonoNoPeriodo}
       />
 
-      {/* O cadastro vem DEPOIS da cobertura de propósito: é a seção que responde
-          às pendências que a cobertura acabou de nomear — a pessoa sem área, o
-          vínculo indefinido, a ligação que ninguém confirmou. */}
-      <FinPessoaCadastro dados={dados} />
 
-      <section className="card fin-painel-lacunas" aria-label="Limites desta tela">
-        <h2 className="card-title">O que esta tela ainda não sabe</h2>
-        <p className="fin-painel-lacunas-abre">
-          Os {brlCents(totalCents)} acima são dinheiro que saiu do banco para alguém do roster — isso a tela afirma com
-          o extrato na mão. O que ela não afirma está aqui, em ordem de impacto sobre a decisão de contratar, reajustar
-          ou cortar.
-        </p>
-        <ol className="fin-painel-lacunas-lista">
-          {dados.lacunas.map((lacuna) => (
-            <li key={lacuna.titulo}>
-              <strong>{lacuna.titulo}</strong>
-              <span>{lacuna.detalhe}</span>
-            </li>
-          ))}
-        </ol>
-      </section>
     </>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Gaveta da pessoa: as contrapartes, os componentes pactuados e o mês a mês
-// ---------------------------------------------------------------------------
-function Detalhe({
-  pessoa,
-  dados,
-  porMes,
-  meses,
-  pactuadoPorChave
-}: {
-  pessoa: Pessoa;
-  dados: CustoPessoas;
-  porMes: Record<string, number>;
-  meses: string[];
-  pactuadoPorChave: Map<string, Pactuado>;
-}) {
-  const componentes = dados.componentes.filter((c) => c.personId === pessoa.id);
-  const mesesDoComponente = [...new Set(componentes.map((c) => c.mes))].sort();
-  const mesComponente = mesesDoComponente[mesesDoComponente.length - 1] ?? null;
-  const doMes = mesComponente ? componentes.filter((c) => c.mes === mesComponente) : [];
-
-  return (
-    <div className="fin-why-popover" role="note">
-      {/* O mesmo editor da seção de cadastro, aqui. Quem abriu a gaveta para
-          entender um número já está com a pergunta na cabeça ("por que o Diogo
-          conta como Hardware?"); mandá-lo procurar a pessoa noutra tabela para
-          corrigir é onde o trabalho se perde. */}
-      <FinPessoaEditor pessoa={pessoa} dados={dados} />
-
-      <p style={{ marginTop: 16 }}>
-        <strong>Contrapartes ligadas a {pessoa.nome}</strong>
-      </p>
-      <table className="fin-table">
-        <thead>
-          <tr>
-            <th>Contraparte no extrato</th>
-            <th>Documento</th>
-            <th>Como foi ligada</th>
-            <th className="num">Lanç.</th>
-            <th className="num">Saída total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pessoa.contrapartes.map((cp) => (
-            <tr key={cp.id}>
-              <td>
-                {cp.nome}
-                {cp.primaria ? <span className="fin-tag">primária</span> : null}
-              </td>
-              <td className="fin-nowrap">{cp.documento ?? "—"}</td>
-              <td>
-                {cp.metodo} · confiança {cp.confianca.toFixed(2)}
-              </td>
-              <td className="num">{cp.n}</td>
-              <td className="num fin-table-money">{brlPrecise(cp.realizadoCents)}</td>
-            </tr>
-          ))}
-          {!pessoa.contrapartes.length ? (
-            <tr>
-              <td colSpan={5} className="fin-empty-row">
-                Nenhuma contraparte confirmada — o custo desta pessoa não aparece em lugar nenhum desta tela.
-              </td>
-            </tr>
-          ) : null}
-        </tbody>
-      </table>
-
-      {doMes.length ? (
-        <>
-          <p style={{ marginTop: 12 }}>
-            <strong>Componentes pactuados — {monthKeyLabel(mesComponente!)}</strong>
-          </p>
-          <table className="fin-table">
-            <thead>
-              <tr>
-                <th>Componente</th>
-                <th>Natureza</th>
-                <th>Via</th>
-                <th className="num">Contratado</th>
-                <th className="num">Apurado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...new Set(doMes.map((c) => c.componente))].map((slug) => {
-                const contratado = doMes.find((c) => c.componente === slug && c.kind === "contratado");
-                const apurado = doMes.find((c) => c.componente === slug && c.kind === "apurado");
-                const ref = contratado ?? apurado!;
-                return (
-                  <tr key={slug}>
-                    <td>{ref.componenteNome}</td>
-                    <td>{ref.tipo}</td>
-                    <td>{ref.nucleo ?? "—"}</td>
-                    <td className="num fin-table-money fin-previsao">
-                      {contratado ? brlPrecise(contratado.cents) : <span className="fin-zero">—</span>}
-                    </td>
-                    <td className="num fin-table-money">
-                      {apurado ? brlPrecise(apurado.cents) : <span className="fin-zero">—</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </>
-      ) : (
-        <p className="fin-why-losers" style={{ marginTop: 12 }}>
-          Sem componentes pactuados: esta pessoa não está na planilha de comissionamento carregada, então não há fixo
-          contra o qual comparar o que ela recebeu.
-        </p>
-      )}
-
-      <p style={{ marginTop: 12 }}>
-        <strong>Mês a mês</strong>
-      </p>
-      <table className="fin-table">
-        <thead>
-          <tr>
-            <th>Mês</th>
-            <th className="num">Saiu do banco</th>
-            <th className="num">Fixo pactuado</th>
-            <th className="num">Acima do fixo</th>
-            <th className="num">Contra o mês anterior</th>
-          </tr>
-        </thead>
-        <tbody>
-          {meses.map((mes, indice) => {
-            const valor = porMes[mes] ?? 0;
-            const anterior = indice > 0 ? porMes[meses[indice - 1]] ?? 0 : 0;
-            const pact = pactuadoPorChave.get(chave(pessoa.id, mes));
-            const delta = anterior ? ((valor - anterior) / anterior) * 100 : null;
-            return (
-              <tr key={mes}>
-                <td className="fin-nowrap">{monthKeyLabel(mes)}</td>
-                <td className="num fin-table-money">
-                  {valor ? brlPrecise(valor) : <span className="fin-zero">—</span>}
-                </td>
-                <td className="num fin-table-money fin-previsao">
-                  {pact ? brlPrecise(pact.fixoContratadoCents) : <span className="fin-zero">—</span>}
-                </td>
-                <td className="num fin-table-money">
-                  {pact ? brlPrecise(valor - pact.fixoContratadoCents) : <span className="fin-zero">—</span>}
-                </td>
-                <td className="num">
-                  {delta === null || !valor ? (
-                    <span className="fin-zero">—</span>
-                  ) : (
-                    <span className={Math.abs(delta) > 15 ? "fin-badge-atencao" : undefined}>
-                      {delta >= 0 ? "+" : "−"}
-                      {pct(Math.abs(delta), 0)}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
   );
 }
 
@@ -1143,7 +1239,8 @@ function Cobertura({
   naoAtribuidoN,
   pctAtribuido,
   suspeitos,
-  suspeitoCents
+  suspeitoCents,
+  saidasSemDono
 }: {
   dados: CustoPessoas;
   totalCents: number;
@@ -1152,93 +1249,144 @@ function Cobertura({
   pctAtribuido: number;
   suspeitos: CustoPessoas["cobertura"]["suspeitos"];
   suspeitoCents: number;
+  saidasSemDono: SaidaSemDono[];
 }) {
   const { linksPropostos, pessoasSemContraparte, faturaCartaoCents, faturaCartaoN } = dados.cobertura;
+  const linksCents = linksPropostos.reduce((s, l) => s + l.saidaCents, 0);
+  const suspeitoN = suspeitos.reduce((s, x) => s + x.n, 0);
+
+  const indicadores = [
+    suspeitoCents > 0
+      ? {
+          key: "suspeitos",
+          alerta: true,
+          rotulo: "Nome no extrato, sem contraparte",
+          valor: brlCents(suspeitoCents),
+          topicos: [
+            `${suspeitoN} saídas neste recorte`,
+            "Texto casa com alguém do roster",
+            "Sem favorecido → não soma no total"
+          ]
+        }
+      : null,
+    faturaCartaoCents > 0
+      ? {
+          key: "fatura",
+          alerta: false,
+          rotulo: "Fatura de cartão (excluída)",
+          valor: brlCents(faturaCartaoCents),
+          topicos: [
+            `${faturaCartaoN} lançamentos`,
+            `~${brlCents(Math.round(faturaCartaoCents / Math.max(1, dados.meses.length)))}/mês`,
+            "Sai no nome do sócio — não é pró-labore"
+          ]
+        }
+      : null,
+    linksPropostos.length > 0
+      ? {
+          key: "links",
+          alerta: linksPropostos.some((l) => l.ehBanco),
+          rotulo: "Ligações a decidir",
+          valor: String(linksPropostos.length),
+          topicos: [
+            `${brlCents(linksCents)} pendurados`,
+            "Só confirmada entra no custo",
+            ...(linksPropostos.some((l) => l.ehBanco) ? ["Há proposta de banco (não confirmar)"] : [])
+          ]
+        }
+      : null,
+    pessoasSemContraparte.length > 0
+      ? {
+          key: "sem-cp",
+          alerta: true,
+          rotulo: "Sem contraparte nenhuma",
+          valor: String(pessoasSemContraparte.length),
+          topicos: [
+            pessoasSemContraparte.map((p) => p.nome).join(", "),
+            "Aparecem R$ 0 até ligar"
+          ]
+        }
+      : null
+  ].filter(Boolean) as {
+    key: string;
+    alerta: boolean;
+    rotulo: string;
+    valor: string;
+    topicos: string[];
+  }[];
 
   return (
-    <section className="card fin-painel-grafico" aria-label="Cobertura do custo com pessoas">
-      <header className="fin-painel-grafico-head">
-        <h3>
-          {pctAtribuido >= 99.5
-            ? `Cobertura de ${pct(pctAtribuido, 1)}: praticamente todo o dinheiro deste recorte tem dono`
-            : `${pct(100 - pctAtribuido, 1)} do dinheiro deste recorte não tem dono — ${brlCents(naoAtribuidoCents)} em ${naoAtribuidoN} saídas`}
-        </h3>
-        <p>
-          {brlCents(totalCents)} atribuídos contra {brlCents(naoAtribuidoCents)} sem favorecido nenhum. Esses
-          lançamentos não podem ser atribuídos a pessoa nem a fornecedor: o extrato simplesmente não diz para quem
-          foram. Enquanto existirem, o total desta tela é um piso, não a folha inteira.
-        </p>
-      </header>
+    <FinSecaoColapsavel
+      className="fin-painel-grafico"
+      titulo="Cobertura"
+      abertoPadrao={naoAtribuidoCents > 0 || linksPropostos.length > 0}
+      meta={
+        pctAtribuido >= 99.5
+          ? `${pct(pctAtribuido, 1)} atribuído`
+          : `${pct(100 - pctAtribuido, 1)} sem dono · ${brlCents(naoAtribuidoCents)}`
+      }
+      ariaLabel="Cobertura do custo com pessoas"
+    >
+      <p className="fin-card-hint fin-card-hint-curto">
+        {brlCents(totalCents)} atribuídos · {brlCents(naoAtribuidoCents)} sem favorecido
+        {naoAtribuidoN ? ` · ${naoAtribuidoN} saídas` : ""}
+      </p>
 
-      <div className="fin-painel-blocos">
-        <article className={suspeitoCents > 0 ? "fin-painel-ind tendencia-piorando" : "fin-painel-ind"}>
-          <p className="fin-painel-ind-rotulo">
-            Custo de gente que ficou de fora
-            {suspeitoCents > 0 ? <span className="fin-painel-flag">fora do total</span> : null}
-          </p>
-          <p className="fin-painel-ind-valor">{brlCents(suspeitoCents)}</p>
-          <p className="fin-painel-ind-comp">
-            {suspeitos.reduce((s, x) => s + x.n, 0)} saídas sem favorecido cujo texto do extrato traz o nome de alguém
-            do roster
-          </p>
-          <p className="fin-painel-ind-veredito">
-            {suspeitoCents > 0
-              ? "O nome está na descrição, a contraparte não foi criada, e por isso o valor não soma para ninguém. É a diferença entre o que a tela mostra e o que a empresa gastou com gente no período."
-              : "Nenhuma saída sem favorecido tem nome do roster no texto neste recorte."}
-          </p>
-          {suspeitoCents > 0 ? (
-            <p className="fin-painel-acao">
-              <strong>Fazer:</strong> rodar a fila de revisão sobre essas linhas. Cada uma que ganhar contraparte entra
-              automaticamente no total desta tela, sem reprocessar nada.
-            </p>
-          ) : null}
-        </article>
+      {indicadores.length ? (
+        <div className="fin-painel-blocos">
+          {indicadores.map((ind) => (
+            <article
+              key={ind.key}
+              className={ind.alerta ? "fin-painel-ind tendencia-piorando" : "fin-painel-ind"}
+            >
+              <p className="fin-painel-ind-rotulo">{ind.rotulo}</p>
+              <p className="fin-painel-ind-valor">{ind.valor}</p>
+              <ul className="fin-painel-ind-topicos">
+                {ind.topicos.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      ) : null}
 
-        <article className="fin-painel-ind">
-          <p className="fin-painel-ind-rotulo">Fatura de cartão deixada de fora</p>
-          <p className="fin-painel-ind-valor">{brlCents(faturaCartaoCents)}</p>
-          <p className="fin-painel-ind-comp">
-            {faturaCartaoN} lançamentos que a guarda de fatura remove do custo de gente
-          </p>
-          <p className="fin-painel-ind-veredito">
-            A fatura do cartão corporativo sai no nome do sócio. Contá-la como custo dele somaria cerca de{" "}
-            {brlCents(Math.round(faturaCartaoCents / Math.max(1, dados.meses.length)))} por mês de pró-labore fictício e
-            faria a pessoa mais cara da empresa ser a errada. O gasto existe — ele pertence às categorias das compras
-            que compõem a fatura, não a uma pessoa.
-          </p>
-        </article>
-
-        <article className={linksPropostos.some((l) => l.ehBanco) ? "fin-painel-ind tendencia-piorando" : "fin-painel-ind"}>
-          <p className="fin-painel-ind-rotulo">Ligações propostas, não somadas</p>
-          <p className="fin-painel-ind-valor">{linksPropostos.length}</p>
-          <p className="fin-painel-ind-comp">
-            {brlCents(linksPropostos.reduce((s, l) => s + l.saidaCents, 0))} de saída pendurada em ligações que ninguém
-            confirmou
-          </p>
-          <p className="fin-painel-ind-veredito">
-            Só ligação confirmada soma.{" "}
-            {linksPropostos.some((l) => l.ehBanco)
-              ? "E duas destas apontam para uma INSTITUIÇÃO, não para uma pessoa: o importador do Inter guardou o banco de destino no lugar do favorecido, e essas contrapartes carregam lançamentos de várias pessoas misturadas. Confirmar qualquer uma penduraria o custo de meio time numa pessoa só."
-              : "Confirmar cada uma é decisão humana, porque uma ligação errada é permanente."}
-          </p>
-        </article>
-
-        <article className={pessoasSemContraparte.length ? "fin-painel-ind tendencia-piorando" : "fin-painel-ind"}>
-          <p className="fin-painel-ind-rotulo">Pessoas sem nenhuma contraparte</p>
-          <p className="fin-painel-ind-valor">{pessoasSemContraparte.length}</p>
-          <p className="fin-painel-ind-comp">
-            {pessoasSemContraparte.map((p) => p.nome).join(", ") || "nenhuma"}
-          </p>
-          <p className="fin-painel-ind-veredito">
-            Estas pessoas aparecem com R$ 0,00 nesta tela. Zero aqui pode significar duas coisas opostas — que ninguém
-            lhes pagou nada, ou que o pagamento existe e o ledger não sabe ligar. A tela não distingue as duas, e por
-            isso as nomeia.
-          </p>
-        </article>
-      </div>
+      {saidasSemDono.length ? (
+        <div className="table-wrap">
+          <h3 className="fin-painel-sub">Saídas sem favorecido — diga o que é</h3>
+          <table className="fin-table fin-table-saidas-sem-dono">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th className="num">Valor</th>
+                <th>Extrato</th>
+                <th>O que é</th>
+              </tr>
+            </thead>
+            <tbody>
+              {saidasSemDono.map((linha) => (
+                <tr key={linha.id}>
+                  <td className="fin-nowrap">{linha.data}</td>
+                  <td className="num fin-table-money fin-out">{brlPrecise(linha.cents)}</td>
+                  <td>
+                    <span className="fin-desc-sub">{linha.descricao}</span>
+                    <span className="fin-desc-sub">
+                      {dados.contas.find((c) => c.slug === linha.conta)?.nome ?? linha.conta}
+                    </span>
+                  </td>
+                  <td>
+                    <FinSaidaSemDonoAcoes saida={linha} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
       {suspeitos.length ? (
         <div className="table-wrap">
+          <h3 className="fin-painel-sub">Provável gente do roster (ainda fora do total)</h3>
           <table className="fin-table">
             <thead>
               <tr>
@@ -1246,8 +1394,8 @@ function Cobertura({
                 <th>Mês</th>
                 <th>Conta</th>
                 <th className="num">Lanç.</th>
-                <th className="num">Valor fora do total</th>
-                <th>Como aparece no extrato</th>
+                <th className="num">Valor</th>
+                <th>Extrato</th>
               </tr>
             </thead>
             <tbody>
@@ -1266,7 +1414,7 @@ function Cobertura({
             </tbody>
             <tfoot>
               <tr>
-                <th colSpan={4}>Total fora do custo atribuído</th>
+                <th colSpan={4}>Total</th>
                 <td className="num fin-table-money fin-out">
                   <strong>{brlPrecise(suspeitoCents)}</strong>
                 </td>
@@ -1279,6 +1427,11 @@ function Cobertura({
 
       {linksPropostos.length ? (
         <div className="table-wrap">
+          <h3 className="fin-painel-sub">Confirmar ou rejeitar ligação</h3>
+          <p className="fin-card-hint fin-card-hint-curto">
+            Confirmar: soma no custo da pessoa. Rejeitar: não propõe de novo. R$ 0 = nome parecido sem saída
+            (rejeitar).
+          </p>
           <table className="fin-table">
             <thead>
               <tr>
@@ -1287,10 +1440,7 @@ function Cobertura({
                 <th>Método</th>
                 <th className="num">Confiança</th>
                 <th className="num">Lanç.</th>
-                <th className="num">Saída na contraparte</th>
-                {/* A decisão fica na MESMA linha do valor. Uma fila ordenada por
-                    dinheiro em jogo que obrigasse a procurar a pessoa noutra
-                    seção para decidir seria uma fila que ninguém esvazia. */}
+                <th className="num">Saída</th>
                 <th>Decidir</th>
               </tr>
             </thead>
@@ -1301,11 +1451,8 @@ function Cobertura({
                   <td>
                     {linha.contraparte}
                     {linha.ehBanco ? (
-                      <span
-                        className="fin-badge-pendente"
-                        title="É uma instituição financeira, não uma pessoa: carrega lançamentos de várias pessoas misturadas"
-                      >
-                        é banco, não pessoa
+                      <span className="fin-badge-pendente" title="Instituição financeira">
+                        é banco
                       </span>
                     ) : null}
                   </td>
@@ -1322,6 +1469,97 @@ function Cobertura({
           </table>
         </div>
       ) : null}
-    </section>
+    </FinSecaoColapsavel>
   );
 }
+
+function FinSaidaSemDonoAcoes({ saida }: { saida: SaidaSemDono }) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const sugerido = nomeSugeridoDoExtrato(saida.descricao) ?? "";
+  const [tipo, setTipo] = useState<TipoSaidaSemDono | "">("");
+  const [nome, setNome] = useState(sugerido);
+  const [iguais, setIguais] = useState(true);
+  const [emVoo, setEmVoo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+
+  async function aplicar() {
+    if (!tipo) return;
+    setErro(null);
+    setEmVoo(true);
+    try {
+      const resposta = await fetch(urlDaOrigem(`/api/financeiro/lancamentos/${saida.id}/favorecido`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo,
+          nome: nome.trim() || null,
+          aplicarIguais: iguais
+        })
+      });
+      const resultado = await resposta.json();
+      if (!resposta.ok) {
+        setErro(resultado.error ?? "não gravou");
+        return;
+      }
+      const cat = resultado.categoryCode ? ` · ${resultado.categoryCode}` : "";
+      setOk(
+        `${resultado.aplicados}× → ${resultado.nome}${cat}`
+      );
+      startTransition(() => router.refresh());
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "não gravou");
+    } finally {
+      setEmVoo(false);
+    }
+  }
+
+  if (ok) return <span className="fin-desc-sub">{ok}</span>;
+
+  return (
+    <div className="fin-saida-acoes">
+      <select
+        className="fin-select fin-select-inline"
+        value={tipo}
+        disabled={emVoo}
+        onChange={(e) => setTipo(e.target.value as TipoSaidaSemDono | "")}
+        aria-label="Tipo da saída"
+      >
+        <option value="">O que é?</option>
+        {(Object.keys(TIPOS_SAIDA_SEM_DONO) as TipoSaidaSemDono[]).map((chave) => (
+          <option key={chave} value={chave}>
+            {TIPOS_SAIDA_SEM_DONO[chave].rotulo}
+          </option>
+        ))}
+      </select>
+      <input
+        className="fin-input fin-input-mini"
+        value={nome}
+        disabled={emVoo}
+        placeholder="Favorecido"
+        onChange={(e) => setNome(e.target.value)}
+        aria-label="Nome do favorecido"
+      />
+      <label className="fin-saida-iguais">
+        <input
+          type="checkbox"
+          checked={iguais}
+          disabled={emVoo}
+          onChange={(e) => setIguais(e.target.checked)}
+        />
+        iguais
+      </label>
+      <button
+        type="button"
+        className="fin-btn-ghost fin-btn-mini"
+        disabled={emVoo || !tipo || nome.trim().length < 3}
+        onClick={() => void aplicar()}
+      >
+        {emVoo ? "…" : "Gravar"}
+      </button>
+      {erro ? <span className="fin-badge-atencao">{erro}</span> : null}
+    </div>
+  );
+}
+

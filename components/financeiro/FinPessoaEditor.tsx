@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 
 import type { CustoPessoas, LinkProposto, Pessoa } from "@/lib/financeiro/pessoas";
 import { brlPrecise } from "@/lib/financeiro/format";
+import { urlDaOrigem } from "@/lib/url-origem";
+
+import { FinSecaoColapsavel } from "./FinSecaoColapsavel";
 
 /**
  * Cadastro de pessoa: área, vínculo, papel, status, saída, tipo de custo — e a
@@ -73,20 +76,23 @@ export function FinPessoaCadastro({ dados }: Props) {
   const indefinidos = dados.pessoas.filter((p) => p.vinculo === "indefinido").length;
   const propostas = dados.pessoas.reduce((soma, p) => soma + p.contrapartesPropostas.length, 0);
 
+  const pendencias =
+    (semArea ? `${semArea} sem área` : "") +
+    (semArea && (indefinidos || propostas) ? " · " : "") +
+    (indefinidos ? `${indefinidos} vínculo indefinido` : "") +
+    (indefinidos && propostas ? " · " : "") +
+    (propostas ? `${propostas} ligação${propostas === 1 ? "" : "ões"} a decidir` : "");
+
   if (!dados.disponivel) return null;
 
   return (
-    <section className="card" aria-label="Cadastro de pessoas">
-      <h2 className="card-title">Cadastro: área, vínculo e tipo de custo</h2>
-      <p className="fin-card-hint">
-        As {dados.pessoas.length} pessoas do roster, inclusive as que não aparecem na tabela acima porque não têm
-        lançamento nenhum. Alterar aqui muda a soma de <strong>todos</strong> os meses passados de uma vez — por isso
-        cada alteração fica registrada com quem fez, quando, e qual era o valor anterior.{" "}
-        {semArea ? `${semArea} ${semArea === 1 ? "pessoa está" : "pessoas estão"} sem área` : "Todo mundo tem área"}
-        {indefinidos ? `, ${indefinidos} com vínculo indefinido` : ""}
-        {propostas ? `, ${propostas} ${propostas === 1 ? "ligação espera" : "ligações esperam"} decisão` : ""}.
-      </p>
-
+    <FinSecaoColapsavel
+      className="fin-pessoas-cadastro"
+      titulo="Cadastro: área, vínculo e tipo de custo"
+      abertoPadrao={Boolean(semArea || indefinidos || propostas)}
+      meta={pendencias || `${dados.pessoas.length} pessoas`}
+      ariaLabel="Cadastro de pessoas"
+    >
       <div className="fin-regra-form">
         <label className="fin-field">
           <span>Buscar pessoa</span>
@@ -142,7 +148,7 @@ export function FinPessoaCadastro({ dados }: Props) {
           </tbody>
         </table>
       </div>
-    </section>
+    </FinSecaoColapsavel>
   );
 }
 
@@ -166,14 +172,11 @@ function LinhaPessoa({
       <tr>
         <td>
           <span className="fin-desc">{pessoa.nome}</span>
-          {pessoa.nomeLegal && pessoa.nomeLegal !== pessoa.nome ? (
-            <span className="fin-desc-sub">{pessoa.nomeLegal}</span>
-          ) : null}
         </td>
-        <td>
-          {pessoa.areaRotulo ?? <span className="fin-badge-atencao">sem área</span>}
+        <td onClick={(e) => e.stopPropagation()}>
+          <CelulaArea pessoa={pessoa} areas={dados.areas} />
           {pessoa.time === "sem_time" ? (
-            <span className="fin-tag" title="Sem área de Hardware/Software nem via de pagamento: cai em 'Sem time'">
+            <span className="fin-tag" title="Sem área nem via de pagamento: cai em 'Sem time'">
               sem time
             </span>
           ) : null}
@@ -217,6 +220,71 @@ function LinhaPessoa({
         </tr>
       ) : null}
     </>
+  );
+}
+
+/** Select na própria célula: mesma API/domínio do editor completo. */
+function CelulaArea({
+  pessoa,
+  areas
+}: {
+  pessoa: Pessoa;
+  areas: CustoPessoas["areas"];
+}) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [emVoo, setEmVoo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function mudar(slug: string) {
+    if (!slug || slug === (pessoa.area ?? "")) return;
+    setErro(null);
+    setEmVoo(true);
+    try {
+      const resposta = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${pessoa.id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ area: slug })
+      });
+      const resultado = await resposta.json();
+      if (!resposta.ok) {
+        setErro(resultado.error ?? "não salvou");
+        return;
+      }
+      startTransition(() => router.refresh());
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "não salvou");
+    } finally {
+      setEmVoo(false);
+    }
+  }
+
+  const opcoes = [...areas];
+  if (pessoa.area && !opcoes.some((a) => a.slug === pessoa.area)) {
+    opcoes.unshift({
+      slug: pessoa.area,
+      nome: pessoa.areaRotulo ?? pessoa.area
+    });
+  }
+
+  return (
+    <span className="fin-celula-area">
+      <select
+        className="fin-select fin-select-inline"
+        value={pessoa.area ?? ""}
+        disabled={emVoo}
+        aria-label={`Área de ${pessoa.nome}`}
+        onChange={(evento) => void mudar(evento.target.value)}
+      >
+        {!pessoa.area ? <option value="">sem área</option> : null}
+        {opcoes.map((item) => (
+          <option key={item.slug} value={item.slug}>
+            {item.nome}
+          </option>
+        ))}
+      </select>
+      {erro ? <span className="fin-badge-atencao">{erro}</span> : null}
+    </span>
   );
 }
 
@@ -278,7 +346,7 @@ export function FinPessoaEditor({ pessoa, dados }: { pessoa: Pessoa; dados: Cust
 
     setEmVoo(true);
     try {
-      const resposta = await fetch(`/api/financeiro/pessoas/${pessoa.id}`, {
+      const resposta = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${pessoa.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(corpo)
@@ -592,7 +660,7 @@ export function FinLigacaoAcoes({
     setMensagem(null);
     setEmVoo(true);
     try {
-      const resposta = await fetch(`/api/financeiro/pessoas/${personId}`, {
+      const resposta = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${personId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ligacoes: [{ id: linkId, status, aceitarRiscoBanco }] })

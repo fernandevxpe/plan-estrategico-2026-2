@@ -33,14 +33,28 @@ const NATUREZA_ROTULO: Record<string, string> = {
   extra: "Extra"
 };
 
+/*
+ * AS MESMAS CORES DE `/time` — NÃO OUTRAS PARECIDAS.
+ *
+ * Antes desta tela tinha sua própria paleta, feita a olho: salário roxo,
+ * pró-labore azul, reembolso rosa. O app usa `--nat-*` (recebiveis-dado.ts,
+ * CLASSE), e ali é o INVERSO — salário é azul, pró-labore/estágio ocupam o
+ * roxo, reembolso é verde. Alguém que olhasse as duas telas no mesmo dia veria
+ * o mesmo dinheiro pintado de cor diferente, e ia desconfiar de qual delas
+ * mentia. Nenhuma mentia — só usavam paletas que ninguém combinou.
+ *
+ * `--nat-*` já existe e é tema-consciente (claro/escuro). Usar os tokens
+ * direto, não os hex por trás deles, é o que impede a próxima tela de
+ * divergir de novo.
+ */
 const NATUREZA_COR: Record<string, string> = {
-  salario: "var(--purple)",
-  prolabore: "#1e5fd4",
-  estagio: "#12805c",
-  comissao: "var(--ink-amber)",
-  reembolso: "#d6449b",
-  encargo_beneficio: "var(--muted)",
-  extra: "var(--cert-atrasado)"
+  salario: "var(--nat-salario)",
+  prolabore: "var(--nat-recorrente)",
+  estagio: "var(--nat-recorrente)",
+  comissao: "var(--nat-comissao)",
+  reembolso: "var(--nat-reembolso)",
+  encargo_beneficio: "var(--nat-encargo)",
+  extra: "var(--nat-extra)"
 };
 
 const PIX_ROTULO: Record<string, string> = {

@@ -15043,6 +15043,19 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .fin-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .fin-card-head h2 { margin: 0; font-size: 16px; font-weight: 650; color: var(--ink); letter-spacing: -.01em; }
 .fin-card-head .fin-card-hint { margin: 0; max-width: 62ch; }
+/* O número que resume o card inteiro (3 usos: perfil de pessoa, cartão
+   descrito, gasto descrito) não tinha peso nenhum — herdava o texto comum do
+   flex ao lado do título. É o mesmo tratamento tipográfico do valor em
+   destaque no app (`--font-display`, tabular, negrito), porque é a mesma
+   pergunta que a pessoa faz nas duas telas: "quanto, no total". */
+.fin-card-total {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 21px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--purple-text);
+}
 
 .medida-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
 
@@ -17098,14 +17111,17 @@ body:has(.time-shell) > .theme-toggle { display: none; }
    botão de ação e, quando aberto, o formulário. */
 .pp-remuneracao-intro { margin: 0 0 16px; font-size: 12.5px; line-height: 1.5; color: var(--muted); max-width: 68ch; }
 .pp-remuneracao-card {
-  border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; background: var(--card);
+  border: 1px solid var(--tint-purple-line); border-radius: 14px; padding: 14px 16px; margin-bottom: 14px;
+  background: var(--tint-purple-soft);
 }
 .pp-remuneracao-topo { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .pp-remuneracao-rotulo {
   display: block; font-size: 11px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
 }
 .pp-remuneracao-valor {
-  display: block; margin-top: 4px; font-size: 18px; font-weight: 680; font-variant-numeric: tabular-nums;
+  display: block; margin-top: 4px; font-variant-numeric: tabular-nums;
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 19px; font-weight: 750; letter-spacing: -0.02em; color: var(--purple-text);
 }
 .pp-remuneracao-valor small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; }
 .pp-remuneracao-valor.pp-remuneracao-vazio { font-size: 13px; font-weight: 550; color: var(--muted); }

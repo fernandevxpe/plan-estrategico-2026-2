@@ -3060,6 +3060,20 @@ function FormEnvio({
   const [pagamento, setPagamento] = useState(nota ? "boleto" : "");
   const [parcelas, setParcelas] = useState("");
   const [final, setFinal] = useState("");
+  /**
+   * OS CARTÕES PESSOAIS DA PRÓPRIA PESSOA, para tocar em vez de digitar.
+   *
+   * Antes desta tela o campo "Final do seu cartão" era um `<input>` puro, sem
+   * NENHUMA consulta — digitar um final que já estava cadastrado não avisava
+   * nada, e só na hora de enviar (ou nunca) o desencontro aparecia. Buscado
+   * uma vez quando o reembolso por cartão pessoal fica visível; `null`
+   * enquanto carrega, para o formulário não afirmar "nenhum cadastrado" antes
+   * de saber.
+   */
+  const [meusCartoes, setMeusCartoes] = useState<
+    { id: number; final: string; apelido: string | null; bandeira: string | null; cor: string | null }[] | null
+  >(null);
+  const [digitandoOutroCartao, setDigitandoOutroCartao] = useState(false);
   // Só a tela de NOTA ainda precisa de quem emitiu: numa nota fiscal o emitente
   // é o fato central. Num custo, ele já vem da foto quando existe, e pedir de
   // novo é um campo a mais entre a pessoa e o botão de enviar.
@@ -3101,6 +3115,24 @@ function FormEnvio({
     if (d) setDescricao(d);
     if (v) setValor(mascaraDinheiro(v));
   }, [somenteReembolso, params]);
+  // Busca uma vez, na primeira vez que o passo aparece — não a cada render,
+  // e não antes de a pessoa chegar nele.
+  useEffect(() => {
+    if (!modoReembolso || pagamento !== "cartao_pessoal" || meusCartoes !== null) return;
+    let vivo = true;
+    void fetch("/api/time/cartao")
+      .then((r) => r.json())
+      .then((j) => {
+        if (vivo) setMeusCartoes(Array.isArray(j.cartoes) ? j.cartoes : []);
+      })
+      .catch(() => {
+        if (vivo) setMeusCartoes([]);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [modoReembolso, pagamento, meusCartoes]);
+
   const [cadastrando, setCadastrando] = useState(false);
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -3505,6 +3537,7 @@ function FormEnvio({
       setNfeNumero("");
       setParcelas("");
       setFinal("");
+      setDigitandoOutroCartao(false);
       setCentro("");
       setLinha("");
       setBanco("");
@@ -3692,45 +3725,124 @@ function FormEnvio({
       </div>
 
       {modoReembolso && pagamento === "cartao_pessoal" ? (
-        <label className="campo">
-          <span className={rotulo}>Final do seu cartão</span>
-          <input
-            value={final}
-            onChange={(e) => setFinal(e.target.value.replace(/\D/g, "").slice(0, 4))}
-            inputMode="numeric"
-            maxLength={4}
-            placeholder="4 últimos dígitos"
-            className="campo-final"
-          />
-        </label>
+        <div className="campo">
+          <span className={rotulo}>Qual cartão</span>
+          {meusCartoes === null ? (
+            <p className="campo-hint">carregando seus cartões…</p>
+          ) : meusCartoes.length > 0 && !digitandoOutroCartao ? (
+            <div className="chips" role="group" aria-label="Seus cartões cadastrados">
+              {meusCartoes.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  aria-pressed={final === c.final}
+                  className={final === c.final ? "chip ativo" : "chip"}
+                  onClick={() => setFinal(c.final)}
+                >
+                  {c.apelido ?? `final ${c.final}`}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="chip"
+                onClick={() => {
+                  setDigitandoOutroCartao(true);
+                  setFinal("");
+                }}
+              >
+                outro cartão
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                value={final}
+                onChange={(e) => setFinal(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="4 últimos dígitos"
+                className="campo-final"
+              />
+              {meusCartoes.length > 0 ? (
+                <button type="button" className="campo-link" onClick={() => setDigitandoOutroCartao(false)}>
+                  ← ver meus cartões cadastrados
+                </button>
+              ) : null}
+            </>
+          )}
+        </div>
       ) : null}
 
       {pagamento === "cartao_da_empresa" && !modoReembolso && opcoes.bancos.length > 0
         ? (() => {
             const escolhido = opcoes.bancos.find((b) => String(b.id) === banco);
             const casa = escolhido?.plasticos.find((p) => p.nome.endsWith(final)) && final.length === 4;
+            // TODOS os plásticos, de todo banco — não só do banco já
+            // selecionado. Era aqui que "cartão que eu sei que existe" dava
+            // "não cadastrado": a comparação só olhava dentro do banco que
+            // a pessoa tinha clicado, e escolher o banco certo era um
+            // palpite que ninguém tinha como acertar de cabeça.
+            const todosOsPlasticos = opcoes.bancos.flatMap((b) =>
+              b.plasticos.map((p) => ({ ...p, bancoId: b.id, bancoNome: b.nome }))
+            );
+
             return (
               <>
-                <div className="campo">
-                  <span className={rotulo ?? "campo-rotulo"} id="grupo-qual-banco">Banco</span>
-                  <div className="chips" role="group" aria-labelledby="grupo-qual-banco">
-                    {opcoes.bancos.map((b) => (
+                {todosOsPlasticos.length > 0 && !cadastrando ? (
+                  <div className="campo">
+                    <span className={rotulo ?? "campo-rotulo"}>Qual cartão</span>
+                    <div className="chips" role="group" aria-label="Cartões da empresa já cadastrados">
+                      {todosOsPlasticos.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          aria-pressed={banco === String(p.bancoId) && final === (p.final ?? "")}
+                          className={banco === String(p.bancoId) && final === (p.final ?? "") ? "chip ativo" : "chip"}
+                          onClick={() => {
+                            setBanco(String(p.bancoId));
+                            setFinal(p.final ?? "");
+                          }}
+                        >
+                          {p.nome} · {p.bancoNome}
+                        </button>
+                      ))}
                       <button
-                        key={b.id}
                         type="button"
-                        aria-pressed={banco === String(b.id)} className={banco === String(b.id) ? "chip ativo" : "chip"}
+                        className={digitandoOutroCartao ? "chip ativo" : "chip"}
                         onClick={() => {
-                          setBanco(String(b.id));
-                          setCartao("");
+                          setDigitandoOutroCartao((v) => !v);
+                          setBanco("");
+                          setFinal("");
                         }}
                       >
-                        {b.nome}
+                        outro cartão
                       </button>
-                    ))}
+                    </div>
                   </div>
-                </div>
+                ) : null}
 
-                {banco && !cadastrando ? (
+                {(digitandoOutroCartao || todosOsPlasticos.length === 0) && !cadastrando ? (
+                  <div className="campo">
+                    <span className={rotulo ?? "campo-rotulo"} id="grupo-qual-banco">Banco</span>
+                    <div className="chips" role="group" aria-labelledby="grupo-qual-banco">
+                      {opcoes.bancos.map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          aria-pressed={banco === String(b.id)} className={banco === String(b.id) ? "chip ativo" : "chip"}
+                          onClick={() => {
+                            setBanco(String(b.id));
+                            setCartao("");
+                          }}
+                        >
+                          {b.nome}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {(digitandoOutroCartao || todosOsPlasticos.length === 0) && banco && !cadastrando ? (
                   <label className="campo">
                     <span className={rotulo}>Final do cartão</span>
                     <input

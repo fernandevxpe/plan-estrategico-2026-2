@@ -3390,6 +3390,32 @@ export async function procurarCartaoPeloFinal(sessao: Sessao, finalBruto: unknow
   };
 }
 
+/**
+ * OS CARTÕES PESSOAIS DA PRÓPRIA PESSOA, para escolher em vez de digitar.
+ *
+ * Existe porque digitar às cegas tem duas formas de dar errado: a pessoa erra
+ * um dígito, ou digita certo mas nada na tela conferia contra o cadastro — as
+ * duas produzem o mesmo sintoma, "cartão que eu sei que já existe aparece
+ * como não cadastrado". Uma lista para tocar elimina as duas de uma vez: não
+ * tem dígito para errar, e o que aparece É o cadastro.
+ */
+export async function listarMeusCartoesPessoais(sessao: Sessao) {
+  const linhas = await query<{ id: number; last4: string; label: string | null; brand: string | null; cor: string | null }>(
+    `SELECT id, last4, label, brand, cor
+       FROM fin_card
+      WHERE holder_person_id = $1 AND card_account_id IS NULL AND status <> 'cancelado'
+      ORDER BY (label IS NULL), label, last4`,
+    [sessao.personId]
+  );
+  return linhas.map((l) => ({
+    id: Number(l.id),
+    final: l.last4,
+    apelido: l.label,
+    bandeira: l.brand,
+    cor: l.cor
+  }));
+}
+
 const BANDEIRAS = new Set(["visa", "mastercard", "elo", "amex", "hipercard", "outra"]);
 const TIPOS_DE_PLASTICO = new Set(["fisico", "virtual", "adicional"]);
 const CORES = new Set([

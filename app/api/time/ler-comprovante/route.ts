@@ -105,40 +105,43 @@ export async function POST(request: Request) {
     // APRENDIZADO: o que a equipe já escolheu para fornecedor parecido.
     // -----------------------------------------------------------------------
     // Busca por PROXIMIDADE (pg_trgm), não igualdade — "Auto Posto Petrobras"
-    // e "AUTOPOSTO PETROBRAS FILIAL 2" são o mesmo fornecedor. `vezes >= 2` e
-    // `similaridade > 0.35` são o corte de confiança: uma única confirmação
-    // passada pode ter sido ela mesma um erro, e nome pouco parecido é
-    // coincidência de letras comuns, não o mesmo estabelecimento. Abaixo
-    // disso, o palpite da foto continua sozinho — sem histórico suficiente
-    // para valer mais que ele.
+    // e "AUTOPOSTO PETROBRAS FILIAL 2" são o mesmo fornecedor. `similaridade
+    // > 0.35` é o corte de confiança: nome pouco parecido é coincidência de
+    // letras comuns, não o mesmo estabelecimento. Uma única confirmação
+    // passada NÃO fica de fora — é um fato contado (a pessoa escolheu isto
+    // uma vez), só que fraco; quem decide se é fraco demais é a TELA, com o
+    // mesmo "mas nem sempre" que já usa para o histórico por CNPJ, não este
+    // endpoint escondendo o dado.
+    //
+    // Isto vai na resposta como `aprendizado`, NUNCA dentro de `lido` — antes
+    // ia para `lido.categoriaCode`/`lido.porQue`, os mesmos campos do palpite
+    // da FOTO, e a tela que exibe esses campos sempre escreve "Li da imagem…
+    // Confira, é chute, não histórico". Um fato virava chute na tela por
+    // compartilhar o campo errado — o card certo já existe (o que mostra
+    // "você já classificou X assim N vezes" para o CNPJ) e é para lá que isto
+    // deve ir, não para o palpite.
     let padrao: Awaited<ReturnType<typeof buscarPadraoCategoriaFornecedor>>[number] | null = null;
     if (lido.estabelecimento) {
       const achados = await buscarPadraoCategoriaFornecedor(lido.estabelecimento).catch(() => []);
       const melhor = achados[0];
-      if (melhor && melhor.vezes >= 2 && melhor.similaridade > 0.35) padrao = melhor;
+      if (melhor && melhor.similaridade > 0.35) padrao = melhor;
     }
 
-    const lidoComAprendizado = padrao
-      ? {
-          ...lido,
-          categoriaCode: padrao.categoriaCode,
-          porQue: `Categoria de ${padrao.vezes} compra${padrao.vezes === 1 ? "" : "s"} anterior${padrao.vezes === 1 ? "" : "es"} de fornecedor parecido ("${padrao.fornecedorParecido}").`.slice(
-            0,
-            120
-          )
-        }
-      : lido;
-
     return Response.json({
-      lido: chaveDoQr ? { ...lidoComAprendizado, chaveNfe: chaveDoQr } : lidoComAprendizado,
+      lido: chaveDoQr ? { ...lido, chaveNfe: chaveDoQr } : lido,
       fonte: "ia",
       // A tela usa isto para mostrar "chave conferida pelo QR" em vez de só
       // "lida" — a diferença de confiança entre as duas fontes é real e a
       // pessoa que vai conferir o reembolso merece saber qual foi usada.
       qr: chaveDoQr ? { chaveConferida: true, url: qr!.url } : null,
-      // Idem para a categoria: "baseado em compras anteriores" é uma garantia
-      // diferente de "a IA olhou a foto e achou parecido".
-      aprendizado: padrao ? { vezes: padrao.vezes, fornecedorParecido: padrao.fornecedorParecido } : null
+      aprendizado: padrao
+        ? {
+            vezes: padrao.vezes,
+            fornecedorParecido: padrao.fornecedorParecido,
+            categoriaCode: padrao.categoriaCode,
+            categoriaNome: padrao.categoriaNome
+          }
+        : null
     });
   } catch (erro) {
     if (erro instanceof ComprovanteIndisponivel) {

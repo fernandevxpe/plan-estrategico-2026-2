@@ -67,10 +67,10 @@ const OPCOES: { origem: OrigemAnexo; rotulo: string; dica: string; accept: strin
   }
 ];
 
-function Icone({ origem }: { origem: OrigemAnexo }) {
+function Icone({ origem, tamanho = 22 }: { origem: OrigemAnexo; tamanho?: number }) {
   const comum = {
-    width: 22,
-    height: 22,
+    width: tamanho,
+    height: tamanho,
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: "currentColor",
@@ -312,7 +312,7 @@ export function AnexarFlutuante({
         {lendo ? (
           <span className="anexar-girando" aria-hidden />
         ) : (
-          <Icone origem="camera" />
+          <Icone origem="camera" tamanho={28} />
         )}
         {/* O rótulo some no estado encolhido, mas o botão continua com nome
             acessível pelo `aria-label` abaixo — quem usa leitor de tela nunca

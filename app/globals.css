@@ -16797,8 +16797,8 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 
 .anexo-ficha {
   display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas: "nome acao" "meta acao";
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "foto nome acao" "foto meta acao";
   align-items: center;
   gap: 1px 10px;
   padding: 11px 13px;
@@ -16833,6 +16833,102 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 /* A nota fiscal se distingue do print: é ela que a contabilidade procura. */
 .anexo-ficha.fiscal { border-color: var(--tint-green-line); background: var(--tint-green-soft); }
 .anexo-ficha.fiscal strong { color: var(--ink-green); }
+
+/* A miniatura do anexo — ver, não só ler o nome do arquivo. */
+.anexo-miniatura {
+  grid-area: foto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+  cursor: zoom-in;
+}
+.anexo-miniatura img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.anexo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, black 82%, transparent);
+  cursor: zoom-out;
+}
+.anexo-lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain; }
+
+/* ── Lote de reembolsos: várias fotos do mesmo tipo, um item por foto ── */
+.lote-reembolso { display: grid; gap: 10px; }
+.lote-adicionar { display: flex; gap: 8px; flex-wrap: wrap; }
+.lote-lista { display: grid; gap: 8px; }
+.lote-item {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  grid-template-areas: "foto campos status" "foto campos remover";
+  align-items: center;
+  gap: 4px 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.lote-item .anexo-miniatura { grid-area: foto; }
+.lote-item-campos {
+  grid-area: campos;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 6px;
+}
+.lote-item-campos input {
+  min-height: 38px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  width: 100%;
+}
+.lote-item-campos .valor-caixa {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0 8px;
+}
+.lote-item-campos .valor-caixa em { font-style: normal; font-size: 12px; color: var(--muted); }
+.lote-item-campos .valor-caixa input { border: 0; padding: 6px 0; min-height: 36px; }
+.lote-item-status { grid-area: status; font-size: 11.5px; }
+.lote-item-remover {
+  grid-area: remover;
+  justify-self: start;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.lote-item-remover:disabled { opacity: .5; cursor: not-allowed; }
+.lote-item-erro { border-color: var(--cert-atrasado); }
+.lote-total {
+  display: block;
+  padding-top: 4px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 420px) {
+  .lote-item-campos { grid-template-columns: 1fr; }
+}
 
 .anexos-vazio {
   margin: 0;
@@ -18365,8 +18461,16 @@ button.rec-plot-acao {
   align-items: flex-end;
 }
 .anexar-encolhido .anexar-botao {
-  width: 56px;
-  min-width: 56px;
+  /* 64px, não os 56px originais: o Fernando testou em produção e achou "uma
+     bolinha pequena" — discreta demais para o botão mais usado da tela. A
+     geometria documentada acima tem folga de sobra para isso: o disco só
+     precisa ficar longe do CENTRO do botão de enviar (x 196 em 393px), e esse
+     centro está 127px à esquerda da borda do disco original (x 323). Subir 8px
+     de largura move essa borda para x 315 — ainda 119px de margem, a mesma
+     ordem de grandeza. */
+  width: 64px;
+  min-width: 64px;
+  min-height: 64px;
   padding: 0;
   justify-content: center;
   gap: 0;

@@ -777,6 +777,96 @@ export async function buscarPadraoCategoriaFornecedor(fornecedorLido: string): P
   }));
 }
 
+export type SugestaoCategoriaPorTexto = {
+  categoriaCode: string;
+  categoriaNome: string;
+  vezes: number;
+  parecidoCom: string;
+};
+
+/**
+ * A CATEGORIA A PARTIR DO QUE A PESSOA ESTÁ DIGITANDO — sem esperar foto.
+ *
+ * Pedido do Fernando: "sugestão da categoria automaticamente com nome do
+ * produto, ou de acordo com o que é escrito". Diferente do aprendizado por
+ * fornecedor (`buscarPadraoCategoriaFornecedor`, que só existe quando a foto
+ * revela o estabelecimento), este busca no TÍTULO e na DESCRIÇÃO — os dois
+ * campos que existem mesmo sem foto nenhuma, no lançamento mais manual.
+ *
+ * `word_similarity`, não `similarity`: o texto histórico é uma frase inteira
+ * ("Almoço reunião cliente — 4 un. × R$ 32,00"), e o que a pessoa digita
+ * agora é curto ("almoço"). `similarity` compara as duas strings inteiras e
+ * penaliza o tamanho diferente; `word_similarity` procura o melhor trecho
+ * dentro da frase longa que casa com o texto curto — é a função do pg_trgm
+ * feita para "essa palavra aparece parecida aí dentro", não "essas duas
+ * strings são parecidas de ponta a ponta".
+ *
+ * Menos de 4 letras não tem trigrama que preste — devolve vazio sem consultar.
+ */
+export async function sugerirCategoriaPorTexto(texto: string): Promise<SugestaoCategoriaPorTexto | null> {
+  const termo = texto.trim();
+  if (termo.length < 4) return null;
+
+  const linhas = await query<{
+    categoria_code: string;
+    categoria_nome: string;
+    category_id: number;
+    trecho: string;
+    sim: number;
+  }>(
+    `SELECT c.code AS categoria_code, c.name AS categoria_nome, e.categoria_sugerida_id AS category_id,
+            coalesce(e.titulo, e.descricao) AS trecho,
+            word_similarity($2, coalesce(e.titulo, '') || ' ' || coalesce(e.descricao, '')) AS sim
+       FROM fin_time_envio e
+       JOIN fin_entity en ON en.id = e.entity_id AND en.slug = $1
+       JOIN fin_category c ON c.id = e.categoria_sugerida_id AND c.is_active
+      WHERE e.categoria_sugerida_id IS NOT NULL
+        AND word_similarity($2, coalesce(e.titulo, '') || ' ' || coalesce(e.descricao, '')) > 0.3
+      ORDER BY sim DESC
+      LIMIT 15`,
+    [ENTITY, termo]
+  );
+  if (linhas.length === 0) return null;
+
+  // Agrupado por categoria: o placar que decide não é "qual frase é mais
+  // parecida", é "para qual categoria as frases parecidas apontam com mais
+  // força" — a soma de semelhança favorece tanto repetição quanto match forte
+  // isolado, sem precisar de duas regras separadas para os dois casos.
+  const porCategoria = new Map<number, { code: string; nome: string; vezes: number; somaSim: number; melhorTrecho: string; melhorSim: number }>();
+  for (const l of linhas) {
+    const catId = Number(l.category_id);
+    const sim = Number(l.sim);
+    const atual = porCategoria.get(catId) ?? {
+      code: l.categoria_code,
+      nome: l.categoria_nome,
+      vezes: 0,
+      somaSim: 0,
+      melhorTrecho: l.trecho,
+      melhorSim: 0
+    };
+    atual.vezes += 1;
+    atual.somaSim += sim;
+    if (sim > atual.melhorSim) {
+      atual.melhorSim = sim;
+      atual.melhorTrecho = l.trecho;
+    }
+    porCategoria.set(catId, atual);
+  }
+  const [, melhor] = [...porCategoria.entries()].sort((a, b) => b[1].somaSim - a[1].somaSim)[0];
+
+  // Um match isolado só conta quando é MUITO parecido (frase quase igual);
+  // achado fraco precisa de repetição para não virar chute com aparência de
+  // histórico — a mesma disciplina do aprendizado por fornecedor.
+  if (melhor.vezes < 2 && melhor.melhorSim < 0.5) return null;
+
+  return {
+    categoriaCode: melhor.code,
+    categoriaNome: melhor.nome,
+    vezes: melhor.vezes,
+    parecidoCom: melhor.melhorTrecho
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Validação de entrada — o vocabulário compartilhado
 // ---------------------------------------------------------------------------
@@ -3878,7 +3968,14 @@ export async function opcoesDoTime() {
           {
             id: number;
             nome: string;
-            plasticos: { id: number; nome: string; final: string | null; bandeira: string | null; cor: string | null }[];
+            plasticos: {
+              id: number;
+              nome: string;
+              apelido: string | null;
+              final: string | null;
+              bandeira: string | null;
+              cor: string | null;
+            }[];
           }
         >
       >(
@@ -3891,6 +3988,11 @@ export async function opcoesDoTime() {
               // Sem apelido cadastrado, o final é o que existe. Melhor
               // "final 7626" que um nome inventado que ninguém reconhece.
               nome: l.label ?? `final ${l.last4 ?? "????"}`,
+              // Separado de `nome`: a tela precisa saber se É um apelido de
+              // verdade ou o fallback "final ####" — string-matching os dois
+              // era frágil, e era por isso que um cartão COM apelido escondia
+              // o número na tela (o apelido virava o texto inteiro do chip).
+              apelido: l.label,
               final: l.last4,
               bandeira: l.brand,
               // A cor é como se reconhece um cartão antes de ler o número —

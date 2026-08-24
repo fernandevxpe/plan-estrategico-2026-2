@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import jsQR from "jsqr";
 
 import { AnexarFlutuante, type OrigemAnexo } from "@/components/time/AnexarFlutuante";
 import { InstalarApp } from "@/components/time/InstalarApp";
@@ -60,7 +61,14 @@ type Opcoes = {
   bancos: {
     id: number;
     nome: string;
-    plasticos: { id: number; nome: string; final: string | null; bandeira: string | null; cor: string | null }[];
+    plasticos: {
+      id: number;
+      nome: string;
+      apelido: string | null;
+      final: string | null;
+      bandeira: string | null;
+      cor: string | null;
+    }[];
   }[];
 };
 type StatusExtrato = "registrado" | "aguardando" | "pago" | "nao_pago";
@@ -146,6 +154,20 @@ function mascaraDinheiro(bruto: string): string {
 }
 
 const centavosDoTexto = (v: string) => Number(v.replace(/\D/g, "") || 0);
+
+/**
+ * O texto de um chip de cartão — compacto, e SEMPRE com o número.
+ *
+ * Antes: sem apelido virava "final 1234 · Nubank" (a palavra "final" repetida
+ * em cada chip da lista); com apelido virava só "Cartão Inter XPE" — o número
+ * sumia da tela por completo, e era o número que confirmava ser o cartão
+ * certo antes de tocar.
+ */
+function rotuloDeCartao(c: { apelido?: string | null; final: string | null }, contexto?: string): string {
+  const digitos = c.final ? `•••• ${c.final}` : "sem final";
+  if (c.apelido) return `${c.apelido} · ${digitos}`;
+  return contexto ? `${digitos} · ${contexto}` : digitos;
+}
 
 /** O vocabulário de estado do time — três palavras, não sete status de banco. */
 const ESTADO_ROTULO: Record<Envio["estado"], { texto: string; camada: Parameters<typeof SeloCamada>[0]["camada"] }> = {
@@ -1639,12 +1661,17 @@ function CadastrarCartao({
   bancos: Opcoes["bancos"];
   pessoas: Pessoa[];
   /** O que a foto já revelou: banco escolhido, final lido, bandeira lida. */
-  inicial?: { banco?: string; final?: string; bandeira?: string };
-  /** Devolve também DE QUEM é: é isso que decide custo × reembolso. */
-  aoCadastrar: (opcoes: Opcoes, cartaoId: number, dono: { natureza: "empresa" | "pessoal"; titular: string }) => void;
+  inicial?: { banco?: string; final?: string; bandeira?: string; natureza?: "empresa" | "pessoal" };
+  /** Devolve também DE QUEM é e O QUE foi salvo: é isso que decide custo × reembolso e permite ao chamador
+      selecionar o cartão recém-criado sem uma segunda viagem ao servidor. */
+  aoCadastrar: (
+    opcoes: Opcoes,
+    cartaoId: number,
+    dono: { natureza: "empresa" | "pessoal"; titular: string; final: string; apelido: string | null }
+  ) => void;
   aoFechar: () => void;
 }) {
-  const [natureza, setNatureza] = useState<"empresa" | "pessoal">("empresa");
+  const [natureza, setNatureza] = useState<"empresa" | "pessoal">(inicial?.natureza ?? "empresa");
   /** Vazio é "meu". Preenchido é o colega cujo plástico apareceu na foto. */
   const [titular, setTitular] = useState("");
   /*
@@ -1740,7 +1767,9 @@ function CadastrarCartao({
     if (!r.ok) return setErro(j.error ?? "não consegui cadastrar");
     aoCadastrar(j.opcoes as Opcoes, j.cartao.id as number, {
       natureza,
-      titular: titular ? (pessoas.find((p) => String(p.id) === titular)?.nome ?? "outra pessoa") : "você"
+      titular: titular ? (pessoas.find((p) => String(p.id) === titular)?.nome ?? "outra pessoa") : "você",
+      final,
+      apelido: apelido || null
     });
   }
 
@@ -2937,6 +2966,244 @@ const QUALIDADE = 0.8;
 /** O que o modelo aceita direto. HEIC e HEIF do iPhone não estão aqui. */
 const MIMES_QUE_O_MODELO_LE = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
+/**
+ * O QR decodificado no CELULAR, na foto ORIGINAL — antes de `encolherImagem`.
+ *
+ * O servidor também decodifica (`lib/financeiro/ler-qrcode.ts`), mas só vê o
+ * arquivo DEPOIS de reduzido para no máximo 1600px e requantizado em JPEG
+ * 0,8 — bom o bastante para o Haiku ler texto, ruim o bastante para apagar um
+ * QR pequeno dentro de uma nota fotografada de longe: em 1600px de lado, um
+ * código que ocupa um quarto do quadro cai para módulos de poucos pixels, e
+ * é exatamente essa perda que o padrão de localização do QR não sobrevive.
+ * Testes sintéticos (QR ocupando o quadro inteiro) nunca pegavam essa perda
+ * porque nunca passavam pelo encolhimento na proporção de uma foto real.
+ *
+ * Rodar aqui, no arquivo como a câmera entregou, resolve na raiz em vez de
+ * afinar o encolhimento — mesma lib (`jsqr`) que já roda no servidor, só que
+ * antes da perda, e como já é dependência do app não custa nada a mais além
+ * do bundle.
+ */
+async function decodificarQrNoCliente(arquivo: File): Promise<string | null> {
+  if (!arquivo.type.startsWith("image/")) return null;
+  try {
+    const bitmap = await createImageBitmap(arquivo);
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      bitmap.close();
+      return null;
+    }
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const resultado = jsQR(data, width, height, { inversionAttempts: "attemptBoth" });
+    if (!resultado?.data) return null;
+    const chave = resultado.data.match(/\d{44}/);
+    return chave ? chave[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A FOTO ANEXADA, visível — não só o nome do arquivo.
+ *
+ * Antes disto, "IMG_20260812_140322.jpg · 1834 KB" era tudo que a tela dizia
+ * sobre o anexo: nenhum jeito de conferir SE era a foto certa antes de
+ * enviar. Miniatura de 44px identifica de relance; tocar amplia em tela
+ * cheia sem trocar de aba — um link `target="_blank"` para uma `blob:` URL
+ * falha em navegador de celular com frequência, porque a URL só existe no
+ * documento que a criou.
+ */
+function MiniaturaAnexo({ arquivo }: { arquivo: File }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [ampliada, setAmpliada] = useState(false);
+  useEffect(() => {
+    if (!arquivo.type.startsWith("image/")) {
+      setUrl(null);
+      return;
+    }
+    const objeto = URL.createObjectURL(arquivo);
+    setUrl(objeto);
+    return () => URL.revokeObjectURL(objeto);
+  }, [arquivo]);
+  if (!url) return null;
+  return (
+    <>
+      <button
+        type="button"
+        className="anexo-miniatura"
+        onClick={() => setAmpliada(true)}
+        aria-label="ver a foto anexada em tamanho maior"
+      >
+        <img src={url} alt="" />
+      </button>
+      {ampliada ? (
+        <div
+          className="anexo-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label="foto anexada em tamanho maior"
+          onClick={() => setAmpliada(false)}
+        >
+          <img src={url} alt="" />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+type LoteItem = {
+  id: string;
+  arquivo: File;
+  status: "lendo" | "pronto" | "erro" | "enviando" | "enviado";
+  valor: string;
+  data: string;
+  descricao: string;
+  fornecedor: string;
+  nfeKey: string;
+  erro?: string;
+};
+
+const ROTULO_STATUS_LOTE: Record<LoteItem["status"], string> = {
+  lendo: "lendo…",
+  pronto: "pronto",
+  erro: "erro",
+  enviando: "enviando…",
+  enviado: "enviado"
+};
+
+/**
+ * A LISTA DE COMPROVANTES DO LOTE — cada foto vira um cartão editável.
+ *
+ * Tipo/categoria, pagamento e cartão ficam FORA daqui (são os campos que já
+ * existem no formulário, compartilhados pelo lote inteiro); este componente
+ * só cuida do que muda de item para item: a foto, o valor que ela revelou, a
+ * data, e o que é — todos editáveis, porque a leitura pode errar e corrigir
+ * dez campos de uma vez não pode exigir apagar e começar de novo.
+ */
+function LoteReembolsoCampo({
+  itens,
+  aoAdicionar,
+  aoAlterarItem,
+  aoRemoverItem
+}: {
+  itens: LoteItem[];
+  aoAdicionar: (arquivos: File[]) => void;
+  aoAlterarItem: (id: string, patch: Partial<LoteItem>) => void;
+  aoRemoverItem: (id: string) => void;
+}) {
+  const galeriaRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const totalCents = itens.reduce((soma, it) => soma + centavosDoTexto(it.valor), 0);
+
+  return (
+    <div className="campo lote-reembolso">
+      <span className="campo-rotulo">Comprovantes do lote</span>
+
+      <div className="lote-adicionar">
+        <button type="button" className="chip" onClick={() => cameraRef.current?.click()}>
+          tirar foto
+        </button>
+        <button type="button" className="chip" onClick={() => galeriaRef.current?.click()}>
+          escolher da galeria
+        </button>
+      </div>
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="anexar-input"
+        tabIndex={-1}
+        aria-hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) aoAdicionar([f]);
+        }}
+      />
+      <input
+        ref={galeriaRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="anexar-input"
+        tabIndex={-1}
+        aria-hidden
+        onChange={(e) => {
+          const arquivos = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          if (arquivos.length) aoAdicionar(arquivos);
+        }}
+      />
+
+      {itens.length === 0 ? (
+        <p className="campo-hint">
+          Toque em <strong>tirar foto</strong> para uma de cada vez, ou <strong>escolher da galeria</strong> para
+          anexar várias já tiradas — cada uma vira um reembolso, com o tipo e o pagamento escolhidos abaixo.
+        </p>
+      ) : (
+        <>
+          <div className="lote-lista">
+            {itens.map((item) => (
+              <div key={item.id} className={`lote-item lote-item-${item.status}`}>
+                <MiniaturaAnexo arquivo={item.arquivo} />
+                <div className="lote-item-campos">
+                  <input
+                    value={item.descricao}
+                    onChange={(e) => aoAlterarItem(item.id, { descricao: e.target.value })}
+                    placeholder="o que é"
+                    aria-label="o que é este comprovante"
+                  />
+                  <div className="valor-caixa">
+                    <em>R$</em>
+                    <input
+                      value={item.valor}
+                      onChange={(e) => aoAlterarItem(item.id, { valor: mascaraDinheiro(e.target.value) })}
+                      inputMode="numeric"
+                      placeholder="0,00"
+                      aria-label="valor deste comprovante"
+                    />
+                  </div>
+                  <input
+                    type="date"
+                    value={item.data}
+                    onChange={(e) => aoAlterarItem(item.id, { data: e.target.value })}
+                    aria-label="data deste comprovante"
+                  />
+                </div>
+                <div className="lote-item-status">
+                  {item.status === "lendo" || item.status === "enviando" ? (
+                    <span className="anexar-girando" aria-hidden />
+                  ) : null}
+                  <small className={item.status === "erro" ? "reemb-leitura erro" : item.status === "enviado" ? "reemb-leitura ok" : "time-sub"}>
+                    {item.erro ?? ROTULO_STATUS_LOTE[item.status]}
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  className="lote-item-remover"
+                  onClick={() => aoRemoverItem(item.id)}
+                  disabled={item.status === "enviando" || item.status === "enviado"}
+                  aria-label="remover este comprovante do lote"
+                >
+                  remover
+                </button>
+              </div>
+            ))}
+          </div>
+          <strong className="lote-total">
+            {itens.length} comprovante{itens.length === 1 ? "" : "s"} — total {brl(totalCents)}
+          </strong>
+        </>
+      )}
+    </div>
+  );
+}
+
 async function encolherImagem(arquivo: File): Promise<File> {
   if (!arquivo.type.startsWith("image/")) return arquivo;
 
@@ -3074,6 +3341,15 @@ function FormEnvio({
     { id: number; final: string; apelido: string | null; bandeira: string | null; cor: string | null }[] | null
   >(null);
   const [digitandoOutroCartao, setDigitandoOutroCartao] = useState(false);
+  // Qual natureza o cadastro embutido (`CadastrarCartao`) já abre marcada:
+  // "adicionar novo" no cartão pessoal do reembolso não deve obrigar a
+  // pessoa a trocar "Da empresa" por "Meu, pessoal" de novo — ela já disse
+  // isso ao chegar nesta tela.
+  const [naturezaCadastro, setNaturezaCadastro] = useState<"empresa" | "pessoal">("empresa");
+  // Busca por banco na lista achatada de plásticos da empresa — ela cresceu
+  // (nove Nubank, vários Inter, etc.) e rolar tocando um por um deixou de
+  // funcionar como escolha rápida.
+  const [filtroCartaoEmpresa, setFiltroCartaoEmpresa] = useState("");
   // Só a tela de NOTA ainda precisa de quem emitiu: numa nota fiscal o emitente
   // é o fato central. Num custo, ele já vem da foto quando existe, e pedir de
   // novo é um campo a mais entre a pessoa e o botão de enviar.
@@ -3138,6 +3414,73 @@ function FormEnvio({
   const [enviando, setEnviando] = useState(false);
   const [lendo, setLendo] = useState(false);
   const [leitura, setLeitura] = useState<{ tom: "ok" | "aviso" | "erro"; texto: string } | null>(null);
+
+  /**
+   * VÁRIOS COMPROVANTES DO MESMO TIPO — pedido do Fernando: "geralmente é um
+   * tipo de produto só de reembolso, por exemplo 10 reembolsos de Uber", e
+   * digitar o formulário inteiro dez vezes para o MESMO tipo/pagamento é
+   * repetir o que já foi dito. Só existe na tela dedicada de reembolso
+   * (`somenteReembolso`): tipo/categoria, pagamento e cartão continuam sendo
+   * escolhidos UMA vez nos campos que já existem — o que muda por item é só
+   * o que a foto de cada um revela (valor, data, o que é).
+   */
+  const [loteAtivo, setLoteAtivo] = useState(false);
+  const [loteItens, setLoteItens] = useState<LoteItem[]>([]);
+
+  /** Lê UM item do lote — mesma rota que o formulário de item único usa. */
+  const lerItemDoLote = useCallback(async (id: string, arquivoDoItem: File) => {
+    try {
+      const chaveDoQrOriginal = decodificarQrNoCliente(arquivoDoItem);
+      const form = new FormData();
+      form.append("arquivo", await encolherImagem(arquivoDoItem));
+      const r = await fetch("/api/time/ler-comprovante", { method: "POST", body: form });
+      const j = await r.json().catch(() => ({}));
+      const chaveDoQr = await chaveDoQrOriginal;
+      if (!r.ok) {
+        setLoteItens((atual) => atual.map((it) => (it.id === id ? { ...it, status: "erro", erro: j.error ?? "não consegui ler" } : it)));
+        return;
+      }
+      const l = j.lido as {
+        valorTotal: number | null; data: string | null; estabelecimento: string | null;
+        emitente?: string | null; resumo: string; chaveNfe: string | null;
+      };
+      setLoteItens((atual) =>
+        atual.map((it) =>
+          it.id === id
+            ? {
+                ...it,
+                status: "pronto",
+                valor: l.valorTotal != null ? l.valorTotal.toFixed(2).replace(".", ",") : it.valor,
+                data: l.data ?? it.data,
+                descricao: l.resumo || it.descricao,
+                fornecedor: l.estabelecimento ?? l.emitente ?? it.fornecedor,
+                nfeKey: chaveDoQr ?? l.chaveNfe ?? it.nfeKey
+              }
+            : it
+        )
+      );
+    } catch {
+      setLoteItens((atual) => atual.map((it) => (it.id === id ? { ...it, status: "erro", erro: "não consegui ler" } : it)));
+    }
+  }, []);
+
+  const adicionarAoLote = useCallback(
+    (arquivos: File[]) => {
+      const novos: LoteItem[] = arquivos.map((a) => ({
+        id: crypto.randomUUID(),
+        arquivo: a,
+        status: "lendo",
+        valor: "",
+        data: HOJE(),
+        descricao: "",
+        fornecedor: "",
+        nfeKey: ""
+      }));
+      setLoteItens((atual) => [...atual, ...novos]);
+      for (const item of novos) void lerItemDoLote(item.id, item.arquivo);
+    },
+    [lerItemDoLote]
+  );
 
   /*
    * A CONFIRMAÇÃO FICA ONDE O DEDO ESTÁ.
@@ -3204,6 +3547,55 @@ function FormEnvio({
   const tentativaRef = useRef<string | null>(null);
 
   /**
+   * A CATEGORIA A PARTIR DO QUE SE DIGITA — sem esperar foto nenhuma.
+   *
+   * Pedido do Fernando: sugestão "de acordo com o que é escrito", não só a
+   * partir do fornecedor que a foto revelou. Busca no título e na descrição
+   * assim que a pessoa para de digitar por 600ms — cedo o bastante para
+   * ajudar, tarde o bastante para não disparar uma consulta por tecla.
+   *
+   * `lendo` na guarda: enquanto uma foto está sendo lida, o autofill dela
+   * pode preencher título/descrição e disparar este efeito por tabela — e aí
+   * ele competiria com o palpite da própria foto, que é mais específico
+   * (sabe o fornecedor, não só o texto). Silencioso até a leitura acabar.
+   *
+   * `!categoria && !sugestao` na guarda: nunca troca uma sugestão que já
+   * apareceu (da foto, do CNPJ) por uma mais fraca vinda do texto — só
+   * preenche o silêncio, nunca disputa o que já tem resposta.
+   */
+  useEffect(() => {
+    if (lendo || categoria || sugestao) return;
+    const termo = `${titulo} ${descricao}`.trim();
+    if (termo.length < 4) return;
+    let vivo = true;
+    const espera = setTimeout(() => {
+      void fetch(`/api/time/sugerir-categoria-por-texto?texto=${encodeURIComponent(termo)}`)
+        .then((r) => r.json())
+        .then((j) => {
+          if (!vivo) return;
+          const s = j.sugestao as
+            | { categoriaCode: string; categoriaNome: string; vezes: number; parecidoCom: string }
+            | null;
+          if (!s) return;
+          const alvo = opcoes.categorias.find((c) => c.rotulo.startsWith(`${s.categoriaCode} `));
+          if (!alvo) return;
+          setSugestao({
+            categoriaId: alvo.id,
+            rotulo: alvo.rotulo,
+            contraparte: `"${s.parecidoCom}"`,
+            vezes: s.vezes,
+            forte: s.vezes >= 2
+          });
+        })
+        .catch(() => {});
+    }, 600);
+    return () => {
+      vivo = false;
+      clearTimeout(espera);
+    };
+  }, [titulo, descricao, lendo, categoria, sugestao, opcoes.categorias]);
+
+  /**
    * Lê o comprovante e PREENCHE — nunca envia.
    *
    * Roda sozinha quando a pessoa escolhe o arquivo: pedir para ela tocar num
@@ -3221,6 +3613,11 @@ function FormEnvio({
       setLeitura(null);
       setChaveConferidaPorQr(false);
       try {
+        // Disparado ANTES do encolhimento, em paralelo com o upload — ver o
+        // comentário de `decodificarQrNoCliente` sobre por que é a foto
+        // original, e não a reduzida, que precisa passar pelo QR.
+        const chaveDoQrOriginal = decodificarQrNoCliente(f);
+
         const form = new FormData();
         form.append("arquivo", await encolherImagem(f));
         const r = await fetch("/api/time/ler-comprovante", { method: "POST", body: form });
@@ -3260,6 +3657,15 @@ function FormEnvio({
         // chave nenhuma no `por` teria feito nada, então aqui só é preciso
         // marcar o selo quando a rota confirma a origem.
         if ((j.qr as { chaveConferida?: boolean } | null)?.chaveConferida) setChaveConferidaPorQr(true);
+        // O QR do CLIENTE tem prioridade — decodificado na foto original, sem
+        // a perda do encolhimento que às vezes derrota o do servidor. Mesma
+        // regra de "campo já digitado não é sobrescrito" do `por` acima.
+        const chaveDoQrOriginalPronta = await chaveDoQrOriginal;
+        if (chaveDoQrOriginalPronta && !nfeKey.trim()) {
+          setNfeKey(chaveDoQrOriginalPronta);
+          setChaveConferidaPorQr(true);
+          if (!preenchidos.includes("chave da NF-e")) preenchidos.push("chave da NF-e");
+        }
 
         // O CARTÃO SAI DA FOTO. "Mastercard **** 5585" é o dado mais chato de
         // digitar e o mais fácil de ler — e é ele que casa com a fatura depois.
@@ -3352,6 +3758,28 @@ function FormEnvio({
           });
         }
 
+        // A CATEGORIA QUE A EQUIPE JÁ USOU para fornecedor parecido — fato
+        // contado (`fin_padrao_categoria_fornecedor`), não impressão da foto.
+        // Por isso vira `sugestao` (o card que diz "você já classificou X
+        // assim N vezes"), o mesmo do CNPJ logo abaixo — nunca `palpite`, que
+        // é rotulado na tela como "chute, não histórico".
+        const aprendizado = j.aprendizado as
+          | { vezes: number; fornecedorParecido: string; categoriaCode: string; categoriaNome: string }
+          | null;
+        if (aprendizado && !categoria) {
+          const alvoAprendizado = opcoes.categorias.find((c) => c.rotulo.startsWith(`${aprendizado.categoriaCode} `));
+          if (alvoAprendizado) {
+            setSugestao({
+              categoriaId: alvoAprendizado.id,
+              rotulo: alvoAprendizado.rotulo,
+              contraparte: l.estabelecimento ?? aprendizado.fornecedorParecido,
+              vezes: aprendizado.vezes,
+              forte: aprendizado.vezes >= 2
+            });
+            setPalpite((p) => (p && p.centroId ? { ...p, categoriaId: null, categoriaRotulo: null } : null));
+          }
+        }
+
         // O CNPJ da foto vira sugestão de categoria — ele era extraído e
         // descartado. Medido: quando a contraparte já apareceu antes, o
         // histórico acerta 76,4% contra 26,7% do chute cego.
@@ -3396,8 +3824,95 @@ function FormEnvio({
     [titulo, valor, data, fornecedor, nfeKey, final, parcelas, descricao, categoria, centro, opcoes, somenteReembolso]
   );
 
+  /**
+   * ENVIA O LOTE — um `/api/time/reembolso` por item, em sequência.
+   *
+   * Sequencial, não em paralelo: dez requisições ao mesmo tempo competem pela
+   * mesma API de leitura (já consumida na hora de anexar) e, mais importante,
+   * um erro no meio fica claro item a item em vez de virar uma promessa
+   * rejeitada anônima dentro de um `Promise.all`. Tipo/categoria, pagamento e
+   * cartão são os MESMOS campos do formulário de item único — só valor, data,
+   * descrição, fornecedor e a chave da NF-e vêm de cada foto.
+   */
+  async function enviarLote() {
+    if (!tipoReembolso && !categoria) return setLeitura({ tom: "erro", texto: "escolha o tipo ou a categoria do gasto" });
+    if (!pagamento) return setLeitura({ tom: "erro", texto: "escolha como foi pago" });
+    if (loteItens.some((it) => it.status === "lendo")) {
+      return setLeitura({ tom: "aviso", texto: "ainda lendo alguma foto — espere terminar antes de enviar" });
+    }
+    if (loteItens.length === 0) return;
+
+    setEnviando(true);
+    setLeitura(null);
+    let sucesso = 0;
+    let totalCents = 0;
+    for (const item of loteItens) {
+      if (item.status === "enviado") {
+        sucesso += 1;
+        totalCents += centavosDoTexto(item.valor);
+        continue;
+      }
+      if (!item.valor.trim()) {
+        setLoteItens((atual) => atual.map((it) => (it.id === item.id ? { ...it, status: "erro", erro: "falta o valor" } : it)));
+        continue;
+      }
+      setLoteItens((atual) => atual.map((it) => (it.id === item.id ? { ...it, status: "enviando" } : it)));
+      try {
+        await postar(
+          "/api/time/reembolso",
+          {
+            tipo: tipoReembolso || undefined,
+            categoriaId: !tipoReembolso && categoria ? categoria : undefined,
+            descricao: item.descricao || item.fornecedor || "reembolso",
+            expenseDate: item.data,
+            valor: item.valor,
+            nfeKey: item.nfeKey,
+            pagamento,
+            fornecedor: item.fornecedor,
+            centroCusto: centro,
+            linhaServico: centro ? "" : linha,
+            finalCartao: final,
+            idempotencyKey: item.id
+          },
+          item.arquivo,
+          null
+        );
+        sucesso += 1;
+        totalCents += centavosDoTexto(item.valor);
+        setLoteItens((atual) => atual.map((it) => (it.id === item.id ? { ...it, status: "enviado" } : it)));
+      } catch (erro) {
+        setLoteItens((atual) =>
+          atual.map((it) =>
+            it.id === item.id ? { ...it, status: "erro", erro: erro instanceof Error ? erro.message : "falhou" } : it
+          )
+        );
+      }
+    }
+    setEnviando(false);
+
+    if (sucesso === loteItens.length) {
+      const texto = `${sucesso} reembolso${sucesso === 1 ? "" : "s"} enviado${sucesso === 1 ? "" : "s"} — total ${brl(totalCents)}.`;
+      await aoEnviar(texto);
+      setFeito({ texto: `${texto} A empresa te devolve este valor.`, href: "/time/envios" });
+      setLoteItens([]);
+      setLoteAtivo(false);
+      setTipoReembolso("");
+      setCategoria("");
+    } else {
+      setLeitura({
+        tom: "aviso",
+        texto: `${sucesso} de ${loteItens.length} enviados. Confira os que ficaram com erro antes de tentar de novo.`
+      });
+    }
+  }
+
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
+    // Enter num campo de texto ainda dispara o submit nativo do `<form>`
+    // mesmo com o botão principal virando `type="button"` no lote — a mesma
+    // tecla precisa cair no caminho certo, não no formulário de item único
+    // com `titulo`/`valor` vazios.
+    if (loteAtivo) return void enviarLote();
     setEnviando(true);
 
     const kindEnvio = ((): "custo" | "nota_entrada" => {
@@ -3594,97 +4109,147 @@ function FormEnvio({
         </p>
       )}
 
-      <label className="campo">
-        <span className={rotulo}>
-          {unificado ? <IconeRotuloBusca tipo="compra" /> : null}
-          {nota ? "Do que é a nota" : unificado ? "O que comprou" : "O que foi comprado"}
-        </span>
-        <input
-          value={titulo}
-          onChange={(e) => setTitulo(e.target.value)}
-          placeholder={unificado ? "ex.: toner, almoço com cliente, passagem" : undefined}
-          required
-        />
-      </label>
-
-      <label className={`campo valor-campo${unificado ? " valor-campo-centro" : ""}`}>
-        <span className={rotulo}>Valor{unificado ? "" : " total"}</span>
-        <div className="valor-caixa">
-          <em>R$</em>
-          <input
-            value={valor}
-            onChange={(e) => setValor(mascaraDinheiro(e.target.value))}
-            inputMode="numeric"
-            placeholder="0,00"
-            required
-          />
-        </div>
-      </label>
-
-      {(unificado && (arquivo || arquivoNota)) || (unificado && leitura) ? (
-        <div className="anexos-resumo">
-          <div className="anexos-lista" role="group" aria-label="Anexos do envio">
-            {arquivo ? (
-              <div className="anexo-ficha">
-                <strong>{arquivo.name}</strong>
-                <small>foto ou print · {(arquivo.size / 1024).toFixed(0)} KB</small>
-                <button type="button" onClick={() => { setArquivo(null); setLeitura(null); }} aria-label="tirar a foto do envio">
-                  tirar
-                </button>
-              </div>
-            ) : null}
-            {arquivoNota ? (
-              <div className="anexo-ficha fiscal">
-                <strong>{arquivoNota.name}</strong>
-                <small>nota fiscal · {(arquivoNota.size / 1024).toFixed(0)} KB</small>
-                <button type="button" onClick={() => setArquivoNota(null)} aria-label="tirar a nota do envio">
-                  tirar
-                </button>
-              </div>
-            ) : null}
-          </div>
-          {leitura ? <p className={`reemb-leitura ${leitura.tom}`}>{leitura.texto}</p> : null}
-        </div>
-      ) : null}
-
-      {anexoCompartilhado && !arquivo ? (
-        <div className="compartilhado">
-          <strong>Comprovante recebido</strong>
-          <span className="time-sub">
-            {nomeCompartilhado || "arquivo"} chegou pelo compartilhamento e vai junto com este lançamento.
-          </span>
-        </div>
-      ) : null}
-
-      {/* Parcelamento: chips, não um campo numérico. */}
-      {!nota ? (
+      {somenteReembolso ? (
         <div className="campo">
-          <span className={rotulo ?? "campo-rotulo"} id="grupo-parcelado">{unificado ? "Parcelas" : "Parcelado?"}</span>
-          <div className="chips" role="group" aria-labelledby="grupo-parcelado">
-            {["", "2", "3", "4", "6", "10", "12", "18", "21", "24"].map((n) => (
-              <button
-                key={n || "avista"}
-                type="button"
-                aria-pressed={parcelas === n} className={parcelas === n ? "chip ativo" : "chip"}
-                onClick={() => setParcelas(n)}
-              >
-                {n === "" ? "à vista" : `${n}×`}
-              </button>
-            ))}
-          </div>
-          {parcelas && centavosDoTexto(valor) > 0 ? (
-            <small className="parcela-conta">
-              {parcelas}× de <strong>{brl(Math.round(centavosDoTexto(valor) / Number(parcelas)))}</strong> — o total
-              lançado é {brl(centavosDoTexto(valor))}
+          <button
+            type="button"
+            className={loteAtivo ? "chip ativo" : "chip"}
+            onClick={() => {
+              const ligando = !loteAtivo;
+              setLoteAtivo(ligando);
+              if (ligando) {
+                // Limpa o que é de item ÚNICO: no lote, cada foto tem seu
+                // próprio valor/data/descrição — misturar os dois estados
+                // deixaria um campo do formulário de item único sobrando,
+                // sem dono, e o palpite/sugestão da foto anterior valendo
+                // para um lote que ainda nem tinha foto nenhuma.
+                setArquivo(null);
+                setArquivoNota(null);
+                setTitulo("");
+                setValor("");
+                setDescricao("");
+                setNfeKey("");
+                setLeitura(null);
+                setPalpite(null);
+                setSugestao(null);
+                setCartaoLido(null);
+              }
+            }}
+          >
+            {loteAtivo ? "✕ vários comprovantes" : "+ vários comprovantes do mesmo tipo"}
+          </button>
+          {loteAtivo ? (
+            <small className="campo-hint">
+              Anexe todas as fotos — tipo, pagamento e cartão abaixo valem para todas; valor e data vêm de cada uma.
             </small>
           ) : null}
         </div>
       ) : null}
 
-      <label className="campo">
-        <span className={rotulo}>{nota ? "Emissão" : unificado ? "Data" : "Data da compra"}</span>
-        <input type="date" value={data} onChange={(e) => setData(e.target.value)} required />
-      </label>
+      {!loteAtivo ? (
+        <>
+          <label className="campo">
+            <span className={rotulo}>
+              {unificado ? <IconeRotuloBusca tipo="compra" /> : null}
+              {nota ? "Do que é a nota" : unificado ? "O que comprou" : "O que foi comprado"}
+            </span>
+            <input
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              placeholder={unificado ? "ex.: toner, almoço com cliente, passagem" : undefined}
+              required
+            />
+          </label>
+
+          <label className={`campo valor-campo${unificado ? " valor-campo-centro" : ""}`}>
+            <span className={rotulo}>Valor{unificado ? "" : " total"}</span>
+            <div className="valor-caixa">
+              <em>R$</em>
+              <input
+                value={valor}
+                onChange={(e) => setValor(mascaraDinheiro(e.target.value))}
+                inputMode="numeric"
+                placeholder="0,00"
+                required
+              />
+            </div>
+          </label>
+
+          {(unificado && (arquivo || arquivoNota)) || (unificado && leitura) ? (
+            <div className="anexos-resumo">
+              <div className="anexos-lista" role="group" aria-label="Anexos do envio">
+                {arquivo ? (
+                  <div className="anexo-ficha">
+                    <MiniaturaAnexo arquivo={arquivo} />
+                    <strong>{arquivo.name}</strong>
+                    <small>foto ou print · {(arquivo.size / 1024).toFixed(0)} KB</small>
+                    <button type="button" onClick={() => { setArquivo(null); setLeitura(null); }} aria-label="tirar a foto do envio">
+                      tirar
+                    </button>
+                  </div>
+                ) : null}
+                {arquivoNota ? (
+                  <div className="anexo-ficha fiscal">
+                    <MiniaturaAnexo arquivo={arquivoNota} />
+                    <strong>{arquivoNota.name}</strong>
+                    <small>nota fiscal · {(arquivoNota.size / 1024).toFixed(0)} KB</small>
+                    <button type="button" onClick={() => setArquivoNota(null)} aria-label="tirar a nota do envio">
+                      tirar
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              {leitura ? <p className={`reemb-leitura ${leitura.tom}`}>{leitura.texto}</p> : null}
+            </div>
+          ) : null}
+
+          {anexoCompartilhado && !arquivo ? (
+            <div className="compartilhado">
+              <strong>Comprovante recebido</strong>
+              <span className="time-sub">
+                {nomeCompartilhado || "arquivo"} chegou pelo compartilhamento e vai junto com este lançamento.
+              </span>
+            </div>
+          ) : null}
+
+          {/* Parcelamento: chips, não um campo numérico. */}
+          {!nota ? (
+            <div className="campo">
+              <span className={rotulo ?? "campo-rotulo"} id="grupo-parcelado">{unificado ? "Parcelas" : "Parcelado?"}</span>
+              <div className="chips" role="group" aria-labelledby="grupo-parcelado">
+                {["", "2", "3", "4", "6", "10", "12", "18", "21", "24"].map((n) => (
+                  <button
+                    key={n || "avista"}
+                    type="button"
+                    aria-pressed={parcelas === n} className={parcelas === n ? "chip ativo" : "chip"}
+                    onClick={() => setParcelas(n)}
+                  >
+                    {n === "" ? "à vista" : `${n}×`}
+                  </button>
+                ))}
+              </div>
+              {parcelas && centavosDoTexto(valor) > 0 ? (
+                <small className="parcela-conta">
+                  {parcelas}× de <strong>{brl(Math.round(centavosDoTexto(valor) / Number(parcelas)))}</strong> — o total
+                  lançado é {brl(centavosDoTexto(valor))}
+                </small>
+              ) : null}
+            </div>
+          ) : null}
+
+          <label className="campo">
+            <span className={rotulo}>{nota ? "Emissão" : unificado ? "Data" : "Data da compra"}</span>
+            <input type="date" value={data} onChange={(e) => setData(e.target.value)} required />
+          </label>
+        </>
+      ) : (
+        <LoteReembolsoCampo
+          itens={loteItens}
+          aoAdicionar={adicionarAoLote}
+          aoAlterarItem={(id, patch) => setLoteItens((atual) => atual.map((it) => (it.id === id ? { ...it, ...patch } : it)))}
+          aoRemoverItem={(id) => setLoteItens((atual) => atual.filter((it) => it.id !== id))}
+        />
+      )}
 
       {/* Forma de pagamento em chips: opções curtas, sem folha nativa de select. */}
       <div className="campo">
@@ -3739,9 +4304,19 @@ function FormEnvio({
                   className={final === c.final ? "chip ativo" : "chip"}
                   onClick={() => setFinal(c.final)}
                 >
-                  {c.apelido ?? `final ${c.final}`}
+                  {rotuloDeCartao(c)}
                 </button>
               ))}
+              <button
+                type="button"
+                className="chip"
+                onClick={() => {
+                  setNaturezaCadastro("pessoal");
+                  setCadastrando(true);
+                }}
+              >
+                + adicionar cartão
+              </button>
               <button
                 type="button"
                 className="chip"
@@ -3763,11 +4338,23 @@ function FormEnvio({
                 placeholder="4 últimos dígitos"
                 className="campo-final"
               />
-              {meusCartoes.length > 0 ? (
-                <button type="button" className="campo-link" onClick={() => setDigitandoOutroCartao(false)}>
-                  ← ver meus cartões cadastrados
+              <div className="chips">
+                {meusCartoes.length > 0 ? (
+                  <button type="button" className="campo-link" onClick={() => setDigitandoOutroCartao(false)}>
+                    ← ver meus cartões cadastrados
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="campo-link"
+                  onClick={() => {
+                    setNaturezaCadastro("pessoal");
+                    setCadastrando(true);
+                  }}
+                >
+                  + cadastrar este cartão
                 </button>
-              ) : null}
+              </div>
             </>
           )}
         </div>
@@ -3776,7 +4363,10 @@ function FormEnvio({
       {pagamento === "cartao_da_empresa" && !modoReembolso && opcoes.bancos.length > 0
         ? (() => {
             const escolhido = opcoes.bancos.find((b) => String(b.id) === banco);
-            const casa = escolhido?.plasticos.find((p) => p.nome.endsWith(final)) && final.length === 4;
+            // Comparar os DÍGITOS, não `p.nome`: `nome` vira apelido quando
+            // existe, e um apelido não termina com "1234" — o reconhecimento
+            // ficava mudo exatamente nos cartões que têm apelido cadastrado.
+            const casa = final.length === 4 && Boolean(escolhido?.plasticos.find((p) => p.final === final));
             // TODOS os plásticos, de todo banco — não só do banco já
             // selecionado. Era aqui que "cartão que eu sei que existe" dava
             // "não cadastrado": a comparação só olhava dentro do banco que
@@ -3785,14 +4375,30 @@ function FormEnvio({
             const todosOsPlasticos = opcoes.bancos.flatMap((b) =>
               b.plasticos.map((p) => ({ ...p, bancoId: b.id, bancoNome: b.nome }))
             );
+            // A busca por banco só aparece quando a lista já é grande o
+            // bastante para valer a pena — poucos cartões não pedem filtro.
+            const buscaVisivel = todosOsPlasticos.length > 6;
+            const termo = filtroCartaoEmpresa.trim().toLowerCase();
+            const plasticosFiltrados = !buscaVisivel || !termo
+              ? todosOsPlasticos
+              : todosOsPlasticos.filter((p) =>
+                  [p.bancoNome, p.apelido, p.final].some((v) => v && v.toLowerCase().includes(termo))
+                );
 
             return (
               <>
                 {todosOsPlasticos.length > 0 && !cadastrando ? (
                   <div className="campo">
                     <span className={rotulo ?? "campo-rotulo"}>Qual cartão</span>
+                    {buscaVisivel ? (
+                      <input
+                        value={filtroCartaoEmpresa}
+                        onChange={(e) => setFiltroCartaoEmpresa(e.target.value)}
+                        placeholder="buscar por banco, apelido ou final"
+                      />
+                    ) : null}
                     <div className="chips" role="group" aria-label="Cartões da empresa já cadastrados">
-                      {todosOsPlasticos.map((p) => (
+                      {plasticosFiltrados.map((p) => (
                         <button
                           key={p.id}
                           type="button"
@@ -3803,9 +4409,22 @@ function FormEnvio({
                             setFinal(p.final ?? "");
                           }}
                         >
-                          {p.nome} · {p.bancoNome}
+                          {rotuloDeCartao(p, p.bancoNome)}
                         </button>
                       ))}
+                      {plasticosFiltrados.length === 0 ? (
+                        <p className="campo-hint">nenhum cartão bate com &quot;{filtroCartaoEmpresa}&quot;</p>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="chip"
+                        onClick={() => {
+                          setNaturezaCadastro("empresa");
+                          setCadastrando(true);
+                        }}
+                      >
+                        + adicionar novo
+                      </button>
                       <button
                         type="button"
                         className={digitandoOutroCartao ? "chip ativo" : "chip"}
@@ -3815,7 +4434,7 @@ function FormEnvio({
                           setFinal("");
                         }}
                       >
-                        outro cartão
+                        buscar por banco e final
                       </button>
                     </div>
                   </div>
@@ -3860,13 +4479,19 @@ function FormEnvio({
                     ) : final.length === 4 ? (
                       <span className="final-novo">
                         <small className="reemb-leitura aviso">Este cartão ainda não está cadastrado.</small>
-                        <button type="button" onClick={() => setCadastrando(true)}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNaturezaCadastro("empresa");
+                            setCadastrando(true);
+                          }}
+                        >
                           cadastrar agora
                         </button>
                       </span>
                     ) : escolhido && escolhido.plasticos.length > 0 ? (
                       <small>
-                        Cadastrados: {escolhido.plasticos.map((p) => p.nome.replace("final ", "")).join(" · ")}
+                        Cadastrados: {escolhido.plasticos.map((p) => rotuloDeCartao(p)).join(" · ")}
                       </small>
                     ) : (
                       <small>Se não lembrar, pode deixar em branco.</small>
@@ -3987,15 +4612,34 @@ function FormEnvio({
         <CadastrarCartao
           bancos={opcoes.bancos}
           pessoas={pessoas}
-          inicial={{ banco, final, bandeira: bandeiraLida }}
+          inicial={{ banco, final, bandeira: bandeiraLida, natureza: naturezaCadastro }}
           aoCadastrar={(novasOpcoes, id, dono) => {
             aoAtualizarOpcoes(novasOpcoes);
             setCartao(String(id));
+            // `dono.final`, não o `final` da closure: no atalho "+ adicionar
+            // cartão" o campo local ainda está vazio quando o cadastro abre —
+            // quem sabe o que foi salvo de verdade é a resposta do servidor.
+            setFinal(dono.final);
             setCadastrando(false);
-            setCartaoLido({ final, conhecido: true, natureza: dono.natureza, apelido: null, banco: null });
+            setDigitandoOutroCartao(false);
+            setCartaoLido({ final: dono.final, conhecido: true, natureza: dono.natureza, apelido: dono.apelido, banco: null });
+            // Cartão pessoal registrado para a própria pessoa: a lista de
+            // "meus cartões" ganha o novo plástico na hora, sem esperar um
+            // refetch que o efeito de carregamento não repetiria sozinho.
+            if (dono.natureza === "pessoal" && dono.titular === "você") {
+              setMeusCartoes((atual) => [
+                ...(atual ?? []),
+                { id, final: dono.final, apelido: dono.apelido, bandeira: null, cor: null }
+              ]);
+            }
             // AQUI FECHA O CICLO que o Fernando descreveu: dito de quem é o
             // cartão, sobra uma pergunta só — compra da empresa ou reembolso.
-            if (dono.natureza === "pessoal") setDecisaoPendente({ titular: dono.titular });
+            // Mas só quando essa pergunta ainda não tem resposta: dentro do
+            // próprio fluxo de reembolso com cartão pessoal ela já tem — foi
+            // dali que a pessoa abriu o cadastro.
+            if (dono.natureza === "pessoal" && !(modoReembolso && pagamento === "cartao_pessoal")) {
+              setDecisaoPendente({ titular: dono.titular });
+            }
           }}
           aoFechar={() => setCadastrando(false)}
         />
@@ -4031,7 +4675,13 @@ function FormEnvio({
               Li os quatro dígitos da foto, mas ele não está cadastrado. Diga de quem é — é isso que decide
               se esta compra entra como gasto da empresa ou como reembolso para alguém.
             </span>
-            <button type="button" onClick={() => setCadastrando(true)}>
+            <button
+              type="button"
+              onClick={() => {
+                setNaturezaCadastro("empresa");
+                setCadastrando(true);
+              }}
+            >
               dizer de quem é
             </button>
           </div>
@@ -4111,7 +4761,7 @@ function FormEnvio({
         razão, "Comercial" é um chute que a pessoa aceita por preguiça; com
         ela, é uma afirmação que dá para discordar em dois segundos.
       */}
-      {palpite && (palpite.categoriaId || palpite.centroId) ? (
+      {!loteAtivo && palpite && (palpite.categoriaId || palpite.centroId) ? (
         <div className="sugestao palpite">
           <div>
             <strong>
@@ -4142,7 +4792,7 @@ function FormEnvio({
         </div>
       ) : null}
 
-      {sugestao && !categoria ? (
+      {!loteAtivo && sugestao && !categoria ? (
         <div className="sugestao">
           <div>
             <strong>{sugestao.rotulo}</strong>
@@ -4239,6 +4889,7 @@ function FormEnvio({
           <div className="anexos-lista" role="group" aria-labelledby="grupo-anexos">
             {arquivo ? (
               <div className="anexo-ficha">
+                <MiniaturaAnexo arquivo={arquivo} />
                 <strong>{arquivo.name}</strong>
                 <small>foto ou print · {(arquivo.size / 1024).toFixed(0)} KB</small>
                 <button type="button" onClick={() => { setArquivo(null); setLeitura(null); }} aria-label="tirar a foto do envio">
@@ -4248,6 +4899,7 @@ function FormEnvio({
             ) : null}
             {arquivoNota ? (
               <div className="anexo-ficha fiscal">
+                <MiniaturaAnexo arquivo={arquivoNota} />
                 <strong>{arquivoNota.name}</strong>
                 <small>nota fiscal · {(arquivoNota.size / 1024).toFixed(0)} KB</small>
                 <button type="button" onClick={() => setArquivoNota(null)} aria-label="tirar a nota do envio">
@@ -4282,14 +4934,24 @@ function FormEnvio({
             </div>
           </div>
         ) : (
-          <button className="time-botao" disabled={enviando}>
+          <button
+            type={loteAtivo ? "button" : "submit"}
+            className="time-botao"
+            disabled={
+              enviando ||
+              (loteAtivo && (loteItens.length === 0 || loteItens.some((it) => it.status === "lendo")))
+            }
+            onClick={loteAtivo ? () => void enviarLote() : undefined}
+          >
             {enviando
               ? "enviando…"
-              : modoReembolso
-                ? "pedir reembolso"
-                : nota
-                  ? "enviar nota"
-                  : "registrar compra"}
+              : loteAtivo
+                ? `pedir ${loteItens.length} reembolso${loteItens.length === 1 ? "" : "s"}`
+                : modoReembolso
+                  ? "pedir reembolso"
+                  : nota
+                    ? "enviar nota"
+                    : "registrar compra"}
           </button>
         )}
         <p className="time-nota">
@@ -4303,7 +4965,7 @@ function FormEnvio({
         </p>
       </div>
 
-      {!unificado ? (
+      {loteAtivo ? null : !unificado ? (
         <AnexarFlutuante lendo={lendo} jaTem={Boolean(arquivo || arquivoNota)} aoEscolher={aoAnexar} />
       ) : (
         <AnexarFlutuante

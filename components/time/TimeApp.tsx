@@ -5648,32 +5648,40 @@ function Historico({ envios }: { envios: Envio[] }) {
         <p>O que eu mandei para o financeiro, e o que a casa me pagou.</p>
       </header>
 
-      <div className="hist-segmento" role="tablist" aria-label="Direção do histórico">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={lado === "enviei"}
-          className={lado === "enviei" ? "hist-segmento-item ativo" : "hist-segmento-item"}
-          onClick={() => setLado("enviei")}
-        >
-          Enviei
-          <b>{envios.length}</b>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={lado === "recebi"}
-          className={lado === "recebi" ? "hist-segmento-item ativo" : "hist-segmento-item"}
-          onClick={() => setLado("recebi")}
-        >
-          Recebi
-          {/* Enquanto não carregou, nada — um "0" que vira "27" depois é pior
-              que a ausência: quem lê o zero vai embora. */}
-          {nRecebi === null ? null : <b>{nRecebi}</b>}
-        </button>
-      </div>
+      {/*
+        UM PAINEL SÓ — segmento, toolbar e lista eram três cartões com a
+        mesma borda e o mesmo raio, empilhados com 16px de vão. Em 388px isso
+        lia como três apps diferentes na mesma tela. O invólucro carrega a
+        borda; as peças internas viram fatias (ver `.hist-painel` no CSS).
+      */}
+      <div className="hist-painel">
+        <div className="hist-segmento" role="tablist" aria-label="Direção do histórico">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={lado === "enviei"}
+            className={lado === "enviei" ? "hist-segmento-item ativo" : "hist-segmento-item"}
+            onClick={() => setLado("enviei")}
+          >
+            Enviei
+            <b>{envios.length}</b>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={lado === "recebi"}
+            className={lado === "recebi" ? "hist-segmento-item ativo" : "hist-segmento-item"}
+            onClick={() => setLado("recebi")}
+          >
+            Recebi
+            {/* Enquanto não carregou, nada — um "0" que vira "27" depois é pior
+                que a ausência: quem lê o zero vai embora. */}
+            {nRecebi === null ? null : <b>{nRecebi}</b>}
+          </button>
+        </div>
 
-      {lado === "enviei" ? <ListaEnvios envios={envios} /> : <ListaRecebidos />}
+        {lado === "enviei" ? <ListaEnvios envios={envios} /> : <ListaRecebidos />}
+      </div>
     </div>
   );
 }
@@ -5686,16 +5694,58 @@ const HIST_ORDEM_REC: Record<string, string> = {
 };
 
 /**
- * "Recebi": cada pagamento que caiu, com as naturezas ligáveis uma a uma.
+ * "Recebi": o que a casa me pagou, pela FOLHA — não pela categoria do ledger.
  *
- * O filtro de natureza é MÚLTIPLO, e não uma lista de "só um por vez", porque
- * a pergunta real tem essa forma: "quanto recebi de comissão E extra este
- * ano?". Com escolha única a pessoa somaria de cabeça.
+ * ---------------------------------------------------------------------------
+ * POR QUE NÃO É A LISTA DE PIX COM RÓTULO DO EXTRATO
+ * ---------------------------------------------------------------------------
+ * Cada linha de `fin_time_recebivel_v` herda a categoria do lançamento. Nos
+ * sócios, salário E pró-labore E (muitas vezes) reembolso saem todos em 6.02
+ * — então a tela escrevia "Pró-labore" em cima do PIX de R$ 1.621 (salário
+ * mínimo) e do de R$ 3.379 (pró-labore) e do de R$ 1.281 (reembolso). Mentira
+ * em 100% das linhas do Fernando.
  *
- * E o total acompanha o filtro. Aqui somar faz sentido — é tudo dinheiro que
- * entrou, na mesma direção — o que não vale do lado "Enviei", onde a soma
- * misturaria pedido com compra no cartão da empresa.
+ * A divisão certa já existe em `fin_time_remuneracao_mes_v` (0164): salário
+ * pela base contratada, reembolso pela folha, pró-labore o resto. As bandas
+ * do mês são a autoridade; o PIX só confirma "caiu no Inter no dia 01".
+ *
+ * Casamento PIX↔banda: só quando o valor bate exatamente e ainda não foi
+ * usado. Medido no Fernando: 3 de 8 meses casam a lista inteira (mar, mai,
+ * ago). Nos outros, o que casa (quase sempre o 1.621) ganha meta de conta;
+ * a banda continua certa mesmo sem PIX casado.
+ *
+ * O filtro de natureza é MÚLTIPLO: "comissão E extra este ano" é a pergunta
+ * real. O total acompanha o filtro — aqui somar faz sentido (mesma direção).
  */
+type BandaRecebida = {
+  mes: string;
+  natureza: string;
+  valorCents: number;
+  pix: { data: string; conta: string } | null;
+};
+
+function bandasDoMes(
+  mes: string,
+  porNatureza: Record<string, number>,
+  pixDoMes: { data: string; valorCents: number; conta: string }[]
+): BandaRecebida[] {
+  const bandas: BandaRecebida[] = Object.entries(porNatureza)
+    .filter(([, v]) => v > 0)
+    .map(([natureza, valorCents]) => ({ mes, natureza, valorCents, pix: null }));
+
+  const usados = new Set<number>();
+  // Maior primeiro: se dois valores coincidissem (não acontece na base
+  // medida), o maior levaria o PIX e o menor ficaria sem — melhor do que
+  // o reembolso "roubar" o salário quando os dois fossem iguais.
+  for (const b of [...bandas].sort((a, c) => c.valorCents - a.valorCents)) {
+    const i = pixDoMes.findIndex((p, idx) => !usados.has(idx) && p.valorCents === b.valorCents);
+    if (i < 0) continue;
+    usados.add(i);
+    b.pix = { data: pixDoMes[i].data, conta: pixDoMes[i].conta };
+  }
+  return bandas.sort((a, c) => c.valorCents - a.valorCents);
+}
+
 function ListaRecebidos() {
   const { dado, erro, carregando } = useRecebiveis();
   const [busca, setBusca] = useState("");
@@ -5708,12 +5758,25 @@ function ListaRecebidos() {
 
   const linhas = useMemo(() => dado?.linhas ?? [], [dado]);
 
+  const todasBandas = useMemo(() => {
+    if (!dado) return [] as BandaRecebida[];
+    const pixPorMes = new Map<string, { data: string; valorCents: number; conta: string }[]>();
+    for (const l of linhas) {
+      const a = pixPorMes.get(l.mes) ?? [];
+      a.push({ data: l.data, valorCents: l.valorCents, conta: l.conta });
+      pixPorMes.set(l.mes, a);
+    }
+    const out: BandaRecebida[] = [];
+    for (const m of dado.porMes) {
+      out.push(...bandasDoMes(m.mes, m.porNatureza, pixPorMes.get(m.mes) ?? []));
+    }
+    return out;
+  }, [dado, linhas]);
+
   const filtradas = useMemo(() => {
     const t = semAcento(busca.trim());
     const min = valorMin ? centavosDoTexto(valorMin) : null;
     const max = valorMax ? centavosDoTexto(valorMax) : null;
-    // Mesma razão de `dataDoEnvio`: string ISO, nunca `Date`, para o item da
-    // borda não entrar ou sair do filtro conforme o fuso do aparelho.
     const limite =
       periodo === "7d" || periodo === "30d" || periodo === "90d"
         ? (() => {
@@ -5723,43 +5786,43 @@ function ListaRecebidos() {
           })()
         : null;
 
-    const lista = linhas.filter((l) => {
-      if (naturezas.size > 0 && !naturezas.has(l.natureza)) return false;
-      if (limite && l.data < limite) return false;
-      if (min !== null && l.valorCents < min) return false;
-      if (max !== null && l.valorCents > max) return false;
+    const lista = todasBandas.filter((b) => {
+      if (naturezas.size > 0 && !naturezas.has(b.natureza)) return false;
+      const dataRef = b.pix?.data ?? `${b.mes}-01`;
+      if (limite && dataRef < limite) return false;
+      if (min !== null && b.valorCents < min) return false;
+      if (max !== null && b.valorCents > max) return false;
       if (!t) return true;
       return (
-        semAcento(ROTULO_REC[l.natureza] ?? l.natureza).includes(t) ||
-        semAcento(l.conta).includes(t) ||
-        semAcento(l.descricao ?? "").includes(t) ||
-        semAcento(l.categoria ?? "").includes(t)
+        semAcento(ROTULO_REC[b.natureza] ?? b.natureza).includes(t) ||
+        semAcento(b.pix?.conta ?? "").includes(t)
       );
     });
 
     return [...lista].sort((a, b) => {
       if (ordem === "valor_desc") return b.valorCents - a.valorCents;
       if (ordem === "valor_asc") return a.valorCents - b.valorCents;
-      if (ordem === "antigo") return a.data.localeCompare(b.data);
-      return b.data.localeCompare(a.data);
+      if (ordem === "antigo") {
+        const cmp = a.mes.localeCompare(b.mes);
+        return cmp !== 0 ? cmp : b.valorCents - a.valorCents;
+      }
+      const cmp = b.mes.localeCompare(a.mes);
+      return cmp !== 0 ? cmp : b.valorCents - a.valorCents;
     });
-  }, [linhas, busca, naturezas, periodo, valorMin, valorMax, ordem]);
+  }, [todasBandas, busca, naturezas, periodo, valorMin, valorMax, ordem]);
 
-  const totalFiltrado = filtradas.reduce((s, l) => s + l.valorCents, 0);
+  const totalFiltrado = filtradas.reduce((s, b) => s + b.valorCents, 0);
 
   const porData = ordem === "recente" || ordem === "antigo";
   const grupos = useMemo(() => {
     if (!porData) return [];
-    const m = new Map<string, { mes: string; cents: number; linhas: typeof filtradas }>();
-    for (const l of filtradas) {
-      const g = m.get(l.mes) ?? { mes: l.mes, cents: 0, linhas: [] };
-      g.cents += l.valorCents;
-      g.linhas.push(l);
-      m.set(l.mes, g);
+    const m = new Map<string, { mes: string; cents: number; bandas: BandaRecebida[] }>();
+    for (const b of filtradas) {
+      const g = m.get(b.mes) ?? { mes: b.mes, cents: 0, bandas: [] };
+      g.cents += b.valorCents;
+      g.bandas.push(b);
+      m.set(b.mes, g);
     }
-    // A ordem dos meses já vem certa: `filtradas` está ordenada por data e o
-    // Map preserva a ordem de inserção. Reordenar aqui seria a chance de os
-    // dois discordarem.
     return [...m.values()];
   }, [filtradas, porData]);
 
@@ -5785,9 +5848,12 @@ function ListaRecebidos() {
 
   if (carregando) return <div className="time-aviso">carregando…</div>;
   if (erro) return <p className="time-erro">{erro}</p>;
-  if (!dado || linhas.length === 0) {
+  if (!dado || (linhas.length === 0 && todasBandas.length === 0)) {
     return <p className="time-sub envios-vazio">A casa ainda não te pagou nada em 2026 — ou o pagamento ainda não foi categorizado.</p>;
   }
+
+  const desdeMes =
+    dado.porMes.length > 0 ? dado.porMes[0].mes : linhas.length > 0 ? linhas[linhas.length - 1].mes : null;
 
   return (
     <>
@@ -5800,7 +5866,7 @@ function ListaRecebidos() {
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Natureza, conta ou descrição"
+            placeholder="Natureza ou conta"
             autoComplete="off"
           />
           {busca ? (
@@ -5843,7 +5909,7 @@ function ListaRecebidos() {
           </label>
 
           <span className="envios-contagem-inline">
-            {filtradas.length}/{linhas.length}
+            {filtradas.length}/{todasBandas.length}
           </span>
         </div>
 
@@ -5938,64 +6004,55 @@ function ListaRecebidos() {
             <strong>{brl(totalFiltrado)}</strong>
             <span>
               {qtdFiltros > 0
-                ? `em ${filtradas.length} pagamento${filtradas.length === 1 ? "" : "s"} filtrado${filtradas.length === 1 ? "" : "s"}`
-                : `em ${filtradas.length} pagamento${filtradas.length === 1 ? "" : "s"}, desde ${formatMesRef(linhas[linhas.length - 1].mes)}`}
+                ? `em ${filtradas.length} parte${filtradas.length === 1 ? "" : "s"} filtrada${filtradas.length === 1 ? "" : "s"}`
+                : `em ${filtradas.length} parte${filtradas.length === 1 ? "" : "s"}${desdeMes ? `, desde ${formatMesRef(desdeMes)}` : ""}`}
             </span>
           </p>
           {/*
             AGRUPADO POR MÊS — mas só quando a ordem é por data.
 
-            Sem isso a lista do Fernando é vinte e cinco linhas seguidas
-            dizendo "Pró-labore · Inter", e a única informação que muda entre
-            elas (o mês) está espremida numa coluna de 56px. Com o mês virando
-            cabeçalho, a repetição some dentro da estrutura e cada faixa ganha
-            o total do mês — que é a pergunta real de quem rola até março.
-
-            Ordenado por VALOR o agrupamento seria mentira: as faixas
-            apareceriam fora de ordem cronológica e um "total de março" no meio
-            da lista somaria só as linhas de março que calharam de estar ali.
-            Nesse caso, lista corrida.
+            Cada linha é uma BANDA da folha (salário, pró-labore, reembolso…),
+            não um PIX do ledger. Ordenado por VALOR o agrupamento mentiria
+            (faixas fora de ordem cronológica com "total de março" no meio).
           */}
           {porData ? (
             grupos.map((g) => (
               <section key={g.mes} className="hist-rec-mes">
                 <h3>
-                  {/* Maiúscula na fonte, não com `text-transform: capitalize`
-                      — aquele maiusculiza TODA palavra e escrevia
-                      "Agosto De 2026". */}
                   {nomeMesRec(g.mes).charAt(0).toUpperCase() + nomeMesRec(g.mes).slice(1)}
                   <b>{brl(g.cents)}</b>
                 </h3>
-                <ul className="rec-linhas rec-linhas-longa">
-                  {g.linhas.map((l, i) => (
-                    <li key={`${l.data}-${i}`}>
-                      <span className="rec-linha-dia">
-                        {l.data.slice(8, 10)}/{l.data.slice(5, 7)}
+                <ul className="hist-rec-bandas">
+                  {g.bandas.map((b) => (
+                    <li key={`${b.mes}-${b.natureza}`}>
+                      <i className={`rec-ponto ${CLASSE_REC[b.natureza] ?? "nat-encargo"}`} aria-hidden />
+                      <span className="hist-rec-banda-nome">
+                        {ROTULO_REC[b.natureza] ?? b.natureza}
+                        {b.pix ? (
+                          <span className="hist-rec-banda-meta">
+                            {b.pix.conta} · {b.pix.data.slice(8, 10)}/{b.pix.data.slice(5, 7)}
+                          </span>
+                        ) : null}
                       </span>
-                      <i className={`rec-ponto ${CLASSE_REC[l.natureza] ?? "nat-encargo"}`} aria-hidden />
-                      <span className="rec-linha-nat">
-                        {ROTULO_REC[l.natureza] ?? l.natureza}
-                        <span className="rec-linha-conta">{l.conta}</span>
-                      </span>
-                      <span className="rec-linha-valor">{brl(l.valorCents)}</span>
+                      <span className="hist-rec-banda-valor">{brl(b.valorCents)}</span>
                     </li>
                   ))}
                 </ul>
               </section>
             ))
           ) : (
-            <ul className="rec-linhas rec-linhas-longa">
-              {filtradas.map((l, i) => (
-                <li key={`${l.data}-${i}`}>
-                  <span className="rec-linha-dia">
-                    {l.data.slice(8, 10)}/{l.data.slice(5, 7)}/{l.data.slice(2, 4)}
+            <ul className="hist-rec-bandas hist-rec-bandas-corrida">
+              {filtradas.map((b) => (
+                <li key={`${b.mes}-${b.natureza}-${b.valorCents}`}>
+                  <i className={`rec-ponto ${CLASSE_REC[b.natureza] ?? "nat-encargo"}`} aria-hidden />
+                  <span className="hist-rec-banda-nome">
+                    {ROTULO_REC[b.natureza] ?? b.natureza}
+                    <span className="hist-rec-banda-meta">
+                      {nomeMesRec(b.mes).charAt(0).toUpperCase() + nomeMesRec(b.mes).slice(1)}
+                      {b.pix ? ` · ${b.pix.conta}` : ""}
+                    </span>
                   </span>
-                  <i className={`rec-ponto ${CLASSE_REC[l.natureza] ?? "nat-encargo"}`} aria-hidden />
-                  <span className="rec-linha-nat">
-                    {ROTULO_REC[l.natureza] ?? l.natureza}
-                    <span className="rec-linha-conta">{l.conta}</span>
-                  </span>
-                  <span className="rec-linha-valor">{brl(l.valorCents)}</span>
+                  <span className="hist-rec-banda-valor">{brl(b.valorCents)}</span>
                 </li>
               ))}
             </ul>

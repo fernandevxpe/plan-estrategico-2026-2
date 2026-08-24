@@ -11920,6 +11920,22 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   gap: 2px;
   flex: none;
 }
+/* Volta ao hub sem a barra: alvo separado do perfil (foto/nome). */
+.time-topo-inicio {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  color: var(--purple-text);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.time-topo-inicio:active { background: var(--surface-2); opacity: 0.85; }
 .time-topo-tema.theme-toggle {
   position: static;
   width: 40px;
@@ -12025,6 +12041,13 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 .time-faixa-inicio .time-faixa-item { flex: 1 1 50%; }
 .time-faixa-inicio .time-faixa-item + .time-faixa-item { border-left: none; }
+.time-faixa-inicio .time-faixa-item {
+  text-align: left;
+  padding: 0 12px 0 4px;
+}
+.time-faixa-inicio .time-faixa-item + .time-faixa-item {
+  padding-left: 16px;
+}
 
 /* Início como guia de navegação — três blocos, cada um uma porta. */
 .time-inicio-guia { gap: 22px; }
@@ -12406,6 +12429,75 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
     color: var(--neon-purple-ink);
   }
 }
+
+/* Pendência no hub: depois do verde neon do tema escuro, senão o ícone
+   fica verde e só o título fica âmbar. */
+.time-menu-atalhos .time-atalho-alerta .time-atalho-icone,
+[data-theme="escuro"] .time-menu-atalhos .time-atalho-alerta .time-atalho-icone,
+:root:not([data-theme="claro"]) .time-menu-atalhos .time-atalho-alerta .time-atalho-icone {
+  background: var(--tint-amber-soft);
+  color: var(--ink-amber);
+}
+.time-menu-atalhos .time-atalho-urgente .time-atalho-icone,
+[data-theme="escuro"] .time-menu-atalhos .time-atalho-urgente .time-atalho-icone,
+:root:not([data-theme="claro"]) .time-menu-atalhos .time-atalho-urgente .time-atalho-icone {
+  background: var(--tint-red);
+  color: var(--ink-red);
+}
+.time-menu-atalhos .time-atalho-alerta strong { color: var(--ink-amber); }
+.time-menu-atalhos .time-atalho-urgente strong { color: var(--ink-red); }
+
+/* Hub: Recebíveis e Movimentações em roxo; Registrar/Minhas compras em branco
+   (no claro o “branco” vira tinta escura sobre superfície, senão some). */
+.time-menu-atalhos .time-atalho-cor-roxo .time-atalho-icone,
+[data-theme="escuro"] .time-menu-atalhos .time-atalho-cor-roxo .time-atalho-icone,
+:root:not([data-theme="claro"]) .time-menu-atalhos .time-atalho-cor-roxo .time-atalho-icone {
+  background: var(--tint-purple-soft);
+  color: var(--purple-text);
+}
+.time-menu-atalhos .time-atalho-cor-branco .time-atalho-icone,
+[data-theme="escuro"] .time-menu-atalhos .time-atalho-cor-branco .time-atalho-icone,
+:root:not([data-theme="claro"]) .time-menu-atalhos .time-atalho-cor-branco .time-atalho-icone {
+  background: color-mix(in srgb, #fff 14%, transparent);
+  color: #fff;
+}
+[data-theme="claro"] .time-menu-atalhos .time-atalho-cor-branco .time-atalho-icone,
+:root:not([data-theme="escuro"]) .time-menu-atalhos .time-atalho-cor-branco .time-atalho-icone {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="escuro"]) .time-menu-atalhos .time-atalho-cor-branco .time-atalho-icone {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+}
+
+/* Recebíveis: fundo e ícone no verde da marca. */
+.time-menu-atalhos .time-atalho-cor-verde .time-atalho-icone,
+[data-theme="escuro"] .time-menu-atalhos .time-atalho-cor-verde .time-atalho-icone,
+:root:not([data-theme="claro"]) .time-menu-atalhos .time-atalho-cor-verde .time-atalho-icone {
+  background: color-mix(in srgb, var(--neon-green) 12%, transparent);
+  color: var(--neon-green);
+}
+[data-theme="claro"] .time-menu-atalhos .time-atalho-cor-verde .time-atalho-icone,
+:root:not([data-theme="escuro"]) .time-menu-atalhos .time-atalho-cor-verde .time-atalho-icone {
+  background: var(--tint-green-soft);
+  color: var(--ink-green);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="escuro"]) .time-menu-atalhos .time-atalho-cor-verde .time-atalho-icone {
+    background: var(--tint-green-soft);
+    color: var(--ink-green);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) .time-menu-atalhos .time-atalho-cor-verde .time-atalho-icone {
+    background: color-mix(in srgb, var(--neon-green) 12%, transparent);
+    color: var(--neon-green);
+  }
+}
+
 /* A hachura do `indeterminado`: a identidade declarada é uma afirmação que a
    base não sustenta sozinha, e o olho já aprendeu esse padrão nas medidas. */
 .time-prova {
@@ -15573,8 +15665,7 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
     radial-gradient(ellipse 90% 60% at 100% 100%, color-mix(in srgb, var(--neon-green) 10%, transparent), transparent 50%),
     var(--bg);
 }
-.time-page:has(.time-porta) .page-header,
-.time-page:has(.time-porta) .time-barra {
+.time-page:has(.time-porta) .page-header {
   display: none;
 }
 .time-page:has(.time-porta) .time-conteudo {
@@ -15938,101 +16029,30 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 
 /* ===========================================================================
-   NAVEGAÇÃO DO APP — barra inferior
+   NAVEGAÇÃO DO APP — casco sem barra
    ---------------------------------------------------------------------------
-   Eram sete abas em linha quebrando em três linhas: 210px de menu antes do
-   conteúdo, numa tela de 852px. E as sete tinham o mesmo peso, então "Início"
-   competia com "Lançar custo", que é o que a pessoa abre o app para fazer.
-
-   Embaixo porque é onde o polegar alcança. O topo de um celular grande pede a
-   segunda mão, e este app é usado com uma mão só, com a outra segurando a nota.
+   A barra inferior (cinco destinos, ~78px) saiu: o Início é o mapa. O
+   padding de baixo só precisa da área de gestos; o botão flutuante de
+   anexo ancora no chão, não em cima de uma barra que não existe mais.
    =========================================================================== */
 .time-shell { display: contents; }
 
 .time-conteudo {
-  /* Espaço para a barra não cobrir o fim do conteúdo, incluindo a área de
-     gestos do sistema. */
-  padding-bottom: calc(78px + env(safe-area-inset-bottom));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
-
-.time-barra {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 2px;
-  padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
-  background: var(--topbar-bg);
-  backdrop-filter: blur(16px);
-  border-top: 1px solid var(--line);
-}
-
-.time-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  /* 52px: acima do mínimo de 44px do WCAG, porque a mão que usa isto está suja
-     e o aparelho, torto. */
-  min-height: 52px;
-  padding: 5px 2px;
-  border-radius: 11px;
-  color: var(--muted);
-  /* Explícito: alguma regra de `a` mais acima pinta fundo de superfície, e cada
-     item virava uma caixinha dentro da barra — cinco retângulos onde deveria
-     haver cinco ícones sobre um fundo só. */
-  background: transparent;
-  border: 0;
-  text-decoration: none;
-  font-size: 10.5px;
-  font-weight: 600;
-  line-height: 1.1;
-  text-align: center;
-  cursor: pointer;
-  transition: color .12s ease, background .12s ease;
-}
-
-.time-item span {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.time-item:active { background: var(--surface-2); }
-
-.time-item.ativo {
-  color: var(--purple-text);
-  background: var(--tint-purple-soft);
-}
-
-/* O "Mais" abre uma folha de baixo para cima — o gesto que o polegar já espera
-   nessa posição da tela. */
-
-
-
 
 /* Instalado, a barra encosta na borda e o conteúdo ganha o topo de volta. */
 @media (display-mode: standalone) {
   .fin-shell > .fin-tabs { display: none; }
 }
 
-/* O botão de tema flutua em `bottom: 18px` e caía EM CIMA do quinto item da
-   barra — medido: botão em x=343 sobre um item que ocupa 312–387.
+/* O botão de tema flutua em `bottom: 18px`. No app do time ele some: o tema
+   entra inline no login e no cabeçalho (`time-porta-tema` / `time-topo-tema`).
    
    `body:has()` e não `.time-page .theme-toggle`: o ThemeToggle é montado direto
-   no `body`, FORA do `AppShell` e fora de qualquer página ("assim nenhuma tela
-   precisa lembrar de incluí-lo"). Ele não é descendente de `.time-page`, então
-   só dá para alcançá-lo olhando para o irmão.
-   
-   Esconde pelo `.time-shell` (layout permanente), não pelo `.time-app`: na
-   troca de rota o app desmonta por um frame e o flutuante piscava no canto.
-   No login e no cabeçalho o tema entra inline (`time-porta-tema` /
-   `time-topo-tema`). */
+   no `body`, FORA do `AppShell`. Esconde pelo `.time-shell` (layout permanente),
+   não pelo `.time-app`: na troca de rota o app desmontava por um frame e o
+   flutuante piscava no canto. */
 body:has(.time-shell) > .theme-toggle { display: none; }
 
 /* ===========================================================================
@@ -16316,18 +16336,15 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 /* ===========================================================================
    O BOTÃO FLUTUANTE DE ANEXO
    ---------------------------------------------------------------------------
-   Mora acima da barra inferior (78px + área de gestos) e à direita, que é onde
-   o polegar chega sem a segunda mão. Fica sobre o conteúdo de propósito: é a
-   primeira coisa a fazer no formulário, não a última.
+   Mora no canto inferior direito (área de gestos + respiro). Sem a barra
+   inferior, o chão é o safe-area — não 90px acima de um nav que não existe.
 
-   z-index 45: acima do conteúdo e abaixo dos diálogos (que usam 70+). O
-   menu "Mais" que este comentário citava não existe mais desde que a barra
-   virou cinco destinos fixos.
+   z-index 45: acima do conteúdo e abaixo dos diálogos (que usam 70+).
    =========================================================================== */
 .anexar {
   position: fixed;
   right: 14px;
-  bottom: calc(90px + env(safe-area-inset-bottom));
+  bottom: calc(18px + env(safe-area-inset-bottom));
   z-index: 45;
   display: flex;
   flex-direction: column;
@@ -16613,11 +16630,9 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 .anexos-vazio strong { color: var(--ink); font-weight: 640; }
 
 /* O formulário que tem botão flutuante precisa de chão embaixo.
-   Medido: com a página rolada até o fim, o flutuante (y 710–762) cobria o
-   "enviar custo" (y 729–775). É o mesmo defeito que o menu "Mais" tinha — um
-   elemento fixo por cima do único botão que conclui a tarefa. A reserva é a
-   altura do flutuante mais o respiro; a barra inferior continua coberta pelo
-   padding de `.time-conteudo`. */
+   Medido: com a página rolada até o fim, o flutuante cobria o "enviar custo".
+   A reserva é a altura do flutuante mais o respiro; sem barra inferior o
+   padding de `.time-conteudo` só cobre o safe-area. */
 .time-form:has(> .anexar) { padding-bottom: 112px; }
 
 /* ===========================================================================

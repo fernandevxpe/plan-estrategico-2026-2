@@ -374,9 +374,10 @@ export function TimeApp({
         ) : (
           /*
            * Sem este ramo, `/time/item/xxx/1` (fonte que não é `planilha` nem
-           * `app`) renderizava cabeçalho, barra inferior e NADA entre os dois.
-           * Não é um beco — a barra está lá — mas é uma tela que não diz nem
-           * "não achei". O `&&` que faltava custava uma página em branco.
+           * `app`) renderizava cabeçalho e NADA entre ele e o fim da página.
+           * Não é um beco — o link Início no topo está lá — mas é uma tela
+           * que não diz nem "não achei". O `&&` que faltava custava uma
+           * página em branco.
            */
           <div className="time-tela-padrao">
             <header className="time-form-cabeca">
@@ -2115,26 +2116,38 @@ function CabecalhoPessoa({
           </span>
         </button>
         {/*
+          Sem a barra inferior, a única volta ao hub é daqui. Perfil continua
+          na foto/nome; Início é alvo separado — misturar os dois faria a
+          pessoa abrir o perfil quando queria só voltar.
+        */}
+        {aba !== "inicio" ? (
+          <Link href="/time" className="time-topo-inicio" aria-label="Voltar ao Início">
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z" strokeLinejoin="round" />
+            </svg>
+            <span>Início</span>
+          </Link>
+        ) : null}
+        {/*
           "Sair" não fica aqui: a folha de perfil já tem "Sair da conta",
           rotulado e menos sujeito a toque errado.
 
           O tema VOLTA ao cabeçalho. No perfil ele sumia da vista cotidiana, e
           o botão flutuante global só aparecia na transição de rotas — quando
           `.time-app` desmontava por um frame. Aqui ele fica fixo em toda tela
-          logada, ao lado de "Solicitar".
+          logada, ao lado de "Pedir compra".
 
-          "Solicitar" é ação RARA (zero pedidos em 7 meses): canto superior é
-          onde ação rara cabe. Pílula rotulada, não ícone mudo.
+          "Pedir compra" (antes "Solicitar"): ação rara — zero pedidos em 7
+          meses. Canto superior é onde cabe; o texto diz compra, não reembolso.
         */}
         {/*
           A PÍLULA PRECISA DIZER "VOCÊ ESTÁ AQUI".
 
-          `/time/compra` e `/time/comprar` são as duas telas do ciclo de compra,
-          e nenhuma acende aba na barra — foi o preço de tirar "Solicitar" de
-          lá. Sem estado na pílula, essas duas telas são as únicas do app em
-          que NADA no cromo diz onde a pessoa está: as cinco abas apagadas ao
-          mesmo tempo. E em `/time/compra` a pílula ainda era um link para a
-          página em que já se está.
+          `/time/compra` e `/time/comprar` são as duas telas do ciclo de compra
+          e não têm destino próprio no hub. Sem estado na pílula, nessas telas
+          nada no cromo diz onde a pessoa está — só o link Início no topo.
+          Em `/time/compra` a pílula não pode ser um link para a página em
+          que já se está.
         */}
         <div className="time-topo-acoes">
           <BotaoTema className="time-topo-tema" />
@@ -2146,7 +2159,7 @@ function CabecalhoPessoa({
             <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
               <path d="M12 5v14M5 12h14" strokeLinecap="round" />
             </svg>
-            <span>Solicitar</span>
+            <span>Pedir compra</span>
           </Link>
         </div>
       </header>
@@ -2397,17 +2410,14 @@ function CabecalhoPessoa({
 
 function Inicio({ envios }: { envios: Envio[] }) {
   /*
-   * O INÍCIO É O MENU-GUIA DO APP.
+   * O INÍCIO É O ÍNDICE DO APP — a barra inferior saiu.
    *
-   * Cada bloco é uma porta: Recebíveis (o que caiu), Enviar (o que mandar),
-   * Histórico (o que já andou). Quando esta tela cobrir bem as cinco rotas
-   * da barra, a barra inferior pode sair — por isso o Histórico precisa
-   * aparecer aqui de verdade, e "Comprar o que foi aprovado" saiu (não será
-   * feito no app).
+   * Toda rota que a barra cobria mora aqui: Recebíveis (faixa + atalho),
+   * Registrar, Reembolso, Histórico, mais Minhas compras (nunca teve aba).
+   * Pedir compra fica no topo (ação rara, zero pedidos em 7 meses).
    *
-   * "Aguardando análise" não é uma seção própria: é estado do Histórico.
-   * Separá-la no topo competia com Recebíveis e confundia "o que eu recebo"
-   * com "o que eu mandei".
+   * Ordem: dinheiro (faixa) → compras (reembolso, registrar, minhas,
+   * pendências) → histórico. Recebíveis: faixa + atalho verde abaixo.
    */
   const { dado: rec } = useRecebiveis();
 
@@ -2450,30 +2460,32 @@ function Inicio({ envios }: { envios: Envio[] }) {
         <nav className="time-menu-atalhos" aria-label="Recebíveis">
           <Atalho
             href="/time/recebiveis"
-            titulo="Ver Recebíveis"
+            titulo="Recebíveis"
             texto="Histórico, previsão e o que ainda vai cair"
             tipo="recebiveis"
+            cor="verde"
           />
         </nav>
       </section>
 
-      <section className="time-guia-bloco" aria-labelledby="guia-enviar">
+      <section className="time-guia-bloco" aria-labelledby="guia-compras">
         <div className="time-guia-cabeca">
-          <h2 id="guia-enviar">Enviar</h2>
+          <h2 id="guia-compras">Compras</h2>
         </div>
-        <p className="time-guia-lead">O que você manda para o financeiro.</p>
-        <nav className="time-menu-atalhos" aria-label="Enviar ao financeiro">
+        <nav className="time-menu-atalhos" aria-label="Compras">
           <Atalho
             href="/time/reembolso"
-            titulo="Solicitar reembolso"
-            texto="Gasto do bolso para a casa devolver"
+            titulo="Pedir reembolso"
+            texto="Gasto do bolso para a XPE devolver"
             tipo="reembolso"
+            cor="branco"
           />
           <Atalho
             href="/time/custo"
             titulo="Registrar compra"
             texto="Foto, nota fiscal ou os dois"
             tipo="custo"
+            cor="branco"
           />
           <Atalho
             href="/time/compras"
@@ -2486,7 +2498,34 @@ function Inicio({ envios }: { envios: Envio[] }) {
                   : `${nCompras} compras registradas`
             }
             tipo="compras"
+            cor="branco"
           />
+          {aguardando.length > 0 ? (
+            <Atalho
+              href="/time/envios#status-aguardando"
+              titulo={
+                aguardando.length === 1
+                  ? "1 aguardando análise"
+                  : `${aguardando.length} aguardando análise`
+              }
+              texto="O financeiro ainda não respondeu"
+              tipo="aguardando"
+              tom="alerta"
+            />
+          ) : null}
+          {voltaram.length > 0 ? (
+            <Atalho
+              href="/time/envios#status-nao_pago"
+              titulo={
+                voltaram.length === 1
+                  ? "1 voltou para você"
+                  : `${voltaram.length} voltaram para você`
+              }
+              texto="Devolvido ou recusado — precisa de correção"
+              tipo="voltou"
+              tom="urgente"
+            />
+          ) : null}
         </nav>
       </section>
 
@@ -2494,38 +2533,14 @@ function Inicio({ envios }: { envios: Envio[] }) {
         <div className="time-guia-cabeca">
           <h2 id="guia-historico">Histórico</h2>
         </div>
-        <p className="time-guia-lead">Tudo que você já mandou — e o que ainda está em análise.</p>
         <nav className="time-menu-atalhos" aria-label="Histórico">
           <Atalho
             href="/time/envios"
             titulo="Movimentações"
             texto={textoHistorico}
             tipo="nota"
+            cor="roxo"
           />
-          {aguardando.length > 0 ? (
-            <Atalho
-              href="/time/envios"
-              titulo={
-                aguardando.length === 1
-                  ? "1 aguardando análise"
-                  : `${aguardando.length} aguardando análise`
-              }
-              texto="O financeiro ainda não respondeu"
-              tipo="nota"
-            />
-          ) : null}
-          {voltaram.length > 0 ? (
-            <Atalho
-              href="/time/envios"
-              titulo={
-                voltaram.length === 1
-                  ? "1 voltou para você"
-                  : `${voltaram.length} voltaram para você`
-              }
-              texto="Devolvido ou recusado — precisa de correção"
-              tipo="reembolso"
-            />
-          ) : null}
         </nav>
       </section>
     </div>
@@ -2608,7 +2623,11 @@ function MinhasCompras({ envios }: { envios: Envio[] }) {
   );
 }
 
-function IconeAtalho({ tipo }: { tipo: "reembolso" | "custo" | "nota" | "compra" | "recebiveis" | "compras" }) {
+function IconeAtalho({
+  tipo
+}: {
+  tipo: "reembolso" | "custo" | "nota" | "compra" | "recebiveis" | "compras" | "aguardando" | "voltou";
+}) {
   const comum = {
     width: 20,
     height: 20,
@@ -2649,6 +2668,21 @@ function IconeAtalho({ tipo }: { tipo: "reembolso" | "custo" | "nota" | "compra"
         <path d="M5 8h14l-1 12H6L5 8ZM9 8V6a3 3 0 0 1 6 0v2" />
       </svg>
     );
+  if (tipo === "aguardando")
+    return (
+      <svg {...comum}>
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 8v5l3 2" />
+      </svg>
+    );
+  if (tipo === "voltou")
+    return (
+      <svg {...comum}>
+        <path d="M12 8v5" />
+        <path d="M12 16.5h.01" />
+        <path d="M10.3 4.8 2.8 18a1.5 1.5 0 0 0 1.3 2.2h15.8a1.5 1.5 0 0 0 1.3-2.2L13.7 4.8a1.5 1.5 0 0 0-2.6 0Z" />
+      </svg>
+    );
   return (
     <svg {...comum}>
       <path d="M12 5v14M5 12h14" />
@@ -2662,16 +2696,32 @@ function Atalho({
   titulo,
   texto,
   tipo,
+  tom,
+  cor,
   compacto = false
 }: {
   href: string;
   titulo: string;
   texto: string;
-  tipo: "reembolso" | "custo" | "nota" | "compra" | "recebiveis" | "compras";
+  tipo: "reembolso" | "custo" | "nota" | "compra" | "recebiveis" | "compras" | "aguardando" | "voltou";
+  tom?: "alerta" | "urgente";
+  cor?: "roxo" | "branco" | "verde";
   compacto?: boolean;
 }) {
+  const classe = [
+    "time-atalho",
+    compacto ? "time-atalho-compacto" : "",
+    tom === "alerta" ? "time-atalho-alerta" : "",
+    tom === "urgente" ? "time-atalho-urgente" : "",
+    cor === "roxo" ? "time-atalho-cor-roxo" : "",
+    cor === "branco" ? "time-atalho-cor-branco" : "",
+    cor === "verde" ? "time-atalho-cor-verde" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <Link href={href} className={compacto ? "time-atalho time-atalho-compacto" : "time-atalho"}>
+    <Link href={href} className={classe}>
       <span className="time-atalho-icone" aria-hidden>
         <IconeAtalho tipo={tipo} />
       </span>
@@ -6050,10 +6100,22 @@ function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?:
   };
 
   // Voltar de /time/item/... com #envio-origem-id reabre o detalhe e rola até a linha.
+  // Do Início, #status-aguardando / #status-nao_pago já aplica o filtro de status.
   const hashAbertoRef = useRef(false);
   useEffect(() => {
-    if (hashAbertoRef.current || envios.length === 0) return;
+    if (hashAbertoRef.current) return;
     const hash = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
+    if (!hash) return;
+
+    const status = /^status-(registrado|aguardando|pago|nao_pago)$/.exec(hash);
+    if (status) {
+      hashAbertoRef.current = true;
+      setEstadoFiltro(status[1]);
+      setFiltrosAbertos(true);
+      return;
+    }
+
+    if (envios.length === 0) return;
     const m = /^envio-([a-z_]+)-(\d+)$/.exec(hash);
     if (!m) return;
     const alvo = envios.find((e) => e.origem === m[1] && e.origemId === Number(m[2]));

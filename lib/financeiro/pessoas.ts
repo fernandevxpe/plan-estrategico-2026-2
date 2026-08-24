@@ -1260,7 +1260,7 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       ...new Set(
         pessoas
           .map((p) => p.area)
-          .filter((a): a is string => Boolean(a) && !areasCanonicas.includes(a))
+          .filter((a): a is string => Boolean(a) && !areasCanonicas.includes(a as string))
       )
     ].sort();
     const areas: Opcao[] = [...areasCanonicas, ...areasExtras].map((slug) => ({

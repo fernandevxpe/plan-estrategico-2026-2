@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import { brl } from "@/components/financeiro/Certeza";
@@ -503,4 +503,195 @@ export function TabelaProlaboreEsperado({ historico }: { historico: ProlaboreEsp
 }
 export function TabelaComissao({ historico }: { historico: ComissaoDeclaradaLinha[] }) {
   return <HistoricoComissao historico={historico} />;
+}
+
+// ---------------------------------------------------------------------------
+// Confirmar um mês à mão (0171)
+// ---------------------------------------------------------------------------
+
+const NATUREZA_ROTULO_MES: Record<string, string> = {
+  comissao: "Comissão",
+  reembolso: "Reembolso",
+  estagio: "Estágio",
+  encargo_beneficio: "Encargos",
+  extra: "Extra"
+};
+
+type ResumoMes = {
+  mes: string;
+  totalCents: number;
+  outrasNaturezas: { natureza: string; valorCents: number }[];
+  outrasCents: number;
+  salarioSugeridoCents: number;
+  prolaboreSugeridoCents: number;
+  disponivelParaSalarioProlaboreCents: number;
+  ajuste: { salarioCents: number; prolaboreCents: number; nota: string; confirmadoPor: string; atualizadoEm: string } | null;
+};
+
+/**
+ * A TELA DE CONFERÊNCIA — total real de um lado, edição do outro.
+ *
+ * Comissão e reembolso aparecem aqui só como LEITURA, com link para onde de
+ * fato se editam (`/financeiro/comissoes`, `/financeiro/reembolsos`) — abrir
+ * edição livre duplicaria a fonte da verdade dessas duas naturezas, que já têm
+ * histórico e parcelamento próprios. Salário e pró-labore são o que fica
+ * editável aqui, porque são o que NÃO tem outro lugar para confirmar.
+ *
+ * A checagem soma ao vivo, no cliente, a cada tecla — mas quem decide de
+ * verdade é a rota (mesma conta, feita de novo do lado do servidor): o botão
+ * salvar fica desabilitado quando a soma não bate, e a mensagem de erro do
+ * servidor é a mesma se alguém tentar burlar o desabilitado.
+ */
+export function FinAjusteMesForm({ personId, meses }: { personId: number; meses: string[] }) {
+  const router = useRouter();
+  const [mes, setMes] = useState(meses[0] ?? "");
+  const [dados, setDados] = useState<ResumoMes | null>(null);
+  const [carregando, setCarregando] = useState(false);
+  const [salario, setSalario] = useState("");
+  const [prolabore, setProlabore] = useState("");
+  const [nota, setNota] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const [ok, setOk] = useState(false);
+  const [, startTransition] = useTransition();
+
+  const carregar = useCallback(async (mesEscolhido: string) => {
+    if (!mesEscolhido) return;
+    setCarregando(true);
+    setErro(null);
+    setOk(false);
+    const r = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${personId}/mes-ajuste?mes=${mesEscolhido}`), {
+      cache: "no-store"
+    });
+    const j = (await r.json().catch(() => null)) as ResumoMes | null;
+    setCarregando(false);
+    if (!r.ok || !j) return setErro("não consegui carregar este mês");
+    setDados(j);
+    setSalario((j.salarioSugeridoCents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 }));
+    setProlabore((j.prolaboreSugeridoCents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 }));
+    setNota(j.ajuste?.nota ?? "");
+  }, [personId]);
+
+  useEffect(() => {
+    void carregar(mes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mes]);
+
+  const salarioCents = centavosDoTexto(salario);
+  const prolaboreCents = centavosDoTexto(prolabore);
+  const somaCents = dados ? salarioCents + prolaboreCents + dados.outrasCents : 0;
+  const diffCents = dados ? dados.totalCents - somaCents : 0;
+  const bate = dados !== null && diffCents === 0;
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!bate) return;
+    if (!nota.trim()) return setErro("nota é obrigatória — o que foi conferido para chegar nesse número");
+
+    setSalvando(true);
+    setErro(null);
+    const r = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${personId}/mes-ajuste`), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mes, salarioCents, prolaboreCents, nota: nota.trim() })
+    });
+    const j = await r.json().catch(() => ({}));
+    setSalvando(false);
+    if (!r.ok) return setErro(j.error ?? "não consegui salvar");
+
+    setOk(true);
+    startTransition(() => router.refresh());
+  }
+
+  return (
+    <div className="pp-ajuste-mes">
+      <div className="pp-ajuste-mes-topo">
+        <h3>Conferir um mês</h3>
+        <label className="pp-ajuste-mes-select">
+          <span>Mês</span>
+          <select className="fin-input" value={mes} onChange={(e) => setMes(e.target.value)}>
+            {meses.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {carregando ? <p className="pp-vazio">Carregando…</p> : null}
+
+      {dados && !carregando ? (
+        <form className="pp-remuneracao-form" onSubmit={salvar}>
+          <div className="pp-ajuste-total">
+            <span>Total real no banco em {dados.mes}</span>
+            <strong>{brl(dados.totalCents)}</strong>
+          </div>
+
+          {dados.ajuste ? (
+            <p className="pp-remuneracao-explicacao">
+              Já confirmado por {dados.ajuste.confirmadoPor} em {dados.ajuste.atualizadoEm.split(" ")[0].split("-").reverse().join("/")}
+              {dados.ajuste.nota ? `: "${dados.ajuste.nota}"` : ""}
+            </p>
+          ) : (
+            <p className="pp-remuneracao-explicacao">Ainda não confirmado — os campos abaixo mostram o palpite atual da fórmula.</p>
+          )}
+
+          <div className="pp-remuneracao-campos">
+            <label>
+              <span>Salário</span>
+              <input className="fin-input" value={salario} onChange={(e) => setSalario(mascaraDinheiro(e.target.value))} inputMode="numeric" />
+            </label>
+            <label>
+              <span>Pró-labore</span>
+              <input className="fin-input" value={prolabore} onChange={(e) => setProlabore(mascaraDinheiro(e.target.value))} inputMode="numeric" />
+            </label>
+          </div>
+
+          {dados.outrasNaturezas.length > 0 ? (
+            <ul className="pp-ajuste-outras">
+              {dados.outrasNaturezas.map((n) => (
+                <li key={n.natureza}>
+                  <span>{NATUREZA_ROTULO_MES[n.natureza] ?? n.natureza}</span>
+                  <strong>{brl(n.valorCents)}</strong>
+                  <a
+                    href={n.natureza === "comissao" ? "/financeiro/comissoes" : n.natureza === "reembolso" ? "/financeiro/reembolsos" : "#"}
+                    className="pp-ajuste-outras-link"
+                  >
+                    editar lá
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          <div className={bate ? "pp-ajuste-check ok" : "pp-ajuste-check erro"}>
+            {bate
+              ? "Soma bate com o total real."
+              : diffCents > 0
+                ? `Faltam ${brl(diffCents)} para fechar o total.`
+                : `Sobram ${brl(-diffCents)} além do total.`}
+          </div>
+
+          <label className="pp-remuneracao-nota">
+            <span>Nota — o que foi conferido</span>
+            <input
+              className="fin-input"
+              value={nota}
+              onChange={(e) => setNota(e.target.value)}
+              placeholder="Ex.: PIX de 02/08 é o pró-labore fixo; o resto não tem explicação, fica como pró-labore"
+            />
+          </label>
+
+          {erro ? <p className="pp-remuneracao-erro">{erro}</p> : null}
+          {ok ? <p className="conta-pgto-ok">Confirmado.</p> : null}
+          <div className="pp-remuneracao-acoes">
+            <button type="submit" className="fin-btn-primary fin-btn-sm" disabled={!bate || salvando}>
+              {salvando ? "Salvando…" : "Confirmar este mês"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+    </div>
+  );
 }

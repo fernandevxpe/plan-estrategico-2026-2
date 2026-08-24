@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { brl } from "@/components/financeiro/Certeza";
 import {
+  FinAjusteMesForm,
   FinCalculadoraRemuneracao,
   FinComissaoForm,
   FinProlaboreEsperadoForm,
@@ -393,6 +394,10 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
             compacto
           />
         </div>
+
+        {perfil.porMes.length > 0 ? (
+          <FinAjusteMesForm personId={perfil.id} meses={[...perfil.porMes].reverse().map((m) => m.mes)} />
+        ) : null}
       </section>
 
       {/* Gráfico + extrato */}

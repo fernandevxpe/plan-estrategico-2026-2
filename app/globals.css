@@ -11966,42 +11966,15 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 .time-topo-sair:active { background: var(--surface-2); }
 
-.time-perfil-casca {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  background: color-mix(in srgb, var(--ink) 35%, transparent);
+/* Meu perfil — PÁGINA, não mais folha deslizante.
+   As regras da folha (`.time-perfil-casca`, `.time-perfil-folha`, o cabeçalho
+   com "×") saíram junto com o `<dialog>`: um painel de altura fixa com rolagem
+   própria escondia o campo em foco quando o teclado subia, e a volta do
+   celular fechava o app em vez da folha. Aqui a rolagem é a da página e a
+   volta é a do sistema. */
+.time-perfil-pagina {
   display: grid;
-  align-items: end;
-  padding: 0 12px calc(12px + env(safe-area-inset-bottom));
-}
-.time-perfil-folha {
-  max-height: min(88dvh, 640px);
-  overflow: auto;
-  border-radius: 20px 20px 16px 16px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  padding: 18px 20px 22px;
-  display: grid;
-  gap: 16px;
-}
-.time-perfil-folha-cabeca {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.time-perfil-folha-cabeca h2 { margin: 0; font-size: 17px; }
-.time-perfil-fechar {
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--surface-2);
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--muted);
+  gap: 18px;
 }
 .time-perfil-foto-linha {
   display: flex;
@@ -17023,7 +16996,6 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 /* "Trocar foto" media 75x17px — o menor alvo do app, num controle que a pessoa
    procura de dedo. */
 .time-perfil-foto-btn { min-height: 44px; padding: 0 14px; }
-.time-perfil-folha:focus-visible { outline: 2px solid var(--neon-purple); outline-offset: -3px; }
 
 /* A legenda é parte do dado: os três números da faixa estavam certos e a tela
    não dizia de quem era o dinheiro — e a pergunta apareceu. */

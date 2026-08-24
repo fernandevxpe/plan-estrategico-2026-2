@@ -26,7 +26,9 @@
  *   ← voltar      seta à esquerda, destino declarado por tela (`VOLTA` em
  *                 TimeApp). Não é `router.back()`: quem entra pelo atalho do
  *                 PWA não tem passo anterior nosso, e back() sai do app.
- *   foto + nome   perfil, onde também mora Aparência (claro/escuro) e Sair.
+ *   foto + nome   link para `/time/perfil` — PÁGINA, não folha deslizante.
+ *                 Lá moram nome, e-mail, foto, a conta que recebe, Aparência
+ *                 (claro/escuro) e Sair.
  *   + Reembolso   o atalho fixo, à direita. Ação semanal do time.
  *
  * Saíram: "Início" (voltar cobre, e de `/time/item/…` o destino certo é o

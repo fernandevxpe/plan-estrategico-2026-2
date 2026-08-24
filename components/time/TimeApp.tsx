@@ -120,7 +120,8 @@ type DetalheEnvio = {
 
 export type AbaTime =
   | "inicio" | "reembolso" | "custo" | "nota" | "compra"
-  | "envios" | "meu-reembolso" | "comprar" | "item" | "recebiveis" | "compras";
+  | "envios" | "meu-reembolso" | "comprar" | "item" | "recebiveis" | "compras"
+  | "perfil";
 
 const HOJE = () => new Date().toISOString().slice(0, 10);
 
@@ -176,6 +177,12 @@ export function TimeApp({
   itemId?: number;
 }) {
   const [sessao, setSessao] = useState<Sessao | null>(null);
+  /*
+   * A versão da foto vive AQUI e não no cabeçalho porque quem troca a foto é
+   * `/time/perfil`, que é outra tela. Sem um ponto comum, o topo continuaria
+   * mostrando as iniciais depois do upload até a próxima recarga.
+   */
+  const [fotoVersao, setFotoVersao] = useState(0);
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [porta, setPorta] = useState<Porta>("sessao");
   const [opcoes, setOpcoes] = useState<Opcoes>({ tipos: [], categorias: [], centros: [], linhas: [], bancos: [] });
@@ -299,16 +306,7 @@ export function TimeApp({
 
   return (
     <div className="time-app">
-      <CabecalhoPessoa
-        sessao={sessao}
-        aba={aba}
-        aoAtualizarNome={(nome) => setSessao((s) => (s ? { ...s, nome } : s))}
-        aoSair={async () => {
-          await fetch("/api/time/sessao", { method: "DELETE" });
-          setSessao(null);
-          setEnvios([]);
-        }}
-      />
+      <CabecalhoPessoa sessao={sessao} aba={aba} fotoVersao={fotoVersao} />
 
       {recado ? (
         <div
@@ -323,6 +321,18 @@ export function TimeApp({
       ) : null}
 
       {aba === "inicio" ? <Inicio envios={envios} /> : null}
+      {aba === "perfil" ? (
+        <TelaPerfil
+          sessao={sessao}
+          aoAtualizarNome={(nome) => setSessao((s) => (s ? { ...s, nome } : s))}
+          aoSair={async () => {
+            await fetch("/api/time/sessao", { method: "DELETE" });
+            setSessao(null);
+            setEnvios([]);
+          }}
+          aoTrocarFoto={() => setFotoVersao((n) => n + 1)}
+        />
+      ) : null}
       {aba === "reembolso" ? (
         <FormEnvio
           kind="custo"
@@ -1942,27 +1952,168 @@ const VOLTA: Record<AbaTime, string | null> = {
   envios: "/time",
   "meu-reembolso": "/time",
   compras: "/time",
-  item: "/time/envios"
+  item: "/time/envios",
+  perfil: "/time"
 };
 
 function CabecalhoPessoa({
   sessao,
   aba,
-  aoAtualizarNome,
-  aoSair
+  fotoVersao
 }: {
   sessao: Sessao;
   aba: AbaTime;
+  fotoVersao: number;
+}) {
+  /*
+   * O cabeçalho precisa de UMA coisa do perfil: se existe foto. O nome vem da
+   * sessão, que já está em memória. Todo o resto — e-mail, conta que recebe,
+   * aparência, sair — mora em `/time/perfil`, e este componente não carrega,
+   * não valida e não salva nada disso.
+   */
+  const [temFoto, setTemFoto] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const r = await fetch("/api/time/perfil", { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) setTemFoto(Boolean(j.perfil?.temFoto));
+    })();
+    /*
+     * `fotoVersao` sobe quando a tela de perfil troca a foto. Sem esta
+     * dependência o topo seguiria mostrando as iniciais até a próxima recarga
+     * — a foto é a confirmação de que o upload funcionou.
+     */
+  }, [fotoVersao]);
+
+  const fotoSrc = temFoto ? `/api/time/perfil/foto?v=${fotoVersao}` : null;
+
+  return (
+    <header className="time-topo">
+      {/*
+        A SETA VEM ANTES DE TUDO, E É A PRIMEIRA COISA DA LINHA.
+
+        Antes havia uma pílula "Início" com ícone de casa no meio do
+        cabeçalho, entre o nome e o tema. Duas coisas quebravam ali: voltar
+        não é "ir para o Início" (de `/time/item/…` a pessoa quer o
+        Histórico de onde veio, não o hub), e o alvo ficava no meio de uma
+        fila de cinco elementos — foto, nome, casa, sol, pílula —, onde
+        nenhum é o óbvio. Seta à esquerda é o lugar que todo app usa e o
+        único que o polegar encontra sem ler.
+
+        Ícone sozinho, sem rótulo: é a exceção justificada da regra deste
+        cabeçalho ("pílula rotulada, não ícone mudo"). A seta para a
+        esquerda no canto superior esquerdo é o glifo mais aprendido da
+        plataforma, e o rótulo custaria a largura que faz o nome da pessoa
+        caber — era ele que aparecia truncado como "Fer…".
+      */}
+      {VOLTA[aba] ? (
+        <Link href={VOLTA[aba]!} className="time-topo-voltar" aria-label="Voltar">
+          <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+            <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+      ) : null}
+      {/*
+        O PERFIL É UM LINK, NÃO UM BOTÃO QUE ABRE FOLHA.
+
+        Era um `<dialog>` deslizante com o cadastro inteiro dentro: nome,
+        e-mail, foto, PIX, titular, aparência e sair — uns 300px de formulário
+        num painel que rolava por dentro, com rolagem própria dentro da rolagem
+        da página. Três consequências que só a folha tinha:
+
+          · a volta do celular (gesto ou botão do Android) fechava o APP em vez
+            de fechar a folha, porque folha não é passo de histórico;
+          · o teclado subindo sobre um painel de altura fixa escondia o campo em
+            foco, e "Salvar conta" ficava atrás do teclado;
+          · não dava para compartilhar, salvar nem recarregar a tela do cadastro
+            — ela não tinha endereço.
+
+        Como rota, ganha as três de graça, mais a seta de voltar do cabeçalho.
+      */}
+      <Link
+        href="/time/perfil"
+        className="time-topo-perfil"
+        aria-current={aba === "perfil" ? "page" : undefined}
+      >
+        <span className="time-topo-foto">
+          {fotoSrc ? (
+            <img src={fotoSrc} alt="" />
+          ) : (
+            <span className="time-topo-iniciais">{iniciais(sessao.nome)}</span>
+          )}
+        </span>
+        <span className="time-topo-texto">
+          <strong>{sessao.nome}</strong>
+          <span>Meu perfil</span>
+        </span>
+      </Link>
+      {/*
+        "Sair" não fica aqui: a tela de perfil já tem "Sair da conta",
+        rotulado e menos sujeito a toque errado.
+
+        O SOL SAIU DAQUI — e desta vez fica fora.
+
+        O tema já esteve na folha de perfil, voltou ao cabeçalho porque "no
+        perfil ele sumia da vista cotidiana", e o problema real era outro: um
+        cabeçalho de cinco alvos (foto, nome, casa, sol, pílula) numa tela de
+        415px, onde o nome da pessoa aparecia truncado como "Fer…". Claro e
+        escuro é escolha que se faz uma vez e não se toca mais — não pode
+        custar largura fixa em toda tela do app, todo dia.
+
+        Ele continua a um toque, em Meu perfil → Aparência.
+
+        A PÍLULA É REEMBOLSO, NÃO "PEDIR COMPRA".
+
+        O canto superior direito é o único atalho fixo que sobrou depois que
+        a barra inferior saiu, e ele tem de carregar o que o time faz toda
+        semana. Pedir compra é o oposto disso: `fin_purchase_request` teve
+        zero linhas em 7 meses. Estava ali por ser "ação rara que não compete
+        por pixel", e o resultado foi um pixel fixo gasto com a ação mais
+        rara do app — enquanto o reembolso, que é o motivo de a maioria
+        abrir isto, só existia dentro do hub.
+
+        Pedir compra não sumiu: virou atalho no bloco Compras do Início,
+        junto das outras portas do ciclo.
+
+        A pílula continua dizendo "você está aqui" em `/time/reembolso` —
+        preenchida, e sem link para a página em que já se está.
+      */}
+      <div className="time-topo-acoes">
+        <Link
+          href="/time/reembolso"
+          className={aba === "reembolso" ? "time-topo-solicitar aqui" : "time-topo-solicitar"}
+          aria-current={aba === "reembolso" ? "page" : undefined}
+        >
+          <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+            <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+          </svg>
+          <span>Reembolso</span>
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+/**
+ * `/time/perfil` — o cadastro da pessoa, em página.
+ *
+ * Três coisas moram aqui, na ordem em que se mexe nelas: quem eu sou (foto,
+ * nome, e-mail), onde eu recebo (PIX ou TED, titular) e os ajustes do app
+ * (aparência, sair).
+ */
+function TelaPerfil({
+  sessao,
+  aoAtualizarNome,
+  aoSair,
+  aoTrocarFoto
+}: {
+  sessao: Sessao;
   aoAtualizarNome: (nome: string) => void;
   aoSair: () => Promise<void>;
+  aoTrocarFoto: () => void;
 }) {
   const [perfil, setPerfil] = useState<{ nome: string; email: string | null; temFoto: boolean } | null>(null);
-  const [folha, setFolha] = useState(false);
-  /*
-   * Toque fora já fechava; Esc, não — e o foco nunca entrava, então a
-   * primeira tabulação saía para o conteúdo atrás da folha. Mesma disciplina
-   * do diálogo de cancelar.
-   */
   /*
    * PARA ONDE VAI O MEU DINHEIRO.
    *
@@ -2002,12 +2153,15 @@ function CabecalhoPessoa({
   const [erroConta, setErroConta] = useState<string | null>(null);
   const [contaOk, setContaOk] = useState(false);
 
+  /*
+   * Carrega ao MONTAR. Na folha isto dependia de `folha` ser true, porque o
+   * painel vivia montado e invisível dentro do cabeçalho de toda tela; como
+   * rota, montar já significa que a pessoa pediu esta tela.
+   */
   useEffect(() => {
-    if (!folha) return;
     void (async () => {
       const r = await fetch("/api/time/perfil/conta", { cache: "no-store" });
       const j = await r.json().catch(() => ({}));
-      // Aproveita a abertura da folha para trazer os dois números também.
       void carregarRecebiveis().then(({ dado }) => {
         if (dado) {
           setResumoRec({
@@ -2030,7 +2184,7 @@ function CabecalhoPessoa({
       setTitularNome(c.titularNome ?? "");
       setTitularDoc(c.titularDocumento ?? "");
     })();
-  }, [folha]);
+  }, []);
 
   async function salvarConta(e: React.FormEvent) {
     e.preventDefault();
@@ -2060,21 +2214,11 @@ function CabecalhoPessoa({
     }
   }
 
-  const folhaRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!folha) return;
-    const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFolha(false);
-    };
-    document.addEventListener("keydown", aoTeclar);
-    folhaRef.current?.focus();
-    return () => document.removeEventListener("keydown", aoTeclar);
-  }, [folha]);
-
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [perfilOk, setPerfilOk] = useState(false);
   const [fotoVersao, setFotoVersao] = useState(0);
   const fotoRef = useRef<HTMLInputElement>(null);
 
@@ -2095,6 +2239,7 @@ function CabecalhoPessoa({
     e.preventDefault();
     setSalvando(true);
     setErro(null);
+    setPerfilOk(false);
     const r = await fetch("/api/time/perfil", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -2105,7 +2250,12 @@ function CabecalhoPessoa({
     if (!r.ok) return setErro(j.error ?? "não consegui salvar");
     setPerfil(j.perfil);
     aoAtualizarNome(j.perfil.nome);
-    setFolha(false);
+    /*
+     * A folha FECHAVA ao salvar — era a única confirmação que existia, e ela
+     * também tirava da tela o que a pessoa acabou de digitar. Como página não
+     * há o que fechar: confirma no lugar e deixa a pessoa decidir se volta.
+     */
+    setPerfilOk(true);
   }
 
   async function enviarFoto(arquivo: File) {
@@ -2123,333 +2273,236 @@ function CabecalhoPessoa({
     }
     setPerfil((p) => (p ? { ...p, temFoto: true } : p));
     setFotoVersao((n) => n + 1);
+    // O topo tem a própria cópia da foto: sem este aviso ele segue nas iniciais.
+    aoTrocarFoto();
   }
 
   const fotoSrc = perfil?.temFoto ? `/api/time/perfil/foto?v=${fotoVersao}` : null;
 
   return (
-    <>
-      <header className="time-topo">
-        {/*
-          A SETA VEM ANTES DE TUDO, E É A PRIMEIRA COISA DA LINHA.
-
-          Antes havia uma pílula "Início" com ícone de casa no meio do
-          cabeçalho, entre o nome e o tema. Duas coisas quebravam ali: voltar
-          não é "ir para o Início" (de `/time/item/…` a pessoa quer o
-          Histórico de onde veio, não o hub), e o alvo ficava no meio de uma
-          fila de cinco elementos — foto, nome, casa, sol, pílula —, onde
-          nenhum é o óbvio. Seta à esquerda é o lugar que todo app usa e o
-          único que o polegar encontra sem ler.
-
-          Ícone sozinho, sem rótulo: é a exceção justificada da regra deste
-          cabeçalho ("pílula rotulada, não ícone mudo"). A seta para a
-          esquerda no canto superior esquerdo é o glifo mais aprendido da
-          plataforma, e o rótulo custaria a largura que faz o nome da pessoa
-          caber — era ele que aparecia truncado como "Fer…".
-        */}
-        {VOLTA[aba] ? (
-          <Link href={VOLTA[aba]!} className="time-topo-voltar" aria-label="Voltar">
-            <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
-              <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
-        ) : null}
-        <button type="button" className="time-topo-perfil" onClick={() => setFolha(true)}>
-          <span className="time-topo-foto">
-            {fotoSrc ? (
-              <img src={fotoSrc} alt="" />
-            ) : (
-              <span className="time-topo-iniciais">{iniciais(sessao.nome)}</span>
-            )}
-          </span>
-          <span className="time-topo-texto">
-            <strong>{sessao.nome}</strong>
-            <span>Meu perfil</span>
-          </span>
-        </button>
-        {/*
-          "Sair" não fica aqui: a folha de perfil já tem "Sair da conta",
-          rotulado e menos sujeito a toque errado.
-
-          O SOL SAIU DAQUI — e desta vez fica fora.
-
-          O tema já esteve na folha de perfil, voltou ao cabeçalho porque "no
-          perfil ele sumia da vista cotidiana", e o problema real era outro: um
-          cabeçalho de cinco alvos (foto, nome, casa, sol, pílula) numa tela de
-          415px, onde o nome da pessoa aparecia truncado como "Fer…". Claro e
-          escuro é escolha que se faz uma vez e não se toca mais — não pode
-          custar largura fixa em toda tela do app, todo dia.
-
-          Ele continua a um toque, em "Meu perfil" → Aparência (logo abaixo,
-          em `.time-perfil-rodape`), que é onde ajuste de conta mora.
-
-          A PÍLULA É REEMBOLSO, NÃO "PEDIR COMPRA".
-
-          O canto superior direito é o único atalho fixo que sobrou depois que
-          a barra inferior saiu, e ele tem de carregar o que o time faz toda
-          semana. Pedir compra é o oposto disso: `fin_purchase_request` teve
-          zero linhas em 7 meses. Estava ali por ser "ação rara que não compete
-          por pixel", e o resultado foi um pixel fixo gasto com a ação mais
-          rara do app — enquanto o reembolso, que é o motivo de a maioria
-          abrir isto, só existia dentro do hub.
-
-          Pedir compra não sumiu: virou atalho no bloco Compras do Início,
-          junto das outras portas do ciclo.
-
-          A pílula continua dizendo "você está aqui" em `/time/reembolso` —
-          preenchida, e sem link para a página em que já se está.
-        */}
-        <div className="time-topo-acoes">
-          <Link
-            href="/time/reembolso"
-            className={aba === "reembolso" ? "time-topo-solicitar aqui" : "time-topo-solicitar"}
-            aria-current={aba === "reembolso" ? "page" : undefined}
-          >
-            <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
-              <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-            </svg>
-            <span>Reembolso</span>
-          </Link>
-        </div>
+    <div className="time-tela-padrao time-perfil-pagina">
+      <header className="time-form-cabeca">
+        <h1>Meu perfil</h1>
+        <p>Seus dados, a conta que recebe o seu dinheiro e os ajustes do app.</p>
       </header>
 
-      {folha ? (
-        <div className="time-perfil-casca" role="presentation" onClick={() => setFolha(false)}>
-          <div
-            className="time-perfil-folha"
-            ref={folhaRef}
-            tabIndex={-1}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Meu perfil"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="time-perfil-folha-cabeca">
-              <h2>Meu perfil</h2>
-              <button type="button" className="time-perfil-fechar" onClick={() => setFolha(false)} aria-label="Fechar">
-                ×
-              </button>
-            </div>
+      <div className="time-perfil-foto-linha">
+        {/*
+          Sem `aria-label` o botão fica MUDO exatamente para quem usou o
+          recurso: sem foto ele contém as iniciais e ganha nome pelo
+          texto; com foto, contém só um `<img alt="">` e o leitor de tela
+          anuncia "botão".
+        */}
+        <button
+          type="button"
+          className="time-topo-foto time-topo-foto-grande"
+          aria-label={fotoSrc ? "Trocar a foto do perfil" : "Adicionar uma foto de perfil"}
+          onClick={() => fotoRef.current?.click()}
+        >
+          {fotoSrc ? (
+            <img src={fotoSrc} alt="" />
+          ) : (
+            <span className="time-topo-iniciais">{iniciais(nome || sessao.nome)}</span>
+          )}
+        </button>
+        <div>
+          <button type="button" className="time-perfil-foto-btn" onClick={() => fotoRef.current?.click()} disabled={salvando}>
+            {salvando ? "Salvando…" : "Trocar foto"}
+          </button>
+          <p className="time-sub">Câmera ou galeria</p>
+        </div>
+        <input
+          ref={fotoRef}
+          type="file"
+          accept="image/*"
+          capture="user"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) void enviarFoto(f);
+          }}
+        />
+      </div>
 
-            <div className="time-perfil-foto-linha">
-              {/*
-                Sem `aria-label` o botão fica MUDO exatamente para quem usou o
-                recurso: sem foto ele contém as iniciais e ganha nome pelo
-                texto; com foto, contém só um `<img alt="">` e o leitor de tela
-                anuncia "botão".
-              */}
-              <button
-                type="button"
-                className="time-topo-foto time-topo-foto-grande"
-                aria-label={fotoSrc ? "Trocar a foto do perfil" : "Adicionar uma foto de perfil"}
-                onClick={() => fotoRef.current?.click()}
-              >
-                {fotoSrc ? (
-                  <img src={fotoSrc} alt="" />
-                ) : (
-                  <span className="time-topo-iniciais">{iniciais(nome || sessao.nome)}</span>
-                )}
-              </button>
-              <div>
-                <button type="button" className="time-perfil-foto-btn" onClick={() => fotoRef.current?.click()} disabled={salvando}>
-                  {salvando ? "Salvando…" : "Trocar foto"}
-                </button>
-                <p className="time-sub">Câmera ou galeria</p>
-              </div>
-              <input
-                ref={fotoRef}
-                type="file"
-                accept="image/*"
-                capture="user"
-                hidden
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  e.target.value = "";
-                  if (f) void enviarFoto(f);
-                }}
-              />
-            </div>
+      <form className="time-porta-form" onSubmit={salvarPerfil}>
+        <label className="time-porta-campo">
+          <span>Nome</span>
+          <input value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" />
+        </label>
+        <label className="time-porta-campo">
+          <span>E-mail</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            inputMode="email"
+          />
+        </label>
+        {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
+        {perfilOk ? <p className="conta-pgto-ok" role="status">Perfil salvo.</p> : null}
+        <button type="submit" className="time-porta-entrar" disabled={salvando || nome.trim().length < 2}>
+          {salvando ? "Salvando…" : "Salvar"}
+        </button>
+      </form>
 
-            <form className="time-porta-form" onSubmit={salvarPerfil}>
-              <label className="time-porta-campo">
-                <span>Nome</span>
-                <input value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" />
-              </label>
-              <label className="time-porta-campo">
-                <span>E-mail</span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  inputMode="email"
-                />
-              </label>
-              {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
-              <button type="submit" className="time-porta-entrar" disabled={salvando || nome.trim().length < 2}>
-                {salvando ? "Salvando…" : "Salvar"}
-              </button>
-            </form>
-
-            {/*
-              A CONTA QUE RECEBE. Vem depois do nome e do e-mail porque é o
-              cadastro mais raro de mexer — e antes de "Sair" porque é o que a
-              pessoa vem preencher quando abre esta folha pela primeira vez.
-            */}
-            {resumoRec ? (
-              <div className="perfil-numeros">
-                <div>
-                  <span>Recebo de hábito</span>
-                  <strong>{brl(resumoRec.mediana)}</strong>
-                  {/* "mediana" escrito: não é o contrato, é o que costuma cair.
-                      A média seria puxada pelos extremos — nos oito meses do
-                      Fernando os valores vão de R$ 2.386 a R$ 7.644. */}
-                  <small>mediana por mês</small>
-                </div>
-                <div>
-                  <span>Reembolso previsto</span>
-                  <strong>{brl(resumoRec.aberto)}</strong>
-                  <small>{resumoRec.aberto > 0 ? "aprovado, ainda não pago" : "nada em aberto"}</small>
-                </div>
-              </div>
-            ) : null}
-
-            <form className="time-porta-form conta-pgto" onSubmit={salvarConta}>
-              <div className="conta-pgto-topo">
-                <strong>Onde eu recebo</strong>
-                {conta ? (
-                  <span className={conta.conferidoEm ? "pp-selo ok" : "pp-selo aviso"}>
-                    {conta.conferidoEm ? "conferido" : "aguardando conferência"}
-                  </span>
-                ) : null}
-              </div>
-              <p className="time-sub">
-                É para cá que vai o seu reembolso e o seu pagamento. Confira caractere por caractere: chave errada
-                não dá erro, o dinheiro vai para outra pessoa.
-              </p>
-
-              <div className="campo">
-                <span className="campo-rotulo" id="grupo-metodo">Como você recebe</span>
-                <div className="chips" role="group" aria-labelledby="grupo-metodo">
-                  {[["pix", "PIX"], ["ted", "TED / transferência"]].map(([v, r]) => (
-                    <button
-                      key={v}
-                      type="button"
-                      aria-pressed={contaMetodo === v}
-                      className={contaMetodo === v ? "chip ativo" : "chip"}
-                      onClick={() => setContaMetodo(v)}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {contaMetodo === "pix" ? (
-                <>
-                  <div className="campo">
-                    <span className="campo-rotulo" id="grupo-tipo-chave">Tipo da chave</span>
-                    <div className="chips" role="group" aria-labelledby="grupo-tipo-chave">
-                      {[["cpf", "CPF"], ["cnpj", "CNPJ"], ["telefone", "Telefone"], ["email", "E-mail"], ["aleatoria", "Aleatória"]].map(
-                        ([v, r]) => (
-                          <button
-                            key={v}
-                            type="button"
-                            aria-pressed={pixTipo === v}
-                            className={pixTipo === v ? "chip ativo" : "chip"}
-                            onClick={() => setPixTipo(v)}
-                          >
-                            {r}
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                  <label className="time-porta-campo">
-                    <span>Chave PIX</span>
-                    <input
-                      value={pixChave}
-                      onChange={(e) => setPixChave(e.target.value)}
-                      inputMode={pixTipo === "cpf" || pixTipo === "cnpj" || pixTipo === "telefone" ? "numeric" : "text"}
-                      placeholder={
-                        pixTipo === "cpf" ? "000.000.000-00"
-                        : pixTipo === "cnpj" ? "00.000.000/0000-00"
-                        : pixTipo === "telefone" ? "(81) 99999-9999"
-                        : pixTipo === "email" ? "voce@exemplo.com"
-                        : "a chave que o banco gerou"
-                      }
-                    />
-                  </label>
-                </>
-              ) : (
-                <>
-                  <label className="time-porta-campo">
-                    <span>Banco</span>
-                    <input value={bancoNome} onChange={(e) => setBancoNome(e.target.value)} placeholder="Inter, Nubank…" />
-                  </label>
-                  <div className="campo-par">
-                    <label className="time-porta-campo">
-                      <span>Agência</span>
-                      <input value={agencia} onChange={(e) => setAgencia(e.target.value)} inputMode="numeric" />
-                    </label>
-                    <label className="time-porta-campo">
-                      <span>Conta</span>
-                      <input value={contaNum} onChange={(e) => setContaNum(e.target.value)} inputMode="numeric" />
-                    </label>
-                  </div>
-                </>
-              )}
-
-              <div className="campo">
-                <span className="campo-rotulo" id="grupo-titular">De quem é a conta</span>
-                <div className="chips" role="group" aria-labelledby="grupo-titular">
-                  <button type="button" aria-pressed={titularEhEu} className={titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(true)}>
-                    Minha
-                  </button>
-                  <button type="button" aria-pressed={!titularEhEu} className={!titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(false)}>
-                    Do meu CNPJ / de outra pessoa
-                  </button>
-                </div>
-                <small>
-                  {titularEhEu
-                    ? "O comprovante vai sair no seu nome."
-                    : "Comum aqui: o time é MEI e recebe no CNPJ. Diga o titular para o comprovante fazer sentido depois."}
-                </small>
-              </div>
-
-              {!titularEhEu ? (
-                <div className="campo-par">
-                  <label className="time-porta-campo">
-                    <span>Nome do titular</span>
-                    <input value={titularNome} onChange={(e) => setTitularNome(e.target.value)} />
-                  </label>
-                  <label className="time-porta-campo">
-                    <span>CPF ou CNPJ dele</span>
-                    <input value={titularDoc} onChange={(e) => setTitularDoc(e.target.value)} inputMode="numeric" />
-                  </label>
-                </div>
-              ) : null}
-
-              {erroConta ? <p className="time-porta-erro" role="alert">{erroConta}</p> : null}
-              {contaOk ? <p className="conta-pgto-ok" role="status">Conta salva. O financeiro vai conferir antes do próximo pagamento.</p> : null}
-              <button type="submit" className="time-porta-entrar" disabled={salvandoConta}>
-                {salvandoConta ? "Salvando…" : conta ? "Atualizar conta" : "Salvar conta"}
-              </button>
-            </form>
-
-            <div className="time-perfil-rodape">
-              <div className="time-perfil-tema">
-                <span>Aparência</span>
-                <BotaoTema className="time-topo-tema" />
-              </div>
-              <button type="button" className="time-perfil-sair" onClick={() => void aoSair()}>
-                Sair da conta
-              </button>
-            </div>
+      {/*
+        A CONTA QUE RECEBE. Vem depois do nome e do e-mail porque é o
+        cadastro mais raro de mexer — e antes de "Sair" porque é o que a
+        pessoa vem preencher quando abre esta tela pela primeira vez.
+      */}
+      {resumoRec ? (
+        <div className="perfil-numeros">
+          <div>
+            <span>Recebo de hábito</span>
+            <strong>{brl(resumoRec.mediana)}</strong>
+            {/* "mediana" escrito: não é o contrato, é o que costuma cair.
+                A média seria puxada pelos extremos — nos oito meses do
+                Fernando os valores vão de R$ 2.386 a R$ 7.644. */}
+            <small>mediana por mês</small>
+          </div>
+          <div>
+            <span>Reembolso previsto</span>
+            <strong>{brl(resumoRec.aberto)}</strong>
+            <small>{resumoRec.aberto > 0 ? "aprovado, ainda não pago" : "nada em aberto"}</small>
           </div>
         </div>
       ) : null}
-    </>
+
+      <form className="time-porta-form conta-pgto" onSubmit={salvarConta}>
+        <div className="conta-pgto-topo">
+          <strong>Onde eu recebo</strong>
+          {conta ? (
+            <span className={conta.conferidoEm ? "pp-selo ok" : "pp-selo aviso"}>
+              {conta.conferidoEm ? "conferido" : "aguardando conferência"}
+            </span>
+          ) : null}
+        </div>
+        <p className="time-sub">
+          É para cá que vai o seu reembolso e o seu pagamento. Confira caractere por caractere: chave errada
+          não dá erro, o dinheiro vai para outra pessoa.
+        </p>
+
+        <div className="campo">
+          <span className="campo-rotulo" id="grupo-metodo">Como você recebe</span>
+          <div className="chips" role="group" aria-labelledby="grupo-metodo">
+            {[["pix", "PIX"], ["ted", "TED / transferência"]].map(([v, r]) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={contaMetodo === v}
+                className={contaMetodo === v ? "chip ativo" : "chip"}
+                onClick={() => setContaMetodo(v)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {contaMetodo === "pix" ? (
+          <>
+            <div className="campo">
+              <span className="campo-rotulo" id="grupo-tipo-chave">Tipo da chave</span>
+              <div className="chips" role="group" aria-labelledby="grupo-tipo-chave">
+                {[["cpf", "CPF"], ["cnpj", "CNPJ"], ["telefone", "Telefone"], ["email", "E-mail"], ["aleatoria", "Aleatória"]].map(
+                  ([v, r]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      aria-pressed={pixTipo === v}
+                      className={pixTipo === v ? "chip ativo" : "chip"}
+                      onClick={() => setPixTipo(v)}
+                    >
+                      {r}
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+            <label className="time-porta-campo">
+              <span>Chave PIX</span>
+              <input
+                value={pixChave}
+                onChange={(e) => setPixChave(e.target.value)}
+                inputMode={pixTipo === "cpf" || pixTipo === "cnpj" || pixTipo === "telefone" ? "numeric" : "text"}
+                placeholder={
+                  pixTipo === "cpf" ? "000.000.000-00"
+                  : pixTipo === "cnpj" ? "00.000.000/0000-00"
+                  : pixTipo === "telefone" ? "(81) 99999-9999"
+                  : pixTipo === "email" ? "voce@exemplo.com"
+                  : "a chave que o banco gerou"
+                }
+              />
+            </label>
+          </>
+        ) : (
+          <>
+            <label className="time-porta-campo">
+              <span>Banco</span>
+              <input value={bancoNome} onChange={(e) => setBancoNome(e.target.value)} placeholder="Inter, Nubank…" />
+            </label>
+            <div className="campo-par">
+              <label className="time-porta-campo">
+                <span>Agência</span>
+                <input value={agencia} onChange={(e) => setAgencia(e.target.value)} inputMode="numeric" />
+              </label>
+              <label className="time-porta-campo">
+                <span>Conta</span>
+                <input value={contaNum} onChange={(e) => setContaNum(e.target.value)} inputMode="numeric" />
+              </label>
+            </div>
+          </>
+        )}
+
+        <div className="campo">
+          <span className="campo-rotulo" id="grupo-titular">De quem é a conta</span>
+          <div className="chips" role="group" aria-labelledby="grupo-titular">
+            <button type="button" aria-pressed={titularEhEu} className={titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(true)}>
+              Minha
+            </button>
+            <button type="button" aria-pressed={!titularEhEu} className={!titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(false)}>
+              Do meu CNPJ / de outra pessoa
+            </button>
+          </div>
+          <small>
+            {titularEhEu
+              ? "O comprovante vai sair no seu nome."
+              : "Comum aqui: o time é MEI e recebe no CNPJ. Diga o titular para o comprovante fazer sentido depois."}
+          </small>
+        </div>
+
+        {!titularEhEu ? (
+          <div className="campo-par">
+            <label className="time-porta-campo">
+              <span>Nome do titular</span>
+              <input value={titularNome} onChange={(e) => setTitularNome(e.target.value)} />
+            </label>
+            <label className="time-porta-campo">
+              <span>CPF ou CNPJ dele</span>
+              <input value={titularDoc} onChange={(e) => setTitularDoc(e.target.value)} inputMode="numeric" />
+            </label>
+          </div>
+        ) : null}
+
+        {erroConta ? <p className="time-porta-erro" role="alert">{erroConta}</p> : null}
+        {contaOk ? <p className="conta-pgto-ok" role="status">Conta salva. O financeiro vai conferir antes do próximo pagamento.</p> : null}
+        <button type="submit" className="time-porta-entrar" disabled={salvandoConta}>
+          {salvandoConta ? "Salvando…" : conta ? "Atualizar conta" : "Salvar conta"}
+        </button>
+      </form>
+
+      <div className="time-perfil-rodape">
+        <div className="time-perfil-tema">
+          <span>Aparência</span>
+          <BotaoTema className="time-topo-tema" />
+        </div>
+        <button type="button" className="time-perfil-sair" onClick={() => void aoSair()}>
+          Sair da conta
+        </button>
+      </div>
+    </div>
   );
 }
 

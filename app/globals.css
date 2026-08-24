@@ -12023,6 +12023,82 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   padding-bottom: 20px;
   border-bottom: 1px solid var(--line);
 }
+.time-faixa-inicio .time-faixa-item { flex: 1 1 50%; }
+.time-faixa-inicio .time-faixa-item + .time-faixa-item { border-left: none; }
+
+/* Início como guia de navegação — três blocos, cada um uma porta. */
+.time-inicio-guia { gap: 22px; }
+.time-inicio-guia > .time-guia-bloco:first-child {
+  padding-top: 0;
+}
+.time-inicio-guia > .time-guia-bloco:first-child .time-faixa {
+  margin-top: 0;
+}
+.time-guia-bloco {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+.time-guia-bloco + .time-guia-bloco {
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.time-guia-cabeca {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+.time-guia-cabeca h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.time-guia-lead {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.time-guia-bloco .time-faixa {
+  margin: 4px -4px 0;
+  padding-bottom: 12px;
+  border-bottom: 0;
+}
+.time-guia-bloco .time-menu-atalhos { margin-top: 2px; }
+
+.time-compras-resumo { margin: 0 0 4px; }
+.time-compras-pagina {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.time-compras-pagina .time-atalho {
+  min-height: 0;
+  padding: 13px 0;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+}
+.time-compras-pagina li:last-child .time-atalho { border-bottom: 0; }
+.time-compras-pagina .time-atalho:active { background: var(--surface-2); }
+.time-compras-pagina .time-atalho-icone {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+.time-compras-pagina .time-atalho-texto { flex: 1; min-width: 0; }
+.time-compras-pagina-valor {
+  flex: none;
+  font-size: 13.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .time-faixa-item {
   flex: 1;
   display: grid;
@@ -12035,6 +12111,26 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 .time-faixa-item + .time-faixa-item {
   border-left: 1px solid var(--line);
+}
+.time-faixa-topo {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--ink);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.time-faixa-inicio .time-faixa-rotulo {
+  order: 3;
+  margin-top: 2px;
+}
+.time-faixa-inicio .time-faixa-nota {
+  order: 4;
+}
+.time-faixa-inicio .time-faixa-valor {
+  order: 2;
+}
+.time-faixa-inicio .time-faixa-topo {
+  order: 1;
 }
 .time-faixa-rotulo {
   font-size: 11px;
@@ -12186,35 +12282,59 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   height: 36px;
   border-radius: 9px;
 }
+.time-menu-atalhos .time-atalho-texto { flex: 1; min-width: 0; }
+.time-atalho-seta {
+  flex: none;
+  color: var(--muted);
+  margin-left: 4px;
+}
 
 .time-compras-dobrada {
   border-top: 1px solid var(--line);
-  padding-top: 4px;
-  margin-top: 4px;
+  padding-top: 0;
+  margin-top: 0;
 }
-.time-compras-dobrada > summary {
+.time-compras-dobrada > summary.time-compras-atalho {
   list-style: none;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 0;
+  gap: 12px;
+  min-height: 0;
+  padding: 13px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
   color: var(--ink);
+  text-decoration: none;
 }
-.time-compras-dobrada > summary::-webkit-details-marker { display: none; }
-.time-compras-dobrada > summary::after {
+.time-compras-dobrada > summary.time-compras-atalho::-webkit-details-marker { display: none; }
+.time-compras-dobrada > summary.time-compras-atalho:active { background: var(--surface-2); }
+.time-compras-dobrada > summary.time-compras-atalho .time-atalho-icone {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+.time-compras-dobrada > summary.time-compras-atalho .time-atalho-texto {
+  flex: 1;
+  min-width: 0;
+}
+.time-compras-dobrada > summary.time-compras-atalho .time-atalho-texto > span {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.time-compras-dobrada > summary.time-compras-atalho::after {
   content: "▾";
   color: var(--muted);
   font-size: 12px;
+  flex: none;
   transition: transform 0.15s ease;
 }
-.time-compras-dobrada[open] > summary::after { transform: rotate(180deg); }
+.time-compras-dobrada[open] > summary.time-compras-atalho::after { transform: rotate(180deg); }
 .time-compras-dobrada .time-compras-lista {
   border-top: 0;
-  padding: 0 0 4px;
+  padding: 0 0 4px 48px;
 }
 .time-compras-contagem {
   min-width: 20px;
@@ -15471,8 +15591,27 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 
 .time-porta {
+  position: relative;
   width: 100%;
   padding: calc(16px + env(safe-area-inset-top)) 0 calc(24px + env(safe-area-inset-bottom));
+}
+.time-porta-tema.theme-toggle {
+  position: absolute;
+  top: calc(4px + env(safe-area-inset-top));
+  right: 0;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+}
+.time-porta-tema.theme-toggle:hover {
+  transform: none;
+  background: var(--surface-2);
+  box-shadow: none;
 }
 
 .time-identidade {
@@ -15888,16 +16027,13 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
    `body:has()` e não `.time-page .theme-toggle`: o ThemeToggle é montado direto
    no `body`, FORA do `AppShell` e fora de qualquer página ("assim nenhuma tela
    precisa lembrar de incluí-lo"). Ele não é descendente de `.time-page`, então
-   só dá para alcançá-lo olhando para o irmão. */
-/* Logado no app do time: o tema fica no cabeçalho, não flutuando no canto. */
-body:has(.time-app) > .theme-toggle { display: none; }
-
-/* No login do time o seletor de tema sobe para o topo (fora do cabeçalho de perfil). */
-body:has(.time-page):not(:has(.time-app)) .theme-toggle {
-  top: calc(10px + env(safe-area-inset-top));
-  bottom: auto;
-  right: 12px;
-}
+   só dá para alcançá-lo olhando para o irmão.
+   
+   Esconde pelo `.time-shell` (layout permanente), não pelo `.time-app`: na
+   troca de rota o app desmonta por um frame e o flutuante piscava no canto.
+   No login e no cabeçalho o tema entra inline (`time-porta-tema` /
+   `time-topo-tema`). */
+body:has(.time-shell) > .theme-toggle { display: none; }
 
 /* ===========================================================================
    FORMULÁRIO DE CUSTO — o que o Fernando apontou usando no aparelho
@@ -17939,8 +18075,12 @@ button.rec-plot-acao {
 .rec-nat-prev > summary.rec-nat-linha { cursor: pointer; }
 .rec-nat-prev > summary.rec-nat-linha::-webkit-details-marker { display: none; }
 .rec-nat-prev[open] > summary.rec-nat-linha { margin-bottom: 2px; }
-.rec-nat-prev > :not(summary) { padding: 0 0 6px 19px; }
-.rec-aberto-lista-aninhada { padding: 2px 12px 10px; }
+.rec-nat-prev > :not(summary) { padding: 0 0 6px 28px; }
+.rec-aberto-lista-aninhada { padding: 2px 0 10px; }
+.rec-aberto-lista-aninhada .rec-aberto-valor {
+  font-size: 12.5px; font-weight: 600; color: var(--muted);
+}
+.rec-aberto-lista-aninhada .rec-aberto-nome { font-size: 12.5px; font-weight: 500; }
 .rec-prev-meses-aninhada li {
   grid-template-columns: minmax(0, 1fr) auto;
   padding-left: 12px; padding-right: 12px;

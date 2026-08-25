@@ -393,17 +393,24 @@ export function FinCartoes({ dado, ressalvas }: Props) {
         </p>
       </section>
 
+      {/*
+        RECOLHIDA, NÃO APAGADA.
+        Era uma seção aberta com a lista inteira de ressalvas, e o dono pediu
+        "menos texto de ressalvas" olhando para esta tela. Apagá-las seria a
+        leitura errada do pedido: elas dizem como ler os números e ainda valem.
+        O que estava errado era o PESO — um bloco permanente do tamanho de um
+        cartão de dado, acima do dado. Fechada, ela custa uma linha e continua
+        a um clique de quem for auditar.
+      */}
       {ressalvas.length ? (
-        <section className="fin-card">
-          <div className="fin-card-head">
-            <h2>Ressalvas</h2>
-          </div>
-          <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 7, fontSize: 13, lineHeight: 1.55 }}>
+        <details className="fin-card fin-cartao-ressalvas">
+          <summary>Como ler estes números ({ressalvas.length})</summary>
+          <ul>
             {ressalvas.map((r, i) => (
               <li key={i}>{r}</li>
             ))}
           </ul>
-        </section>
+        </details>
       ) : null}
     </>
   );

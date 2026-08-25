@@ -19189,3 +19189,3167 @@ button.rec-plot-acao {
 .fin-pessoas-matriz-tabela thead th.fin-previsao .fin-tag {
   margin-left: 4px;
 }
+
+/* ==========================================================================
+   TELA DE CARTÕES — o painel de gasto
+
+   Quatro blocos escritos separados e colados aqui na integração: topo
+   (KPIs + gráfico empilhado), plásticos (mini-cartões por banco),
+   transações (tabela + fila de qualificação) e análise (ranking, quebras
+   e cruzamentos). Prefixos conferidos classe a classe: não colidem entre
+   si nem com o resto deste arquivo.
+
+   TRÊS TEXTURAS, TRÊS SIGNIFICADOS — e elas não podem ser trocadas:
+     sólido ............ o dado existe e está classificado
+     hachura ........... falta preencher, e DÁ para resolver (fila de
+                         qualificação, apelido, cor, limite)
+     pontilhado ........ a fonte não entrega e nunca vai (o Inter manda
+                         só o pagamento da fatura)
+   Usar a mesma textura para os dois últimos ensina a ignorar os dois.
+   ========================================================================== */
+
+/* ===========================================================================
+   FinCartaoPainelTopo — faixa de KPIs + gasto mensal empilhado por cartão
+   ---------------------------------------------------------------------------
+   Todo seletor aqui começa com `fin-cartao-topo-`. Os tokens locais também
+   levam o prefixo: este arquivo é colado em `app/globals.css` por outro
+   processo, e nada daqui pode vazar para o resto da plataforma.
+
+   TEMA — o padrão da casa, em três blocos, sempre nesta ordem:
+     :root                                    → claro (o valor base)
+     [data-theme="escuro"]                    → escolha explícita de escuro
+     @media (prefers-color-scheme: dark)
+       :root:not([data-theme="claro"])        → escuro por preferência do SO
+
+   Cor de SÉRIE (a de cada cartão) não mora aqui: ela é hex, vem de
+   `corDoCartao()` e é a MESMA nos dois temas por construção — cada slot da
+   paleta passa 3:1 sobre o branco e sobre o `--card` escuro. O que mora aqui é
+   tudo que precisa virar com o tema: grade, tinta, a hachura do indeterminado
+   e a opacidade do previsto.
+   =========================================================================== */
+
+:root {
+  /* O vinco entre segmentos empilhados é pintado com a cor da
+     superfície: é um respiro, não uma borda. Sem ele o empilhado vira um
+     bloco só e a fronteira entre dois cartões some. */
+  --fin-cartao-topo-vinco: var(--card);
+  /* Previsto = mesma cor do cartão, mais fraca. No escuro a mistura é com um
+     fundo escuro e some antes; por isso a opacidade sobe lá. */
+  --fin-cartao-topo-previsto-opacidade: 0.42;
+}
+
+[data-theme="escuro"] {
+  --fin-cartao-topo-previsto-opacidade: 0.58;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) {
+    --fin-cartao-topo-previsto-opacidade: 0.58;
+  }
+}
+
+/* ---- Esqueleto ---------------------------------------------------------- */
+
+.fin-cartao-topo {
+  display: grid;
+  gap: 20px;
+}
+
+.fin-cartao-topo-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+/* O `detalhe` do KpiCard recebe várias informações curtas (previsto, variação,
+   não itemizado). Empilhadas em linhas de 1 a 3 palavras elas se leem de
+   relance; correndo no mesmo parágrafo, não. */
+.fin-cartao-topo-detalhe {
+  display: grid;
+  gap: 2px;
+}
+.fin-cartao-topo-detalhe-linha {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+/* "mês em curso", "fechado" — o estado do mês, não um aviso. Fica em itálico
+   pela mesma razão que `--cert-indet` fica: é a marca de "ainda não é final". */
+.fin-cartao-topo-estado {
+  font-style: italic;
+}
+.fin-cartao-topo-estado-indet {
+  font-style: italic;
+  color: var(--cert-indet);
+}
+
+/* A variação não usa verde nem vermelho DE PROPÓSITO: nesta base verde é
+   entrada e vermelho é saída, e cartão é saída inteira. Gastar menos que no
+   mês passado não é "entrada". A seta carrega a direção; a cor, nada. */
+.fin-cartao-topo-variacao {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.fin-cartao-topo-variacao-seta {
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* ---- Gráfico ------------------------------------------------------------ */
+
+.fin-cartao-topo-grafico {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.fin-cartao-topo-titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.fin-cartao-topo-titulo strong {
+  font-size: 13.5px;
+}
+.fin-cartao-topo-titulo span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* A chave de leitura: cheio x esmaecido x hachurado. Três amostras valem o
+   parágrafo de ressalva que elas substituem. */
+.fin-cartao-topo-chave {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.fin-cartao-topo-chave-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---- Legenda interativa -------------------------------------------------- */
+
+.fin-cartao-topo-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.fin-cartao-topo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: opacity 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.fin-cartao-topo-chip:hover {
+  border-color: var(--neon-purple);
+}
+.fin-cartao-topo-chip:focus-visible {
+  outline: 2px solid var(--neon-purple);
+  outline-offset: 2px;
+}
+/* Desligado NÃO é "sem dado": é escolha de quem olha. Por isso ele fica
+   apagado e riscado, e não some — some seria confundir "escondi" com "não
+   existe", que são estados diferentes. */
+.fin-cartao-topo-chip[aria-pressed="false"] {
+  opacity: 0.5;
+  background: transparent;
+}
+.fin-cartao-topo-chip[aria-pressed="false"] .fin-cartao-topo-chip-nome {
+  text-decoration: line-through;
+}
+.fin-cartao-topo-chip[aria-pressed="false"] .fin-cartao-topo-amostra {
+  background: transparent !important;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+.fin-cartao-topo-chip-nome {
+  font-weight: 600;
+}
+.fin-cartao-topo-chip-emissor {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.fin-cartao-topo-amostra {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex: none;
+  display: inline-block;
+}
+/* A amostra do previsto repete a cor do cartão com a mesma opacidade da
+   faixa, para a legenda dizer a verdade sobre o desenho. */
+.fin-cartao-topo-amostra-previsto {
+  opacity: var(--fin-cartao-topo-previsto-opacidade);
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+/* O indeterminado. Hachura é encoding SECUNDÁRIO: quem não separa as cores
+   ainda separa liso de hachurado. Mesmo ângulo e mesma tinta de
+   `FinCartaoHistorico` e de `.cert-hachura`. */
+.fin-cartao-topo-amostra-indet {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--cert-indet) 0 2px,
+    transparent 2px 5px
+  );
+  box-shadow: inset 0 0 0 1px var(--cert-indet);
+}
+
+.fin-cartao-topo-legenda-acoes {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.fin-cartao-topo-acao {
+  border: 1px solid transparent;
+  background: none;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.fin-cartao-topo-acao:hover {
+  color: var(--ink);
+  border-color: var(--line);
+}
+.fin-cartao-topo-acao:focus-visible {
+  outline: 2px solid var(--neon-purple);
+  outline-offset: 2px;
+}
+.fin-cartao-topo-acao[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---- As faixas dentro do SVG -------------------------------------------- */
+
+/* O respiro de 2px entre segmentos empilhados. Vai em CSS, e não no atributo
+   `stroke` do recharts, porque a cor é a da SUPERFÍCIE e ela vira com o tema —
+   um hex fixo aqui desenharia um vinco branco no meio do tema escuro. */
+.fin-cartao-topo-faixa .recharts-rectangle {
+  stroke: var(--fin-cartao-topo-vinco);
+  stroke-width: 1.6px;
+}
+.fin-cartao-topo-faixa-previsto .recharts-rectangle {
+  fill-opacity: var(--fin-cartao-topo-previsto-opacidade);
+}
+
+/* A tinta da hachura do não itemizado. O `<pattern>` também traz o hex claro
+   como atributo, para o PNG exportado pelo ChartFrame — que sai sem o CSS da
+   página — não perder o desenho. */
+.fin-cartao-topo-hachura-linha {
+  stroke: var(--cert-indet);
+}
+.fin-cartao-topo-hachura-fundo {
+  fill: var(--cert-indet);
+}
+
+/* O tick do mês corrente em negrito: ele é o único do eixo que ainda não
+   fechou, e dizer isso com peso de fonte custa zero palavra. */
+.fin-cartao-topo-tick-corrente {
+  font-weight: 700;
+}
+
+/* ---- Tooltip ------------------------------------------------------------ */
+
+.fin-cartao-topo-dica {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  min-width: 232px;
+  max-width: 320px;
+}
+.fin-cartao-topo-dica-titulo {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+.fin-cartao-topo-dica-linha {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1.75;
+}
+.fin-cartao-topo-dica-nome {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fin-cartao-topo-dica-valor {
+  margin-left: auto;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.fin-cartao-topo-dica-grupo {
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+/* Realizado e previsto NUNCA aparecem somados — nem aqui. Os dois subtotais
+   ficam em linhas separadas, e não existe uma terceira linha juntando-os. */
+.fin-cartao-topo-dica-soma {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+  line-height: 1.6;
+  font-size: 12px;
+}
+.fin-cartao-topo-dica-nota {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* ---- Estado vazio -------------------------------------------------------- */
+
+.fin-cartao-topo-vazio {
+  margin: 0;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---- Movimento ----------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .fin-cartao-topo-chip {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .fin-cartao-topo-legenda-acoes {
+    margin-left: 0;
+  }
+}
+
+/* ===========================================================================
+   FinCartaoPlasticos — os plásticos por emissor, e o cadastro deles
+   ===========================================================================
+   Tudo aqui é prefixado `fin-cartao-plast-`. As únicas classes de fora que o
+   componente usa são `fin-card`, `fin-card-head` e `fin-card-hint`, que já
+   existem em globals.css e dão a casca da seção.
+
+   TRÊS TOKENS LOCAIS, E POR QUE ELES EXISTEM
+   ---------------------------------------------------------------------------
+   `--fin-cartao-plast-tracejado`, `--fin-cartao-plast-hachura-tinta` e
+   `--fin-cartao-plast-veu` são o vocabulário do VAZIO — a borda tracejada, o
+   risco da hachura e o véu do hover. Nenhum dos três tem equivalente exato em
+   globals.css (`--line` é forte demais para um tracejado e some no escuro), e
+   os três precisam de valor diferente por tema. Ficam declarados nos três
+   blocos: `:root` (claro), `[data-theme="escuro"]` e o `prefers-color-scheme`
+   com `:root:not([data-theme="claro"])`, exatamente como o resto do arquivo.
+
+   Verde não aparece: nesta base verde é ENTRADA, e cartão é saída inteira. A
+   barra de uso do limite vai de neutro a âmbar a `--fin-out`.
+   =========================================================================== */
+
+:root {
+  --fin-cartao-plast-tracejado: #c2d0d6;
+  --fin-cartao-plast-hachura-tinta: #b9c8cf;
+  --fin-cartao-plast-veu: rgba(124, 31, 224, 0.05);
+  --fin-cartao-plast-trilho: #e8eef1;
+  --fin-cartao-plast-prev-ink: var(--ink-purple);
+  --fin-cartao-plast-grafite: #64727a;
+  --fin-cartao-plast-tarja-fio: rgba(0, 0, 0, 0.14);
+}
+:root[data-theme="escuro"] {
+  --fin-cartao-plast-tracejado: #3d3655;
+  --fin-cartao-plast-hachura-tinta: #3a3450;
+  --fin-cartao-plast-veu: rgba(154, 29, 224, 0.14);
+  --fin-cartao-plast-trilho: #241f36;
+  --fin-cartao-plast-grafite: #8b95a3;
+  --fin-cartao-plast-tarja-fio: rgba(255, 255, 255, 0.16);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) {
+    --fin-cartao-plast-tracejado: #3d3655;
+    --fin-cartao-plast-hachura-tinta: #3a3450;
+    --fin-cartao-plast-veu: rgba(154, 29, 224, 0.14);
+    --fin-cartao-plast-trilho: #241f36;
+    --fin-cartao-plast-grafite: #8b95a3;
+    --fin-cartao-plast-tarja-fio: rgba(255, 255, 255, 0.16);
+  }
+}
+
+/* --- A seção ------------------------------------------------------------- */
+.fin-cartao-plast-secao {
+  gap: 16px;
+}
+.fin-cartao-plast-resumo {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A legenda ensina a hachura UMA vez. Depois dela o desenho fala sozinho nos
+   três lugares onde o vazio aparece: tarja, apelido e limite. */
+.fin-cartao-plast-legenda {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.fin-cartao-plast-legenda-conta {
+  color: var(--muted);
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+.fin-cartao-plast-legenda-conta::before {
+  content: "· ";
+}
+
+/* O quadradinho hachurado — o mesmo símbolo em legenda, tarja, apelido e
+   limite. É o vocabulário de "ninguém disse ainda".
+
+   Ele é sempre encoding SECUNDÁRIO: `aria-hidden` no markup, e todo lugar
+   onde aparece já tem o texto ao lado ("por preencher", "dar um apelido",
+   "definir limite") ou no `aria-label` do botão de editar. A textura é a
+   pista rápida para o olho, nunca a única pista. */
+.fin-cartao-plast-hachura {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  flex: none;
+  border-radius: 3px;
+  border: 1px dashed var(--fin-cartao-plast-tracejado);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--fin-cartao-plast-hachura-tinta) 0 1.5px,
+    transparent 1.5px 4.5px
+  );
+}
+
+/* --- Grupos por emissor --------------------------------------------------- */
+.fin-cartao-plast-grupos {
+  display: grid;
+  gap: 20px;
+}
+.fin-cartao-plast-grupo {
+  display: grid;
+  gap: 10px;
+}
+.fin-cartao-plast-grupo-cabeca {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.fin-cartao-plast-grupo-nome {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+.fin-cartao-plast-grupo-meta {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-cartao-plast-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: 12px;
+}
+
+/* --- O mini-cartão -------------------------------------------------------- */
+.fin-cartao-plast-card {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding: 14px 14px 12px 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  overflow: hidden;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+}
+/* A tinta do plástico só tinge o fundo quando alguém escolheu uma cor. Um tom
+   padrão em cima de `cor = null` diria que o cartão é cinza, e ele não é
+   cinza: ele é sem cor definida. */
+.fin-cartao-plast-card[data-sem-cor="nao"] {
+  background: color-mix(in srgb, var(--fin-cartao-plast-cor) 5%, var(--card));
+  border-color: color-mix(in srgb, var(--fin-cartao-plast-cor) 22%, var(--line));
+}
+.fin-cartao-plast-card[data-aberto="sim"] {
+  border-color: var(--purple);
+  box-shadow: var(--shadow);
+}
+
+/* `historico` e `cancelado` continuam na tela: o gasto que fizeram é real e
+   some do total se o plástico sumir. Entram sem saturação e acordam ao toque —
+   a diferença é de peso, não de existência. */
+.fin-cartao-plast-card[data-inativo="sim"] {
+  filter: grayscale(0.85);
+  opacity: 0.72;
+}
+.fin-cartao-plast-card[data-inativo="sim"]:hover,
+.fin-cartao-plast-card[data-inativo="sim"]:focus-within {
+  filter: none;
+  opacity: 1;
+}
+
+/* O fio interno existe por causa do `branco` (#e8e8ea) e do `prata`: como
+   tarja de 7px sobre uma face branca eles somem, e um plástico branco passaria
+   a se ler como um plástico SEM cor — que é outro estado, com outro convite.
+   A aresta resolve sem tocar no hex, que é fonte única no painel de cima. */
+.fin-cartao-plast-tarja {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  background: var(--fin-cartao-plast-cor, transparent);
+  box-shadow: inset -1px 0 0 var(--fin-cartao-plast-tarja-fio);
+}
+.fin-cartao-plast-card[data-sem-cor="sim"] .fin-cartao-plast-tarja {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--fin-cartao-plast-hachura-tinta) 0 2px,
+    transparent 2px 5px
+  );
+}
+
+/* --- A face clicável ------------------------------------------------------
+   O botão COBRE a face em vez de embrulhá-la: envolver o conteúdo faria
+   "definir limite" e "editar" virarem botões dentro de um botão — HTML
+   inválido, e no teclado um Enter dispararia os dois. O conteúdo fica por cima
+   com `pointer-events: none`, e só o que é interativo volta a receber clique. */
+.fin-cartao-plast-topo {
+  position: relative;
+  display: grid;
+}
+.fin-cartao-plast-face {
+  position: absolute;
+  inset: -6px;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.fin-cartao-plast-face:hover {
+  background: var(--fin-cartao-plast-veu);
+}
+.fin-cartao-plast-face:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 0;
+}
+
+.fin-cartao-plast-conteudo {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px 10px;
+}
+.fin-cartao-plast-conteudo button {
+  pointer-events: auto;
+}
+
+/* --- Identidade ----------------------------------------------------------- */
+.fin-cartao-plast-ident {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.fin-cartao-plast-nome {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  min-width: 0;
+}
+
+/* O CHIP DA LEGENDA, repetido aqui.
+
+   `--fin-cartao-plast-serie` é a cor que `corDoCartao()` dá ao plástico no
+   gráfico empilhado de cima — a mesma tinta, no mesmo tamanho de amostra. É
+   o que permite ver uma faixa lá em cima e achar o mini-cartão dela aqui sem
+   contar posição.
+
+   Ela NÃO substitui a hachura da tarja: os dois sinais vivem no mesmo cartão
+   porque respondem perguntas diferentes — "quem é este" e "a cor dele já foi
+   escolhida?". Doze dos quinze plásticos têm ponto colorido E tarja
+   hachurada, e é assim mesmo. */
+.fin-cartao-plast-ponto {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--fin-cartao-plast-serie, var(--muted));
+}
+.fin-cartao-plast-nome > .fin-cartao-plast-ponto {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  align-self: center;
+}
+.fin-cartao-plast-nome > :not(.fin-cartao-plast-ponto) {
+  grid-column: 2;
+}
+.fin-cartao-plast-apelido {
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--ink);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+/* O final NUNCA some atrás do apelido — foi reclamação explícita numa tela
+   irmã: o nome substituía o número e ninguém mais casava o cartão da mão com o
+   cartão da tela. */
+.fin-cartao-plast-final {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+/* Sem apelido, o final SOBE para o posto de título. Nada de espaço reservado a
+   um nome que não existe. */
+.fin-cartao-plast-final-titulo {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--ink);
+  letter-spacing: 0.08em;
+}
+
+.fin-cartao-plast-selos {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fin-cartao-plast-selo {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--chip-neutral-ink);
+  background: var(--chip-neutral-bg);
+  border-radius: 5px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.fin-cartao-plast-selo-inativo {
+  color: var(--ink-amber);
+  background: var(--tint-amber-soft);
+  border: 1px solid var(--tint-amber-line);
+}
+
+/* Sem bandeira o slot fica vazio e se fecha — é isso que faz o estado de hoje
+   (12 de 15 sem marca) parecer deliberado em vez de faltante. */
+.fin-cartao-plast-marca-slot {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: flex-start;
+}
+.fin-cartao-plast-marca {
+  display: block;
+  width: 36px;
+  height: 22.5px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.14));
+}
+
+/* --- Números -------------------------------------------------------------- */
+.fin-cartao-plast-primario {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 1px;
+  margin-top: 2px;
+}
+.fin-cartao-plast-primario-rotulo {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* O que já está lançado para DEPOIS da próxima fatura. Herda a tinta do
+   previsto do gráfico de meses — é a mesma natureza de dinheiro (lançado,
+   ainda não aconteceu), e quem abrir o detalhamento reencontra a cor com o
+   rótulo "previsto" ao lado. */
+.fin-cartao-plast-adiante {
+  font-size: 11.5px;
+  color: var(--fin-cartao-plast-prev-ink);
+  font-variant-numeric: tabular-nums;
+}
+.fin-cartao-plast-primario-valor {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--fin-out);
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-cartao-plast-stats {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.fin-cartao-plast-stat {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.fin-cartao-plast-stat-rotulo {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.fin-cartao-plast-stat-valor {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.fin-cartao-plast-ultima {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* --- Limite ---------------------------------------------------------------
+   COM limite: barra. SEM limite: convite, nunca barra. Uma barra em 0% se lê
+   como "não usou nada do limite" — uma afirmação sobre o mundo — quando o que
+   houve foi ninguém ter dito qual é o limite. Zero e "não sei" não podem
+   dividir o mesmo desenho. */
+.fin-cartao-plast-limite {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 5px;
+}
+.fin-cartao-plast-limite-cabeca {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.fin-cartao-plast-limite-cabeca b {
+  font-weight: 700;
+  color: var(--ink);
+}
+.fin-cartao-plast-limite-trilho {
+  position: relative;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--fin-cartao-plast-trilho);
+  overflow: hidden;
+}
+.fin-cartao-plast-limite-uso {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--purple);
+  transition: width 0.2s ease;
+}
+.fin-cartao-plast-limite[data-faixa="atencao"] .fin-cartao-plast-limite-uso {
+  background: var(--amber);
+}
+.fin-cartao-plast-limite[data-faixa="atencao"] .fin-cartao-plast-limite-cabeca b {
+  color: var(--ink-amber);
+}
+.fin-cartao-plast-limite[data-faixa="estouro"] .fin-cartao-plast-limite-uso {
+  background: var(--fin-out);
+}
+.fin-cartao-plast-limite[data-faixa="estouro"] .fin-cartao-plast-limite-cabeca b {
+  color: var(--fin-out);
+}
+
+/* O convite. Alvo de 44px de verdade, peso visual quase nenhum até o toque —
+   um botão sólido em quinze cartões vazios pareceria quinze pendências. */
+.fin-cartao-plast-convite {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 10px 0 8px;
+  border: 1px dashed transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.fin-cartao-plast-convite:hover,
+.fin-cartao-plast-convite:focus-visible {
+  border-color: var(--fin-cartao-plast-tracejado);
+  background: var(--tint-purple-soft);
+  color: var(--purple-text);
+  outline: none;
+}
+.fin-cartao-plast-convite:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+}
+.fin-cartao-plast-convite-inline {
+  justify-self: start;
+  grid-column: auto;
+}
+
+/* --- Ações ---------------------------------------------------------------- */
+.fin-cartao-plast-acoes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fin-cartao-plast-botao {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--elev-1);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.fin-cartao-plast-botao:hover:not(:disabled) {
+  background: var(--elev-1-hover);
+  border-color: var(--purple);
+}
+.fin-cartao-plast-botao:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+}
+.fin-cartao-plast-botao:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.fin-cartao-plast-botao-primario {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: #ffffff;
+  font-weight: 600;
+}
+.fin-cartao-plast-botao-primario:hover:not(:disabled) {
+  background: var(--purple-deep);
+  border-color: var(--purple-deep);
+}
+
+/* --- O que a fonte nunca vai contar ---------------------------------------
+   DOIS VAZIOS, DOIS DESENHOS.
+
+   A hachura diz "ninguém preencheu ainda" — apelido, cor, limite: alguém
+   resolve numa tarde. O PONTILHADO GRAFITE diz outra coisa: o emissor manda
+   só o pagamento da fatura e nunca vai mandar as compras. Não há fila que
+   resolva, não há o que preencher.
+
+   Pintar os dois igual ensinaria a ignorar um deles. É o mesmo par de tinturas
+   do `FinCartaoAnalise` (hachura roxa para lacuna, pontilhado grafite para
+   opaco), pelo mesmo motivo e para o mesmo dado: os três plásticos do Inter.
+
+   O pontilhado nunca aparece sozinho — o texto "sem detalhamento" vem junto,
+   como a hachura vem com o "por preencher". Textura é a pista rápida, não a
+   única. */
+.fin-cartao-plast-opaco {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 10px;
+  border: 1px dotted var(--fin-cartao-plast-grafite);
+  border-radius: 10px;
+  background: var(--soft-1);
+}
+/* Só a textura. Sem `background-color`: no trilho do limite ela precisa cair
+   POR CIMA da cor da pista, e um shorthand aqui apagaria a pista. */
+.fin-cartao-plast-opaco-tex {
+  background-image: radial-gradient(
+    var(--fin-cartao-plast-grafite) 1.1px,
+    transparent 1.3px
+  );
+  background-size: 5px 5px;
+}
+.fin-cartao-plast-opaco > .fin-cartao-plast-opaco-tex {
+  flex: none;
+  width: 26px;
+  border-radius: 6px;
+  border: 1px dotted var(--fin-cartao-plast-grafite);
+}
+.fin-cartao-plast-opaco-dizer {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.fin-cartao-plast-opaco-dizer strong {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.fin-cartao-plast-opaco-dizer span {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+/* Vence `.fin-cartao-plast-limite-cabeca b`, que é mais específico que uma
+   classe sozinha e pintaria o "sem apurar" de tinta de valor. */
+.fin-cartao-plast-limite-cabeca .fin-cartao-plast-opaco-marca {
+  color: var(--fin-cartao-plast-grafite);
+  font-weight: 600;
+}
+.fin-cartao-plast-grupo-opaco {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  color: var(--fin-cartao-plast-grafite);
+}
+.fin-cartao-plast-grupo-opaco .fin-cartao-plast-opaco-tex {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px dotted var(--fin-cartao-plast-grafite);
+}
+
+/* --- Detalhamento mensal --------------------------------------------------
+   O previsto NUNCA pode parecer realizado: ele é hachurado e vazado, o
+   realizado é sólido. A diferença é de TEXTURA antes de ser de cor — quem não
+   separa as duas tintas ainda separa liso de listrado. */
+.fin-cartao-plast-detalhe {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--soft-1);
+}
+.fin-cartao-plast-detalhe-cabeca {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.fin-cartao-plast-chave {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fin-cartao-plast-amostra {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+.fin-cartao-plast-amostra-real {
+  background: var(--fin-out);
+}
+.fin-cartao-plast-amostra-prev {
+  border: 1px solid var(--fin-previsto);
+  background-image: repeating-linear-gradient(45deg, var(--fin-previsto) 0 2px, transparent 2px 5px);
+}
+.fin-cartao-plast-detalhe-itens {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fin-cartao-plast-grafico {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.fin-cartao-plast-coluna {
+  flex: 1 0 52px;
+  min-width: 52px;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+.fin-cartao-plast-coluna-valor {
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* A base de cada coluna é um fio na cor de série do cartão — o eixo do
+   gráfico assina de quem ele é. Fio, e não barra colorida: repintar o
+   realizado na cor do cartão custaria a distinção realizado/previsto, que
+   é a única coisa que este gráfico existe para mostrar.
+
+   `box-sizing` explícito porque a folha não tem um reset global: sem ele o
+   fio de 2px somaria 86px de altura e as colunas dos cartões abertos ao
+   mesmo tempo ficariam desalinhadas entre si. */
+.fin-cartao-plast-pilha {
+  box-sizing: border-box;
+  width: 100%;
+  height: 84px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border-radius: 4px 4px 0 0;
+  border-bottom: 2px solid var(--fin-cartao-plast-serie, var(--line));
+  background: var(--fin-cartao-plast-trilho);
+  overflow: hidden;
+}
+.fin-cartao-plast-barra-real {
+  flex: none;
+  min-height: 3px;
+  background: var(--fin-out);
+}
+.fin-cartao-plast-barra-prev {
+  flex: none;
+  min-height: 3px;
+  box-sizing: border-box;
+  border: 1px solid var(--fin-previsto);
+  border-bottom: 0;
+  background-image: repeating-linear-gradient(45deg, var(--fin-previsto) 0 3px, transparent 3px 6px);
+}
+.fin-cartao-plast-coluna-mes {
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.fin-cartao-plast-coluna[data-futuro="sim"] .fin-cartao-plast-coluna-mes,
+.fin-cartao-plast-coluna[data-futuro="sim"] .fin-cartao-plast-coluna-valor {
+  color: var(--fin-cartao-plast-prev-ink);
+  font-style: italic;
+}
+
+/* --- O que passou no plástico ultimamente ---------------------------------
+   O agregado acima responde QUANTO; esta lista responde O QUÊ. Oito linhas e
+   ponto — a tabela completa vive na seção de transações, e repeti-la aqui
+   dentro de quinze cartões faria a página inteira ser ela. */
+.fin-cartao-plast-compras-bloco {
+  display: grid;
+  gap: 6px;
+}
+.fin-cartao-plast-compras-cabeca {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.fin-cartao-plast-compras-mais {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.fin-cartao-plast-compras {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.fin-cartao-plast-compra {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 3px 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+.fin-cartao-plast-compra:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.fin-cartao-plast-compra-data {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fin-cartao-plast-compra-desc {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.fin-cartao-plast-compra-titulo {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+/* "3/10": a mesma compra volta uma vez por mês nesta lista, e sem a parcela
+   as linhas repetidas se leem como duplicata do sync. */
+.fin-cartao-plast-compra-parcela {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--chip-neutral-bg);
+  color: var(--chip-neutral-ink);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fin-cartao-plast-compra-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+/* O mesmo buraco do cadastro do plástico ganha o mesmo desenho: hachura mais
+   o texto do que falta — nunca a textura sozinha. O âmbar é o que a casa já
+   usa para pendência (`.fin-badge-pendente`). */
+.fin-cartao-plast-compra-pendente {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-amber);
+}
+.fin-cartao-plast-compra-pendente .fin-cartao-plast-hachura {
+  width: 10px;
+  height: 10px;
+}
+.fin-cartao-plast-compra-valor {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* --- Editor inline -------------------------------------------------------- */
+.fin-cartao-plast-editor {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--tint-purple-line);
+  border-radius: 12px;
+  background: var(--tint-purple-soft);
+}
+.fin-cartao-plast-campo {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.fin-cartao-plast-campo-rotulo {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  padding: 0;
+}
+.fin-cartao-plast-campo-nota {
+  font-size: 11px;
+  color: var(--muted);
+}
+.fin-cartao-plast-input,
+.fin-cartao-plast-select {
+  min-height: 44px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+.fin-cartao-plast-input:focus,
+.fin-cartao-plast-select:focus {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+}
+.fin-cartao-plast-moeda {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fin-cartao-plast-moeda > span {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* A bandeira se escolhe pela MARCA, não pelo nome dela numa lista: é assim que
+   ela chega na mão de quem está com o cartão na frente. */
+.fin-cartao-plast-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fin-cartao-plast-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.fin-cartao-plast-chip .fin-cartao-plast-marca {
+  width: 32px;
+  height: 20px;
+  filter: none;
+}
+.fin-cartao-plast-chip[data-ativo="sim"] {
+  border-color: var(--purple);
+  box-shadow: inset 0 0 0 1px var(--purple);
+  background: var(--card);
+}
+.fin-cartao-plast-chip:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+}
+.fin-cartao-plast-chip-nome {
+  white-space: nowrap;
+}
+
+.fin-cartao-plast-cores {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fin-cartao-plast-cor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+}
+.fin-cartao-plast-cor[data-ativo="sim"] {
+  border-color: var(--purple);
+  box-shadow: inset 0 0 0 1px var(--purple);
+}
+.fin-cartao-plast-cor:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+}
+.fin-cartao-plast-cor-amostra {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+}
+.fin-cartao-plast-cor-nenhuma .fin-cartao-plast-hachura {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.fin-cartao-plast-editor-acoes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* A rota devolve `{ erro: "bandeira inválida: x" }`. Trocar isso por "erro ao
+   salvar" apagaria a única informação útil da resposta. */
+.fin-cartao-plast-erro {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--tint-amber-line);
+  border-left: 4px solid var(--amber);
+  border-radius: 10px;
+  background: var(--tint-amber-soft);
+  color: var(--ink-amber);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.fin-cartao-plast-vazio {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* --- Tema escuro: o que não é token --------------------------------------- */
+:root[data-theme="escuro"] .fin-cartao-plast-cor-amostra {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+:root[data-theme="escuro"] .fin-cartao-plast-marca {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+/* No escuro o cartão sem cor não pode ficar mais claro que o fundo: o tinte de
+   5% é sobre `--card`, que já é escuro, então só a borda precisa recuar. */
+:root[data-theme="escuro"] .fin-cartao-plast-card[data-sem-cor="nao"] {
+  border-color: color-mix(in srgb, var(--fin-cartao-plast-cor) 34%, var(--line));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) .fin-cartao-plast-cor-amostra {
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+  :root:not([data-theme="claro"]) .fin-cartao-plast-marca {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+  }
+  :root:not([data-theme="claro"]) .fin-cartao-plast-card[data-sem-cor="nao"] {
+    border-color: color-mix(in srgb, var(--fin-cartao-plast-cor) 34%, var(--line));
+  }
+}
+
+/* --- Toque e telas estreitas ---------------------------------------------- */
+@media (max-width: 560px) {
+  .fin-cartao-plast-grade {
+    grid-template-columns: 1fr;
+  }
+  .fin-cartao-plast-detalhe-itens {
+    margin-left: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fin-cartao-plast-card,
+  .fin-cartao-plast-convite,
+  .fin-cartao-plast-botao,
+  .fin-cartao-plast-limite-uso {
+    transition: none;
+  }
+}
+
+/* ===========================================================================
+   Cartões — tabela de compras (.fin-cartao-tx-*) e área de qualificação
+   (.fin-cartao-qual-*).
+
+   TOKENS PRÓPRIOS, DERIVADOS DOS DA CASA
+   Tudo aqui se pinta com as variáveis de `globals.css`. Os poucos tokens
+   locais existem porque duas ideias desta tela não têm token no app:
+
+   1. `--fin-tx-lacuna` — "não sei o que é isto". Âmbar, nunca vermelho:
+      faltar núcleo não é erro, é trabalho pendente, e vermelho gastaria o
+      alarme que a tela precisa guardar para outra coisa.
+   2. `--fin-tx-estorno` — o valor que volta. Azul, nunca verde: verde é
+      ENTRADA nesta base, e um estorno de cartão não é receita — é uma compra
+      desfeita. Pintá-lo de verde faria o olho somá-lo às entradas.
+
+   Nenhuma cor de gasto é verde. Gasto de cartão sai, e sai em tinta neutra.
+   =========================================================================== */
+
+:root {
+  --fin-tx-lacuna: #8a540d;
+  --fin-tx-lacuna-bg: #fbefd9;
+  --fin-tx-lacuna-line: #eccf95;
+  --fin-tx-estorno: #1d4ed8;
+  --fin-tx-previsto: #6d28d9;
+  --fin-tx-previsto-bg: #f3e8ff;
+  --fin-tx-forte: #14121a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) {
+    --fin-tx-lacuna: #f0c46a;
+    --fin-tx-lacuna-bg: rgba(224, 165, 63, 0.16);
+    --fin-tx-lacuna-line: rgba(224, 165, 63, 0.42);
+    --fin-tx-estorno: #9dc0ff;
+    --fin-tx-previsto: #d9a3ff;
+    --fin-tx-previsto-bg: rgba(179, 75, 255, 0.16);
+    --fin-tx-forte: #f1eefb;
+  }
+}
+
+:root[data-theme="escuro"] {
+  --fin-tx-lacuna: #f0c46a;
+  --fin-tx-lacuna-bg: rgba(224, 165, 63, 0.16);
+  --fin-tx-lacuna-line: rgba(224, 165, 63, 0.42);
+  --fin-tx-estorno: #9dc0ff;
+  --fin-tx-previsto: #d9a3ff;
+  --fin-tx-previsto-bg: rgba(179, 75, 255, 0.16);
+  --fin-tx-forte: #f1eefb;
+}
+
+/* ===========================================================================
+   A) TABELA DE COMPRAS
+   =========================================================================== */
+
+.fin-cartao-tx {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* --- A faixa de resumo: o número do recorte, sempre à vista ---------------- */
+
+.fin-cartao-tx-resumo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+
+.fin-cartao-tx-resumo-n {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.fin-cartao-tx-resumo-n b {
+  color: var(--ink);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* O contador do que falta é um BOTÃO: ver o número e querer só ele é o mesmo
+   gesto, e separar os dois obrigaria a procurar o filtro do outro lado. */
+.fin-cartao-tx-faltam {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  border: 1px solid var(--fin-tx-lacuna-line);
+  border-radius: 999px;
+  background: var(--fin-tx-lacuna-bg);
+  color: var(--fin-tx-lacuna);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.fin-cartao-tx-faltam:hover {
+  box-shadow: 0 0 0 3px var(--fin-tx-lacuna-bg);
+}
+
+.fin-cartao-tx-faltam[data-ligado="sim"] {
+  background: var(--fin-tx-lacuna);
+  border-color: var(--fin-tx-lacuna);
+  color: var(--on-bright, #fff);
+}
+
+:root[data-theme="escuro"] .fin-cartao-tx-faltam[data-ligado="sim"],
+:root:not([data-theme="claro"]) .fin-cartao-tx-faltam[data-ligado="sim"] {
+  color: #1a1206;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="escuro"]) .fin-cartao-tx-faltam[data-ligado="sim"] {
+    color: #fff;
+  }
+}
+
+.fin-cartao-tx-faltam b {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+}
+
+.fin-cartao-tx-faltam-marca {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
+.fin-cartao-tx-faltam-valor {
+  padding-left: 8px;
+  border-left: 1px solid currentColor;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-cartao-tx-completo {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+/* --- Filtros: ar onde há decisão ------------------------------------------ */
+
+.fin-cartao-tx-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--soft-1);
+}
+
+.fin-cartao-tx-busca {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.fin-cartao-tx-limpar {
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.fin-cartao-tx-limpar:hover {
+  color: var(--ink);
+  border-color: var(--purple);
+}
+
+/* --- A barra de ação da seleção ------------------------------------------- */
+
+.fin-cartao-tx-acao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--tint-purple-line, var(--line));
+  border-radius: 12px;
+  background: var(--tint-purple-soft, var(--surface-2));
+}
+
+.fin-cartao-tx-acao-quem {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fin-cartao-tx-acao-quem strong {
+  color: var(--ink);
+}
+
+.fin-cartao-tx-acao-valor {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.fin-cartao-tx-acao-fora {
+  font-size: 0.76rem;
+  color: var(--fin-tx-lacuna);
+}
+
+.fin-cartao-tx-acao-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  flex: 1 1 420px;
+}
+
+.fin-cartao-tx-motivo {
+  flex: 1 1 240px;
+}
+
+.fin-cartao-tx-mover {
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--purple);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fin-cartao-tx-mover:disabled {
+  background: var(--track);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.fin-cartao-tx-acao-nota {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.fin-cartao-tx-feito {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--purple);
+  background: var(--tint-purple-soft, var(--surface-2));
+  border-radius: 0 8px 8px 0;
+  font-size: 0.84rem;
+  color: var(--ink);
+}
+
+/* --- A tabela: densidade onde há dado ------------------------------------- */
+
+.fin-cartao-tx-rolagem {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--elev-1);
+}
+
+.fin-cartao-tx-tabela {
+  width: 100%;
+  min-width: 1040px;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+
+.fin-cartao-tx-tabela thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 9px 10px;
+  background: var(--th-bg);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.fin-cartao-tx-tabela thead th.num {
+  text-align: right;
+}
+
+.fin-cartao-tx-tabela thead th button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.fin-cartao-tx-tabela thead th button:hover {
+  color: var(--purple-text, var(--purple));
+}
+
+.fin-cartao-tx-tabela th[aria-sort]:not([aria-sort="none"]) {
+  color: var(--ink);
+}
+
+.fin-cartao-tx-tabela tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  color: var(--ink);
+}
+
+.fin-cartao-tx-tabela tbody td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fin-cartao-tx-tabela tbody tr:hover td {
+  background: var(--soft-1-hover);
+}
+
+.fin-cartao-tx-tabela tbody tr[data-selecionado="sim"] td {
+  background: var(--tint-purple-soft, var(--surface-2));
+}
+
+.fin-cartao-tx-check {
+  width: 34px;
+  padding-left: 12px !important;
+}
+
+/* A MARCA DA LACUNA
+   A linha incompleta se anuncia pela lateral, antes de a pessoa ler qualquer
+   célula. Uma lacuna = tarja âmbar; duas = tarja dupla, porque "falta tudo"
+   e "falta metade" não são o mesmo trabalho. */
+.fin-cartao-tx-tabela tbody tr[data-falta] td:first-child {
+  box-shadow: inset 3px 0 0 var(--fin-tx-lacuna);
+}
+
+.fin-cartao-tx-tabela tbody tr[data-falta="ambos"] td:first-child {
+  box-shadow: inset 3px 0 0 var(--fin-tx-lacuna), inset 7px 0 0 var(--fin-tx-lacuna-bg),
+    inset 10px 0 0 var(--fin-tx-lacuna);
+}
+
+.fin-cartao-tx-tabela tbody tr[data-falta] .fin-cartao-tx-data span,
+.fin-cartao-tx-tabela tbody tr[data-falta] .fin-cartao-tx-valor {
+  color: var(--fin-tx-forte);
+  font-weight: 600;
+}
+
+.fin-cartao-tx-data {
+  white-space: nowrap;
+}
+
+.fin-cartao-tx-data small,
+.fin-cartao-tx-desc small,
+.fin-cartao-tx-cartao small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.71rem;
+  color: var(--muted);
+}
+
+.fin-cartao-tx-desc {
+  max-width: 320px;
+}
+
+.fin-cartao-tx-titulo {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.fin-cartao-tx-cartao span:first-child {
+  white-space: nowrap;
+}
+
+.fin-cartao-tx-valor {
+  font-weight: 500;
+}
+
+.fin-cartao-tx-tabela tbody tr[data-estorno="sim"] .fin-cartao-tx-valor {
+  color: var(--fin-tx-estorno);
+}
+
+/* --- Chips: o que está preenchido, o que falta, o que não se aplica -------- */
+
+.fin-cartao-tx-tag {
+  display: inline-block;
+  max-width: 190px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--chip-neutral-bg);
+  color: var(--chip-neutral-ink);
+  font-size: 0.73rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "não sei" tem tinta e contorno. Nunca um traço: traço se lê como zero. */
+.fin-cartao-tx-lacuna {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px dashed var(--fin-tx-lacuna-line);
+  border-radius: 999px;
+  background: var(--fin-tx-lacuna-bg);
+  color: var(--fin-tx-lacuna);
+  font-size: 0.73rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* "não se aplica" (estorno) e "não apontado" (centro é opcional) são cinza e
+   discretos — não são fila de trabalho de ninguém. */
+.fin-cartao-tx-nao-cabe,
+.fin-cartao-tx-opcional {
+  font-size: 0.72rem;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.fin-cartao-tx-parcela {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.73rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-cartao-tx-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.71rem;
+  white-space: nowrap;
+  background: var(--chip-neutral-bg);
+  color: var(--chip-neutral-ink);
+}
+
+/* Previsto é parcela que o emissor já lançou para o futuro — não é estimativa,
+   mas também não é fato consumado. Roxo, a mesma tinta do "previsto" do app. */
+.fin-cartao-tx-status[data-status="PENDING"] {
+  background: var(--fin-tx-previsto-bg);
+  color: var(--fin-tx-previsto);
+}
+
+.fin-cartao-tx-nada {
+  padding: 28px 12px !important;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* --- Rodapé --------------------------------------------------------------- */
+
+.fin-cartao-tx-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fin-cartao-tx-paginas {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.fin-cartao-tx-paginas button {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--elev-1);
+  color: var(--ink);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.fin-cartao-tx-paginas button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.fin-cartao-tx-rodape-total {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.fin-cartao-tx-rodape-total b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===========================================================================
+   B) ÁREA DE QUALIFICAÇÃO
+   =========================================================================== */
+
+.fin-cartao-qual {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* --- O placar ------------------------------------------------------------- */
+
+.fin-cartao-qual-placar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.fin-cartao-qual-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 12px;
+  background: var(--elev-1);
+}
+
+.fin-cartao-qual-tile[data-lacuna="categoria"],
+.fin-cartao-qual-tile[data-lacuna="nucleo"] {
+  border-left-color: var(--fin-tx-lacuna);
+}
+
+/* O que já foi fechado é a única coisa desta tela que pode ser roxa-forte:
+   é progresso, não dinheiro. Verde continua reservado para entrada. */
+.fin-cartao-qual-tile[data-lacuna="feito"] {
+  border-left-color: var(--purple);
+}
+
+.fin-cartao-qual-tile-rotulo {
+  font-size: 0.73rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fin-cartao-qual-tile strong {
+  font-size: 1.7rem;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.fin-cartao-qual-tile-valor {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.fin-cartao-qual-recado {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--purple);
+  background: var(--tint-purple-soft, var(--surface-2));
+  border-radius: 0 8px 8px 0;
+  font-size: 0.84rem;
+  color: var(--ink);
+}
+
+/* --- O corpo: fila à esquerda, decisão à direita --------------------------- */
+
+.fin-cartao-qual-corpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1080px) {
+  .fin-cartao-qual-corpo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.fin-cartao-qual-fila {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.fin-cartao-qual-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--soft-1);
+}
+
+.fin-cartao-qual-filtros .fin-input {
+  flex: 1 1 200px;
+}
+
+.fin-cartao-qual-restante {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.fin-cartao-qual-restante b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- A fila de grupos ----------------------------------------------------- */
+
+.fin-cartao-qual-grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 68vh;
+  overflow-y: auto;
+}
+
+.fin-cartao-qual-grupo {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--fin-tx-lacuna);
+  border-radius: 10px;
+  background: var(--elev-1);
+}
+
+/* O foco do teclado é um estado visível — sem isso, j/k movem um cursor que
+   ninguém vê e o atalho vira adivinhação. */
+.fin-cartao-qual-grupo[data-foco="sim"] {
+  border-color: var(--purple);
+  border-left-color: var(--purple);
+  box-shadow: 0 0 0 2px var(--tint-purple, rgba(124, 31, 224, 0.15));
+}
+
+.fin-cartao-qual-grupo[data-marcado="sim"] {
+  background: var(--tint-purple-soft, var(--surface-2));
+}
+
+.fin-cartao-qual-grupo-cabeca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.fin-cartao-qual-grupo-nome {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fin-cartao-qual-grupo-nome strong {
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fin-cartao-qual-grupo-nome small {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.fin-cartao-qual-grupo-falta {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.fin-cartao-qual-grupo-falta em,
+.fin-cartao-qual-item-falta em {
+  padding: 2px 7px;
+  border: 1px dashed var(--fin-tx-lacuna-line);
+  border-radius: 999px;
+  background: var(--fin-tx-lacuna-bg);
+  color: var(--fin-tx-lacuna);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fin-cartao-qual-grupo-valor {
+  flex-shrink: 0;
+  min-width: 96px;
+  text-align: right;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* "os 13" — aplicar a todos os parecidos de uma vez é o botão que faz a fila
+   ser possível de zerar. */
+.fin-cartao-qual-todos {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--purple);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--purple-text, var(--purple));
+  font-size: 0.73rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fin-cartao-qual-todos:hover {
+  background: var(--purple);
+  color: #fff;
+}
+
+.fin-cartao-qual-itens {
+  margin: 0;
+  padding: 4px 12px 10px 12px;
+  list-style: none;
+  border-top: 1px dashed var(--line);
+}
+
+.fin-cartao-qual-itens > li > label {
+  display: grid;
+  grid-template-columns: 20px 74px minmax(0, 1fr) auto auto 96px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.79rem;
+  cursor: pointer;
+}
+
+.fin-cartao-qual-itens > li + li {
+  border-top: 1px solid var(--line);
+}
+
+.fin-cartao-qual-item-data {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.fin-cartao-qual-item-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fin-cartao-qual-item-desc em {
+  font-style: normal;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-cartao-qual-item-cartao {
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.fin-cartao-qual-item-falta {
+  display: flex;
+  gap: 4px;
+}
+
+.fin-cartao-qual-item-valor {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.fin-cartao-qual-vazia {
+  padding: 28px 12px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+}
+
+@media (max-width: 720px) {
+  .fin-cartao-qual-itens > li > label {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+  }
+
+  .fin-cartao-qual-item-cartao,
+  .fin-cartao-qual-item-falta {
+    display: none;
+  }
+}
+
+/* --- O painel de decisão: ar, porque aqui se decide ------------------------ */
+
+.fin-cartao-qual-painel {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+}
+
+.fin-cartao-qual-painel-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.fin-cartao-qual-painel-topo strong {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.fin-cartao-qual-painel-topo span {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.fin-cartao-qual-campo .fin-input {
+  width: 100%;
+  font-size: 0.95rem;
+}
+
+/* --- Uma faixa por alvo --------------------------------------------------- */
+
+.fin-cartao-qual-faixa {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--soft-1);
+}
+
+.fin-cartao-qual-faixa[data-foco="sim"] {
+  border-color: var(--purple);
+}
+
+.fin-cartao-qual-faixa header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fin-cartao-qual-faixa h4 {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fin-cartao-qual-opcional {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.fin-cartao-qual-escolhido {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--purple);
+  color: #fff;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.fin-cartao-qual-escolhido span {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fin-cartao-qual-escolhido button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.85;
+  /* O "×" desenhado tem 16px, e 16px é pequeno demais para acertar mesmo com
+     mouse. Os chips desta tela ficam nos ~26px da régua do admin (`.fin-chip`
+     usa `padding: 5px 12px`) de propósito — é tela densa de desktop, não o app
+     de celular. Mas um alvo de 16px não é densidade, é mira: aqui o desenho
+     continua do tamanho que estava e o ALVO cresce por baixo dele. */
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: -4px -4px -4px 0;
+  border-radius: 6px;
+}
+.fin-cartao-qual-escolhido button:hover,
+.fin-cartao-qual-escolhido button:focus-visible {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+/* --- As sugestões: duas origens que NÃO podem parecer a mesma coisa -------- */
+
+.fin-cartao-qual-sugestoes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fin-cartao-qual-sug {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  text-align: left;
+  cursor: pointer;
+  background: var(--elev-1);
+}
+
+/* APRENDIDO = alguém olhou e decidiu. Fundo cheio, contorno sólido, tinta viva.
+   HISTÓRICO = o que lançamentos parecidos já têm, inclusive por regra
+   automática. Contorno tracejado e tinta apagada: é ponto de partida, não
+   autoridade. A diferença é de peso, não de rótulo — o rótulo se lê depois. */
+.fin-cartao-qual-sug[data-origem="aprendido"] {
+  border: 1px solid var(--purple);
+  box-shadow: inset 3px 0 0 var(--purple);
+}
+
+.fin-cartao-qual-sug[data-origem="historico"] {
+  border: 1px dashed var(--line);
+  background: transparent;
+}
+
+.fin-cartao-qual-sug:hover {
+  background: var(--elev-1-hover);
+}
+
+.fin-cartao-qual-sug-num {
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  background: var(--chip-neutral-bg);
+  color: var(--chip-neutral-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-cartao-qual-sug-corpo {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fin-cartao-qual-sug-corpo strong {
+  font-size: 0.85rem;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fin-cartao-qual-sug-origem {
+  font-size: 0.71rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-cartao-qual-sug[data-origem="aprendido"] .fin-cartao-qual-sug-origem {
+  color: var(--purple-text, var(--purple));
+}
+
+.fin-cartao-qual-sug[data-origem="historico"] .fin-cartao-qual-sug-origem {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.fin-cartao-qual-sug-parecido {
+  font-size: 0.68rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fin-cartao-qual-sug-sim {
+  flex-shrink: 0;
+  width: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.fin-cartao-qual-sug-sim i {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--purple);
+  min-width: 2px;
+}
+
+.fin-cartao-qual-sug[data-origem="historico"] .fin-cartao-qual-sug-sim i {
+  background: var(--muted);
+  opacity: 0.6;
+}
+
+.fin-cartao-qual-sug-sim b {
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.fin-cartao-qual-sem-sugestao {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.fin-cartao-qual-lista .fin-select {
+  width: 100%;
+}
+
+.fin-cartao-qual-abrir-centro {
+  padding: 8px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.fin-cartao-qual-abrir-centro:hover {
+  color: var(--ink);
+  border-color: var(--purple);
+}
+
+/* --- Salvar --------------------------------------------------------------- */
+
+.fin-cartao-qual-aprender {
+  margin-top: 2px;
+}
+
+.fin-cartao-qual-aprender-nota {
+  margin: -6px 0 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.fin-cartao-qual-salvar {
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--purple);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fin-cartao-qual-salvar:disabled {
+  background: var(--track);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.fin-cartao-qual-atalhos {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.9;
+  color: var(--muted);
+}
+
+.fin-cartao-qual-atalhos kbd,
+.fin-cartao-qual-faixa kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--elev-1);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fin-cartao-tx-faltam,
+  .fin-cartao-qual-sug {
+    transition: none;
+  }
+}
+
+/* ===========================================================================
+   FinCartaoAnalise — ranking, quebra por eixo, composição mensal, cruzamentos.
+   Prefixo: .fin-cartao-an-*   (cole este bloco no fim de app/globals.css)
+   ===========================================================================
+
+   TRÊS ESTADOS, TRÊS DESENHOS — e nenhum deles é "zero".
+
+     classificado ....... sólido, tinta neutra forte
+                          o dinheiro que tem dono; ele se decompõe nas fatias
+                          coloridas dos gráficos abaixo.
+
+     lacuna ............. hachura ROXA a 135°  (o vocabulário de `.cert-hachura`)
+                          gasto ITEMIZADO que ninguém classificou ainda.
+                          É resolvível: alguém qualifica e ele vira fatia.
+
+     opaco .............. pontilhado GRAFITE   (textura nova, deste componente)
+                          gasto NÃO ITEMIZADO — o emissor só manda o pagamento
+                          da fatura, nunca as compras. Não é resolvível
+                          qualificando: a fonte nunca vai contar.
+
+   Lacuna e opaco são dois "não sei" diferentes e por isso têm textura E cor
+   diferentes. Confundi-los faria alguém abrir a fila de qualificação para
+   resolver R$ 40 mil do Banco Inter que nenhuma fila resolve.
+
+   Zero não usa nenhuma das três: célula sem gasto fica no fundo do cartão com
+   um traço, porque "não gastou" e "não sei" não podem parecer a mesma coisa.
+--------------------------------------------------------------------------- */
+
+:root {
+  /* Rampa de intensidade das matrizes — sequencial, um hue só. */
+  --fin-cartao-an-heat: #2a78d6;
+  /* Sólido do "classificado" nas faixas de cobertura. */
+  --fin-cartao-an-conhecido: #4b5b64;
+  /* Grafite do NÃO ITEMIZADO. Neutro de propósito: não é uma categoria. */
+  --fin-cartao-an-opaco: #64727a;
+  --fin-cartao-an-opaco-bg: #f1f4f6;
+}
+
+:root[data-theme="escuro"] {
+  --fin-cartao-an-heat: #6da7ec;
+  --fin-cartao-an-conhecido: #b9c3ca;
+  --fin-cartao-an-opaco: #96a3ac;
+  --fin-cartao-an-opaco-bg: #1e222a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) {
+    --fin-cartao-an-heat: #6da7ec;
+    --fin-cartao-an-conhecido: #b9c3ca;
+    --fin-cartao-an-opaco: #96a3ac;
+    --fin-cartao-an-opaco-bg: #1e222a;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   As duas texturas de indeterminado
+   -------------------------------------------------------------------------- */
+
+.fin-cartao-an-tex-lacuna {
+  background:
+    repeating-linear-gradient(135deg, transparent, transparent 5px,
+                              var(--cert-hatch) 5px, var(--cert-hatch) 6px),
+    var(--cert-indet-bg);
+}
+
+.fin-cartao-an-tex-opaco {
+  background:
+    radial-gradient(var(--fin-cartao-an-opaco) 1.1px, transparent 1.2px)
+      0 0 / 6px 6px,
+    var(--fin-cartao-an-opaco-bg);
+}
+
+/* --------------------------------------------------------------------------
+   Casca
+   -------------------------------------------------------------------------- */
+
+.fin-cartao-an { display: grid; gap: 22px; }
+
+.fin-cartao-an-secao { display: grid; gap: 12px; }
+
+.fin-cartao-an-secao > header { display: grid; gap: 3px; }
+
+.fin-cartao-an-titulo {
+  margin: 0; font-size: 15px; font-weight: 650; color: var(--ink); letter-spacing: -.01em;
+}
+
+.fin-cartao-an-sub {
+  margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; max-width: 78ch;
+}
+
+.fin-cartao-an-sub strong { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* --------------------------------------------------------------------------
+   Seletor de eixo — um controle só, governa a tela inteira
+   -------------------------------------------------------------------------- */
+
+.fin-cartao-an-barra {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding-bottom: 2px;
+}
+
+.fin-cartao-an-seg {
+  display: inline-flex; gap: 2px; padding: 3px;
+  background: var(--soft-1, var(--surface-2)); border: 1px solid var(--line); border-radius: 9px;
+}
+
+.fin-cartao-an-seg button {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  font: inherit; font-size: 12.5px; font-weight: 550; color: var(--muted);
+  padding: 5px 12px; border-radius: 7px; line-height: 1.2;
+  transition: background .12s ease, color .12s ease;
+}
+
+.fin-cartao-an-seg button:hover { color: var(--ink); }
+
+.fin-cartao-an-seg button[aria-pressed="true"] {
+  background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+}
+
+.fin-cartao-an-check {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12.5px; color: var(--muted); cursor: pointer; user-select: none;
+}
+
+.fin-cartao-an-check input { accent-color: var(--cert-indet); width: 14px; height: 14px; margin: 0; }
+
+.fin-cartao-an-check[data-ligado="1"] { color: var(--cert-indet); font-weight: 600; }
+
+/* --------------------------------------------------------------------------
+   Faixa de cobertura — o denominador honesto, em desenho e não em parágrafo
+   -------------------------------------------------------------------------- */
+
+.fin-cartao-an-cobertura { display: grid; gap: 8px; }
+
+.fin-cartao-an-faixa {
+  display: flex; width: 100%; height: 26px; border-radius: 6px; overflow: hidden;
+  border: 1px solid var(--line); background: var(--surface-2);
+}
+
+.fin-cartao-an-faixa > span { display: block; height: 100%; min-width: 2px; }
+
+.fin-cartao-an-faixa > span + span { box-shadow: inset 2px 0 0 var(--card); }
+
+.fin-cartao-an-faixa-conhecido { background: var(--fin-cartao-an-conhecido); }
+
+.fin-cartao-an-cob-leg {
+  display: flex; flex-wrap: wrap; gap: 6px 18px;
+  margin: 0; padding: 0; list-style: none;
+  font-size: 12px; color: var(--muted);
+}
+
+.fin-cartao-an-cob-leg li { display: inline-flex; align-items: baseline; gap: 7px; }
+
+.fin-cartao-an-cob-leg b {
+  color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 12.5px;
+}
+
+.fin-cartao-an-cob-leg em { font-style: normal; }
+
+.fin-cartao-an-amostra {
+  width: 11px; height: 11px; border-radius: 2px; flex: none;
+  display: inline-block; align-self: center; border: 1px solid transparent;
+}
+
+.fin-cartao-an-amostra-conhecido { background: var(--fin-cartao-an-conhecido); }
+.fin-cartao-an-amostra-lacuna { border-color: var(--cert-indet); }
+.fin-cartao-an-amostra-opaco { border-color: var(--fin-cartao-an-opaco); }
+
+/* Quem não itemiza, e por quê. Poucas linhas, sem parágrafo. */
+.fin-cartao-an-opacos { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+
+.fin-cartao-an-opacos li {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; color: var(--muted);
+  border-left: 3px solid var(--fin-cartao-an-opaco); padding: 2px 0 2px 9px;
+}
+
+.fin-cartao-an-opacos strong { color: var(--ink); font-weight: 600; font-size: 12.5px; }
+
+.fin-cartao-an-opacos .fin-cartao-an-num {
+  margin-left: auto; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Ranking — barra proporcional, e a falta de dono como estado visível
+   -------------------------------------------------------------------------- */
+
+.fin-cartao-an-rank { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+
+.fin-cartao-an-rank-linha {
+  display: grid; gap: 5px; padding: 9px 10px 10px; border-radius: 7px;
+  border-bottom: 1px solid var(--line);
+}
+
+.fin-cartao-an-rank-linha:hover { background: var(--surface-2); }
+
+/* A marca do órfão fica na BORDA, não na cor do texto: o valor precisa
+   continuar legível, e a lacuna precisa ser vista de longe, varrendo a lista. */
+.fin-cartao-an-rank-linha[data-orfa="1"] {
+  box-shadow: inset 3px 0 0 var(--cert-indet);
+}
+
+.fin-cartao-an-rank-topo {
+  display: flex; align-items: baseline; gap: 9px;
+}
+
+.fin-cartao-an-rank-pos {
+  font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums;
+  min-width: 18px; text-align: right; flex: none;
+}
+
+.fin-cartao-an-rank-desc {
+  font-size: 13.5px; font-weight: 600; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto;
+}
+
+.fin-cartao-an-rank-valor {
+  font-size: 13.5px; font-weight: 650; color: var(--ink);
+  font-variant-numeric: tabular-nums; flex: none;
+}
+
+.fin-cartao-an-rank-trilho {
+  height: 9px; border-radius: 3px; background: var(--surface-2);
+  margin-left: 27px; overflow: hidden;
+}
+
+.fin-cartao-an-rank-barra { height: 100%; border-radius: 3px; min-width: 3px; }
+
+.fin-cartao-an-rank-barra[data-lacuna="1"] { border: 1px solid var(--cert-indet); }
+
+.fin-cartao-an-rank-meta {
+  display: flex; flex-wrap: wrap; gap: 5px; margin-left: 27px;
+  font-size: 11.5px; color: var(--muted);
+}
+
+.fin-cartao-an-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: 999px; line-height: 1.5;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+  max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.fin-cartao-an-chip[data-tom="lacuna"] {
+  border: 1px dashed var(--cert-indet); color: var(--cert-indet);
+  background: var(--cert-indet-bg); font-style: italic;
+}
+
+.fin-cartao-an-chip[data-tom="valor"] { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.fin-cartao-an-ponto { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+
+/* --------------------------------------------------------------------------
+   Quebra por eixo — gráfico e tabela lado a lado
+   -------------------------------------------------------------------------- */
+
+.fin-cartao-an-quebra {
+  display: grid; gap: 16px; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .fin-cartao-an-quebra { grid-template-columns: minmax(0, 1fr); }
+}
+
+.fin-cartao-an-tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+
+.fin-cartao-an-tabela th {
+  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.fin-cartao-an-tabela td {
+  padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; color: var(--ink);
+}
+
+.fin-cartao-an-tabela th.num, .fin-cartao-an-tabela td.num {
+  text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+.fin-cartao-an-tabela tbody tr:hover { background: var(--surface-2); }
+
+.fin-cartao-an-tabela tr[data-lacuna="1"] td { color: var(--cert-indet); font-style: italic; }
+
+.fin-cartao-an-tabela tfoot td {
+  border-bottom: 0; border-top: 1px solid var(--line);
+  font-weight: 650; color: var(--ink); font-style: normal;
+}
+
+.fin-cartao-an-rotulo { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+
+.fin-cartao-an-rotulo span {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30ch;
+}
+
+/* --------------------------------------------------------------------------
+   Caso degenerado: o eixo inteiro é indeterminado
+   -------------------------------------------------------------------------- */
+
+.fin-cartao-an-degenerado { display: grid; gap: 10px; }
+
+.fin-cartao-an-degenerado-faixa {
+  height: 46px; border-radius: 7px; border: 1px dashed var(--cert-indet);
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: 13px; font-weight: 600; color: var(--cert-indet);
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-cartao-an-degenerado p {
+  margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); max-width: 74ch;
+}
+
+.fin-cartao-an-degenerado p strong { color: var(--ink); font-weight: 600; }
+
+/* --------------------------------------------------------------------------
+   Legenda das faixas coloridas (composição mensal e matrizes)
+   -------------------------------------------------------------------------- */
+
+.fin-cartao-an-legenda {
+  display: flex; flex-wrap: wrap; gap: 5px 16px; margin: 0; padding: 0; list-style: none;
+  font-size: 11.5px; color: var(--muted);
+}
+
+.fin-cartao-an-legenda li { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+
+.fin-cartao-an-legenda span {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch;
+}
+
+.fin-cartao-an-legenda-prev {
+  width: 11px; height: 11px; border-radius: 2px; flex: none;
+  border: 1px dashed var(--muted); opacity: .9;
+}
+
+/* --------------------------------------------------------------------------
+   Cruzamentos — matriz densa, célula proporcional
+   -------------------------------------------------------------------------- */
+
+.fin-cartao-an-cruz { display: grid; gap: 18px; }
+
+@media (min-width: 1100px) {
+  .fin-cartao-an-cruz { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+}
+
+.fin-cartao-an-matriz-wrap { overflow-x: auto; }
+
+.fin-cartao-an-matriz {
+  width: 100%; border-collapse: separate; border-spacing: 2px; font-size: 11.5px;
+}
+
+.fin-cartao-an-matriz th {
+  font-weight: 600; color: var(--muted); font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: .03em; padding: 4px 6px;
+  vertical-align: bottom; text-align: right; white-space: normal;
+}
+
+.fin-cartao-an-matriz th[scope="row"] {
+  text-align: left; text-transform: none; letter-spacing: 0; font-size: 11.5px;
+  color: var(--ink); white-space: nowrap; max-width: 22ch;
+  overflow: hidden; text-overflow: ellipsis;
+}
+
+.fin-cartao-an-matriz thead th { min-width: 62px; max-width: 120px; }
+
+.fin-cartao-an-matriz td {
+  text-align: right; padding: 6px 7px; border-radius: 4px;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+  background: color-mix(in oklab, var(--fin-cartao-an-heat) calc(var(--i, 0) * 1%), var(--card));
+}
+
+/* Zero é traço em fundo do cartão. Nunca a rampa em 0% — que se leria como
+   "quase nada" em vez de "nada". */
+.fin-cartao-an-matriz td[data-vazio="1"] {
+  background: var(--card); color: var(--muted); opacity: .5;
+}
+
+/* A coluna do indeterminado não entra na rampa: ela não é "muito" nem "pouco",
+   é outra coisa. Hachura, e a intensidade só na borda. */
+.fin-cartao-an-matriz td[data-lacuna="1"] {
+  background:
+    repeating-linear-gradient(135deg, transparent, transparent 5px,
+                              var(--cert-hatch) 5px, var(--cert-hatch) 6px),
+    var(--cert-indet-bg);
+  color: var(--cert-indet); font-style: italic;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--cert-indet) calc(var(--i, 0) * 1%), transparent);
+}
+
+.fin-cartao-an-matriz tfoot td, .fin-cartao-an-matriz td.total {
+  background: var(--surface-2); font-weight: 650;
+}
+
+.fin-cartao-an-matriz caption {
+  caption-side: top; text-align: left; padding: 0 0 7px;
+  font-size: 12.5px; color: var(--muted);
+}
+
+.fin-cartao-an-matriz caption strong { color: var(--ink); font-weight: 600; }
+
+/* --------------------------------------------------------------------------
+   Dica (tooltip) dos gráficos recharts
+   -------------------------------------------------------------------------- */
+
+.fin-cartao-an-dica {
+  background: var(--card); border: 1px solid var(--line); border-radius: 7px;
+  padding: 9px 11px; font-size: 12px; min-width: 190px; max-width: 320px;
+  box-shadow: 0 4px 14px rgba(23, 51, 58, .16);
+}
+
+.fin-cartao-an-dica-tit {
+  display: block; margin-bottom: 5px; font-size: 12.5px; font-weight: 650; color: var(--ink);
+}
+
+.fin-cartao-an-dica-linha {
+  display: flex; align-items: center; gap: 7px; line-height: 1.7; color: var(--muted);
+}
+
+.fin-cartao-an-dica-linha b {
+  margin-left: auto; color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600;
+}
+
+.fin-cartao-an-dica-nota {
+  margin: 5px 0 0; color: var(--muted); line-height: 1.4; font-size: 11.5px;
+}
+
+.fin-cartao-an-vazio {
+  margin: 0; font-size: 12.5px; color: var(--muted); font-style: italic;
+}
+
+
+/* ── As ressalvas da seção de fatura, recolhidas ──────────────────────────
+   O dono pediu "menos texto de ressalvas". Elas continuam inteiras, mas
+   fechadas: aberto, o bloco ocupava o espaço de um cartão de dado ACIMA do
+   dado, e essa é a ordem errada — a ressalva explica o número, então não pode
+   chegar antes dele. */
+details.fin-cartao-ressalvas { padding: 0; }
+details.fin-cartao-ressalvas > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+}
+details.fin-cartao-ressalvas > summary::-webkit-details-marker { display: none; }
+details.fin-cartao-ressalvas > summary::before {
+  content: "›";
+  font-size: 15px;
+  transition: transform .15s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  details.fin-cartao-ressalvas > summary::before { transition: none; }
+}
+details.fin-cartao-ressalvas[open] > summary::before { transform: rotate(90deg); }
+details.fin-cartao-ressalvas[open] > summary { color: var(--ink); }
+details.fin-cartao-ressalvas > ul {
+  margin: 0;
+  padding: 0 16px 14px 34px;
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* ── Correções da revisão crítica ─────────────────────────────────────── */
+
+/* ===========================================================================
+   DELTA da correção da TELA DE CARTÕES — colar dentro do bloco
+   "TELA DE CARTÕES", na seção "A) TABELA DE COMPRAS" de app/globals.css.
+   Duas regras novas; nada aqui sobrescreve o que já existe.
+   =========================================================================== */
+
+/* --- O escopo do total, colado no total (defeito 3) ------------------------
+   A tabela é o único bloco da tela sem recorte de ano: ela soma 2025, 2026 e as
+   parcelas já lançadas até 2027, a poucos centímetros do KPI "no ano" e da
+   análise — três números grandes e diferentes. O rótulo embaixo do total diz o
+   que ele mede ("só o itemizado") e o período que está somando.
+
+   Por que uma coluna e não um texto ao lado: `.fin-card-head` é
+   `justify-content: space-between`, então um terceiro filho solto jogaria o
+   total para o meio da linha. Empilhando, o total continua na quina direita e o
+   rótulo cai embaixo dele. O `align-items: baseline` do cabeçalho continua
+   valendo: a baseline de uma coluna flex é a da primeira linha, isto é, a do
+   próprio total — ele segue alinhado com o "Compras". */
+.fin-cartao-tx-escopo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 0;
+}
+
+.fin-cartao-tx-escopo small {
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* --- "Sem detalhamento" no lugar de "nenhum lançamento" (defeito 2) --------
+   Quando o filtro escolhe um dos 4 plásticos cujo emissor não itemiza (os três
+   do Inter e o do Asaas), a tabela vazia diria que o cartão não foi usado. Ela
+   passa a dizer por que não há o que listar.
+
+   O pontilhado grafite é o MESMO vocabulário do não itemizado no resto da tela
+   (`.fin-cartao-plast-opaco`, a faixa opaca da análise): quem já viu a textura
+   lá em cima reconhece a mesma ideia aqui embaixo sem reler.
+
+   `text-align: left` porque `.fin-cartao-tx-nada` centraliza — o que é certo
+   para uma frase curta e ruim para duas linhas de explicação. */
+.fin-cartao-tx-sem-extrato {
+  display: block;
+  max-width: 56ch;
+  margin: 0 auto;
+  padding: 12px 14px;
+  border: 1px dotted var(--fin-cartao-plast-grafite);
+  border-radius: 10px;
+  background: var(--soft-1);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--muted);
+}
+
+.fin-cartao-tx-sem-extrato strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+/* ===========================================================================
+   FinCartaoAnalise — DELTA: as três tintas que viram com o tema
+   Prefixo: .fin-cartao-an-*   (cole no fim do bloco "TELA DE CARTÕES")
+   ===========================================================================
+
+   O QUE ISTO CONSERTA
+
+   Três cores do componente eram hex literais pensados só para o tema claro, e
+   a tela roda nos dois. Medido no escuro, antes:
+
+     roxo do indeterminado ... 2,71:1 sobre a superfície do card (piso 3:1 para
+                               elemento não-textual) — e é ele que pinta a MAIOR
+                               fatia do gráfico (Sem núcleo, R$ 36.667,43): a
+                               informação mais importante era a menos visível.
+     tinta fraca ............. 3,68:1 nos ticks dos eixos e nos rótulos de
+                               dinheiro, em 11 px (piso 4,5:1 para texto).
+     grade ................... 14,3:1 — quase branca sobre fundo escuro, gritando
+                               exatamente onde o elemento deveria sumir.
+
+   SÃO DOIS CAMINHOS QUE CONVIVEM, NÃO UMA TROCA
+
+   O `ChartFrame` exporta o gráfico como PNG serializando o SVG, e o PNG sai sem
+   o CSS da página — um `var(--…)` serializado não resolve e o gráfico baixado
+   sairia sem cor. Por isso o componente MANTÉM o hex literal como atributo de
+   apresentação e estas regras vêm por cima: qualquer regra de folha de estilo
+   ganha de atributo de apresentação, independentemente de especificidade.
+
+     o atributo salva o PNG · a classe salva o tema
+
+   É o mesmo arranjo do irmão `FinCartaoPainelTopo`, e cada literal no .tsx é o
+   valor do token no tema CLARO — então no claro os dois caminhos dizem a mesma
+   coisa e nada muda; no escuro, a classe corrige.
+
+   POR QUE NÃO HÁ BLOCO DE TEMA AQUI
+
+   Este delta não define token novo: ele gasta `--cert-indet`, `--muted` e
+   `--line`, que o globals.css já vira nos três estados (`:root`,
+   `@media (prefers-color-scheme: dark)` com `:root:not([data-theme="claro"])`
+   e `:root[data-theme="escuro"]`). Recopiar aqui os valores por tema criaria
+   uma segunda fonte da verdade para a MESMA tinta — e duas fontes da mesma
+   tinta divergem, que é como o roxo do gráfico se descolou do roxo da textura
+   em CSS (`.fin-cartao-an-tex-lacuna`) em primeiro lugar. Com estas regras as
+   duas voltam a ser a mesma tinta em qualquer tema.
+
+   Conferido nos tokens do escuro: `--cert-indet` #c9a8ff dá 9,2:1 sobre o card
+   #17131f (era 2,71:1) e `--muted` #a79fc0 dá 7,2:1 (era 3,68:1). `--line`
+   #2c2740 é discreto de propósito — grade é o único elemento aqui cujo trabalho
+   é não ser visto.
+   --------------------------------------------------------------------------- */
+
+/* ---- A tinta do indeterminado dentro do SVG ------------------------------ */
+
+/* A `<pattern>` da hachura. Ela mora num `<svg>` de tamanho zero fora do
+   gráfico, então o PNG já não a leva — o contorno roxo da barra é que cumpre
+   esse papel no arquivo exportado. Aqui o que importa é a tela. */
+.fin-cartao-an-hachura-fundo {
+  fill: var(--cert-indet);
+}
+
+.fin-cartao-an-hachura-linha {
+  stroke: var(--cert-indet);
+}
+
+/* O contorno da fatia/faixa hachurada — o que distingue a barra indeterminada
+   quando o preenchimento é textura e não cor. Dois caminhos até o retângulo:
+   `className` num `<Bar>` cai no `<g>` que embrulha os retângulos da série
+   (composição mensal); `className` num `<Cell>` cai no próprio retângulo
+   (quebra por eixo). As duas formas ficam na mesma regra. */
+.fin-cartao-an-faixa-lacuna .recharts-rectangle,
+.recharts-rectangle.fin-cartao-an-faixa-lacuna {
+  stroke: var(--cert-indet);
+}
+
+/* ---- Tinta fraca: ticks dos eixos e os rótulos de dinheiro --------------- */
+
+/* O recharts nomeia o texto do tick, mas não deixa acrescentar classe nossa
+   nele quando o `tick` é objeto — por isso o alvo é a classe dele, escopada na
+   raiz do componente. O `LabelList` aceita a nossa, e ela vem junto. */
+.fin-cartao-an-tinta-fraca,
+.fin-cartao-an .recharts-cartesian-axis-tick-value {
+  fill: var(--muted);
+}
+
+/* ---- Grade e linha de base do eixo --------------------------------------- */
+
+/* Grade é o elemento que deve sumir, e o quanto ela some é decisão do token —
+   que vira com o tema. O `strokeOpacity` que dimerizava por cima dele saiu do
+   .tsx: eram duas decisões empilhadas, e no escuro a soma das duas apagava a
+   grade inteira. */
+.fin-cartao-an .recharts-cartesian-grid line,
+.fin-cartao-an .recharts-cartesian-axis-line {
+  stroke: var(--line);
+}

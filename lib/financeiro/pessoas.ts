@@ -327,6 +327,15 @@ export type Pessoa = {
    * contrapartes da tabela principal incluir dinheiro que ninguém confirmou.
    */
   contrapartesPropostas: Contraparte[];
+  /** Pendências do cadastro do app (WhatsApp, PIX, aniversário, senha). */
+  cadastroApp: {
+    whatsapp: boolean;
+    email: boolean;
+    cpf: boolean;
+    pix: boolean;
+    nascimento: boolean;
+    senha: boolean;
+  } | null;
 };
 
 /**
@@ -1007,6 +1016,14 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       destino.set(linha.person_id, lista);
     }
 
+    let flagsApp = new Map<number, import("@/lib/financeiro/pessoa-cadastro-app").CadastroAppFlags>();
+    try {
+      const { flagsCadastroAppPorPessoa } = await import("@/lib/financeiro/pessoa-cadastro-app");
+      flagsApp = await flagsCadastroAppPorPessoa();
+    } catch {
+      /* migration 0175 ainda não aplicada — cadastro app fica neutro */
+    }
+
     const pessoas: Pessoa[] = pessoasRows.map((linha) => ({
       id: linha.id,
       nome: linha.nome,
@@ -1026,7 +1043,8 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       categoriaPadrao: linha.categoria_padrao,
       categoriaPadraoNome: linha.categoria_padrao_nome,
       categoriaSugerida: CATEGORIA_SUGERIDA_POR_VINCULO[linha.vinculo] ?? null,
-      contrapartesPropostas: propostosPorPessoa.get(linha.id) ?? []
+      contrapartesPropostas: propostosPorPessoa.get(linha.id) ?? [],
+      cadastroApp: flagsApp.get(linha.id) ?? null
     }));
 
     const celulas: Celula[] = celulasRows.map((linha) => ({

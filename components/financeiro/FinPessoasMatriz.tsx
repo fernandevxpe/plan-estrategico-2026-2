@@ -1,11 +1,13 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import type { BandaRemuneracao, CustoPessoas, Pessoa, PrevisaoCadastro } from "@/lib/financeiro/pessoas";
-import { brlPrecise, monthKeyLabel } from "@/lib/financeiro/format";
+import { brlPrecise, monthKeyLabel, pct } from "@/lib/financeiro/format";
 
+import { CelulaArea, CelulaVinculo } from "./FinPessoaEditor";
+import { BotaoPrevisaoPessoa } from "./FinPrevisaoPessoaPop";
 import { FinSecaoColapsavel } from "./FinSecaoColapsavel";
 
 /** Ordem estável — a mesma do perfil. */
@@ -42,6 +44,17 @@ const COR: Record<string, string> = {
 
 type Ativos = Record<string, boolean>;
 
+/** Métricas que vinham do "Geral do time" — agora na mesma tabela da série. */
+export type ResumoPessoaMatriz = {
+  fixoContratadoCents: number | null;
+  excedenteCents: number | null;
+  mesesPactuados: string[];
+  mediaMensalCents: number;
+  variacaoPct: number | null;
+  primeiroMes: string | null;
+  ultimoMes: string | null;
+};
+
 function ativosIniciais(tipos: { slug: string }[]): Ativos {
   const base: Ativos = {};
   for (const slug of NATUREZAS) base[slug] = true;
@@ -70,22 +83,25 @@ function compsAtivos(
 }
 
 /**
- * Matriz pessoa × mês. Cada natureza ligada soma no total e aparece pequena,
- * colorida e entre parênteses. A última coluna de mês é a previsão do mês
- * seguinte a partir dos cadastros — não do extrato.
+ * Pessoa × mês + cadastro leve + fixo/acima/Δ.
+ * Absorveu o antigo "Geral do time": uma pergunta, uma tabela.
  */
 export function FinPessoasMatriz({
   dados,
   bandas,
   meses,
   pessoaPorId,
-  mesAtual
+  mesAtual,
+  resumoPorPessoa,
+  rodape
 }: {
   dados: CustoPessoas;
   bandas: BandaRemuneracao[];
   meses: string[];
   pessoaPorId: Map<number, Pessoa>;
   mesAtual: string;
+  resumoPorPessoa: Map<number, ResumoPessoaMatriz>;
+  rodape?: ReactNode;
 }) {
   const [pessoaId, setPessoaId] = useState<number | "">("");
   const [ativos, setAtivos] = useState<Ativos>(() => ativosIniciais(dados.tiposRemuneracao));
@@ -124,6 +140,7 @@ export function FinPessoasMatriz({
         porTipoMes: Record<string, Record<string, number>>;
         totalAtivoCents: number;
         previsao: Record<string, number>;
+        resumo: ResumoPessoaMatriz | undefined;
       }
     >();
 
@@ -134,7 +151,8 @@ export function FinPessoasMatriz({
         pessoa,
         porTipoMes: {},
         totalAtivoCents: 0,
-        previsao: previsaoPorId.get(b.personId)?.porNatureza ?? {}
+        previsao: previsaoPorId.get(b.personId)?.porNatureza ?? {},
+        resumo: resumoPorPessoa.get(b.personId)
       };
       if (!atual.porTipoMes[b.mes]) atual.porTipoMes[b.mes] = {};
       atual.porTipoMes[b.mes][b.natureza] = (atual.porTipoMes[b.mes][b.natureza] ?? 0) + b.cents;
@@ -152,7 +170,7 @@ export function FinPessoasMatriz({
         return somarAtivos(l.previsao, ativos) > 0;
       })
       .sort((a, b) => b.totalAtivoCents - a.totalAtivoCents);
-  }, [bandasBase, pessoaPorId, ativos, previsaoPorId]);
+  }, [bandasBase, pessoaPorId, ativos, previsaoPorId, resumoPorPessoa]);
 
   const mesesVisiveis = useMemo(() => {
     const comValor = new Set<string>();
@@ -178,6 +196,10 @@ export function FinPessoasMatriz({
 
   const totalPrevisao = linhas.reduce((s, l) => s + somarAtivos(l.previsao, ativos), 0);
   const totalGeral = linhas.reduce((s, l) => s + l.totalAtivoCents, 0);
+  const totalFixo = linhas.reduce((s, l) => s + (l.resumo?.fixoContratadoCents ?? 0), 0);
+  const totalExcedente = linhas.reduce((s, l) => s + (l.resumo?.excedenteCents ?? 0), 0);
+  const temFixo = linhas.some((l) => l.resumo?.fixoContratadoCents !== null);
+  const temExcedente = linhas.some((l) => l.resumo?.excedenteCents !== null);
 
   const pessoasComBanda = useMemo(() => {
     const ids = new Set(bandas.filter((b) => meses.includes(b.mes)).map((b) => b.personId));
@@ -191,13 +213,15 @@ export function FinPessoasMatriz({
     setAtivos((antes) => ({ ...antes, [slug]: !antes[slug] }));
   }
 
-  const colunas = mesesVisiveis.length + 3; // pessoa + meses + previsto + total
+  const colunas =
+    1 + mesesVisiveis.length + (mesPrevisto ? 1 : 0) + 5; // pessoa + meses + previsto? + total + média + fixo + acima + Δ
 
   return (
     <FinSecaoColapsavel
       className="fin-painel-grafico fin-pessoas-matriz"
-      titulo="Custo por pessoa, mês a mês"
-      meta={`${pessoasComBanda.length} ${pessoasComBanda.length === 1 ? "pessoa" : "pessoas"} · ${mesesVisiveis.length} ${mesesVisiveis.length === 1 ? "mês" : "meses"}`}
+      titulo="Pessoas"
+      abertoPadrao
+      meta={`${pessoasComBanda.length} ${pessoasComBanda.length === 1 ? "pessoa" : "pessoas"} · ${mesesVisiveis.length} ${mesesVisiveis.length === 1 ? "mês" : "meses"} · ${brlPrecise(totalGeral)}`}
       ariaLabel="Custo por pessoa, mês a mês"
     >
       <div className="fin-pessoas-matriz-filtros">
@@ -257,34 +281,53 @@ export function FinPessoasMatriz({
                 </th>
               ) : null}
               <th className="num">Total</th>
+              <th className="num">Média/mês</th>
+              <th
+                className="num"
+                title="Fixo contratado na planilha de comissionamento, só nos meses em que ela existe"
+              >
+                Fixo
+              </th>
+              <th className="num" title="Realizado menos o fixo contratado, nos mesmos meses">
+                Acima
+              </th>
+              <th className="num">Δ</th>
             </tr>
           </thead>
           <tbody>
             {linhas.map((linha) => {
               const prevTotal = somarAtivos(linha.previsao, ativos);
               const prevComps = compsAtivos(linha.previsao, ativos, naturezasDisponiveis);
+              const r = linha.resumo;
               return (
                 <tr key={linha.pessoa.id}>
                   <th className="fin-matrix-head" scope="row">
-                    <a
-                      className="fin-pessoas-nome-link fin-pessoas-matriz-pessoa"
-                      href={`/financeiro/pessoas/${linha.pessoa.id}`}
-                    >
-                      <span className="fin-pessoas-nome">
-                        <span className="fin-pessoas-nome-texto">
-                          <span className="fin-desc">{linha.pessoa.nome}</span>
-                          <span className="fin-desc-sub">
-                            {linha.pessoa.vinculoRotulo} · {linha.pessoa.timeRotulo}
+                    <div className="fin-pessoas-matriz-pessoa-bloco">
+                      <a
+                        className="fin-pessoas-nome-link fin-pessoas-matriz-pessoa"
+                        href={`/financeiro/pessoas/${linha.pessoa.id}`}
+                      >
+                        <span className="fin-pessoas-nome">
+                          <span className="fin-pessoas-nome-texto">
+                            <span className="fin-desc">{linha.pessoa.nome}</span>
+                            <span className="fin-desc-sub">{linha.pessoa.timeRotulo}</span>
                           </span>
+                          <ChevronRight
+                            className="fin-pessoas-nome-seta"
+                            size={15}
+                            strokeWidth={2.2}
+                            aria-hidden
+                          />
                         </span>
-                        <ChevronRight
-                          className="fin-pessoas-nome-seta"
-                          size={15}
-                          strokeWidth={2.2}
-                          aria-hidden
-                        />
-                      </span>
-                    </a>
+                      </a>
+                      <div
+                        className="fin-pessoas-matriz-cadastro"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <CelulaArea pessoa={linha.pessoa} areas={dados.areas} />
+                        <CelulaVinculo pessoa={linha.pessoa} vinculos={dados.vinculosDominio} />
+                      </div>
+                    </div>
                   </th>
                   {mesesVisiveis.map((mes) => {
                     const total = somarAtivos(linha.porTipoMes[mes], ativos);
@@ -300,12 +343,20 @@ export function FinPessoasMatriz({
                     );
                   })}
                   {mesPrevisto ? (
-                    <td className="num fin-table-money fin-previsao">
-                      {prevTotal ? (
-                        <CelulaComposta total={prevTotal} comps={prevComps} />
-                      ) : (
-                        <span className="fin-zero">—</span>
-                      )}
+                    <td className="num fin-table-money fin-previsao fin-previsao-celula">
+                      <div className="fin-previsao-celula-conteudo">
+                        {prevTotal ? (
+                          <CelulaComposta total={prevTotal} comps={prevComps} />
+                        ) : (
+                          <span className="fin-zero">—</span>
+                        )}
+                        <BotaoPrevisaoPessoa
+                          personId={linha.pessoa.id}
+                          nome={linha.pessoa.nome}
+                          mesPrevisto={mesPrevisto}
+                          previstoCents={prevTotal}
+                        />
+                      </div>
                     </td>
                   ) : null}
                   <td className="num fin-table-money">
@@ -327,6 +378,50 @@ export function FinPessoasMatriz({
                       <span className="fin-zero">—</span>
                     )}
                   </td>
+                  <td className="num fin-table-money">
+                    {r?.mediaMensalCents ? brlPrecise(r.mediaMensalCents) : <span className="fin-zero">—</span>}
+                  </td>
+                  <td className="num fin-table-money fin-previsao">
+                    {r?.fixoContratadoCents == null ? (
+                      <span className="fin-zero">—</span>
+                    ) : (
+                      <span title={`Soma do fixo em ${r.mesesPactuados.map(monthKeyLabel).join(", ")}`}>
+                        {brlPrecise(r.fixoContratadoCents)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="num fin-table-money">
+                    {r?.excedenteCents == null ? (
+                      <span className="fin-zero">—</span>
+                    ) : (
+                      <span className={r.excedenteCents > 0 ? "fin-out" : undefined}>
+                        {brlPrecise(r.excedenteCents)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="num">
+                    {r?.variacaoPct == null ? (
+                      <span className="fin-zero">—</span>
+                    ) : (
+                      <span
+                        className={
+                          Math.abs(r.variacaoPct) < 0.5
+                            ? "fin-pessoas-delta neutro"
+                            : r.variacaoPct > 0
+                              ? "fin-pessoas-delta sobe"
+                              : "fin-pessoas-delta desce"
+                        }
+                        title={
+                          r.primeiroMes && r.ultimoMes
+                            ? `${monthKeyLabel(r.primeiroMes)} → ${monthKeyLabel(r.ultimoMes)}`
+                            : undefined
+                        }
+                      >
+                        {r.variacaoPct >= 0 ? "+" : "−"}
+                        {pct(Math.abs(r.variacaoPct), 0)}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
@@ -340,7 +435,7 @@ export function FinPessoasMatriz({
           </tbody>
           <tfoot>
             <tr>
-              <th className="fin-matrix-head">Total do mês</th>
+              <th className="fin-matrix-head">Total</th>
               {mesesVisiveis.map((mes) => (
                 <td key={mes} className="num fin-table-money">
                   {totalPorMes[mes] ? (
@@ -380,10 +475,25 @@ export function FinPessoasMatriz({
               <td className="num fin-table-money">
                 <strong>{brlPrecise(totalGeral)}</strong>
               </td>
+              <td className="num fin-table-money">
+                {mesesVisiveis.length ? brlPrecise(Math.round(totalGeral / mesesVisiveis.length)) : "—"}
+              </td>
+              <td className="num fin-table-money fin-previsao">
+                {temFixo ? <strong>{brlPrecise(totalFixo)}</strong> : <span className="fin-zero">—</span>}
+              </td>
+              <td className="num fin-table-money">
+                {temExcedente ? (
+                  <strong>{brlPrecise(totalExcedente)}</strong>
+                ) : (
+                  <span className="fin-zero">—</span>
+                )}
+              </td>
+              <td />
             </tr>
           </tfoot>
         </table>
       </div>
+      {rodape}
     </FinSecaoColapsavel>
   );
 }

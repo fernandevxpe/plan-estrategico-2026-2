@@ -854,6 +854,64 @@ try {
     previsto.rows[0] ? `R$ ${(Number(previsto.rows[0].valor_previsto_cents)/100).toFixed(2)} · ${previsto.rows[0].origem_ref}` : 'nenhum'
   );
 
+  console.log('\n=== 5g. CADASTRO APP (admin — pendências de pessoa) ===');
+  {
+    const adminChamar = async (caminho, opcoes = {}) => {
+      const headers = { ...(opcoes.headers ?? {}), 'content-type': 'application/json' };
+      let r;
+      try {
+        r = await fetch(BASE + caminho, { ...opcoes, headers });
+      } catch {
+        r = await fetch(BASE + caminho, { ...opcoes, headers });
+      }
+      let corpo = null;
+      try {
+        corpo = await r.json();
+      } catch {
+        /* sem JSON */
+      }
+      return { status: r.status, corpo };
+    };
+
+    const antesCad = await adminChamar(`/api/financeiro/pessoas/${cobaia.id}/cadastro-app`);
+    afirma(antesCad.status === 200, 'GET cadastro-app responde', `status ${antesCad.status}`);
+
+    const waAntes = antesCad.corpo?.whatsapp ?? null;
+    const nascAntes = antesCad.corpo?.birthDate ?? null;
+
+    const patch = await adminChamar(`/api/financeiro/pessoas/${cobaia.id}/cadastro-app`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        whatsapp: '81999887766',
+        birthDate: '1990-05-15',
+        cpf: '70365478474',
+        pagamento: { metodo: 'pix', pixTipo: 'telefone', pixChave: '81999887766' }
+      })
+    });
+    afirma(patch.status === 200, 'PATCH cadastro-app grava WhatsApp e PIX', `status ${patch.status}`);
+
+    const depoisCad = await adminChamar(`/api/financeiro/pessoas/${cobaia.id}/cadastro-app`);
+    afirma(
+      depoisCad.corpo?.whatsapp?.includes('99988') && depoisCad.corpo?.birthDate === '1990-05-15',
+      'cadastro relido bate com o gravado',
+      `wa=${depoisCad.corpo?.whatsapp} · nasc=${depoisCad.corpo?.birthDate}`
+    );
+
+    const senhaCurta = await adminChamar(`/api/financeiro/pessoas/${cobaia.id}/senha-app`, {
+      method: 'POST',
+      body: JSON.stringify({ senha: '123' })
+    });
+    afirma(senhaCurta.status === 422, 'senha curta é recusada', `status ${senhaCurta.status}`);
+
+    await adminChamar(`/api/financeiro/pessoas/${cobaia.id}/cadastro-app`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        whatsapp: waAntes,
+        birthDate: nascAntes
+      })
+    });
+  }
+
   console.log('\n=== 6. A SENHA ANTIGA MORREU ===');
   const c2 = criarCliente();
   const velha = await c2('/api/time/sessao', {

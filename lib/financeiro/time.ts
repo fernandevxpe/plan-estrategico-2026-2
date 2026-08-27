@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { gzipSync } from "node:zlib";
 
 import { FinanceUnavailableError, query, queryOne, transaction } from "@/lib/financeiro/db";
+import { conferirDocumento } from "@/scripts/lib/fin-documento.mjs";
 
 /**
  * O app do time — a camada de servidor.
@@ -1442,7 +1443,7 @@ export type ContaPagamento = {
  * `lib/financeiro/pix-brcode.ts`: CPF e CNPJ só dígitos, telefone em E.164
  * com o `+55`, e-mail e chave aleatória como estão.
  */
-function normalizarChavePix(tipo: string, bruta: string): string {
+export function normalizarChavePix(tipo: string, bruta: string): string {
   const v = bruta.trim();
   const d = v.replace(/\D/g, "");
   switch (tipo) {
@@ -3140,6 +3141,9 @@ export async function meuReembolso(sessao: Sessao) {
 export type PerfilTime = {
   nome: string;
   email: string | null;
+  cpf: string | null;
+  whatsapp: string | null;
+  birthDate: string | null;
   temFoto: boolean;
 };
 
@@ -3165,21 +3169,58 @@ export type ResumoInicio = {
  * o blob fica em `fin_anexo_blob`, como comprovante.
  */
 export async function lerPerfil(sessao: Sessao): Promise<PerfilTime> {
-  const [linha] = await query<{ name: string; email: string | null; foto_chave: string | null }>(
-    `SELECT name, email, foto_chave FROM fin_person WHERE id = $1 AND status = 'ativo'`,
+  const [linha] = await query<{
+    name: string;
+    email: string | null;
+    cpf: string | null;
+    whatsapp: string | null;
+    birth_date: string | null;
+    foto_chave: string | null;
+  }>(
+    `SELECT name, email, cpf, whatsapp,
+            to_char(birth_date, 'YYYY-MM-DD') AS birth_date,
+            foto_chave
+       FROM fin_person WHERE id = $1 AND status = 'ativo'`,
     [sessao.personId]
   );
   if (!linha) throw new TimeError("pessoa não encontrada", 404);
+  const wa = linha.whatsapp?.replace(/\D/g, "") ?? null;
+  let whatsapp: string | null = null;
+  if (wa) {
+    if (wa.length === 11) whatsapp = `(${wa.slice(0, 2)}) ${wa.slice(2, 7)}-${wa.slice(7)}`;
+    else if (wa.length === 10) whatsapp = `(${wa.slice(0, 2)}) ${wa.slice(2, 6)}-${wa.slice(6)}`;
+    else whatsapp = linha.whatsapp;
+  }
+  const cpf = linha.cpf;
+  const cpfFmt =
+    cpf && cpf.length === 11
+      ? `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`
+      : cpf;
   return {
     nome: linha.name,
     email: linha.email,
+    cpf: cpfFmt,
+    whatsapp,
+    birthDate: linha.birth_date,
     temFoto: Boolean(linha.foto_chave)
   };
 }
 
+function normalizarWhatsappPerfil(bruto: string): string {
+  const d = bruto.replace(/\D/g, "");
+  if (d.length < 10 || d.length > 13) {
+    throw new TimeError("WhatsApp precisa ter DDD + número (10 ou 11 dígitos)", 400);
+  }
+  const nacional = d.startsWith("55") && d.length > 11 ? d.slice(2) : d;
+  if (nacional.length < 10 || nacional.length > 11) {
+    throw new TimeError("WhatsApp precisa ter DDD + número (10 ou 11 dígitos)", 400);
+  }
+  return nacional;
+}
+
 export async function atualizarPerfil(
   sessao: Sessao,
-  dados: { nome?: string; email?: string | null }
+  dados: { nome?: string; email?: string | null; cpf?: string | null; whatsapp?: string | null; birthDate?: string | null }
 ): Promise<PerfilTime> {
   const nome = dados.nome !== undefined ? String(dados.nome).trim() : undefined;
   const email =
@@ -3188,10 +3229,38 @@ export async function atualizarPerfil(
         ? null
         : String(dados.email).trim().toLowerCase()
       : undefined;
+  const cpf =
+    dados.cpf !== undefined
+      ? dados.cpf === null || dados.cpf === ""
+        ? null
+        : (() => {
+            const r = conferirDocumento(String(dados.cpf));
+            if (!r.valido || r.tipo !== "cpf") {
+              const msg = !r.valido && "motivo" in r ? String(r.motivo) : "CPF inválido";
+              throw new TimeError(msg, 400);
+            }
+            return r.digitos!;
+          })()
+      : undefined;
+  const whatsapp =
+    dados.whatsapp !== undefined
+      ? dados.whatsapp === null || dados.whatsapp === ""
+        ? null
+        : normalizarWhatsappPerfil(String(dados.whatsapp))
+      : undefined;
+  const birthDate =
+    dados.birthDate !== undefined
+      ? dados.birthDate === null || dados.birthDate === ""
+        ? null
+        : String(dados.birthDate).trim()
+      : undefined;
 
   if (nome !== undefined && nome.length < 2) throw new TimeError("nome muito curto", 400);
   if (email !== undefined && email !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new TimeError("e-mail inválido", 400);
+  }
+  if (birthDate !== undefined && birthDate !== null && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+    throw new TimeError("data de nascimento inválida", 400);
   }
 
   return transaction(async (client) => {
@@ -3201,6 +3270,13 @@ export async function atualizarPerfil(
         [email, sessao.personId]
       );
       if (dup.rows[0]) throw new TimeError("este e-mail já está em uso", 409);
+    }
+    if (cpf !== undefined && cpf !== null) {
+      const dup = await client.query(`SELECT id FROM fin_person WHERE cpf = $1 AND id <> $2 LIMIT 1`, [
+        cpf,
+        sessao.personId
+      ]);
+      if (dup.rows[0]) throw new TimeError("este CPF já está em uso", 409);
     }
 
     const campos: string[] = [];
@@ -3212,6 +3288,18 @@ export async function atualizarPerfil(
     if (email !== undefined) {
       params.push(email);
       campos.push(`email = $${params.length}`);
+    }
+    if (cpf !== undefined) {
+      params.push(cpf);
+      campos.push(`cpf = $${params.length}`);
+    }
+    if (whatsapp !== undefined) {
+      params.push(whatsapp);
+      campos.push(`whatsapp = $${params.length}`);
+    }
+    if (birthDate !== undefined) {
+      params.push(birthDate);
+      campos.push(`birth_date = $${params.length}::date`);
     }
     if (campos.length === 0) return lerPerfil(sessao);
 

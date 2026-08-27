@@ -8,6 +8,7 @@ import { brlPrecise } from "@/lib/financeiro/format";
 import { urlDaOrigem } from "@/lib/url-origem";
 
 import { FinSecaoColapsavel } from "./FinSecaoColapsavel";
+import { FinPessoaCadastroApp } from "./FinPessoaCadastroApp";
 
 /**
  * Cadastro de pessoa: área, vínculo, papel, status, saída, tipo de custo — e a
@@ -53,66 +54,83 @@ type Props = { dados: CustoPessoas };
 // ---------------------------------------------------------------------------
 export function FinPessoaCadastro({ dados }: Props) {
   const [busca, setBusca] = useState("");
-  const [soPendentes, setSoPendentes] = useState(false);
   const [aberta, setAberta] = useState<number | null>(null);
 
   const lista = useMemo(() => {
     const termo = busca.trim().toLowerCase();
-    /** Pendência de cadastro: o que ainda falta alguém decidir sobre esta pessoa. */
-    const pendente = (pessoa: Pessoa) =>
-      !pessoa.area ||
-      pessoa.vinculo === "indefinido" ||
-      (dados.categoriaPadraoDisponivel && !pessoa.categoriaPadrao) ||
-      pessoa.contrapartesPropostas.length > 0;
-
+    const ehPendente = (pessoa: Pessoa) => {
+      const app = pessoa.cadastroApp;
+      const appPendente = app
+        ? app.whatsapp || app.email || app.cpf || app.pix || app.nascimento || app.senha
+        : false;
+      return (
+        !pessoa.area ||
+        pessoa.vinculo === "indefinido" ||
+        (dados.categoriaPadraoDisponivel && !pessoa.categoriaPadrao) ||
+        pessoa.contrapartesPropostas.length > 0 ||
+        appPendente
+      );
+    };
     return dados.pessoas.filter((pessoa) => {
-      if (soPendentes && !pendente(pessoa)) return false;
+      if (!ehPendente(pessoa)) return false;
       if (!termo) return true;
       return `${pessoa.nome} ${pessoa.nomeLegal ?? ""} ${pessoa.area ?? ""}`.toLowerCase().includes(termo);
     });
-  }, [dados.pessoas, busca, soPendentes, dados.categoriaPadraoDisponivel]);
+  }, [dados.pessoas, busca, dados.categoriaPadraoDisponivel]);
 
   const semArea = dados.pessoas.filter((p) => !p.area).length;
   const indefinidos = dados.pessoas.filter((p) => p.vinculo === "indefinido").length;
   const propostas = dados.pessoas.reduce((soma, p) => soma + p.contrapartesPropostas.length, 0);
 
+  const semApp = dados.pessoas.filter((p) => {
+    const a = p.cadastroApp;
+    return a && (a.whatsapp || a.email || a.cpf || a.pix || a.nascimento || a.senha);
+  }).length;
+
   const pendencias =
     (semArea ? `${semArea} sem área` : "") +
-    (semArea && (indefinidos || propostas) ? " · " : "") +
+    (semArea && (indefinidos || propostas || semApp) ? " · " : "") +
     (indefinidos ? `${indefinidos} vínculo indefinido` : "") +
-    (indefinidos && propostas ? " · " : "") +
-    (propostas ? `${propostas} ligação${propostas === 1 ? "" : "ões"} a decidir` : "");
+    (indefinidos && (propostas || semApp) ? " · " : "") +
+    (propostas ? `${propostas} ligação${propostas === 1 ? "" : "ões"} a decidir` : "") +
+    ((propostas || semArea || indefinidos) && semApp ? " · " : "") +
+    (semApp ? `${semApp} cadastro do app incompleto` : "");
 
   if (!dados.disponivel) return null;
+  if (!lista.length && !busca.trim()) {
+    return (
+      <FinSecaoColapsavel
+        className="fin-pessoas-cadastro"
+        titulo="Pendências de cadastro"
+        meta="nenhuma"
+      >
+        <p className="fin-card-hint fin-card-hint-curto">
+          Área e vínculo editam na tabela Pessoas. Aqui só entra quem ainda tem pendência.
+        </p>
+      </FinSecaoColapsavel>
+    );
+  }
 
   return (
     <FinSecaoColapsavel
       className="fin-pessoas-cadastro"
-      titulo="Cadastro: área, vínculo e tipo de custo"
-      abertoPadrao={Boolean(semArea || indefinidos || propostas)}
-      meta={pendencias || `${dados.pessoas.length} pessoas`}
-      ariaLabel="Cadastro de pessoas"
+      titulo="Pendências de cadastro"
+      abertoPadrao
+      meta={pendencias || `${lista.length} pendências`}
+      ariaLabel="Pendências de cadastro"
     >
+      <p className="fin-card-hint fin-card-hint-curto">
+        Área e vínculo mudam na tabela Pessoas. Aqui: tipo de custo, ligações, contato/PIX/senha do app e quem ainda falta decidir.
+      </p>
       <div className="fin-regra-form">
         <label className="fin-field">
-          <span>Buscar pessoa</span>
+          <span>Buscar</span>
           <input
             className="fin-input"
             value={busca}
             onChange={(evento) => setBusca(evento.target.value)}
             placeholder="nome ou área"
           />
-        </label>
-        <label className="fin-field">
-          <span>Recorte</span>
-          <select
-            className="fin-select"
-            value={soPendentes ? "pendentes" : "todas"}
-            onChange={(evento) => setSoPendentes(evento.target.value === "pendentes")}
-          >
-            <option value="todas">Todas as pessoas</option>
-            <option value="pendentes">Só as que têm pendência de cadastro</option>
-          </select>
         </label>
       </div>
 
@@ -141,7 +159,7 @@ export function FinPessoaCadastro({ dados }: Props) {
             {!lista.length ? (
               <tr>
                 <td colSpan={6} className="fin-empty-row">
-                  Nenhuma pessoa neste recorte.
+                  Nenhuma pendência neste filtro.
                 </td>
               </tr>
             ) : null}
@@ -205,6 +223,17 @@ function LinhaPessoa({
               {pessoa.contrapartesPropostas.length === 1 ? "ligação a decidir" : "ligações a decidir"}
             </span>
           ) : null}
+          {pessoa.cadastroApp &&
+          (pessoa.cadastroApp.whatsapp ||
+            pessoa.cadastroApp.email ||
+            pessoa.cadastroApp.cpf ||
+            pessoa.cadastroApp.pix ||
+            pessoa.cadastroApp.nascimento ||
+            pessoa.cadastroApp.senha) ? (
+            <span className="fin-badge-pendente" title="WhatsApp, CPF, PIX, aniversário, e-mail ou senha do app">
+              app incompleto
+            </span>
+          ) : null}
         </td>
         <td>
           <button type="button" className="fin-why" onClick={alternar} aria-expanded={aberta}>
@@ -224,7 +253,7 @@ function LinhaPessoa({
 }
 
 /** Select na própria célula: mesma API/domínio do editor completo. */
-function CelulaArea({
+export function CelulaArea({
   pessoa,
   areas
 }: {
@@ -278,6 +307,62 @@ function CelulaArea({
       >
         {!pessoa.area ? <option value="">sem área</option> : null}
         {opcoes.map((item) => (
+          <option key={item.slug} value={item.slug}>
+            {item.nome}
+          </option>
+        ))}
+      </select>
+      {erro ? <span className="fin-badge-atencao">{erro}</span> : null}
+    </span>
+  );
+}
+
+/** Vínculo na linha — mesmo PATCH do editor. */
+export function CelulaVinculo({
+  pessoa,
+  vinculos
+}: {
+  pessoa: Pessoa;
+  vinculos: CustoPessoas["vinculosDominio"];
+}) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [emVoo, setEmVoo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function mudar(slug: string) {
+    if (!slug || slug === pessoa.vinculo) return;
+    setErro(null);
+    setEmVoo(true);
+    try {
+      const resposta = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${pessoa.id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employmentType: slug })
+      });
+      const resultado = await resposta.json();
+      if (!resposta.ok) {
+        setErro(resultado.error ?? "não salvou");
+        return;
+      }
+      startTransition(() => router.refresh());
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "não salvou");
+    } finally {
+      setEmVoo(false);
+    }
+  }
+
+  return (
+    <span className="fin-celula-area">
+      <select
+        className="fin-select fin-select-inline"
+        value={pessoa.vinculo}
+        disabled={emVoo}
+        aria-label={`Vínculo de ${pessoa.nome}`}
+        onChange={(evento) => void mudar(evento.target.value)}
+      >
+        {vinculos.map((item) => (
           <option key={item.slug} value={item.slug}>
             {item.nome}
           </option>
@@ -562,6 +647,8 @@ export function FinPessoaEditor({ pessoa, dados }: { pessoa: Pessoa; dados: Cust
           {emVoo ? "Salvando…" : "Salvar cadastro"}
         </button>
       </div>
+
+      <FinPessoaCadastroApp personId={pessoa.id} nome={pessoa.nome} />
 
       {pessoa.contrapartesPropostas.length ? (
         <>

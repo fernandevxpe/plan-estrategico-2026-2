@@ -16,10 +16,21 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     const { sessao } = await exigirContexto();
-    const corpo = (await request.json().catch(() => ({}))) as { nome?: unknown; email?: unknown };
+    const corpo = (await request.json().catch(() => ({}))) as {
+      nome?: unknown;
+      email?: unknown;
+      cpf?: unknown;
+      whatsapp?: unknown;
+      birthDate?: unknown;
+    };
     const perfil = await atualizarPerfil(sessao, {
       nome: typeof corpo.nome === "string" ? corpo.nome : undefined,
-      email: corpo.email === null || typeof corpo.email === "string" ? (corpo.email as string | null) : undefined
+      email: corpo.email === null || typeof corpo.email === "string" ? (corpo.email as string | null) : undefined,
+      cpf: corpo.cpf === null || typeof corpo.cpf === "string" ? (corpo.cpf as string | null) : undefined,
+      whatsapp:
+        corpo.whatsapp === null || typeof corpo.whatsapp === "string" ? (corpo.whatsapp as string | null) : undefined,
+      birthDate:
+        corpo.birthDate === null || typeof corpo.birthDate === "string" ? (corpo.birthDate as string | null) : undefined
     });
     return Response.json({ perfil, sessao: { ...sessao, nome: perfil.nome } });
   } catch (erro) {

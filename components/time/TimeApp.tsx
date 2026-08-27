@@ -2143,7 +2143,14 @@ function TelaPerfil({
   aoSair: () => Promise<void>;
   aoTrocarFoto: () => void;
 }) {
-  const [perfil, setPerfil] = useState<{ nome: string; email: string | null; temFoto: boolean } | null>(null);
+  const [perfil, setPerfil] = useState<{
+    nome: string;
+    email: string | null;
+    cpf: string | null;
+    whatsapp: string | null;
+    birthDate: string | null;
+    temFoto: boolean;
+  } | null>(null);
   /*
    * PARA ONDE VAI O MEU DINHEIRO.
    *
@@ -2246,6 +2253,9 @@ function TelaPerfil({
 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [perfilOk, setPerfilOk] = useState(false);
@@ -2259,6 +2269,9 @@ function TelaPerfil({
     setPerfil(j.perfil);
     setNome(j.perfil.nome);
     setEmail(j.perfil.email ?? "");
+    setCpf(j.perfil.cpf ?? "");
+    setWhatsapp(j.perfil.whatsapp ?? "");
+    setBirthDate(j.perfil.birthDate ?? "");
   }, []);
 
   useEffect(() => {
@@ -2273,13 +2286,22 @@ function TelaPerfil({
     const r = await fetch("/api/time/perfil", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ nome: nome.trim(), email: email.trim() || null })
+      body: JSON.stringify({
+        nome: nome.trim(),
+        email: email.trim() || null,
+        cpf: cpf.trim() || null,
+        whatsapp: whatsapp.trim() || null,
+        birthDate: birthDate || null
+      })
     });
     const j = await r.json().catch(() => ({}));
     setSalvando(false);
     if (!r.ok) return setErro(j.error ?? "não consegui salvar");
     setPerfil(j.perfil);
     aoAtualizarNome(j.perfil.nome);
+    setCpf(j.perfil.cpf ?? "");
+    setWhatsapp(j.perfil.whatsapp ?? "");
+    setBirthDate(j.perfil.birthDate ?? "");
     /*
      * A folha FECHAVA ao salvar — era a única confirmação que existia, e ela
      * também tirava da tela o que a pessoa acabou de digitar. Como página não
@@ -2309,12 +2331,26 @@ function TelaPerfil({
 
   const fotoSrc = perfil?.temFoto ? `/api/time/perfil/foto?v=${fotoVersao}` : null;
 
+  const faltandoCadastro = [
+    !cpf.trim() ? "CPF" : null,
+    !whatsapp.trim() ? "WhatsApp" : null,
+    !birthDate ? "aniversário" : null,
+    !conta?.pixChave && !conta?.conta ? "conta para receber" : null
+  ].filter(Boolean);
+
   return (
     <div className="time-tela-padrao time-perfil-pagina">
       <header className="time-form-cabeca">
         <h1>Meu perfil</h1>
         <p>Seus dados, a conta que recebe o seu dinheiro e os ajustes do app.</p>
       </header>
+
+      {faltandoCadastro.length ? (
+        <div className="time-perfil-completar" role="status">
+          <strong>Complete seu cadastro</strong>
+          <span>Falta: {faltandoCadastro.join(" · ")}</span>
+        </div>
+      ) : null}
 
       {/*
         INSTALAR VEM PRIMEIRO, e some sozinho depois de instalado.
@@ -2366,7 +2402,8 @@ function TelaPerfil({
         />
       </div>
 
-      <form className="time-porta-form" onSubmit={salvarPerfil}>
+      <form className="time-porta-form time-perfil-secao" onSubmit={salvarPerfil}>
+        <h2 className="time-perfil-secao-titulo">Seus dados</h2>
         <label className="time-porta-campo">
           <span>Nome</span>
           <input value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" />
@@ -2381,10 +2418,35 @@ function TelaPerfil({
             inputMode="email"
           />
         </label>
+        <label className="time-porta-campo">
+          <span>CPF</span>
+          <input
+            value={cpf}
+            onChange={(e) => setCpf(e.target.value)}
+            placeholder="000.000.000-00"
+            inputMode="numeric"
+            autoComplete="off"
+          />
+        </label>
+        <label className="time-porta-campo">
+          <span>WhatsApp</span>
+          <input
+            type="tel"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            placeholder="(81) 99999-9999"
+            inputMode="tel"
+            autoComplete="tel"
+          />
+        </label>
+        <label className="time-porta-campo">
+          <span>Aniversário</span>
+          <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+        </label>
         {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
         {perfilOk ? <p className="conta-pgto-ok" role="status">Perfil salvo.</p> : null}
         <button type="submit" className="time-porta-entrar" disabled={salvando || nome.trim().length < 2}>
-          {salvando ? "Salvando…" : "Salvar"}
+          {salvando ? "Salvando…" : "Salvar dados"}
         </button>
       </form>
 
@@ -2411,9 +2473,9 @@ function TelaPerfil({
         </div>
       ) : null}
 
-      <form className="time-porta-form conta-pgto" onSubmit={salvarConta}>
+      <form className="time-porta-form conta-pgto time-perfil-secao" onSubmit={salvarConta}>
         <div className="conta-pgto-topo">
-          <strong>Onde eu recebo</strong>
+          <h2 className="time-perfil-secao-titulo">Onde eu recebo</h2>
           {conta ? (
             <span className={conta.conferidoEm ? "pp-selo ok" : "pp-selo aviso"}>
               {conta.conferidoEm ? "conferido" : "aguardando conferência"}

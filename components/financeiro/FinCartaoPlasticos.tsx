@@ -3,7 +3,12 @@
 import { useMemo, useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 
-import type { MesDoCartao, PlasticoDoPainel, TransacaoDoPainel } from "@/lib/financeiro/contratos/cartao-painel";
+import type {
+  FaturaDaLinha,
+  MesDoCartao,
+  PlasticoDoPainel,
+  TransacaoDoPainel
+} from "@/lib/financeiro/contratos/cartao-painel";
 import { brlCents, brlCompact, brlPrecise, dateLabel, monthKeyLabel, shortDateLabel } from "@/lib/financeiro/format";
 import { urlDaOrigem } from "@/lib/url-origem";
 
@@ -160,6 +165,26 @@ const FALTA_ROTULO: Record<string, string> = {
 
 /** Identidade estável: um `[]` literal no default remontaria o índice a cada render. */
 const SEM_TRANSACOES: TransacaoDoPainel[] = [];
+const SEM_FATURAS: FaturaDaLinha[] = [];
+
+/**
+ * O que um mini-cartão precisa saber da linha dele — e o que ele NÃO recebe.
+ *
+ * Não recebe as faturas. Os três plásticos do Inter dividem uma fatura só, e
+ * um componente que tem a série na mão acaba desenhando a série: bastaria isso
+ * para R$ 40.862,41 aparecer três vezes, uma dentro de cada cartão, somando
+ * R$ 122 mil de gasto que não existe. O cartão recebe as CONTAGENS, que é o
+ * que ele tem para dizer sem poder errar de dono.
+ */
+type ResumoDaLinha = { faturas: number; plasticos: number };
+
+function resumoDaLinha(faturas: FaturaDaLinha[] | undefined): ResumoDaLinha | null {
+  if (!faturas?.length) return null;
+  return {
+    faturas: faturas.length,
+    plasticos: Math.max(...faturas.map((f) => f.plasticosNaLinha))
+  };
+}
 
 const BANDEIRA_ROTULO: Record<string, string> = {
   visa: "Visa",
@@ -361,11 +386,13 @@ function comRespostaDoServidor(base: PlasticoDoPainel, linha: LinhaCartao): Plas
 export function FinCartaoPlasticos({
   plasticos,
   serie,
-  transacoes = SEM_TRANSACOES
+  transacoes = SEM_TRANSACOES,
+  faturasDeLinha = SEM_FATURAS
 }: {
   plasticos: PlasticoDoPainel[];
   serie: MesDoCartao[];
   transacoes?: TransacaoDoPainel[];
+  faturasDeLinha?: FaturaDaLinha[];
 }) {
   // Sobrescritas locais do que já foi salvo nesta sessão. O `router.refresh()`
   // traz a mesma verdade pelas props logo depois, então a mescla é idempotente
@@ -414,6 +441,27 @@ export function FinCartaoPlasticos({
     return mapa;
   }, [transacoes]);
 
+  // As faturas por LINHA DE CRÉDITO. A chave é `contaId` e não `cardId` de
+  // propósito: não existe fatura de plástico nesta fonte.
+  //
+  // Ordenar por mês NÃO basta — julho de 2026 tem duas faturas no Inter (venc.
+  // 02/07 e 06/07). Qualquer coisa que assuma uma por mês (um Map por mês, um
+  // `find`) perde uma delas e o total para de bater com os R$ 40.862,41.
+  const faturasPorConta = useMemo(() => {
+    const mapa = new Map<number, FaturaDaLinha[]>();
+    for (const f of faturasDeLinha) {
+      const atual = mapa.get(f.contaId);
+      if (atual) atual.push(f);
+      else mapa.set(f.contaId, [f]);
+    }
+    for (const linhas of mapa.values()) {
+      linhas.sort(
+        (a, b) => a.mes.localeCompare(b.mes) || a.vencimentoEm.localeCompare(b.vencimentoEm)
+      );
+    }
+    return mapa;
+  }, [faturasDeLinha]);
+
   const grupos = useMemo(() => {
     const mapa = new Map<string, PlasticoDoPainel[]>();
     for (const p of lista) {
@@ -426,6 +474,14 @@ export function FinCartaoPlasticos({
       .map(([emissor, cartoes]) => ({
         emissor,
         cartoes: [...cartoes].sort((a, b) => b.totalCents - a.totalCents),
+        // As linhas do grupo cujos plásticos não têm extrato. Distintas: um
+        // emissor pode ter mais de uma linha, e a fatura de uma não é da outra.
+        linhas: cartoes.reduce<{ contaId: number; conta: string | null }[]>((acc, c) => {
+          if (c.contaId === null || !semExtratoDeItens(c)) return acc;
+          if (acc.some((l) => l.contaId === c.contaId)) return acc;
+          acc.push({ contaId: c.contaId, conta: c.conta });
+          return acc;
+        }, []),
         totalCents: cartoes.reduce((s, c) => s + c.totalCents, 0),
         mesCents: cartoes.reduce((s, c) => s + c.mesCorrenteCents, 0),
         // O grupo inteiro do Inter cai aqui: sem isto o cabeçalho dele mostra
@@ -498,11 +554,27 @@ export function FinCartaoPlasticos({
                 {grupo.semExtrato ? (
                   <span className="fin-cartao-plast-grupo-opaco">
                     <span className="fin-cartao-plast-opaco-tex" aria-hidden />
-                    sem detalhamento
+                    sem as compras
                   </span>
                 ) : null}
               </span>
             </div>
+
+            {/* UMA VEZ POR LINHA, ACIMA DOS CARTÕES — não dentro de cada um.
+                Repetir a série nos três plásticos do Inter poria R$ 40.862,41
+                três vezes na mesma tela, e o olho soma o que vê repetido. Aqui
+                ela aparece uma vez, ao lado do nome da linha a que pertence. */}
+            {grupo.linhas.map((linha) => {
+              const faturas = faturasPorConta.get(linha.contaId);
+              if (!faturas?.length) return null;
+              return (
+                <FaturasDaLinha
+                  key={linha.contaId}
+                  nome={linha.conta ?? grupo.emissor}
+                  faturas={faturas}
+                />
+              );
+            })}
 
             <div className="fin-cartao-plast-grade">
               {grupo.cartoes.map((cartao) => (
@@ -511,6 +583,11 @@ export function FinCartaoPlasticos({
                   cartao={cartao}
                   meses={porCartao.get(cartao.cardId) ?? []}
                   compras={comprasPorCartao.get(cartao.cardId) ?? SEM_TRANSACOES}
+                  linha={
+                    cartao.contaId === null
+                      ? null
+                      : resumoDaLinha(faturasPorConta.get(cartao.contaId))
+                  }
                   aberto={aberto === cartao.cardId}
                   editando={editando === cartao.cardId}
                   aoAlternar={() => setAberto((a) => (a === cartao.cardId ? null : cartao.cardId))}
@@ -533,6 +610,7 @@ function CartaoPlastico({
   cartao,
   meses,
   compras,
+  linha,
   aberto,
   editando,
   aoAlternar,
@@ -542,6 +620,7 @@ function CartaoPlastico({
   cartao: PlasticoDoPainel;
   meses: MesDoCartao[];
   compras: TransacaoDoPainel[];
+  linha: ResumoDaLinha | null;
   aberto: boolean;
   editando: boolean;
   aoAlternar: () => void;
@@ -666,15 +745,7 @@ function CartaoPlastico({
               hachura, que é "ninguém preencheu AINDA". Confundir os dois
               manda alguém abrir uma fila para resolver o irresolvível. */}
           {semExtrato ? (
-            <div className="fin-cartao-plast-opaco">
-              <span className="fin-cartao-plast-opaco-tex" aria-hidden />
-              <div className="fin-cartao-plast-opaco-dizer">
-                <strong>sem detalhamento</strong>
-                <span>
-                  {motivoSemExtrato(cartao)} O gasto dele está no não itemizado, em Análise.
-                </span>
-              </div>
-            </div>
+            <PainelSemCompras cartao={cartao} linha={linha} />
           ) : (
             <>
             <div className="fin-cartao-plast-primario">
@@ -779,7 +850,9 @@ function CartaoPlastico({
       ) : null}
 
       <div id={idDetalhe} hidden={!aberto}>
-        {aberto ? <DetalheMeses cartao={cartao} meses={meses} compras={compras} /> : null}
+        {aberto ? (
+          <DetalheMeses cartao={cartao} meses={meses} compras={compras} linha={linha} />
+        ) : null}
       </div>
     </article>
   );
@@ -791,11 +864,13 @@ function CartaoPlastico({
 function DetalheMeses({
   cartao,
   meses,
-  compras
+  compras,
+  linha
 }: {
   cartao: PlasticoDoPainel;
   meses: MesDoCartao[];
   compras: TransacaoDoPainel[];
+  linha: ResumoDaLinha | null;
 }) {
   const recentes = compras.slice(0, MAX_COMPRAS);
 
@@ -804,16 +879,7 @@ function DetalheMeses({
   if (semExtratoDeItens(cartao)) {
     return (
       <div className="fin-cartao-plast-detalhe">
-        <div className="fin-cartao-plast-opaco">
-          <span className="fin-cartao-plast-opaco-tex" aria-hidden />
-          <div className="fin-cartao-plast-opaco-dizer">
-            <strong>sem detalhamento</strong>
-            <span>
-              {motivoSemExtrato(cartao)} Não há compra a listar: o gasto deste plástico entra
-              no não itemizado, na seção de análise.
-            </span>
-          </div>
-        </div>
+        <PainelSemCompras cartao={cartao} linha={linha} />
       </div>
     );
   }
@@ -947,6 +1013,127 @@ function DetalheMeses({
         </div>
       ) : null}
     </div>
+  );
+}
+
+// ===========================================================================
+// O plástico cuja fonte não conta as compras
+// ===========================================================================
+// Um componente só para os dois lugares onde este painel aparece (a face e o
+// detalhamento aberto). Duas cópias divergiriam na frase que importa — a que
+// diz de quem é a fatura —, e a versão desatualizada seria justamente a que
+// alguém lê depois de clicar para saber mais.
+function PainelSemCompras({
+  cartao,
+  linha
+}: {
+  cartao: PlasticoDoPainel;
+  linha: ResumoDaLinha | null;
+}) {
+  return (
+    <div className="fin-cartao-plast-opaco">
+      <span className="fin-cartao-plast-opaco-tex" aria-hidden />
+      <div className="fin-cartao-plast-opaco-dizer">
+        <strong>sem as compras</strong>
+        <span>
+          {motivoSemExtrato(cartao)}
+          {linha ? (
+            <>
+              {" "}
+              {/* A frase que impede a leitura errada, no lugar onde o erro
+                  aconteceria: dentro do cartão. */}
+              As {linha.faturas} faturas desta linha estão acima — elas são da{" "}
+              <strong>linha</strong>, dividida entre {linha.plasticos}{" "}
+              {linha.plasticos === 1 ? "plástico" : "plásticos"}.
+            </>
+          ) : (
+            <> O gasto dele está no não itemizado, em Análise.</>
+          )}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ===========================================================================
+// As faturas de uma linha de crédito
+// ===========================================================================
+/**
+ * O detalhe que existe quando o item não existe — e ele é BASTANTE: nove
+ * faturas do Inter em 2026, R$ 40.862,41, com vencimento, valor e a data em que
+ * cada uma saiu do caixa. Dá para responder "quanto o Inter custou em maio"
+ * (R$ 9.413,80) e "quando saiu"; o que não dá é dizer o que foi comprado.
+ *
+ * SÓLIDA, sem textura. O pontilhado grafite significa "a fonte nunca vai
+ * contar" e a fatura é o oposto disso: é fato do emissor, tão duro quanto uma
+ * compra itemizada. Hachurá-la ensinaria a descontar um número que está certo.
+ *
+ * O TÍTULO É A LINHA, NÃO O CARTÃO, e o subtítulo diz quantos plásticos a
+ * dividem. Sem isso, esta série ao lado de três mini-cartões vira R$ 40 mil
+ * atribuídos a um final de cartão — um erro pior do que o "R$ 0,00" que ela
+ * veio corrigir.
+ */
+function FaturasDaLinha({ nome, faturas }: { nome: string | null; faturas: FaturaDaLinha[] }) {
+  const total = faturas.reduce((soma, f) => soma + f.totalCents, 0);
+  const pago = faturas.reduce((soma, f) => soma + f.pagoCents, 0);
+  const emAberto = total - pago;
+  const plasticos = Math.max(...faturas.map((f) => f.plasticosNaLinha));
+
+  return (
+    <section className="fin-cartao-plast-linha">
+      <div className="fin-cartao-plast-linha-cabeca">
+        <div className="fin-cartao-plast-linha-quem">
+          <strong>Faturas{nome ? ` · ${nome}` : ""}</strong>
+          <span className="fin-cartao-plast-linha-aviso">
+            da linha de crédito, não de um plástico —{" "}
+            {plasticos === 1 ? "1 cartão usa" : `${plasticos} cartões dividem`} esta fatura
+          </span>
+        </div>
+        <div className="fin-cartao-plast-linha-total">
+          <b>{brlPrecise(total)}</b>
+          <span>
+            {faturas.length} {faturas.length === 1 ? "fatura" : "faturas"}
+            {emAberto > 0 ? ` · ${brlPrecise(emAberto)} em aberto` : ""}
+          </span>
+        </div>
+      </div>
+
+      <ul className="fin-cartao-plast-faturas">
+        {faturas.map((f) => {
+          const parcial = f.pagoCents > 0 && f.pagoCents < f.totalCents;
+          return (
+            // Julho tem DUAS faturas: a chave precisa do vencimento, não só do mês.
+            <li
+              key={`${f.contaId}-${f.mes}-${f.vencimentoEm}`}
+              className="fin-cartao-plast-fatura"
+            >
+              <span className="fin-cartao-plast-fatura-mes">{monthKeyLabel(f.mes)}</span>
+              <span className="fin-cartao-plast-fatura-venc">
+                venc {shortDateLabel(f.vencimentoEm)}
+              </span>
+              <span className="fin-cartao-plast-fatura-valor">{brlPrecise(f.totalCents)}</span>
+              <span className="fin-cartao-plast-fatura-pag">
+                {f.pagoEm ? (
+                  <>
+                    pago {shortDateLabel(f.pagoEm)}
+                    {f.pagoDe ? (
+                      <em className="fin-cartao-plast-fatura-conta">{f.pagoDe}</em>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className="fin-cartao-plast-fatura-aberta">{f.status}</span>
+                )}
+                {parcial ? (
+                  <em className="fin-cartao-plast-fatura-parcial">
+                    parcial · {brlPrecise(f.pagoCents)}
+                  </em>
+                ) : null}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

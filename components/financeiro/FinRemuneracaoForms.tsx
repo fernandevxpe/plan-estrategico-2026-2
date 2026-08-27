@@ -119,11 +119,13 @@ function FormSalvar({
 export function FinSalarioBaseForm({
   personId,
   atual,
-  historico = []
+  historico = [],
+  onSalvo
 }: {
   personId: number;
   atual: SalarioBaseLinha | null;
   historico?: SalarioBaseLinha[];
+  onSalvo?: () => void;
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -154,6 +156,7 @@ export function FinSalarioBaseForm({
     setAberto(false);
     setValor("");
     setNota("");
+    onSalvo?.();
     startTransition(() => router.refresh());
   }
 
@@ -192,11 +195,13 @@ export function FinSalarioBaseForm({
 export function FinProlaboreEsperadoForm({
   personId,
   atual,
-  historico = []
+  historico = [],
+  onSalvo
 }: {
   personId: number;
   atual: ProlaboreEsperadoLinha | null;
   historico?: ProlaboreEsperadoLinha[];
+  onSalvo?: () => void;
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -227,6 +232,7 @@ export function FinProlaboreEsperadoForm({
     setAberto(false);
     setValor("");
     setNota("");
+    onSalvo?.();
     startTransition(() => router.refresh());
   }
 
@@ -266,12 +272,14 @@ export function FinComissaoForm({
   personId,
   temSalarioBase,
   comissaoAtual,
-  historico = []
+  historico = [],
+  onSalvo
 }: {
   personId: number;
   temSalarioBase: boolean;
   comissaoAtual: ComissaoDeclaradaLinha | null;
   historico?: ComissaoDeclaradaLinha[];
+  onSalvo?: () => void;
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -302,6 +310,7 @@ export function FinComissaoForm({
     setAberto(false);
     setValor("");
     setNota("");
+    onSalvo?.();
     startTransition(() => router.refresh());
   }
 

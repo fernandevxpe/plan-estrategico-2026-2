@@ -12121,6 +12121,40 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   display: grid;
   gap: 18px;
 }
+.time-perfil-completar {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--tint-amber-line, var(--line));
+  background: var(--tint-amber-soft, var(--surface-2));
+  font-size: 13px;
+}
+.time-perfil-completar strong {
+  font-size: 14px;
+  font-weight: 650;
+}
+.time-perfil-completar span {
+  color: var(--muted);
+  line-height: 1.45;
+}
+.time-perfil-secao {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  gap: 12px;
+}
+.time-perfil-secao-titulo {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+.conta-pgto.time-perfil-secao {
+  border-top: none;
+  padding-top: 14px;
+  margin-top: 0;
+}
 
 /* Instalar na tela inicial. Cartão, não linha de texto: é a única ação da tela
    que muda como o app inteiro se comporta depois. */
@@ -17372,7 +17406,20 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 .pp-chave-curta {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
-.pp-truncar { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; display: inline-block; vertical-align: bottom; }
+.pp-truncar { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: min(220px, 100%); display: inline-block; vertical-align: bottom; }
+@media (max-width: 480px) {
+  .pp-linha-resumo {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .pp-item-inline {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .pp-truncar { max-width: 100%; white-space: normal; word-break: break-word; }
+  .pp-cabecalho { gap: 10px; }
+}
 
 .pp-kpis {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px;
@@ -19178,9 +19225,33 @@ button.rec-plot-acao {
 .fin-pessoas-matriz-detalhe-nat { font-weight: 650; font-size: 12px; }
 .fin-pessoas-matriz-pessoa {
   display: block; max-width: 100%;
+  text-decoration: none;
+  color: inherit;
 }
 .fin-pessoas-matriz-pessoa .fin-pessoas-nome {
   align-items: flex-start;
+  gap: 6px;
+}
+.fin-pessoas-matriz-pessoa-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  padding: 2px 0;
+}
+.fin-pessoas-matriz-cadastro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.fin-pessoas-matriz-cadastro .fin-select-inline {
+  max-width: 130px;
+  padding: 2px 5px;
+  font-size: 11.5px;
+}
+.fin-pessoas-matriz-tabela .fin-matrix-head {
+  min-width: 220px;
+  vertical-align: top;
 }
 .fin-pessoas-matriz-tabela th.fin-previsao,
 .fin-pessoas-matriz-tabela td.fin-previsao {
@@ -19188,6 +19259,337 @@ button.rec-plot-acao {
 }
 .fin-pessoas-matriz-tabela thead th.fin-previsao .fin-tag {
   margin-left: 4px;
+}
+
+/* Popup rápido: previsto × cadastro na matriz de Pessoas */
+.fin-previsao-celula-conteudo {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 2px;
+  width: 100%;
+}
+.fin-previsao-pop-gatilho {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.fin-previsao-pop-gatilho:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.fin-previsao-pop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: color-mix(in srgb, black 55%, transparent);
+}
+.fin-previsao-pop {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 100%);
+  max-height: min(88vh, 900px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 24px 64px color-mix(in srgb, black 22%, transparent);
+  overflow: hidden;
+}
+.fin-previsao-pop-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.fin-previsao-pop-cabecalho h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+.fin-previsao-pop-meta {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.fin-previsao-pop-comp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.fin-previsao-pop-fechar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.fin-previsao-pop-fechar:hover { background: var(--surface-2); color: var(--ink); }
+.fin-previsao-pop-abas {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.fin-previsao-pop-abas button {
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fin-previsao-pop-abas button.ativo {
+  color: var(--ink);
+  border-bottom-color: var(--purple);
+}
+.fin-previsao-pop-corpo {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 16px 16px;
+}
+.fin-previsao-pop-grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.fin-previsao-pop-secao-topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.fin-previsao-pop-secao-topo h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.fin-previsao-pop-secao-meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.fin-previsao-pop-tabela { font-size: 12px; margin-bottom: 12px; }
+.fin-previsao-pop-tabela th, .fin-previsao-pop-tabela td { padding: 6px 8px; }
+.fin-previsao-pop-vazio {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.fin-previsao-pop-form {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  margin-top: 8px;
+}
+.fin-previsao-pop-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.fin-previsao-pop-form-linha {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.fin-previsao-pop-form-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.fin-previsao-pop-form-acoes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fin-previsao-pop-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: end;
+  font-size: 12px;
+}
+.fin-previsao-pop-erro {
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  color: var(--ink-red);
+}
+.fin-previsao-pop-carregando {
+  margin: 0;
+  padding: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.fin-previsao-pop-detalhes {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.fin-previsao-pop-subtitulo {
+  margin: 12px 0 6px;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.fin-previsao-pop-lista-quitadas {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.fin-previsao-pop-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.fin-previsao-pop-rodape-sep { color: var(--muted); }
+
+.fin-pessoa-cadastro-app-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.fin-pessoa-cadastro-app-titulo {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 680;
+}
+.fin-pessoa-cadastro-app-sub {
+  margin: 4px 0 0;
+}
+.fin-pessoa-cadastro-app-criar {
+  flex-shrink: 0;
+}
+.fin-pessoa-cadastro-app-aviso {
+  font-weight: 550;
+}
+.fin-pessoa-cadastro-app-senha {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.04em;
+}
+.fin-pessoa-cadastro-app-senha-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Cadastro do app dentro de Pendências de cadastro (/financeiro/pessoas) */
+.fin-pessoa-cadastro-app {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.fin-pessoa-cadastro-app-carregando,
+.fin-pessoa-cadastro-app-pendencias {
+  margin: 0 0 12px;
+}
+.fin-pessoa-cadastro-app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.fin-pessoa-cadastro-app-bloco {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.fin-pessoa-cadastro-app-bloco legend {
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+}
+.fin-pessoa-cadastro-app-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fin-pessoa-cadastro-app-chips .chip {
+  font-size: 11.5px;
+  padding: 4px 10px;
+}
+.fin-pessoa-cadastro-app-checks {
+  display: grid;
+  gap: 6px;
+}
+.fin-pessoa-cadastro-app-cartoes {
+  margin-top: 16px;
+}
+.fin-pessoa-cadastro-app-cartoes-hint {
+  display: block;
+  margin-top: 4px;
+}
+.fin-pessoa-cartoes-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+.fin-pessoa-cartao-mini.fin-cartao-plast-card {
+  width: min(100%, 220px);
+  padding: 10px 10px 8px 16px;
+  gap: 6px;
+  pointer-events: none;
+}
+.fin-pessoa-cartao-mini .fin-cartao-plast-apelido,
+.fin-pessoa-cartao-mini .fin-cartao-plast-final-titulo {
+  font-size: 13px;
+}
+.fin-pessoa-cartao-mini .fin-cartao-plast-final {
+  font-size: 11.5px;
+}
+.fin-pessoa-cartao-mini .fin-pessoa-cartao-mini-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.fin-pessoa-cartao-mini .fin-pessoa-cartao-mini-meta .fin-tag {
+  font-size: 10px;
 }
 
 /* ==========================================================================

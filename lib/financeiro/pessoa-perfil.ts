@@ -4,6 +4,21 @@ import { query } from "@/lib/financeiro/db";
 
 const ENTITY = "xpe";
 
+function formatarWhatsappPerfil(stored: string | null): string | null {
+  if (!stored) return null;
+  const d = stored.replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return stored;
+}
+
+function formatarCpfPerfil(stored: string | null): string | null {
+  if (!stored) return null;
+  const d = stored.replace(/\D/g, "");
+  if (d.length !== 11) return stored;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
 /**
  * O perfil financeiro de UMA pessoa: quanto recebeu, de quê, por onde, e para
  * onde vai o dinheiro dela daqui para frente.
@@ -132,7 +147,7 @@ export type PerfilPessoa = {
   status: string;
   desde: string | null;
   admin: boolean;
-  /** Reservado — coluna ainda não existe no banco; a tela já mostra o campo. */
+  whatsapp: string | null;
   dataNascimento: string | null;
   conta: ContaDaPessoa;
   totalCents: number;
@@ -165,7 +180,8 @@ const RECORRENTES = new Set(["salario", "prolabore", "estagio"]);
 export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | null> {
   const [pessoa] = await query<Record<string, unknown>>(
     `SELECT p.id, p.name, p.email, p.cpf, p.cnpj, p.employment_type, p.area, p.role,
-            p.status, p.start_date, p.is_admin
+            p.status, p.start_date, p.is_admin, p.whatsapp,
+            to_char(p.birth_date, 'YYYY-MM-DD') AS birth_date
        FROM fin_person p
        JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $1
       WHERE p.id = $2`,
@@ -352,7 +368,7 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
     id: Number(pessoa.id),
     nome: String(pessoa.name),
     email: (pessoa.email as string) ?? null,
-    cpf: (pessoa.cpf as string) ?? null,
+    cpf: formatarCpfPerfil((pessoa.cpf as string) ?? null),
     cnpj: (pessoa.cnpj as string) ?? null,
     vinculo: (pessoa.employment_type as string) ?? null,
     area: (pessoa.area as string) ?? null,
@@ -360,7 +376,8 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
     status: String(pessoa.status),
     desde: pessoa.start_date ? String(pessoa.start_date).slice(0, 10) : null,
     admin: Boolean(pessoa.is_admin),
-    dataNascimento: null,
+    whatsapp: formatarWhatsappPerfil((pessoa.whatsapp as string) ?? null),
+    dataNascimento: pessoa.birth_date ? String(pessoa.birth_date).slice(0, 10) : null,
     conta: c
       ? {
           metodo: String(c.metodo),

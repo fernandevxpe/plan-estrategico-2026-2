@@ -270,6 +270,7 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
               {perfil.papel ? <span className="pp-tag neutro">{perfil.papel}</span> : null}
               {perfil.cpf ? <span className="pp-item-inline"><b>CPF</b>{perfil.cpf}</span> : null}
               {perfil.email ? <span className="pp-item-inline pp-truncar"><b>E-mail</b>{perfil.email}</span> : null}
+              {perfil.whatsapp ? <span className="pp-item-inline"><b>WhatsApp</b>{perfil.whatsapp}</span> : null}
               {perfil.desde ? <span className="pp-item-inline"><b>Desde</b>{dataCurta(perfil.desde)}</span> : null}
               {perfil.dataNascimento ? <span className="pp-item-inline"><b>Aniversário</b>{dataCurta(perfil.dataNascimento)}</span> : null}
             </div>

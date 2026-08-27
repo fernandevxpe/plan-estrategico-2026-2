@@ -187,6 +187,98 @@ export type NaoItemizadoDoMes = {
   motivo: string | null;
 };
 
+/**
+ * A FATURA DE UMA LINHA DE CRÉDITO — o detalhe que existe quando o item não existe.
+ *
+ * "Sem detalhamento" foi longe demais. O Banco Inter não manda as COMPRAS, mas
+ * manda a FATURA: nove delas em 2026, cada uma com mês de referência,
+ * vencimento, valor, quanto foi pago e o ponteiro para o lançamento que a
+ * quitou. Somadas dão R$ 40.862,41 — exatamente o não itemizado do Inter.
+ *
+ * Um mini-cartão que dizia só "o emissor não detalha" jogava fora esse dado.
+ * Dá para responder "quanto o Inter custou em maio" (R$ 9.413,80) e "quando
+ * saiu do caixa"; o que não dá é dizer o que foi comprado.
+ *
+ * ---------------------------------------------------------------------------
+ * ELA É DA LINHA, NUNCA DO PLÁSTICO
+ * ---------------------------------------------------------------------------
+ * Os três plásticos do Inter dividem UMA fatura. Mostrar esta série dentro do
+ * cartão final 6187 sem dizer que ela é da linha faria parecer que aquele
+ * plástico gastou R$ 40 mil — trocando um erro (dizer "R$ 0") por outro pior
+ * (atribuir ao plástico errado). Quem exibe precisa dizer de quem é.
+ */
+/**
+ * QUANTO DA FATURA O TIME JÁ EXPLICOU — a conciliação entre os dois mundos.
+ *
+ * A base tem dois relatos do mesmo cartão e eles nunca se falaram:
+ *
+ *   O BANCO ...... `fin_card_transaction` / `fin_card_bill`. Diz quanto foi
+ *                  cobrado. No Nubank diz também o quê; no Inter, só o total.
+ *   O TIME ....... `fin_time_envio` com `card_id`. Diz o que foi comprado, por
+ *                  quem, para qual área, com nota fiscal anexada.
+ *
+ * A view da 0150 agrupa o lado do time e o comentário dela é explícito: "a
+ * conciliação entre os dois lados é outro trabalho". Este tipo é esse trabalho.
+ *
+ * ---------------------------------------------------------------------------
+ * "FALTA REGISTRAR" SIGNIFICA COISAS DIFERENTES CONFORME O EMISSOR
+ * ---------------------------------------------------------------------------
+ * Medido em 25/08/2026, e o resultado é contraintuitivo: os 9 registros que o
+ * time fez estão TODOS em cartões do Inter — justo os que o banco não detalha.
+ *
+ *   ONDE O BANCO NÃO ITEMIZA (Inter) ..... registrar é a ÚNICA fonte do que
+ *       foi comprado. A fatura de agosto foi R$ 6.219,33 e o time explicou
+ *       R$ 1.254,99: os outros R$ 4.964,34 são gasto sem nenhuma descrição em
+ *       lugar nenhum. Aqui o vão é cegueira.
+ *   ONDE O BANCO ITEMIZA (Nubank) ........ o banco já diz o quê. O registro
+ *       acrescenta o que ele não tem — nota fiscal, área, quem pediu. Aqui o
+ *       vão é falta de comprovação, não de informação.
+ *
+ * Somar os dois vãos num indicador só faria "quanto falta registrar" misturar
+ * uma cegueira com uma pendência de papelada. Por isso `escopo` viaja junto.
+ *
+ * ---------------------------------------------------------------------------
+ * O QUE É COMPARÁVEL COM O QUÊ
+ * ---------------------------------------------------------------------------
+ * No Nubank a comparação é por PLÁSTICO: o banco diz de qual cartão saiu cada
+ * item. No Inter ela só existe por LINHA — a fatura é uma só para os três
+ * plásticos, e dividi-la entre eles seria inventar. Por isso uma linha deste
+ * tipo é de um cartão OU de uma conta, nunca das duas.
+ */
+export type CoberturaDeRegistro = {
+  /** `YYYY-MM` — competência do lado do banco, data da compra do lado do time. */
+  mes: string;
+  /** `cartao` quando o emissor itemiza; `linha` quando só há a fatura. */
+  escopo: "cartao" | "linha";
+  cardId: number | null;
+  contaId: number | null;
+  rotulo: string;
+  emissor: string | null;
+  /** O que o banco cobrou — itens do plástico, ou o total da fatura da linha. */
+  bancoCents: number;
+  /** O que o time registrou e enviou. */
+  registradoCents: number;
+  /** `bancoCents - registradoCents`. Negativo = registrou mais do que o banco cobrou. */
+  faltaCents: number;
+  registros: number;
+};
+
+export type FaturaDaLinha = {
+  contaId: number;
+  emissor: string | null;
+  /** `YYYY-MM` — o mês de referência da fatura. */
+  mes: string;
+  vencimentoEm: string;
+  totalCents: number;
+  pagoCents: number;
+  status: string;
+  /** Quando o pagamento saiu do banco, e de qual conta. Null se não conciliado. */
+  pagoEm: string | null;
+  pagoDe: string | null;
+  /** Quantos plásticos dividem esta linha — o que impede a leitura por cartão. */
+  plasticosNaLinha: number;
+};
+
 export type CartaoPainel = {
   /** Competência corrente (`YYYY-MM`), a âncora de todos os "deste mês". */
   mesCorrente: string;
@@ -262,6 +354,10 @@ export type CartaoPainel = {
   };
   serie: MesDoCartao[];
   naoItemizado: NaoItemizadoDoMes[];
+  /** Faturas das linhas que a fonte não itemiza — ver `FaturaDaLinha`. */
+  faturasDeLinha: FaturaDaLinha[];
+  /** Banco × registro do time, mês a mês — ver `CoberturaDeRegistro`. */
+  cobertura: CoberturaDeRegistro[];
   plasticos: PlasticoDoPainel[];
   transacoes: TransacaoDoPainel[];
   ranking: RankingDoPainel[];
@@ -294,6 +390,8 @@ const VAZIO: CartaoPainel = {
   },
   serie: [],
   naoItemizado: [],
+  faturasDeLinha: [],
+  cobertura: [],
   plasticos: [],
   transacoes: [],
   ranking: [],
@@ -316,7 +414,7 @@ export async function getCartaoPainel(): Promise<Contrato<CartaoPainel>> {
     const mesAnterior = mesIso(new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() - 1, 1)));
     const ano = agora.getUTCFullYear();
 
-    const [serie, plasticos, transacoes, ranking, porCategoria, porNucleo, porCentro, pendente, naoItem] =
+    const [serie, plasticos, transacoes, ranking, porCategoria, porNucleo, porCentro, pendente, naoItem, faturas, cobertura] =
       await Promise.all([
         // --------------------------------------------------------------------
         // A série mensal por plástico — o eixo do gráfico empilhado.
@@ -513,6 +611,106 @@ export async function getCartaoPainel(): Promise<Contrato<CartaoPainel>> {
             GROUP BY 1, 2
             ORDER BY 1, 2`,
           [ano]
+        ),
+
+        // As faturas das linhas que NÃO itemizam. É o detalhe que sobra quando
+        // o item não existe: o Inter manda mês, vencimento, valor e pagamento
+        // — só não manda as compras. Restringir a essas linhas é de propósito:
+        // onde há item, a fatura já é contada pela outra tela, e trazê-la aqui
+        // convidaria a somá-la com as compras.
+        query<{
+          conta_id: number; emissor: string | null; mes: string; vencimento: string;
+          total_cents: string; pago_cents: string; status: string;
+          pago_em: string | null; pago_de: string | null; plasticos: string;
+        }>(
+          `SELECT a.id AS conta_id, i.name AS emissor,
+                  to_char(b.reference_month, 'YYYY-MM') AS mes,
+                  b.due_date AS vencimento,
+                  b.total_amount_cents AS total_cents,
+                  b.paid_amount_cents AS pago_cents,
+                  b.status,
+                  t.posted_on AS pago_em,
+                  ac.name AS pago_de,
+                  (SELECT count(*) FROM fin_card c
+                    WHERE c.card_account_id = a.id AND c.status <> 'cancelado') AS plasticos
+             FROM fin_card_bill b
+             JOIN fin_card_account a ON a.id = b.card_account_id
+             LEFT JOIN fin_card_issuer i ON i.id = a.issuer_id
+             LEFT JOIN fin_transaction t ON t.id = b.paid_transaction_id
+             LEFT JOIN fin_account ac ON ac.id = t.account_id
+            WHERE a.itemization_level <> 'itens'
+              AND b.reference_month >= make_date($1::int, 1, 1)
+            ORDER BY b.reference_month, i.name`,
+          [ano]
+        ),
+
+        // --------------------------------------------------------------------
+        // BANCO × TIME — quanto de cada fatura já tem descrição de gente.
+        // --------------------------------------------------------------------
+        // Dois SELECTs unidos por FULL JOIN, e o FULL importa: um mês pode ter
+        // registro do time sem cobrança do banco (registrou antes de fechar) e
+        // cobrança sem registro (o caso comum hoje). Um INNER esconderia
+        // justamente os dois extremos que interessam.
+        //
+        // O eixo do banco é a COMPETÊNCIA; o do time é a data da compra
+        // (`incurred_on`). São a mesma coisa: os dois marcam quando o cartão
+        // passou, não quando a fatura venceu.
+        query<{
+          mes: string; escopo: string; card_id: number | null; conta_id: number | null;
+          rotulo: string | null; emissor: string | null;
+          banco_cents: string | null; registrado_cents: string | null; registros: string | null;
+        }>(
+          `WITH banco AS (
+             -- Onde o emissor itemiza, o lado do banco é o ITEM, por plástico.
+             SELECT to_char(t.competence_month, 'YYYY-MM') AS mes, 'cartao' AS escopo,
+                    t.card_id, a.id AS conta_id, i.name AS emissor,
+                    sum(t.amount_cents) AS cents
+               FROM fin_card_transaction t
+               JOIN fin_card_account a ON a.id = t.card_account_id AND a.itemization_level = 'itens'
+               LEFT JOIN fin_card_issuer i ON i.id = a.issuer_id
+              WHERE ${SO_GASTO} AND t.competence_month >= make_date($1::int, 1, 1)
+              GROUP BY 1, 2, 3, 4, 5
+             UNION ALL
+             -- Onde não itemiza, o lado do banco é a FATURA, por linha.
+             SELECT to_char(b.reference_month, 'YYYY-MM'), 'linha',
+                    NULL::bigint, a.id, i.name, sum(b.total_amount_cents)
+               FROM fin_card_bill b
+               JOIN fin_card_account a ON a.id = b.card_account_id AND a.itemization_level <> 'itens'
+               LEFT JOIN fin_card_issuer i ON i.id = a.issuer_id
+              WHERE b.reference_month >= make_date($1::int, 1, 1)
+              GROUP BY 1, 2, 3, 4, 5
+           ), registrado AS (
+             SELECT to_char(e.incurred_on, 'YYYY-MM') AS mes,
+                    CASE WHEN a.itemization_level = 'itens' THEN 'cartao' ELSE 'linha' END AS escopo,
+                    CASE WHEN a.itemization_level = 'itens' THEN e.card_id ELSE NULL END AS card_id,
+                    a.id AS conta_id,
+                    sum(e.amount_cents) AS cents, count(*) AS n
+               FROM fin_time_envio e
+               LEFT JOIN fin_card c ON c.id = e.card_id
+               JOIN fin_card_account a ON a.id = coalesce(e.card_account_id, c.card_account_id)
+              WHERE e.incurred_on >= make_date($1::int, 1, 1)
+                AND e.status <> 'rascunho'
+              GROUP BY 1, 2, 3, 4
+           )
+           SELECT coalesce(b.mes, r.mes) AS mes,
+                  coalesce(b.escopo, r.escopo) AS escopo,
+                  coalesce(b.card_id, r.card_id) AS card_id,
+                  coalesce(b.conta_id, r.conta_id) AS conta_id,
+                  coalesce(ca.label, 'final ' || ca.last4, acc.name) AS rotulo,
+                  coalesce(b.emissor, iss.name) AS emissor,
+                  b.cents AS banco_cents,
+                  r.cents AS registrado_cents,
+                  r.n AS registros
+             FROM banco b
+             FULL JOIN registrado r
+               ON r.mes = b.mes AND r.escopo = b.escopo
+              AND r.conta_id = b.conta_id
+              AND coalesce(r.card_id, -1) = coalesce(b.card_id, -1)
+             LEFT JOIN fin_card ca ON ca.id = coalesce(b.card_id, r.card_id)
+             LEFT JOIN fin_card_account acc ON acc.id = coalesce(b.conta_id, r.conta_id)
+             LEFT JOIN fin_card_issuer iss ON iss.id = acc.issuer_id
+            ORDER BY 1, 6, 5`,
+          [ano]
         )
       ]);
 
@@ -683,6 +881,34 @@ export async function getCartaoPainel(): Promise<Contrato<CartaoPainel>> {
         },
         serie: serieMapeada,
         naoItemizado,
+        cobertura: cobertura.map((x) => {
+          const bancoCents = n(x.banco_cents);
+          const registradoCents = n(x.registrado_cents);
+          return {
+            mes: x.mes,
+            escopo: x.escopo === "cartao" ? ("cartao" as const) : ("linha" as const),
+            cardId: x.card_id === null ? null : Number(x.card_id),
+            contaId: x.conta_id === null ? null : Number(x.conta_id),
+            rotulo: x.rotulo ?? "sem rótulo",
+            emissor: x.emissor,
+            bancoCents,
+            registradoCents,
+            faltaCents: bancoCents - registradoCents,
+            registros: n(x.registros)
+          };
+        }),
+        faturasDeLinha: faturas.map((f) => ({
+          contaId: Number(f.conta_id),
+          emissor: f.emissor,
+          mes: f.mes,
+          vencimentoEm: String(f.vencimento).slice(0, 10),
+          totalCents: n(f.total_cents),
+          pagoCents: n(f.pago_cents),
+          status: f.status,
+          pagoEm: f.pago_em ? String(f.pago_em).slice(0, 10) : null,
+          pagoDe: f.pago_de,
+          plasticosNaLinha: n(f.plasticos)
+        })),
         plasticos: plasticosMapeados,
         transacoes: transacoesMapeadas,
         ranking: ranking.map((r) => ({

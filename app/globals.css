@@ -16190,7 +16190,8 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 
 /* ---- Meu reembolso: o dinheiro que a empresa deve à pessoa ---------------- */
-.reemb { display: grid; gap: 20px; }
+.reemb { display: grid; gap: 16px; }
+.reemb h1 { font-size: 22px; font-weight: 750; margin: 0; }
 .reemb h3 { margin: 0 0 10px; font-size: 15px; font-weight: 650; }
 
 .reemb-topo-acoes {
@@ -16198,23 +16199,52 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
+}
+
+.reemb-btn-novo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: var(--accent, #10b981);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.1s;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.reemb-btn-novo:hover {
+  opacity: 0.92;
+}
+
+.reemb-btn-novo:active {
+  transform: scale(0.97);
 }
 
 .reemb-destaques {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 580px) {
+  .reemb-destaques {
+    grid-template-columns: 1fr;
+  }
 }
 
 .reemb-destaque-card {
-  padding: 14px 16px;
-  border-radius: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
   background: var(--card);
   border: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .reemb-destaque-card.destaque-verde {
@@ -16222,28 +16252,62 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   border-color: var(--tint-green-line, rgba(0, 200, 100, 0.25));
 }
 
+.reemb-kpi-rotulo {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.reemb-kpi-valor {
+  font-size: clamp(17px, 4.5vw, 22px);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.reemb-destaque-card.destaque-verde .reemb-kpi-valor {
+  color: var(--ink-green, #10b981);
+}
+
+.reemb-kpi-detalhe {
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .reemb-tabs {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   border-bottom: 1px solid var(--line);
-  padding-bottom: 2px;
+  padding-bottom: 0px;
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.reemb-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .reemb-tab {
-  padding: 8px 14px;
-  font-size: 13.5px;
+  padding: 8px 12px;
+  font-size: 13px;
   font-weight: 550;
   border: none;
   background: none;
   color: var(--muted);
   cursor: pointer;
-  border-radius: 8px 8px 0 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: 2.5px solid transparent;
   display: flex;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
 }
 
 .reemb-tab:hover {
@@ -16258,7 +16322,7 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 
 .reemb-tab-badge {
   font-size: 11px;
-  padding: 2px 6px;
+  padding: 1px 6px;
   border-radius: 10px;
   background: var(--line);
   color: var(--ink);
@@ -16266,14 +16330,26 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 
 .reemb-toolbar {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 }
 
 .reemb-busca {
   flex: 1;
-  min-width: 200px;
+  min-width: 180px;
+}
+
+.reemb-filtro-chips {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.reemb-filtro-chips::-webkit-scrollbar {
+  display: none;
 }
 
 .reemb-lista {
@@ -16281,45 +16357,67 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .reemb-item-card {
-  padding: 14px 16px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--card);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .reemb-item-card:hover {
-  border-color: var(--line-strong, #ccc);
+  border-color: var(--line-strong, #444);
 }
 
 .reemb-item-info {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 
+.reemb-item-cabecalho-linha {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .reemb-item-titulo {
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 650;
   color: var(--ink);
+  line-height: 1.35;
   word-break: break-word;
+  flex: 1;
+}
+
+.reemb-item-valor {
+  font-size: 15px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
 .reemb-item-meta {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--muted);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
+}
+
+.reemb-item-detalhe-pill {
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--muted);
 }
 
 .reemb-badges {
@@ -16327,7 +16425,7 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .reemb-badge {
@@ -16342,19 +16440,19 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 
 .reemb-badge.aprovado {
   background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  color: #10b981;
   border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 .reemb-badge.pago {
-  background: rgba(37, 99, 235, 0.12);
-  color: #2563eb;
-  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.25);
 }
 
 .reemb-badge.rejeitado {
   background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
+  color: #f87171;
   border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
@@ -16364,29 +16462,14 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 
 .reemb-badge.anexo {
-  background: var(--tint-amber-soft, rgba(245, 158, 11, 0.12));
-  color: #d97706;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
   text-decoration: none;
 }
 
 .reemb-badge.anexo:hover {
-  text-decoration: underline;
-}
-
-.reemb-item-valor-caixa {
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  white-space: nowrap;
-}
-
-.reemb-item-valor {
-  font-size: 15.5px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
+  background: rgba(245, 158, 11, 0.2);
 }
 
 .reemb-bloco { display: grid; gap: 8px; }

@@ -690,6 +690,56 @@ const MES_CURTO = (iso: string) => {
   return `${["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"][Number(mes) - 1]}/${ano.slice(2)}`;
 };
 
+/** Limpa títulos com repetições e descrições automáticas ruidosas */
+function limparTituloReembolso(raw: string): { titulo: string; detalhes: string[] } {
+  let s = raw.trim();
+  const detalhes: string[] = [];
+
+  // Extrai trecho entre parênteses "(pago: ... · ...)"
+  const matchParen = s.match(/\(([^)]+)\)$/);
+  if (matchParen) {
+    s = s.slice(0, matchParen.index).trim();
+    const partes = matchParen[1].split("·").map((p) => p.trim());
+    for (const p of partes) {
+      if (p.startsWith("pago:")) {
+        const val = p.replace("pago:", "").trim();
+        if (val === "cartao_pessoal") detalhes.push("Cartão Pessoal");
+        else if (val === "pix") detalhes.push("PIX");
+        else if (val) detalhes.push(val.replace(/_/g, " "));
+      } else if (p.startsWith("cartão")) {
+        detalhes.push(p);
+      } else if (p && !detalhes.includes(p)) {
+        detalhes.push(p);
+      }
+    }
+  }
+
+  // Remove repetições brutas do tipo "Gasolina comum — 17,778 litros — GASOLINA COMUM — 17.778 un. × R$ 6,75"
+  if (s.includes(" — ")) {
+    const pedacos = s.split(" — ").map((p) => p.trim());
+    // Se o primeiro e o terceiro pedaço forem iguais (case-insensitive)
+    if (pedacos.length >= 3 && pedacos[0].toLowerCase() === pedacos[2].toLowerCase()) {
+      s = pedacos[0];
+      if (pedacos[1]) detalhes.unshift(pedacos[1]);
+    } else {
+      s = pedacos[0];
+      for (let i = 1; i < pedacos.length; i++) {
+        if (!detalhes.includes(pedacos[i])) detalhes.push(pedacos[i]);
+      }
+    }
+  }
+
+  // Se o título ficou "Venda crédito PagBank", simplifica
+  if (s.toLowerCase().startsWith("venda crédito ") || s.toLowerCase().startsWith("venda debito ")) {
+    s = s.replace(/venda cr[eé]dito /i, "Crédito ").replace(/venda d[eé]bito /i, "Débito ");
+  }
+
+  // Remove traço solto no fim "Notebooks part 2 -" -> "Notebooks part 2"
+  s = s.replace(/\s*-\s*$/, "").trim();
+
+  return { titulo: s || raw, detalhes };
+}
+
 /**
  * Painel completo de Reembolsos do usuário:
  * - KPIs no topo (A receber / Previsto, Já pago, Total solicitado)
@@ -749,35 +799,39 @@ function TelaReembolsosVisao() {
             <h1>Meus Reembolsos</h1>
             <p>Gastos do bolso, aprovações, parcelas a receber e histórico pago.</p>
           </div>
-          <Link href="/time/reembolso" className="time-botao">
-            + Pedir reembolso
+          {/* Botão de pedir reembolso fica limpo no topo direito no desktop ou como ação rápida */}
+          <Link href="/time/reembolso" className="reemb-btn-novo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
+              <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+            </svg>
+            <span>Pedir reembolso</span>
           </Link>
         </div>
       </header>
 
       <div className="reemb-destaques">
         <article className="reemb-destaque-card destaque-verde">
-          <span className="kpi-rotulo">Ainda a receber</span>
-          <strong className="kpi-valor">{brl(resumo?.totalEmAbertoCents ?? aReceber.totalCents)}</strong>
-          <span className="kpi-detalhe">
+          <span className="reemb-kpi-rotulo">Ainda a receber</span>
+          <strong className="reemb-kpi-valor">{brl(resumo?.totalEmAbertoCents ?? aReceber.totalCents)}</strong>
+          <span className="reemb-kpi-detalhe">
             {aReceber.itens.length === 0
               ? "nada em aberto"
               : `${aReceber.itens.length} ${aReceber.itens.length === 1 ? "item" : "itens"} previstos`}
           </span>
         </article>
         <article className="reemb-destaque-card">
-          <span className="kpi-rotulo">Total já pago</span>
-          <strong className="kpi-valor">
+          <span className="reemb-kpi-rotulo">Total já pago</span>
+          <strong className="reemb-kpi-valor">
             {brl(resumo?.totalRecebidoCents ?? historico.meses.reduce((s, m) => s + m.totalCents, 0))}
           </strong>
-          <span className="kpi-detalhe">liquidado pela empresa</span>
+          <span className="reemb-kpi-detalhe">liquidado pela empresa</span>
         </article>
         <article className="reemb-destaque-card">
-          <span className="kpi-rotulo">Total registrado</span>
-          <strong className="kpi-valor">
+          <span className="reemb-kpi-rotulo">Total registrado</span>
+          <strong className="reemb-kpi-valor">
             {brl(resumo?.totalSolicitadoCents ?? itensRegistrados.reduce((s, i) => s + i.valorCents, 0))}
           </strong>
-          <span className="kpi-detalhe">{itensRegistrados.length} solicitações</span>
+          <span className="reemb-kpi-detalhe">{itensRegistrados.length} solicitações</span>
         </article>
       </div>
 
@@ -835,7 +889,7 @@ function TelaReembolsosVisao() {
               ) : null}
             </div>
 
-            <div className="envios-filtro-chips">
+            <div className="reemb-filtro-chips">
               <button
                 type="button"
                 className={`chip ${filtroStatus === "todos" ? "ativo" : ""}`}
@@ -870,41 +924,49 @@ function TelaReembolsosVisao() {
             </div>
           ) : (
             <ul className="reemb-lista">
-              {filtrados.map((item) => (
-                <li key={`${item.origem}-${item.id}-${item.competencia}`} className="reemb-item-card">
-                  <div className="reemb-item-info">
-                    <span className="reemb-item-titulo">{item.descricao}</span>
-                    <div className="reemb-item-meta">
-                      <span>{item.dataDespesa ? item.dataDespesa.slice(0, 10).split("-").reverse().join("/") : MES_CURTO(item.competencia)}</span>
-                      {item.tipo ? <span>· {item.tipo}</span> : null}
-                      {item.parcelasTotal && item.parcelasTotal > 1 ? (
-                        <span>· Parcela {item.parcela ?? 1} de {item.parcelasTotal}</span>
-                      ) : null}
+              {filtrados.map((item) => {
+                const { titulo, detalhes } = limparTituloReembolso(item.descricao);
+                return (
+                  <li key={`${item.origem}-${item.id}-${item.competencia}`} className="reemb-item-card">
+                    <div className="reemb-item-info">
+                      <div className="reemb-item-cabecalho-linha">
+                        <span className="reemb-item-titulo">{titulo}</span>
+                        <span className="reemb-item-valor">{brl(item.valorCents)}</span>
+                      </div>
+                      <div className="reemb-item-meta">
+                        <span>{item.dataDespesa ? item.dataDespesa.slice(0, 10).split("-").reverse().join("/") : MES_CURTO(item.competencia)}</span>
+                        {item.tipo ? <span>· {item.tipo}</span> : null}
+                        {item.parcelasTotal && item.parcelasTotal > 1 ? (
+                          <span>· Parcela {item.parcela ?? 1} de {item.parcelasTotal}</span>
+                        ) : null}
+                        {detalhes.map((d, idx) => (
+                          <span key={idx} className="reemb-item-detalhe-pill">
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="reemb-badges">
+                        <span className={`reemb-badge ${item.status}`}>
+                          {item.statusFormatado}
+                        </span>
+                        {item.parcelasTotal && item.parcelasTotal > 1 ? (
+                          <span className="reemb-badge parcelas">{item.parcelasTotal}× parcelado</span>
+                        ) : null}
+                        {item.temComprovante && item.chaveComprovante ? (
+                          <a
+                            href={`/api/time/anexo/${encodeURIComponent(item.chaveComprovante)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="reemb-badge anexo"
+                          >
+                            📎 Comprovante
+                          </a>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="reemb-badges">
-                      <span className={`reemb-badge ${item.status}`}>
-                        {item.statusFormatado}
-                      </span>
-                      {item.parcelasTotal && item.parcelasTotal > 1 ? (
-                        <span className="reemb-badge parcelas">{item.parcelasTotal}× parcelado</span>
-                      ) : null}
-                      {item.temComprovante && item.chaveComprovante ? (
-                        <a
-                          href={`/api/time/anexo/${encodeURIComponent(item.chaveComprovante)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="reemb-badge anexo"
-                        >
-                          📎 Ver comprovante
-                        </a>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="reemb-item-valor-caixa">
-                    <span className="reemb-item-valor">{brl(item.valorCents)}</span>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

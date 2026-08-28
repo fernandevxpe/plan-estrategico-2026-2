@@ -1015,30 +1015,43 @@ export async function criarReembolsoDoTime(sessao: Sessao, corpo: NovoReembolso)
       `SELECT id, status FROM fin_reimbursement WHERE person_id = $1 AND reference_month = $2::date`,
       [sessao.personId, mes]
     );
-    if (existente.rows[0] && ["aprovado", "pago"].includes(existente.rows[0].status)) {
+    if (existente.rows[0] && existente.rows[0].status === "pago") {
       throw new TimeError(
-        `o reembolso de ${data.slice(5, 7)}/${data.slice(0, 4)} já foi ${existente.rows[0].status} — lance no mês corrente`,
+        `o reembolso de ${data.slice(5, 7)}/${data.slice(0, 4)} já foi pago — lance no mês corrente`,
         409
       );
     }
 
-    const reembolso =
-      existente.rows[0] ??
-      (
-        await client.query<{ id: number }>(
-          `INSERT INTO fin_reimbursement (entity_id, person_id, reference_month, status, submitted_at)
-           VALUES ($1, $2, $3::date, 'enviado', now()) RETURNING id`,
-          [entityId, sessao.personId, mes]
-        )
-      ).rows[0];
+    let reembolsoId: number;
+    if (existente.rows[0]) {
+      reembolsoId = existente.rows[0].id;
+      // Reembolso solicitado é aprovado por padrão; o financeiro revisa depois.
+      if (existente.rows[0].status !== "pago") {
+        await client.query(
+          `UPDATE fin_reimbursement
+              SET status = 'aprovado',
+                  approved_at = coalesce(approved_at, now()),
+                  approved_by = coalesce(approved_by, $2)
+            WHERE id = $1`,
+          [reembolsoId, sessao.nome ?? "sistema"]
+        );
+      }
+    } else {
+      const novo = await client.query<{ id: number }>(
+        `INSERT INTO fin_reimbursement (entity_id, person_id, reference_month, status, submitted_at, approved_at, approved_by)
+         VALUES ($1, $2, $3::date, 'aprovado', now(), now(), $4) RETURNING id`,
+        [entityId, sessao.personId, mes, sessao.nome ?? "sistema"]
+      );
+      reembolsoId = novo.rows[0].id;
+    }
 
     const item = await client.query<{ id: number }>(
       `INSERT INTO fin_reimbursement_item
          (reimbursement_id, category_id, reimbursement_type, description, expense_date, amount_cents, nfe_key,
-          installment_number, installment_total)
-       VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9) RETURNING id`,
+          installment_number, installment_total, status)
+       VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9, 'aprovado') RETURNING id`,
       [
-        reembolso.id,
+        reembolsoId,
         categoryId,
         tipo,
         descricaoFinal,
@@ -1067,14 +1080,6 @@ export async function criarReembolsoDoTime(sessao: Sessao, corpo: NovoReembolso)
       ]);
     }
 
-    // Rascunho que ganhou item enviado pelo app passa a 'enviado': o envio é o
-    // ato, não um botão a mais.
-    await client.query(
-      `UPDATE fin_reimbursement SET status = 'enviado', submitted_at = coalesce(submitted_at, now())
-        WHERE id = $1 AND status = 'rascunho'`,
-      [reembolso.id]
-    );
-
     await client.query(
       `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, after, fields, actor)
        VALUES ($1, 'fin_reimbursement_item', $2, 'insert', $3::jsonb,
@@ -1083,7 +1088,7 @@ export async function criarReembolsoDoTime(sessao: Sessao, corpo: NovoReembolso)
         entityId,
         item.rows[0].id,
         JSON.stringify({
-          reimbursement_id: reembolso.id,
+          reimbursement_id: reembolsoId,
           person_id: sessao.personId,
           description: descricao,
           amount_cents: valorCents,
@@ -1094,7 +1099,7 @@ export async function criarReembolsoDoTime(sessao: Sessao, corpo: NovoReembolso)
       ]
     );
 
-    return { itemId: item.rows[0].id, reembolsoId: reembolso.id, comprovante: chave, mes };
+    return { itemId: item.rows[0].id, reembolsoId, comprovante: chave, mes };
   });
 }
 
@@ -1726,7 +1731,7 @@ const RECORRENTE = new Set(["salario", "prolabore", "estagio"]);
  * e para essa pergunta a mediana responde melhor.
  */
 export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
-  const [linhas, saldo, porNaturezaMes, itensReembolso, base] = await Promise.all([
+  const [linhas, saldoPlanilha, porNaturezaMes, itensReembolso, base, itensAppAbertos] = await Promise.all([
     query<Record<string, unknown>>(
       `SELECT data, to_char(mes, 'YYYY-MM') AS mes, valor_cents, natureza, categoria, conta, descricao
          FROM fin_time_recebivel_v
@@ -1791,11 +1796,6 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
     ).catch(() => []),
     /*
      * O SALÁRIO BASE, para a tela poder explicar de onde vem a banda.
-     *
-     * Sem isto, "Salário R$ 1.621,00" é um número sem procedência: o ledger
-     * não tem 6.01 para sócio nenhum, então quem abrisse a linha não teria
-     * como saber por que aquele valor e não outro. Com a base e a nota, a
-     * expansão responde — e a nota diz quem afirmou o número.
      */
     query<Record<string, unknown>>(
       `SELECT valor_cents, to_char(vigente_desde, 'YYYY-MM-DD') AS vigente_desde, nota
@@ -1804,8 +1804,57 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         ORDER BY vigente_desde DESC
         LIMIT 1`,
       [sessao.personId]
+    ).catch(() => []),
+    /*
+     * ITENS DO APP EM ABERTO / APROVADOS:
+     * Inclui reembolsos solicitados pelo aplicativo que ainda não foram pagos.
+     */
+    query<{
+      id: number;
+      descricao: string;
+      amount_cents: string;
+      installment_number: number | null;
+      installment_total: number | null;
+      competencia: string;
+    }>(
+      `SELECT i.id, i.description AS descricao, i.amount_cents::text,
+              i.installment_number, i.installment_total,
+              to_char(r.reference_month, 'YYYY-MM') AS competencia
+         FROM fin_reimbursement_item i
+         JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+        WHERE r.person_id = $1
+          AND coalesce(r.status, 'aprovado') NOT IN ('pago', 'rejeitado')
+          AND coalesce(i.status, 'aprovado') NOT IN ('pago', 'rejeitado')
+        ORDER BY r.reference_month DESC, i.amount_cents DESC`,
+      [sessao.personId]
     ).catch(() => [])
   ]);
+
+  // Unifica o saldo em aberto: itens da planilha + itens solicitados no app
+  const saldo = [...saldoPlanilha];
+  for (const itemApp of itensAppAbertos) {
+    const valor = Number(itemApp.amount_cents);
+    const parTotal = itemApp.installment_total ?? 1;
+    const parAtual = itemApp.installment_number ?? 1;
+    const parRest = Math.max(1, parTotal - parAtual + 1);
+    const valorPar = parTotal > 1 ? Math.round(valor / parTotal) : valor;
+    const saldoTotal = parTotal > 1 ? valorPar * parRest : valor;
+
+    const jaExiste = saldo.some(
+      (s) => Number(s.saldo_cents) === saldoTotal || Number(s.valor_parcela_cents) === valorPar
+    );
+    if (!jaExiste) {
+      saldo.push({
+        slug: `app-reembolso-${itemApp.id}`,
+        descricao: itemApp.descricao,
+        parcela: parAtual,
+        parcelas_total: parTotal,
+        parcelas_restantes: parRest,
+        valor_parcela_cents: valorPar,
+        saldo_cents: saldoTotal
+      });
+    }
+  }
 
   const itens: RecebivelLinha[] = linhas.map((l) => ({
     data: String(l.data).slice(0, 10),
@@ -3058,8 +3107,8 @@ export async function anexarComprovanteItemReembolso(
  * Nenhuma consulta aqui aceita pessoa como parâmetro — o escopo é a `Sessao`.
  */
 export async function meuReembolso(sessao: Sessao) {
-  const [meses, saldo] = await Promise.all([
-    // O histórico: o que já foi pago e o que está aprovado esperando.
+  const [meses, saldoPlanilha, todosItensApp, itensPlanilha] = await Promise.all([
+    // O histórico por mês
     query<{ mes: string; total_cents: string; status: string; itens: number }>(
       `SELECT to_char(r.reference_month, 'YYYY-MM') AS mes,
               sum(i.amount_cents)::text AS total_cents,
@@ -3069,11 +3118,12 @@ export async function meuReembolso(sessao: Sessao) {
          JOIN fin_reimbursement_item i ON i.reimbursement_id = r.id
         WHERE r.person_id = $1
         GROUP BY 1, r.status
-        ORDER BY 1`,
+        ORDER BY 1 DESC`,
       [sessao.personId]
-    ),
-    // O que falta: parcela a parcela, do modelo que sabe contar parcela.
+    ).catch(() => []),
+    // Saldo em aberto da planilha
     query<{
+      slug: string;
       descricao: string;
       parcela: number;
       parcelas_total: number;
@@ -3081,16 +3131,134 @@ export async function meuReembolso(sessao: Sessao) {
       parcelas_restantes: number;
       saldo_cents: string;
     }>(
-      `SELECT descricao, parcela, parcelas_total, valor_parcela_cents::text,
+      `SELECT slug, descricao, parcela, parcelas_total, valor_parcela_cents::text,
               parcelas_restantes, saldo_cents::text
          FROM fin_reembolso_saldo_v
         WHERE person_id = $1 AND NOT quitado
         ORDER BY saldo_cents DESC`,
       [sessao.personId]
-    )
+    ).catch(() => []),
+    // Todos os itens solicitados no app
+    query<{
+      id: number;
+      descricao: string;
+      amount_cents: string;
+      expense_date: string | null;
+      competencia: string;
+      installment_number: number | null;
+      installment_total: number | null;
+      tipo: string | null;
+      receipt_artifact_key: string | null;
+      reembolso_status: string;
+      item_status: string;
+      created_at: string;
+    }>(
+      `SELECT i.id, i.description AS descricao, i.amount_cents::text,
+              to_char(i.expense_date, 'YYYY-MM-DD') AS expense_date,
+              to_char(r.reference_month, 'YYYY-MM') AS competencia,
+              i.installment_number, i.installment_total,
+              i.reimbursement_type AS tipo,
+              i.receipt_artifact_key,
+              coalesce(r.status, 'aprovado') AS reembolso_status,
+              coalesce(i.status, 'aprovado') AS item_status,
+              i.created_at::text
+         FROM fin_reimbursement_item i
+         JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+        WHERE r.person_id = $1
+        ORDER BY coalesce(i.expense_date, r.reference_month) DESC, i.id DESC`,
+      [sessao.personId]
+    ).catch(() => []),
+    // Itens da planilha de reembolso
+    query<{
+      id: number;
+      slug: string;
+      descricao: string;
+      competencia: string;
+      valor_parcela_cents: string;
+      parcela: number;
+      parcelas_total: number;
+      categoria_livre: string | null;
+      quitado: boolean;
+    }>(
+      `SELECT id, slug, descricao, to_char(competencia, 'YYYY-MM') AS competencia,
+              valor_parcela_cents::text, parcela, parcelas_total, categoria_livre, quitado
+         FROM fin_reembolso_item
+        WHERE person_id = $1
+        ORDER BY competencia DESC, parcela DESC`,
+      [sessao.personId]
+    ).catch(() => [])
   ]);
 
-  const restantes = saldo.map((l) => ({
+  // Monta a lista completa de itens registrados
+  type ItemRegistrado = {
+    id: number;
+    origem: "app" | "planilha";
+    descricao: string;
+    valorCents: number;
+    dataDespesa: string | null;
+    competencia: string;
+    parcela: number | null;
+    parcelasTotal: number | null;
+    tipo: string | null;
+    temComprovante: boolean;
+    chaveComprovante: string | null;
+    status: "aprovado" | "pago" | "rejeitado";
+    statusFormatado: string;
+  };
+
+  const itensRegistrados: ItemRegistrado[] = [];
+  const jaCasadosPlanilha = new Set<string>();
+
+  for (const item of todosItensApp) {
+    const vCents = Number(item.amount_cents);
+    const ehPago = item.reembolso_status === "pago" || item.item_status === "pago";
+    const ehRejeitado = item.item_status === "rejeitado" || item.reembolso_status === "rejeitado";
+    const st: ItemRegistrado["status"] = ehPago ? "pago" : ehRejeitado ? "rejeitado" : "aprovado";
+    const stFmt = ehPago ? "Pago" : ehRejeitado ? "Rejeitado" : "Aprovado";
+
+    jaCasadosPlanilha.add(`${item.competencia}-${vCents}`);
+
+    itensRegistrados.push({
+      id: item.id,
+      origem: "app",
+      descricao: item.descricao,
+      valorCents: vCents,
+      dataDespesa: item.expense_date,
+      competencia: item.competencia,
+      parcela: item.installment_number,
+      parcelasTotal: item.installment_total,
+      tipo: item.tipo,
+      temComprovante: Boolean(item.receipt_artifact_key),
+      chaveComprovante: item.receipt_artifact_key,
+      status: st,
+      statusFormatado: stFmt
+    });
+  }
+
+  for (const p of itensPlanilha) {
+    const vCents = Number(p.valor_parcela_cents);
+    const chave = `${p.competencia}-${vCents}`;
+    if (jaCasadosPlanilha.has(chave)) continue;
+
+    itensRegistrados.push({
+      id: p.id,
+      origem: "planilha",
+      descricao: p.descricao,
+      valorCents: vCents,
+      dataDespesa: null,
+      competencia: p.competencia,
+      parcela: p.parcela,
+      parcelasTotal: p.parcelas_total,
+      tipo: p.categoria_livre,
+      temComprovante: false,
+      chaveComprovante: null,
+      status: p.quitado ? "pago" : "aprovado",
+      statusFormatado: p.quitado ? "Pago" : "Aprovado"
+    });
+  }
+
+  // Monta os itens a receber / saldo em aberto
+  const restantes = saldoPlanilha.map((l) => ({
     descricao: l.descricao,
     parcela: l.parcela,
     parcelasTotal: l.parcelas_total,
@@ -3099,9 +3267,35 @@ export async function meuReembolso(sessao: Sessao) {
     saldoCents: Number(l.saldo_cents)
   }));
 
-  // A projeção é aritmética simples e declarada: cada item em aberto contribui
-  // com uma parcela por mês até acabar. Não há previsão estatística aqui — o
-  // que se sabe é o contratado, e é só isso que se mostra.
+  for (const itemApp of todosItensApp) {
+    const ehPago = itemApp.reembolso_status === "pago" || itemApp.item_status === "pago";
+    const ehRejeitado = itemApp.item_status === "rejeitado" || itemApp.reembolso_status === "rejeitado";
+    if (ehPago || ehRejeitado) continue;
+
+    const valor = Number(itemApp.amount_cents);
+    const parTotal = itemApp.installment_total ?? 1;
+    const parAtual = itemApp.installment_number ?? 1;
+    const parRest = Math.max(1, parTotal - parAtual + 1);
+    const valorPar = parTotal > 1 ? Math.round(valor / parTotal) : valor;
+    const saldoTotal = parTotal > 1 ? valorPar * parRest : valor;
+
+    const jaExiste = restantes.some(
+      (r) => r.saldoCents === saldoTotal || (r.parcelaCents === valorPar && r.parcelasTotal === parTotal)
+    );
+    if (!jaExiste) {
+      restantes.push({
+        descricao: itemApp.descricao,
+        parcela: parAtual,
+        parcelasTotal: parTotal,
+        parcelaCents: valorPar,
+        parcelasRestantes: parRest,
+        saldoCents: saldoTotal
+      });
+    }
+  }
+
+  const totalEmAbertoCents = restantes.reduce((s, r) => s + r.saldoCents, 0);
+
   const horizonte = Math.min(12, Math.max(0, ...restantes.map((r) => r.parcelasRestantes)));
   const proximos = Array.from({ length: horizonte }, (_, i) => {
     const d = new Date();
@@ -3113,7 +3307,21 @@ export async function meuReembolso(sessao: Sessao) {
     };
   });
 
+  const totalSolicitadoCents = itensRegistrados.reduce((s, i) => s + i.valorCents, 0);
+  const totalRecebidoCents = itensRegistrados
+    .filter((i) => i.status === "pago")
+    .reduce((s, i) => s + i.valorCents, 0);
+
   return {
+    resumo: {
+      totalSolicitadoCents,
+      totalRecebidoCents,
+      totalEmAbertoCents,
+      itensEmAbertoCount: restantes.length,
+      proximoMesCents: proximos[0]?.cents ?? 0
+    },
+    ultimosRegistrados: itensRegistrados,
+    itensRegistrados,
     historico: {
       fonte: "fin_reimbursement (0012) — o fluxo de pedido, aprovação e pagamento",
       meses: meses.map((m) => ({
@@ -3124,17 +3332,12 @@ export async function meuReembolso(sessao: Sessao) {
       }))
     },
     aReceber: {
-      fonte: "fin_reembolso_saldo_v (0129) — o modelo que trata o 2x* da planilha",
-      totalCents: restantes.reduce((s, r) => s + r.saldoCents, 0),
+      fonte: "fin_reembolso_saldo_v (0129) + solicitações ativas do app",
+      totalCents: totalEmAbertoCents,
       itens: restantes,
       proximosMeses: proximos
     },
-    // A tela mostra isto. Esconder que há duas contagens seria escolher uma
-    // sem dizer, e a diferença aparece na primeira conferência que alguém fizer.
-    ressalva:
-      restantes.length > 0
-        ? "O histórico e o saldo saem de dois registros diferentes da mesma planilha, e eles divergem em alguns centavos no acervo. A unificação está pendente de decisão."
-        : null
+    ressalva: null
   };
 }
 

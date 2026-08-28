@@ -128,7 +128,7 @@ type DetalheEnvio = {
 };
 
 export type AbaTime =
-  | "inicio" | "reembolso" | "custo" | "nota" | "compra"
+  | "inicio" | "reembolso" | "reembolsos" | "custo" | "nota" | "compra"
   | "envios" | "meu-reembolso" | "comprar" | "item" | "recebiveis" | "compras"
   | "perfil";
 
@@ -389,7 +389,7 @@ export function TimeApp({
       ) : null}
       {aba === "compra" ? <FormCompra aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
       {aba === "envios" ? <Historico envios={envios} /> : null}
-      {aba === "meu-reembolso" ? <MeuReembolso /> : null}
+      {aba === "reembolsos" || aba === "meu-reembolso" ? <TelaReembolsosVisao /> : null}
       {/*
         Recebíveis vive em arquivo próprio: ela busca o próprio dado e não usa
         `sessao`, `opcoes` nem `envios` — os três que justificam este arquivo
@@ -649,7 +649,32 @@ function TrocarSenha({ nome, aoTrocar }: { nome: string; aoTrocar: () => Promise
   );
 }
 
+type ItemReembolsoRegistrado = {
+  id: number;
+  origem: "app" | "planilha";
+  descricao: string;
+  valorCents: number;
+  dataDespesa: string | null;
+  competencia: string;
+  parcela: number | null;
+  parcelasTotal: number | null;
+  tipo: string | null;
+  temComprovante: boolean;
+  chaveComprovante: string | null;
+  status: "aprovado" | "pago" | "rejeitado";
+  statusFormatado: string;
+};
+
 type Reembolso = {
+  resumo?: {
+    totalSolicitadoCents: number;
+    totalRecebidoCents: number;
+    totalEmAbertoCents: number;
+    itensEmAbertoCount: number;
+    proximoMesCents: number;
+  };
+  ultimosRegistrados?: ItemReembolsoRegistrado[];
+  itensRegistrados?: ItemReembolsoRegistrado[];
   historico: { fonte: string; meses: { mes: string; totalCents: number; status: string; itens: number }[] };
   aReceber: {
     fonte: string;
@@ -666,19 +691,17 @@ const MES_CURTO = (iso: string) => {
 };
 
 /**
- * O dinheiro que a empresa deve a esta pessoa.
- *
- * Três perguntas, nesta ordem, porque é a ordem em que elas doem: quanto falta,
- * quando cai, e o que já foi pago. A pessoa abre isto para saber se o dinheiro
- * dela está vindo — não para auditar o histórico.
- *
- * O gráfico é SVG puro e sem biblioteca: são no máximo doze barras de um valor
- * só, e trazer Recharts para o bundle do app de celular por causa disso seria
- * pagar caro por pouco.
+ * Painel completo de Reembolsos do usuário:
+ * - KPIs no topo (A receber / Previsto, Já pago, Total solicitado)
+ * - Atalho para pedir novo reembolso
+ * - Abas: Todos Registrados, Previstos / A Receber, Histórico Pago
  */
-function MeuReembolso() {
+function TelaReembolsosVisao() {
   const [dados, setDados] = useState<Reembolso | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [abaInterna, setAbaInterna] = useState<"todos" | "previstos" | "pagos">("todos");
+  const [busca, setBusca] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState<"todos" | "aprovado" | "pago">("todos");
 
   useEffect(() => {
     (async () => {
@@ -700,106 +723,265 @@ function MeuReembolso() {
     );
   if (!dados) return <div className="time-aviso">carregando…</div>;
 
-  const { aReceber, historico } = dados;
+  const { aReceber, historico, resumo } = dados;
   const pico = Math.max(1, ...aReceber.proximosMeses.map((m) => m.cents));
   const proximo = aReceber.proximosMeses[0];
+
+  const itensRegistrados = dados.itensRegistrados ?? dados.ultimosRegistrados ?? [];
+
+  const filtrados = itensRegistrados.filter((item) => {
+    if (filtroStatus !== "todos" && item.status !== filtroStatus) return false;
+    if (busca.trim()) {
+      const termo = busca.toLowerCase();
+      const desc = item.descricao.toLowerCase();
+      const tipo = (item.tipo ?? "").toLowerCase();
+      const comp = item.competencia.toLowerCase();
+      if (!desc.includes(termo) && !tipo.includes(termo) && !comp.includes(termo)) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="reemb time-tela-padrao">
       <header className="time-form-cabeca">
-        <h1>Meu reembolso</h1>
-        <p>Quanto a empresa ainda te deve, quando cai, e o que já foi pago.</p>
+        <div className="reemb-topo-acoes">
+          <div>
+            <h1>Meus Reembolsos</h1>
+            <p>Gastos do bolso, aprovações, parcelas a receber e histórico pago.</p>
+          </div>
+          <Link href="/time/reembolso" className="time-botao">
+            + Pedir reembolso
+          </Link>
+        </div>
       </header>
 
-      <Link href="/time/reembolso" className="time-botao time-botao-secundario">
-        Pedir reembolso
-      </Link>
-
       <div className="reemb-destaques">
-        <article className="kpi-card">
+        <article className="reemb-destaque-card destaque-verde">
           <span className="kpi-rotulo">Ainda a receber</span>
-          <strong className="kpi-valor">{brl(aReceber.totalCents)}</strong>
+          <strong className="kpi-valor">{brl(resumo?.totalEmAbertoCents ?? aReceber.totalCents)}</strong>
           <span className="kpi-detalhe">
             {aReceber.itens.length === 0
               ? "nada em aberto"
-              : `${aReceber.itens.length} ${aReceber.itens.length === 1 ? "item" : "itens"} em aberto`}
+              : `${aReceber.itens.length} ${aReceber.itens.length === 1 ? "item" : "itens"} previstos`}
           </span>
         </article>
-        <article className="kpi-card">
-          <span className="kpi-rotulo">Mês que vem</span>
-          <strong className="kpi-valor">{brl(proximo?.cents ?? 0)}</strong>
-          <span className="kpi-detalhe">{proximo ? MES_CURTO(proximo.mes) : "sem parcela prevista"}</span>
+        <article className="reemb-destaque-card">
+          <span className="kpi-rotulo">Total já pago</span>
+          <strong className="kpi-valor">
+            {brl(resumo?.totalRecebidoCents ?? historico.meses.reduce((s, m) => s + m.totalCents, 0))}
+          </strong>
+          <span className="kpi-detalhe">liquidado pela empresa</span>
+        </article>
+        <article className="reemb-destaque-card">
+          <span className="kpi-rotulo">Total registrado</span>
+          <strong className="kpi-valor">
+            {brl(resumo?.totalSolicitadoCents ?? itensRegistrados.reduce((s, i) => s + i.valorCents, 0))}
+          </strong>
+          <span className="kpi-detalhe">{itensRegistrados.length} solicitações</span>
         </article>
       </div>
 
-      {aReceber.proximosMeses.length > 0 ? (
+      <nav className="reemb-tabs" role="tablist" aria-label="Navegação de reembolsos">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={abaInterna === "todos"}
+          className={`reemb-tab ${abaInterna === "todos" ? "ativo" : ""}`}
+          onClick={() => setAbaInterna("todos")}
+        >
+          Últimos registrados
+          <span className="reemb-tab-badge">{itensRegistrados.length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={abaInterna === "previstos"}
+          className={`reemb-tab ${abaInterna === "previstos" ? "ativo" : ""}`}
+          onClick={() => setAbaInterna("previstos")}
+        >
+          Previstos a receber
+          <span className="reemb-tab-badge">{aReceber.itens.length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={abaInterna === "pagos"}
+          className={`reemb-tab ${abaInterna === "pagos" ? "ativo" : ""}`}
+          onClick={() => setAbaInterna("pagos")}
+        >
+          Histórico pago
+          <span className="reemb-tab-badge">{historico.meses.length}</span>
+        </button>
+      </nav>
+
+      {abaInterna === "todos" ? (
         <section className="reemb-bloco">
-          <h3>Como isso cai nos próximos meses</h3>
-          <svg
-            className="reemb-grafico"
-            viewBox={`0 0 ${aReceber.proximosMeses.length * 34} 120`}
-            role="img"
-            aria-label={`Parcelas previstas: ${aReceber.proximosMeses
-              .map((m) => `${MES_CURTO(m.mes)} ${brl(m.cents)}`)
-              .join(", ")}`}
-          >
-            {aReceber.proximosMeses.map((m, i) => {
-              const altura = Math.round((m.cents / pico) * 88);
-              return (
-                <g key={m.mes}>
-                  <rect x={i * 34 + 5} y={96 - altura} width={22} height={altura} rx={3} className="reemb-barra" />
-                  <text x={i * 34 + 16} y={112} className="reemb-rotulo">
-                    {MES_CURTO(m.mes).slice(0, 3)}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-          <p className="time-sub">
-            É aritmética do que já está contratado: cada item em aberto contribui com uma parcela por mês até acabar.
-            Não é estimativa.
-          </p>
+          <div className="reemb-toolbar">
+            <div className="campo-busca reemb-busca">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+              </svg>
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por item, descrição ou mês…"
+                autoComplete="off"
+              />
+              {busca ? (
+                <button type="button" className="envios-busca-limpar" onClick={() => setBusca("")} aria-label="Limpar">
+                  ×
+                </button>
+              ) : null}
+            </div>
+
+            <div className="envios-filtro-chips">
+              <button
+                type="button"
+                className={`chip ${filtroStatus === "todos" ? "ativo" : ""}`}
+                onClick={() => setFiltroStatus("todos")}
+              >
+                Todos ({itensRegistrados.length})
+              </button>
+              <button
+                type="button"
+                className={`chip ${filtroStatus === "aprovado" ? "ativo" : ""}`}
+                onClick={() => setFiltroStatus("aprovado")}
+              >
+                Aprovados ({itensRegistrados.filter((i) => i.status === "aprovado").length})
+              </button>
+              <button
+                type="button"
+                className={`chip ${filtroStatus === "pago" ? "ativo" : ""}`}
+                onClick={() => setFiltroStatus("pago")}
+              >
+                Pagos ({itensRegistrados.filter((i) => i.status === "pago").length})
+              </button>
+            </div>
+          </div>
+
+          {filtrados.length === 0 ? (
+            <div className="envios-vazio-caixa" style={{ padding: "30px 20px" }}>
+              <strong>Nenhum reembolso encontrado</strong>
+              <p>Cadastre despesas que você pagou do seu bolso para receber o ressarcimento da empresa.</p>
+              <Link href="/time/reembolso" className="time-botao">
+                Pedir reembolso
+              </Link>
+            </div>
+          ) : (
+            <ul className="reemb-lista">
+              {filtrados.map((item) => (
+                <li key={`${item.origem}-${item.id}-${item.competencia}`} className="reemb-item-card">
+                  <div className="reemb-item-info">
+                    <span className="reemb-item-titulo">{item.descricao}</span>
+                    <div className="reemb-item-meta">
+                      <span>{item.dataDespesa ? item.dataDespesa.slice(0, 10).split("-").reverse().join("/") : MES_CURTO(item.competencia)}</span>
+                      {item.tipo ? <span>· {item.tipo}</span> : null}
+                      {item.parcelasTotal && item.parcelasTotal > 1 ? (
+                        <span>· Parcela {item.parcela ?? 1} de {item.parcelasTotal}</span>
+                      ) : null}
+                    </div>
+                    <div className="reemb-badges">
+                      <span className={`reemb-badge ${item.status}`}>
+                        {item.statusFormatado}
+                      </span>
+                      {item.parcelasTotal && item.parcelasTotal > 1 ? (
+                        <span className="reemb-badge parcelas">{item.parcelasTotal}× parcelado</span>
+                      ) : null}
+                      {item.temComprovante && item.chaveComprovante ? (
+                        <a
+                          href={`/api/time/anexo/${encodeURIComponent(item.chaveComprovante)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="reemb-badge anexo"
+                        >
+                          📎 Ver comprovante
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="reemb-item-valor-caixa">
+                    <span className="reemb-item-valor">{brl(item.valorCents)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       ) : null}
 
-      {aReceber.itens.length > 0 ? (
+      {abaInterna === "previstos" ? (
         <section className="reemb-bloco">
-          <h3>O que está em aberto</h3>
-          <ul className="reemb-itens">
-            {aReceber.itens.map((i) => (
-              <li key={i.descricao}>
-                <div>
-                  <strong>{i.descricao}</strong>
+          {aReceber.proximosMeses.length > 0 ? (
+            <div style={{ marginBottom: "16px" }}>
+              <h3>Projeção de recebimento nos próximos meses</h3>
+              <svg
+                className="reemb-grafico"
+                viewBox={`0 0 ${aReceber.proximosMeses.length * 38} 120`}
+                role="img"
+                aria-label={`Parcelas previstas: ${aReceber.proximosMeses
+                  .map((m) => `${MES_CURTO(m.mes)} ${brl(m.cents)}`)
+                  .join(", ")}`}
+              >
+                {aReceber.proximosMeses.map((m, i) => {
+                  const altura = Math.round((m.cents / pico) * 88);
+                  return (
+                    <g key={m.mes}>
+                      <rect x={i * 38 + 5} y={96 - altura} width={26} height={altura} rx={4} className="reemb-barra" />
+                      <text x={i * 38 + 18} y={112} className="reemb-rotulo">
+                        {MES_CURTO(m.mes).slice(0, 3)}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+              <p className="time-sub">
+                Cálculo com base nos reembolsos aprovados e parcelas contratadas.
+              </p>
+            </div>
+          ) : null}
+
+          <h3>Itens com saldo a receber</h3>
+          {aReceber.itens.length === 0 ? (
+            <p className="time-sub">Nenhum valor pendente de reembolso no momento.</p>
+          ) : (
+            <ul className="reemb-itens">
+              {aReceber.itens.map((i, idx) => (
+                <li key={`${i.descricao}-${idx}`}>
+                  <div>
+                    <strong>{i.descricao}</strong>
+                    <span className="time-sub">
+                      {i.parcelasTotal > 1 ? `parcela ${i.parcela} de ${i.parcelasTotal} · faltam ${i.parcelasRestantes} × ${brl(i.parcelaCents)}` : "à vista"}
+                    </span>
+                  </div>
+                  <span className="reemb-saldo">{brl(i.saldoCents)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
+
+      {abaInterna === "pagos" ? (
+        <section className="reemb-bloco">
+          <h3>Histórico de pagamentos liquidados</h3>
+          {historico.meses.length === 0 ? (
+            <p className="time-sub">Você ainda não tem histórico de reembolso pago.</p>
+          ) : (
+            <ul className="reemb-meses">
+              {[...historico.meses].map((m) => (
+                <li key={`${m.mes}-${m.status}`}>
+                  <span>{MES_CURTO(m.mes)}</span>
                   <span className="time-sub">
-                    parcela {i.parcela} de {i.parcelasTotal} · faltam {i.parcelasRestantes} ×{" "}
-                    {brl(i.parcelaCents)}
+                    {m.itens} {m.itens === 1 ? "item" : "itens"} · {m.status}
                   </span>
-                </div>
-                <span className="reemb-saldo">{brl(i.saldoCents)}</span>
-              </li>
-            ))}
-          </ul>
+                  <strong>{brl(m.totalCents)}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       ) : null}
-
-      <section className="reemb-bloco">
-        <h3>O que já passou</h3>
-        {historico.meses.length === 0 ? (
-          <p className="time-sub">Você ainda não tem reembolso lançado.</p>
-        ) : (
-          <ul className="reemb-meses">
-            {[...historico.meses].reverse().map((m) => (
-              <li key={`${m.mes}-${m.status}`}>
-                <span>{MES_CURTO(m.mes)}</span>
-                <span className="time-sub">
-                  {m.itens} {m.itens === 1 ? "item" : "itens"} · {m.status}
-                </span>
-                <strong>{brl(m.totalCents)}</strong>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
 
       {dados.ressalva ? (
         <p className="reemb-ressalva">
@@ -813,6 +995,8 @@ function MeuReembolso() {
     </div>
   );
 }
+
+const MeuReembolso = TelaReembolsosVisao;
 
 type CompraAprovada = {
   id: number; code: string; titulo: string; pedidoCents: number;
@@ -1975,6 +2159,7 @@ const VOLTA: Record<AbaTime, string | null> = {
   inicio: null,
   recebiveis: "/time",
   reembolso: "/time",
+  reembolsos: "/time",
   custo: "/time",
   nota: "/time",
   compra: "/time",
@@ -2671,7 +2856,7 @@ function Inicio({ envios }: { envios: Envio[] }) {
             </span>
           </Link>
           {rec && rec.emAbertoCents > 0 ? (
-            <Link href="/time/recebiveis#aberto" className="time-faixa-item time-faixa-reembolso">
+            <Link href="/time/reembolsos" className="time-faixa-item time-faixa-reembolso">
               <span className="time-faixa-topo">À receber</span>
               <strong className="time-faixa-valor">{brl(rec.emAbertoCents)}</strong>
               <span className="time-faixa-rotulo">Reembolso</span>
@@ -2688,8 +2873,15 @@ function Inicio({ envios }: { envios: Envio[] }) {
           <Atalho
             href="/time/recebiveis"
             titulo="Recebíveis"
-            texto="Histórico, previsão e o que ainda vai cair"
+            texto="Histórico, folha e o que já caiu na conta"
             tipo="recebiveis"
+            cor="verde"
+          />
+          <Atalho
+            href="/time/reembolsos"
+            titulo="Reembolsos"
+            texto="Registrados, aprovados e previstos a receber"
+            tipo="reembolso"
             cor="verde"
           />
         </nav>

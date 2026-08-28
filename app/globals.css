@@ -16190,8 +16190,16 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 
 /* ---- Meu reembolso: o dinheiro que a empresa deve à pessoa ---------------- */
-.reemb { display: grid; gap: 22px; }
+.reemb { display: grid; gap: 20px; }
 .reemb h3 { margin: 0 0 10px; font-size: 15px; font-weight: 650; }
+
+.reemb-topo-acoes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 
 .reemb-destaques {
   display: grid;
@@ -16199,7 +16207,189 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
-.reemb-bloco { display: grid; gap: 4px; }
+.reemb-destaque-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reemb-destaque-card.destaque-verde {
+  background: var(--tint-green-soft, rgba(0, 200, 100, 0.05));
+  border-color: var(--tint-green-line, rgba(0, 200, 100, 0.25));
+}
+
+.reemb-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 2px;
+  overflow-x: auto;
+}
+
+.reemb-tab {
+  padding: 8px 14px;
+  font-size: 13.5px;
+  font-weight: 550;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.reemb-tab:hover {
+  color: var(--ink);
+}
+
+.reemb-tab.ativo {
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom-color: var(--accent, #10b981);
+}
+
+.reemb-tab-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--line);
+  color: var(--ink);
+}
+
+.reemb-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.reemb-busca {
+  flex: 1;
+  min-width: 200px;
+}
+
+.reemb-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.reemb-item-card {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  transition: border-color 0.15s;
+}
+
+.reemb-item-card:hover {
+  border-color: var(--line-strong, #ccc);
+}
+
+.reemb-item-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.reemb-item-titulo {
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.reemb-item-meta {
+  font-size: 12.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reemb-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.reemb-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reemb-badge.aprovado {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.reemb-badge.pago {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+}
+
+.reemb-badge.rejeitado {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.reemb-badge.parcelas {
+  background: var(--line);
+  color: var(--ink);
+}
+
+.reemb-badge.anexo {
+  background: var(--tint-amber-soft, rgba(245, 158, 11, 0.12));
+  color: #d97706;
+  text-decoration: none;
+}
+
+.reemb-badge.anexo:hover {
+  text-decoration: underline;
+}
+
+.reemb-item-valor-caixa {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.reemb-item-valor {
+  font-size: 15.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.reemb-bloco { display: grid; gap: 8px; }
 
 /* Doze barras de um valor só não justificam trazer uma biblioteca de gráfico
    para o bundle de um app de celular. SVG puro, e o `aria-label` carrega os

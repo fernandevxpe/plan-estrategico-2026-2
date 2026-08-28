@@ -18,5 +18,5 @@ import { redirect } from "next/navigation";
  * "A receber" do Início apontava para cá.
  */
 export default function MeuReembolsoPage() {
-  redirect("/time/recebiveis#aberto");
+  redirect("/time/reembolsos");
 }

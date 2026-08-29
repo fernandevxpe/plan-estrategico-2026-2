@@ -18,3 +18,9 @@ next-env.d.ts
 
 # Arquivo de segredos: nunca versionar, nunca abrir.
 secrets.zip
+
+# Estado de execução do agendador (scripts/scheduler.mjs grava em DATA_DIR).
+# É runtime por máquina: local aponta para ./data, produção para o volume do
+# Railway. Versionar congelaria o resultado de uma execução desta máquina — o
+# arquivo aqui hoje registra um sync que FALHOU em 25/08.
+data/sync-state.json

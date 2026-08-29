@@ -120,13 +120,17 @@ export async function getCadastroPrevisaoPessoa(
       valor_parcela_cents: number;
       primeira_competencia: string;
       nota: string | null;
+      tipo_slug: string | null;
+      tipo_nome: string | null;
+      cliente: string | null;
+      entrada_cents: number;
       parcelas_lancadas: number;
       projetado_restante: number;
     }>(
       `SELECT s.id, s.person_id, p.name AS pessoa, s.descricao, s.total_cents,
               s.parcelas_total, s.valor_parcela_cents,
               to_char(s.primeira_competencia, 'YYYY-MM-DD') AS primeira_competencia,
-              s.nota,
+              s.nota, s.tipo_slug, t.nome AS tipo_nome, s.cliente, s.entrada_cents,
               (SELECT count(*)::int FROM fin_pessoa_comissao_declarada d WHERE d.serie_id = s.id) AS parcelas_lancadas,
               COALESCE((
                 SELECT sum(d.valor_cents)::bigint
@@ -137,6 +141,7 @@ export async function getCadastroPrevisaoPessoa(
          FROM fin_pessoa_comissao_serie s
          JOIN fin_person p ON p.id = s.person_id
          JOIN fin_entity e ON e.id = s.entity_id
+         LEFT JOIN fin_comissao_tipo t ON t.slug = s.tipo_slug
         WHERE e.slug = $1 AND s.person_id = $2
         ORDER BY s.primeira_competencia DESC`,
       [ENTITY, personId]
@@ -195,6 +200,10 @@ export async function getCadastroPrevisaoPessoa(
     valorParcelaCents: Number(r.valor_parcela_cents),
     primeiraCompetencia: r.primeira_competencia,
     nota: r.nota,
+    tipoSlug: r.tipo_slug,
+    tipoNome: r.tipo_nome,
+    cliente: r.cliente,
+    entradaCents: Number(r.entrada_cents ?? 0),
     parcelasLancadas: Number(r.parcelas_lancadas),
     projetadoRestanteCents: Number(r.projetado_restante)
   }));

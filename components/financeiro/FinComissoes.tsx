@@ -4,6 +4,14 @@ import { Fragment, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import type { PainelComissoes } from "@/lib/financeiro/comissoes";
+import {
+  FORMAS_PAGAMENTO,
+  MAX_PARCELAS,
+  ROTULO_FORMA,
+  type FormaPagamento,
+  montarCronograma,
+  rotuloParcela
+} from "@/lib/financeiro/comissao-cronograma";
 import { brlCents, brlPrecise, monthKeyLabel } from "@/lib/financeiro/format";
 
 const ROTULO_VINCULO: Record<string, string> = {
@@ -115,6 +123,20 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
   const totalGeral = linhas.reduce((s, l) => s + l.total, 0);
   const projetado = linhas.reduce((s, l) => s + (l.porMes[dados.mesSeguinte] ?? 0), 0);
 
+  const mesesAReceber = useMemo(
+    () => Object.keys(dados.aReceberPorMes).filter((m) => dados.aReceberPorMes[m] > 0).sort(),
+    [dados.aReceberPorMes]
+  );
+
+  const porTipo = useMemo(() => {
+    const nomePorSlug = new Map(dados.tipos.map((t) => [t.slug, t.nome]));
+    return Object.entries(dados.totalPorTipo)
+      .filter(([, cents]) => cents !== 0)
+      .map(([slug, cents]) => ({ slug, nome: nomePorSlug.get(slug) ?? "Sem tipo", cents }))
+      .sort((a, b) => b.cents - a.cents);
+  }, [dados.totalPorTipo, dados.tipos]);
+  const somaTipos = porTipo.reduce((s, t) => s + t.cents, 0);
+
   async function enviar(url: string, metodo: string, corpo?: unknown) {
     setErro(null);
     const resposta = await fetch(url, {
@@ -150,6 +172,17 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
 
       <section className="fin-kpi-row" aria-label="Indicadores de comissão">
         <article className="fin-kpi-card">
+          {/* O número que o cadastro existe para produzir: compromisso lançado
+              que ainda não saiu do caixa, incluindo a cauda das parcelas. */}
+          <p className="fin-kpi-label">A receber (deste mês em diante)</p>
+          <p className="fin-kpi-value">{brlCents(dados.aReceberCents)}</p>
+          <p className="fin-kpi-hint">
+            {mesesAReceber.length
+              ? `distribuído em ${mesesAReceber.length} ${mesesAReceber.length === 1 ? "mês" : "meses"}, até ${monthKeyLabel(mesesAReceber[mesesAReceber.length - 1])}`
+              : "nada lançado para frente"}
+          </p>
+        </article>
+        <article className="fin-kpi-card">
           <p className="fin-kpi-label">Declarado no período</p>
           <p className="fin-kpi-value">{brlCents(totalGeral)}</p>
           <p className="fin-kpi-hint">{linhas.length} pessoas com comissão</p>
@@ -167,6 +200,49 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
           </p>
         </article>
       </section>
+
+      {porTipo.length ? (
+        <section className="card">
+          <h2 className="card-title">Por tipo de comissão</h2>
+          <p className="fin-card-hint">
+            Tudo que está lançado na janela da matriz, somado por natureza. “Sem tipo” é o que foi cadastrado antes de o
+            tipo existir — não é erro, é lacuna.
+          </p>
+          <div className="fin-matrix-wrap">
+            <table className="fin-table">
+              <thead>
+                <tr>
+                  <th scope="col">Tipo</th>
+                  <th scope="col" className="num">
+                    Total
+                  </th>
+                  <th scope="col" className="num">
+                    % do total
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {porTipo.map((t) => (
+                  <tr key={t.slug}>
+                    <th scope="row">{t.nome}</th>
+                    <td className="num fin-table-money">{brlPrecise(t.cents)}</td>
+                    <td className="num">{somaTipos ? `${Math.round((t.cents / somaTipos) * 100)}%` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row">Total</th>
+                  <td className="num fin-table-money">
+                    <strong>{brlPrecise(somaTipos)}</strong>
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+      ) : null}
 
       <div className="fin-contas-acoes" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
         <button type="button" className="fin-btn-primary" onClick={() => setMostrarForm((v) => !v)}>
@@ -195,6 +271,7 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
       {mostrarForm ? (
         <FormComissao
           pessoas={pessoasAtivas}
+          tipos={dados.tipos}
           mesPadrao={mesInput(dados.mesAtual)}
           pendente={pendente}
           onCancelar={() => setMostrarForm(false)}
@@ -268,6 +345,8 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
                             <th className="fin-matrix-head">
                               <span className="fin-desc-sub">
                                 {item.descricao}
+                                {item.tipoNome ? <span className="fin-tag">{item.tipoNome}</span> : null}
+                                {item.cliente ? ` · ${item.cliente}` : ""}
                                 {item.serieId ? ` · série #${item.serieId}` : ""}
                               </span>
                             </th>
@@ -373,69 +452,84 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
   );
 }
 
+/**
+ * Lançamento de comissão, com PRÉVIA DO CRONOGRAMA.
+ *
+ * A prévia não é enfeite: "entrada de R$ 4.000 e mais 3×" é uma frase que
+ * parece clara e esconde três perguntas — em que meses cai, quanto cai em cada
+ * um, e onde foi parar o centavo que não divide. A tabela responde as três
+ * antes de salvar, e responde chamando `montarCronograma`, a MESMA função que
+ * o servidor usa para gravar. O que está na tela é o que vai para o banco.
+ */
 function FormComissao({
   pessoas,
+  tipos,
   mesPadrao,
   pendente,
   onCancelar,
   onEnviar
 }: {
   pessoas: PainelComissoes["pessoas"];
+  tipos: PainelComissoes["tipos"];
   mesPadrao: string;
   pendente: boolean;
   onCancelar: () => void;
   onEnviar: (corpo: Record<string, unknown>) => Promise<boolean>;
 }) {
-  const [modo, setModo] = useState<"avulsa" | "parcelada">("avulsa");
+  const [forma, setForma] = useState<FormaPagamento>("avista");
   const [personId, setPersonId] = useState(pessoas[0]?.id ? String(pessoas[0].id) : "");
+  const [tipoSlug, setTipoSlug] = useState(tipos[0]?.slug ?? "");
+  const [cliente, setCliente] = useState("");
   const [descricao, setDescricao] = useState("");
   const [nota, setNota] = useState("");
   const [valor, setValor] = useState("");
+  const [entrada, setEntrada] = useState("");
   const [competencia, setCompetencia] = useState(mesPadrao);
   const [parcelas, setParcelas] = useState("3");
   const [erroLocal, setErroLocal] = useState<string | null>(null);
 
   const pessoa = pessoas.find((p) => p.id === Number(personId));
+  const totalCents = centavosDoTexto(valor);
+  const entradaCents = centavosDoTexto(entrada);
+
+  // A prévia recalcula a cada tecla. É barato — é aritmética — e é o que faz o
+  // formulário responder antes de o servidor ser chamado.
+  const previa = useMemo(
+    () =>
+      montarCronograma({
+        totalCents: totalCents ?? 0,
+        forma,
+        parcelas: Number(parcelas) || 0,
+        entradaCents: entradaCents ?? 0,
+        primeiraCompetencia: competencia
+      }),
+    [totalCents, forma, parcelas, entradaCents, competencia]
+  );
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErroLocal(null);
-    const valorCents = centavosDoTexto(valor);
-    if (valorCents === null) {
-      return setErroLocal("informe um valor — use 0,00 para declarar que não houve comissão no mês");
+    if (totalCents === null) {
+      return setErroLocal("informe o valor total — use 0,00 para declarar que não houve comissão no mês");
     }
-    // Parcelar zero não existe; à vista, zero é a declaração de que não houve.
-    if (modo === "parcelada" && valorCents <= 0) {
-      return setErroLocal("parcelamento exige um valor maior que zero");
-    }
-    // A descrição deixou de barrar: vazia, o servidor grava "Sem comissão no
-    // mês" ou "Comissão". A linha continua se explicando, sem travar quem só
-    // queria zerar o mês.
+    if (!previa.ok) return setErroLocal(previa.erro);
 
-    if (modo === "avulsa") {
-      await onEnviar({
-        modo: "avulsa",
-        personId: Number(personId),
-        competencia,
-        valorCents,
-        descricao: descricao.trim(),
-        nota: nota.trim() || null
-      });
-      return;
-    }
-
-    const n = Number(parcelas);
-    if (!Number.isInteger(n) || n < 2) return setErroLocal("parcelas: mínimo 2");
     await onEnviar({
-      modo: "parcelada",
       personId: Number(personId),
+      forma,
+      totalCents,
+      parcelas: Number(parcelas) || 1,
+      entradaCents: entradaCents ?? 0,
       primeiraCompetencia: competencia,
-      totalCents: valorCents,
-      parcelas: n,
+      tipoSlug: tipoSlug || null,
+      cliente: cliente.trim() || null,
       descricao: descricao.trim(),
       nota: nota.trim() || null
     });
   }
+
+  const parcelasDaPrevia = previa.ok ? previa.parcelas : [];
+  const somaPrevia = parcelasDaPrevia.reduce((s, p) => s + p.valorCents, 0);
 
   return (
     <section className="card">
@@ -454,31 +548,49 @@ function FormComissao({
             </select>
           </label>
           <label>
-            Modo
-            <select value={modo} onChange={(e) => setModo(e.target.value as "avulsa" | "parcelada")}>
-              <option value="avulsa">À vista (um mês)</option>
-              <option value="parcelada">Parcelada (vários meses)</option>
+            Tipo
+            <select value={tipoSlug} onChange={(e) => setTipoSlug(e.target.value)}>
+              <option value="">Sem tipo</option>
+              {tipos.map((t) => (
+                <option key={t.slug} value={t.slug}>
+                  {t.nome}
+                </option>
+              ))}
             </select>
           </label>
         </div>
+
         {pessoa && !pessoa.temSalarioBase ? (
           <p className="fin-card-hint">
             Sem salário-base a composição do perfil não separa comissão do PIX — o lançamento fica gravado e passa a
             valer assim que a base existir.
           </p>
         ) : null}
-        <label>
-          Descrição
-          <input
-            className="fin-input"
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            placeholder="Ex.: Comissão obra Residencial Aurora (opcional)"
-          />
-        </label>
+
         <div className="fin-form-row">
           <label>
-            {modo === "avulsa" ? "Valor" : "Valor total"}
+            Cliente / obra
+            <input
+              className="fin-input"
+              value={cliente}
+              onChange={(e) => setCliente(e.target.value)}
+              placeholder="Ex.: Residencial Aurora"
+            />
+          </label>
+          <label>
+            Descrição
+            <input
+              className="fin-input"
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder="Opcional — vazia, vira “Comissão — cliente”"
+            />
+          </label>
+        </div>
+
+        <div className="fin-form-row">
+          <label>
+            Valor total da comissão
             <input
               className="fin-input"
               value={valor}
@@ -489,30 +601,129 @@ function FormComissao({
             />
           </label>
           <label>
-            {modo === "avulsa" ? "Mês" : "Primeira competência"}
-            <input className="fin-input" type="month" value={competencia} onChange={(e) => setCompetencia(e.target.value)} required />
+            Forma de pagamento
+            <select value={forma} onChange={(e) => setForma(e.target.value as FormaPagamento)}>
+              {FORMAS_PAGAMENTO.map((f) => (
+                <option key={f} value={f}>
+                  {ROTULO_FORMA[f]}
+                </option>
+              ))}
+            </select>
           </label>
-          {modo === "parcelada" ? (
+          <label>
+            {forma === "avista" ? "Mês" : "Primeiro mês"}
+            <input
+              className="fin-input"
+              type="month"
+              value={competencia}
+              onChange={(e) => setCompetencia(e.target.value)}
+              required
+            />
+          </label>
+        </div>
+
+        {forma !== "avista" ? (
+          <div className="fin-form-row">
+            {forma === "entrada_parcelas" ? (
+              <label>
+                Entrada
+                <input
+                  className="fin-input"
+                  value={entrada}
+                  onChange={(e) => setEntrada(mascaraDinheiro(e.target.value))}
+                  inputMode="numeric"
+                  placeholder="0,00"
+                />
+              </label>
+            ) : null}
             <label>
-              Nº de parcelas
+              {forma === "entrada_parcelas" ? "Parcelas depois da entrada" : "Nº de parcelas"}
               <input
                 className="fin-input"
                 type="number"
-                min={2}
-                max={60}
+                min={forma === "entrada_parcelas" ? 1 : 2}
+                max={MAX_PARCELAS}
                 value={parcelas}
                 onChange={(e) => setParcelas(e.target.value)}
               />
             </label>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
+
         <label>
-          Nota (opcional)
-          <input className="fin-input" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Fonte / observação" />
+          Nota
+          <input
+            className="fin-input"
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder="Sobre o que se trata, fonte, combinado (opcional)"
+          />
         </label>
+
+        {/* ---------------------------------------------------------------
+            A prévia. Aparece assim que há valor, e some quando o que foi
+            digitado não forma cronograma — com a razão escrita, não com um
+            silêncio.
+           --------------------------------------------------------------- */}
+        {totalCents !== null && totalCents > 0 ? (
+          previa.ok ? (
+            <div className="fin-matrix-wrap" style={{ marginTop: "0.5rem" }}>
+              <table className="fin-table">
+                <caption style={{ captionSide: "top", textAlign: "left", padding: "0 0 0.5rem" }}>
+                  <strong>Previsão do pagamento</strong> — {parcelasDaPrevia.length}{" "}
+                  {parcelasDaPrevia.length === 1 ? "lançamento" : "lançamentos"}, de{" "}
+                  {monthKeyLabel(parcelasDaPrevia[0].competencia)} a{" "}
+                  {monthKeyLabel(parcelasDaPrevia[parcelasDaPrevia.length - 1].competencia)}
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Mês</th>
+                    <th scope="col">Parcela</th>
+                    <th scope="col" className="num">
+                      Valor
+                    </th>
+                    <th scope="col" className="num">
+                      Acumulado
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {parcelasDaPrevia.map((p, i) => {
+                    const acumulado = parcelasDaPrevia.slice(0, i + 1).reduce((s, x) => s + x.valorCents, 0);
+                    return (
+                      <tr key={`${p.competencia}-${p.parcela}`}>
+                        <th scope="row">{monthKeyLabel(p.competencia)}</th>
+                        <td>
+                          {rotuloParcela(p)}
+                          {p.ehEntrada ? <span className="fin-tag">entrada</span> : null}
+                        </td>
+                        <td className="num fin-table-money">{brlPrecise(p.valorCents)}</td>
+                        <td className="num fin-table-money fin-previsao">{brlPrecise(acumulado)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th scope="row" colSpan={2}>
+                      Total
+                    </th>
+                    <td className="num fin-table-money">
+                      <strong>{brlPrecise(somaPrevia)}</strong>
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : (
+            <p className="fin-alert">{previa.erro}</p>
+          )
+        ) : null}
+
         {erroLocal ? <p className="fin-alert">{erroLocal}</p> : null}
         <div className="fin-contas-acoes">
-          <button type="submit" className="fin-btn-primary" disabled={pendente}>
+          <button type="submit" className="fin-btn-primary" disabled={pendente || (totalCents !== null && totalCents > 0 && !previa.ok)}>
             {pendente ? "Salvando…" : "Salvar"}
           </button>
           <button type="button" className="fin-btn-ghost" onClick={onCancelar}>

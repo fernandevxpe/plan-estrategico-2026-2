@@ -1,8 +1,5 @@
-import {
-  criarComissaoAvulsa,
-  criarComissaoParcelada,
-  getPainelComissoes
-} from "@/lib/financeiro/comissoes";
+import { criarComissao, getPainelComissoes } from "@/lib/financeiro/comissoes";
+import { FORMAS_PAGAMENTO, type FormaPagamento } from "@/lib/financeiro/comissao-cronograma";
 
 /**
  * GET/POST /api/financeiro/comissoes — painel e lançamento de comissão
@@ -36,6 +33,10 @@ type Corpo = {
   parcelas?: unknown;
   descricao?: unknown;
   nota?: unknown;
+  forma?: unknown;
+  entradaCents?: unknown;
+  tipoSlug?: unknown;
+  cliente?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -53,34 +54,45 @@ export async function POST(request: Request) {
   const descricao = typeof body.descricao === "string" ? body.descricao : "";
   const nota = typeof body.nota === "string" ? body.nota : null;
   const ator = atorDaRequisicao(request);
-  const modo = body.modo === "parcelada" ? "parcelada" : "avulsa";
 
-  if (modo === "parcelada") {
-    const r = await criarComissaoParcelada(
-      {
-        personId,
-        primeiraCompetencia: typeof body.primeiraCompetencia === "string" ? body.primeiraCompetencia : "",
-        totalCents: Number(body.totalCents),
-        parcelas: Number(body.parcelas),
-        descricao,
-        nota
-      },
-      ator
-    );
-    if (!r.ok) return Response.json({ error: r.error }, { status: r.status });
-    return Response.json({ serieId: r.serieId, itens: r.itens, painel: await getPainelComissoes() });
-  }
+  // `forma` é o vocabulário novo (0178). `modo` continua aceito porque a tela
+  // antiga mandava "avulsa"/"parcelada" — trocar os dois no mesmo deploy
+  // deixaria requisição em voo sem resposta.
+  const forma: FormaPagamento = FORMAS_PAGAMENTO.includes(body.forma as FormaPagamento)
+    ? (body.forma as FormaPagamento)
+    : body.modo === "parcelada"
+      ? "parcelada"
+      : "avista";
 
-  const r = await criarComissaoAvulsa(
+  // O valor cheio pode chegar como `totalCents` (parcelado) ou `valorCents`
+  // (à vista): os dois nomes existiam antes e significam a mesma coisa aqui.
+  const totalCents = Number(body.totalCents ?? body.valorCents);
+  const primeiraCompetencia =
+    typeof body.primeiraCompetencia === "string"
+      ? body.primeiraCompetencia
+      : typeof body.competencia === "string"
+        ? body.competencia
+        : "";
+
+  const r = await criarComissao(
     {
       personId,
-      competencia: typeof body.competencia === "string" ? body.competencia : "",
-      valorCents: Number(body.valorCents),
+      forma,
+      totalCents,
+      parcelas: Number(body.parcelas ?? 1),
+      entradaCents: Number(body.entradaCents ?? 0),
+      primeiraCompetencia,
       descricao,
-      nota
+      nota,
+      tipoSlug: typeof body.tipoSlug === "string" ? body.tipoSlug : null,
+      cliente: typeof body.cliente === "string" ? body.cliente : null
     },
     ator
   );
   if (!r.ok) return Response.json({ error: r.error }, { status: r.status });
-  return Response.json({ item: r.item, painel: await getPainelComissoes() });
+  return Response.json({
+    serieId: r.resultado.serieId,
+    cronograma: r.resultado.cronograma,
+    painel: await getPainelComissoes()
+  });
 }

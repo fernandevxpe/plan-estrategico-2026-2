@@ -101,13 +101,14 @@ export async function POST(request: Request, { params }: RouteParams) {
     atorDaRequisicao(request)
   );
   if (!r.ok) return Response.json({ error: r.error }, { status: r.status });
+  // O chip lança sempre à vista, então o cronograma tem exatamente uma linha.
+  const [parcela] = r.resultado.cronograma;
   return Response.json({
     comissao: {
-      id: r.item.id,
-      valorCents: r.item.valorCents,
-      competencia: r.item.competencia.slice(0, 7),
-      descricao: r.item.descricao,
-      nota: r.item.nota
+      valorCents: parcela.valorCents,
+      competencia: parcela.competencia.slice(0, 7),
+      descricao,
+      nota: typeof body.nota === "string" ? body.nota.trim() || null : null
     }
   });
 }

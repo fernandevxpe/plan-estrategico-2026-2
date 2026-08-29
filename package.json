@@ -47,6 +47,7 @@
     "test:duplicidades": "node scripts/test-duplicidade-casos.mjs",
     "test:regra-saude": "node scripts/test-regra-saude.mjs",
     "test:categorizacao": "node scripts/test-categorizacao.mjs",
+    "test:comissao": "node scripts/test-comissao-cronograma.ts",
     "test:fonte-frescor": "node scripts/test-fonte-frescor.mjs",
     "fontes": "node scripts/sincronizar-fontes.mjs --listar",
     "test:transferencias-lacunas": "node scripts/test-transferencias-lacunas.mjs",

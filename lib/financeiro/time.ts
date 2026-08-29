@@ -1685,6 +1685,24 @@ export type MeusRecebiveis = {
     reembolsoCents: number;
   }[];
   /** O reembolso de cada competência, item a item — o que compõe a banda. */
+  /**
+   * Comissão ITEM A ITEM por competência — o espelho do que o reembolso já
+   * tinha. Sem isto, abrir a faixa de comissão no gráfico mostrava só o total,
+   * enquanto o reembolso abria e listava cada parcela.
+   */
+  comissaoPorCompetencia: {
+    competencia: string;
+    totalCents: number;
+    itens: {
+      descricao: string;
+      valorCents: number;
+      tipo: string | null;
+      cliente: string | null;
+      parcela: number | null;
+      parcelasTotal: number | null;
+      ehEntrada: boolean;
+    }[];
+  }[];
   reembolsoPorCompetencia: {
     competencia: string;
     totalCents: number;
@@ -1712,6 +1730,16 @@ export type MeusRecebiveis = {
   porNatureza: { natureza: string; cents: number; n: number }[];
   porMes: MesRecebivel[];
   linhas: RecebivelLinha[];
+};
+
+type RecebivelComissaoItem = {
+  descricao: string;
+  valorCents: number;
+  tipo: string | null;
+  cliente: string | null;
+  parcela: number | null;
+  parcelasTotal: number | null;
+  ehEntrada: boolean;
 };
 
 type RecebivelReembolsoItem = {
@@ -1747,7 +1775,8 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
     itensAppAbertos,
     baseHistorico,
     prolaboreHistorico,
-    comissaoFutura
+    comissaoFutura,
+    comissaoItens
   ] = await Promise.all([
     query<Record<string, unknown>>(
       `SELECT data, to_char(mes, 'YYYY-MM') AS mes, valor_cents, natureza, categoria, conta, descricao
@@ -1894,6 +1923,27 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
           AND competencia >= date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo')::date
         GROUP BY 1
         ORDER BY 1`,
+      [sessao.personId]
+    ).catch(() => []),
+    /*
+     * Comissão ITEM A ITEM, todas as competências.
+     *
+     * O reembolso já descia detalhado e a comissão só como total: abrir a
+     * faixa no gráfico mostrava "Previsto" e mais nada. Aqui vem cada
+     * lançamento com tipo, cliente e parcela — que é o que o cadastro passou a
+     * guardar na 0178, e o que a pessoa precisa para reconhecer de que venda
+     * aquele dinheiro vem.
+     */
+    query<Record<string, unknown>>(
+      `SELECT to_char(c.competencia, 'YYYY-MM') AS competencia,
+              c.descricao, c.valor_cents, c.cliente, c.parcela, c.parcelas_total,
+              t.nome AS tipo_nome,
+              (c.parcela = 1 AND COALESCE(s.entrada_cents, 0) > 0) AS eh_entrada
+         FROM fin_pessoa_comissao_declarada c
+         LEFT JOIN fin_comissao_tipo t ON t.slug = c.tipo_slug
+         LEFT JOIN fin_pessoa_comissao_serie s ON s.id = c.serie_id
+        WHERE c.person_id = $1
+        ORDER BY c.competencia DESC, c.valor_cents DESC`,
       [sessao.personId]
     ).catch(() => [])
   ]);
@@ -2086,6 +2136,26 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         });
       }
       return out;
+    })(),
+    comissaoPorCompetencia: (() => {
+      const m = new Map<string, { competencia: string; totalCents: number; itens: RecebivelComissaoItem[] }>();
+      for (const r of comissaoItens) {
+        const k = String(r.competencia);
+        const g = m.get(k) ?? { competencia: k, totalCents: 0, itens: [] };
+        const v = Number(r.valor_cents);
+        g.totalCents += v;
+        g.itens.push({
+          descricao: String(r.descricao ?? ""),
+          valorCents: v,
+          tipo: (r.tipo_nome as string) ?? null,
+          cliente: (r.cliente as string) ?? null,
+          parcela: r.parcela == null ? null : Number(r.parcela),
+          parcelasTotal: r.parcelas_total == null ? null : Number(r.parcelas_total),
+          ehEntrada: Boolean(r.eh_entrada)
+        });
+        m.set(k, g);
+      }
+      return [...m.values()].sort((a, b) => b.competencia.localeCompare(a.competencia));
     })(),
     reembolsoPorCompetencia: (() => {
       const m = new Map<string, { competencia: string; totalCents: number; itens: RecebivelReembolsoItem[] }>();

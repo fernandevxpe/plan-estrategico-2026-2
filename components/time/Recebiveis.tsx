@@ -160,6 +160,7 @@ export function Recebiveis() {
           const por = soNatureza({
             ...(p.salarioCents > 0 ? { salario: p.salarioCents } : {}),
             ...(p.prolaboreCents > 0 ? { prolabore: p.prolaboreCents } : {}),
+            ...(p.comissaoCents > 0 ? { comissao: p.comissaoCents } : {}),
             ...(p.reembolsoCents > 0 ? { reembolso: p.reembolsoCents } : {})
           });
           return { mes: p.mes, porNatureza: por, totalCents: Object.values(por).reduce((a, b) => a + b, 0), previsto: true };

@@ -18027,7 +18027,13 @@ body:has(.time-shell) > .theme-toggle { display: none; }
      que `.rec-pilha i + i` já desenha — a mesma solução que o arquivo usa para
      roxo e âmbar no tema claro. */
   --nat-salario: var(--ink-blue);
-  --nat-comissao: var(--ink-amber);
+  /* Comissão é a ÚNICA natureza com cor própria, não apelido de token.
+     Pedido do dono: branco no escuro, cinza escuro no claro — o oposto
+     equivalente. É a natureza que ele está lançando agora e precisa saltar da
+     pilha; âmbar a confundia com o pró-labore em telas pequenas.
+     Contraste sobre `--card`: claro #334155 = 9,45:1 · escuro #f8fafc = 15,8:1.
+     Por ter cor própria, ela é a única que PRECISA do bloco de tema abaixo. */
+  --nat-comissao: #334155;
   --nat-reembolso: var(--neon-green-ink);
   --nat-extra: var(--neon-pink-ink);
   --nat-encargo: var(--muted);
@@ -18039,6 +18045,10 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 .nat-recorrente, .nat-prolabore, .nat-estagio { background: var(--nat-recorrente); }
 .nat-salario { background: var(--nat-salario); }
 .nat-comissao { background: var(--nat-comissao); }
+:root[data-theme="escuro"] { --nat-comissao: #f8fafc; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) { --nat-comissao: #f8fafc; }
+}
 .nat-reembolso { background: var(--nat-reembolso); }
 .nat-extra { background: var(--nat-extra); }
 .nat-encargo, .nat-encargo_beneficio { background: var(--nat-encargo); }

@@ -25,6 +25,19 @@ export type Recebiveis = {
     comissaoCents: number;
     reembolsoCents: number;
   }[];
+  comissaoPorCompetencia: {
+    competencia: string;
+    totalCents: number;
+    itens: {
+      descricao: string;
+      valorCents: number;
+      tipo: string | null;
+      cliente: string | null;
+      parcela: number | null;
+      parcelasTotal: number | null;
+      ehEntrada: boolean;
+    }[];
+  }[];
   reembolsoPorCompetencia: {
     competencia: string;
     totalCents: number;

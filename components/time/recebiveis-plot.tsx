@@ -60,6 +60,42 @@ function gruposDoMes(
   return naturezas
     .map((natureza) => {
       const totalCents = porNatureza[natureza] ?? 0;
+      if (natureza === "comissao") {
+        /*
+         * Comissão abre item a item, como o reembolso já abria.
+         *
+         * A fonte é o CADASTRO (`comissaoPorCompetencia`), não o ledger: o
+         * ledger só sabe que caiu um PIX, e é justamente a decomposição — de
+         * que venda, de que cliente, que parcela — que a pessoa precisa para
+         * reconhecer o dinheiro. Quando não há cadastro para o mês, cai no
+         * lançamento do extrato, que é melhor que uma faixa muda.
+         */
+        const com = (dado.comissaoPorCompetencia ?? []).find((c) => c.competencia === competenciaDe(mes));
+        const itens =
+          com?.itens.map((it) => ({
+            nome: nomeDoItem(it.descricao, it.descricao),
+            detalhe: [
+              it.tipo,
+              it.cliente,
+              it.ehEntrada
+                ? "entrada"
+                : it.parcelasTotal && it.parcelasTotal > 1
+                  ? `parcela ${it.parcela} de ${it.parcelasTotal}`
+                  : null
+            ]
+              .filter(Boolean)
+              .join(" · ") || undefined,
+            valorCents: it.valorCents
+          })) ??
+          dado.linhas
+            .filter((l) => l.mes === mes && l.natureza === natureza)
+            .map((l) => ({
+              nome: l.descricao || l.conta,
+              detalhe: `${l.data.slice(8, 10)}/${l.data.slice(5, 7)}`,
+              valorCents: l.valorCents
+            }));
+        return { natureza, rotulo: ROTULO[natureza] ?? natureza, totalCents, itens };
+      }
       if (natureza === "reembolso") {
         const reemb = (dado.reembolsoPorCompetencia ?? []).find((c) => c.competencia === competenciaDe(mes));
         const itens =
@@ -92,11 +128,65 @@ function gruposDoMes(
     .filter((g) => g.totalCents > 0);
 }
 
-function gruposPrevistos(porNatureza: Record<string, number>, natFoco: string | null): GrupoGrafico[] {
+function gruposPrevistos(
+  dado: DadoRecebiveis,
+  mes: string,
+  porNatureza: Record<string, number>,
+  natFoco: string | null
+): GrupoGrafico[] {
   const naturezas = natFoco ? [natFoco] : Object.keys(porNatureza);
   return naturezas
     .map((natureza) => {
       const totalCents = porNatureza[natureza] ?? 0;
+
+      /*
+       * A COLUNA PREVISTA TAMBÉM ABRE.
+       *
+       * Antes toda natureza projetada devolvia um item só, chamado "Previsto":
+       * tocar numa barra do futuro mostrava o total que já estava no eixo. Mas
+       * o futuro é justamente onde o detalhe importa — "de onde vêm os
+       * R$ 6.542,75 de setembro" é a pergunta que o cadastro sabe responder,
+       * item a item, e que a barra muda não respondia.
+       */
+      if (natureza === "comissao") {
+        const com = (dado.comissaoPorCompetencia ?? []).find((c) => c.competencia === competenciaDe(mes));
+        if (com?.itens.length) {
+          return {
+            natureza,
+            rotulo: ROTULO[natureza] ?? natureza,
+            totalCents,
+            itens: com.itens.map((it) => ({
+              nome: nomeDoItem(it.descricao, it.descricao),
+              detalhe: [
+                it.tipo,
+                it.cliente,
+                it.ehEntrada
+                  ? "entrada"
+                  : it.parcelasTotal && it.parcelasTotal > 1
+                    ? `parcela ${it.parcela} de ${it.parcelasTotal}`
+                    : null
+              ]
+                .filter(Boolean)
+                .join(" · ") || undefined,
+              valorCents: it.valorCents
+            }))
+          };
+        }
+      }
+
+      if (natureza === "reembolso") {
+        // Cada série em aberto contribui com UMA parcela no mês projetado — é
+        // a mesma conta que monta `previsao[].reembolsoCents`.
+        const itens = (dado.emAberto ?? [])
+          .filter((a) => a.parcelasRestantes > 0)
+          .map((a) => ({
+            nome: nomeDoItem(a.descricao, a.descricao),
+            detalhe: `faltam ${a.parcelasRestantes} de ${a.parcelasTotal}`,
+            valorCents: a.valorParcelaCents
+          }));
+        if (itens.length) return { natureza, rotulo: ROTULO[natureza] ?? natureza, totalCents, itens };
+      }
+
       return {
         natureza,
         rotulo: ROTULO[natureza] ?? natureza,
@@ -163,7 +253,7 @@ export function RecebiveisPlot({
   const gruposFoco =
     colFoco && foco
       ? colFoco.previsto
-        ? gruposPrevistos(colFoco.porNatureza, foco.nat)
+        ? gruposPrevistos(dado, colFoco.mes, colFoco.porNatureza, foco.nat)
         : gruposDoMes(dado, colFoco.mes, colFoco.porNatureza, foco.nat, ocultas)
       : [];
 

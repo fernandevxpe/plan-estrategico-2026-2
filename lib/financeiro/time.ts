@@ -1676,7 +1676,14 @@ export type MeusRecebiveis = {
    * Pró-labore: mediana dos meses em que já caiu — não há contrato fixo, mas
    * é melhor que omitir ou chutar um valor redondo.
    */
-  previsao: { mes: string; salarioCents: number; prolaboreCents: number; reembolsoCents: number }[];
+  previsao: {
+    mes: string;
+    salarioCents: number;
+    prolaboreCents: number;
+    /** Comissão declarada com competência nesse mês (0178). Zero quando não há. */
+    comissaoCents: number;
+    reembolsoCents: number;
+  }[];
   /** O reembolso de cada competência, item a item — o que compõe a banda. */
   reembolsoPorCompetencia: {
     competencia: string;
@@ -1731,7 +1738,17 @@ const RECORRENTE = new Set(["salario", "prolabore", "estagio"]);
  * e para essa pergunta a mediana responde melhor.
  */
 export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
-  const [linhas, saldoPlanilha, porNaturezaMes, itensReembolso, base, itensAppAbertos] = await Promise.all([
+  const [
+    linhas,
+    saldoPlanilha,
+    porNaturezaMes,
+    itensReembolso,
+    base,
+    itensAppAbertos,
+    baseHistorico,
+    prolaboreHistorico,
+    comissaoFutura
+  ] = await Promise.all([
     query<Record<string, unknown>>(
       `SELECT data, to_char(mes, 'YYYY-MM') AS mes, valor_cents, natureza, categoria, conta, descricao
          FROM fin_time_recebivel_v
@@ -1826,6 +1843,57 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
           AND coalesce(r.status, 'aprovado') NOT IN ('pago', 'rejeitado')
           AND coalesce(i.status, 'aprovado') NOT IN ('pago', 'rejeitado')
         ORDER BY r.reference_month DESC, i.amount_cents DESC`,
+      [sessao.personId]
+    ).catch(() => []),
+    /*
+     * O CADASTRO — E POR QUE ELE SUBSTITUI A MEDIANA.
+     *
+     * A previsão era calculada do que JÁ CAIU: mediana do pró-labore pago.
+     * Isso tem um defeito que não se conserta ajustando o cálculo — ele
+     * responde à pergunta errada. "Quanto costumo receber" é história;
+     * "quanto vou receber" é cadastro. Enquanto a fonte fosse o histórico,
+     * cadastrar um pró-labore novo no painel não movia um centavo no app, e as
+     * duas telas nunca convergiam: medido no Fernando em 29/08/2026, o painel
+     * dizia R$ 4.379,00 e o app R$ 2.779,00 — a mediana de sete meses da base
+     * antiga.
+     *
+     * As três consultas abaixo trazem o cadastro INTEIRO, sem filtro de data e
+     * sem LIMIT 1, porque a vigência tem de ser resolvida POR MÊS PROJETADO.
+     * Um reajuste marcado para outubro precisa aparecer em outubro — não em
+     * todos os meses (o que `LIMIT 1` sem filtro faria) nem em nenhum (o que
+     * `vigente_desde <= current_date` fazia).
+     */
+    query<Record<string, unknown>>(
+      `SELECT valor_cents, to_char(vigente_desde, 'YYYY-MM') AS desde
+         FROM fin_pessoa_salario_base
+        WHERE person_id = $1
+        ORDER BY vigente_desde ASC, id ASC`,
+      [sessao.personId]
+    ).catch(() => []),
+    query<Record<string, unknown>>(
+      `SELECT valor_cents, to_char(vigente_desde, 'YYYY-MM') AS desde
+         FROM fin_pessoa_prolabore_esperado
+        WHERE person_id = $1
+        ORDER BY vigente_desde ASC, id ASC`,
+      [sessao.personId]
+    ).catch(() => []),
+    /*
+     * Comissão declarada, do mês corrente em diante.
+     *
+     * Não vem de `fin_time_remuneracao_mes_v`: aquela view decompõe o que foi
+     * PAGO, e comissão futura por definição ainda não foi. Era por isso que
+     * comissão não existia em nenhuma tela do app — a única fonte que o app
+     * consultava exigia transação liquidada.
+     */
+    query<Record<string, unknown>>(
+      `SELECT to_char(competencia, 'YYYY-MM') AS mes,
+              sum(valor_cents)::bigint AS cents,
+              count(*)::int AS n
+         FROM fin_pessoa_comissao_declarada
+        WHERE person_id = $1
+          AND competencia >= date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo')::date
+        GROUP BY 1
+        ORDER BY 1`,
       [sessao.personId]
     ).catch(() => [])
   ]);
@@ -1945,33 +2013,77 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         }
       : null,
     previsao: (() => {
-      const baseCents = base[0] ? Number(base[0].valor_cents) : 0;
-      const prolaboresHistorico = porMes
-        .map((m) => m.porNatureza.prolabore ?? 0)
-        .filter((v) => v > 0)
-        .sort((a, b) => a - b);
-      const meioProlabore = Math.floor(prolaboresHistorico.length / 2);
-      const prolaboreCents =
-        prolaboresHistorico.length === 0
-          ? 0
-          : prolaboresHistorico.length % 2
-            ? prolaboresHistorico[meioProlabore]
-            : Math.round((prolaboresHistorico[meioProlabore - 1] + prolaboresHistorico[meioProlabore]) / 2);
-      // Quantos meses à frente vale projetar: até a última parcela em aberto,
-      // com teto de 12. Sem teto, uma série de 24 parcelas esticaria a tela
-      // por dois anos de meses idênticos.
+      /*
+       * A PREVISÃO VEM DO CADASTRO, MÊS A MÊS — não da mediana do histórico.
+       *
+       * Três mudanças, e cada uma corrige um número que a pessoa via errado:
+       *
+       *  1. PRÓ-LABORE sai de `fin_pessoa_prolabore_esperado` em vez da mediana
+       *     do que já foi pago. Cadastrar não movia nada no app; agora move.
+       *
+       *  2. VIGÊNCIA é resolvida POR MÊS PROJETADO. A previsão era chapada —
+       *     o mesmo valor repetido em todos os meses —, então um reajuste
+       *     marcado para outubro nunca aparecia em outubro. Agora cada mês
+       *     pergunta "qual a linha de maior vigência que já vale AQUI".
+       *
+       *  3. COMISSÃO entra, por competência. Antes não existia no payload:
+       *     as comissões lançadas no painel somem por completo do app. O
+       *     Jonildo tem R$ 4.904,80 declarados para setembro/2026 e o app
+       *     mostrava zero.
+       *
+       * O reembolso continua vindo do saldo das parcelas em aberto, que já
+       * estava certo — muda só o número de meses que a projeção cobre.
+       */
+      const vigenteEm = (historico: Record<string, unknown>[], mes: string): number => {
+        let valor = 0;
+        for (const linha of historico) {
+          const desde = String(linha.desde ?? "");
+          if (desde && desde <= mes) valor = Number(linha.valor_cents ?? 0);
+        }
+        return valor;
+      };
+
+      const comissaoPorMes = new Map(
+        comissaoFutura.map((c) => [String(c.mes), Number(c.cents ?? 0)])
+      );
+
+      // Quantos meses projetar: o suficiente para caber a última parcela de
+      // reembolso E a última comissão já declarada, com teto de 12. Antes o
+      // teto olhava só o reembolso, então uma comissão parcelada até jan/27
+      // ficava fora da própria projeção que a alimenta.
       const maiorRestante = saldo.reduce((n, r) => Math.max(n, Number(r.parcelas_restantes ?? 0)), 0);
-      const quantos = Math.min(12, Math.max(baseCents > 0 || prolaboreCents > 0 ? 3 : 0, maiorRestante));
-      const hoje = new Date();
-      const out: { mes: string; salarioCents: number; prolaboreCents: number; reembolsoCents: number }[] = [];
+      const temCadastro =
+        baseHistorico.length > 0 || prolaboreHistorico.length > 0 || comissaoPorMes.size > 0;
+
+      const hojeSp = new Date(
+        new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
+      );
+      const mesChave = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+      // Distância até a comissão declarada mais distante, em meses.
+      let maiorComissao = 0;
+      for (const mes of comissaoPorMes.keys()) {
+        const [a, m] = mes.split("-").map(Number);
+        const dist = (a - hojeSp.getFullYear()) * 12 + (m - (hojeSp.getMonth() + 1));
+        if (dist > maiorComissao) maiorComissao = dist;
+      }
+
+      const quantos = Math.min(12, Math.max(temCadastro ? 3 : 0, maiorRestante, maiorComissao));
+      const out: { mes: string; salarioCents: number; prolaboreCents: number; comissaoCents: number; reembolsoCents: number }[] = [];
       for (let k = 1; k <= quantos; k += 1) {
-        const d = new Date(hoje.getFullYear(), hoje.getMonth() + k, 1);
-        const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const d = new Date(hojeSp.getFullYear(), hojeSp.getMonth() + k, 1);
+        const mes = mesChave(d);
         const reembolso = saldo.reduce(
           (t, r) => t + (Number(r.parcelas_restantes ?? 0) >= k ? Number(r.valor_parcela_cents ?? 0) : 0),
           0
         );
-        out.push({ mes, salarioCents: baseCents, prolaboreCents, reembolsoCents: reembolso });
+        out.push({
+          mes,
+          salarioCents: vigenteEm(baseHistorico, mes),
+          prolaboreCents: vigenteEm(prolaboreHistorico, mes),
+          comissaoCents: comissaoPorMes.get(mes) ?? 0,
+          reembolsoCents: reembolso
+        });
       }
       return out;
     })(),

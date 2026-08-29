@@ -24,3 +24,7 @@ secrets.zip
 # Railway. Versionar congelaria o resultado de uma execução desta máquina — o
 # arquivo aqui hoje registra um sync que FALHOU em 25/08.
 data/sync-state.json
+
+# Fotos locais do cadastro manual (scripts/snapshot-cadastro-manual.mjs).
+# Dado financeiro nominal do time — fica na máquina, nunca no GitHub.
+backups/

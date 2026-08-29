@@ -17,7 +17,14 @@ export type Recebiveis = {
   mesAtualCents: number;
   medianaRecorrenteCents: number;
   salarioBase: { valorCents: number; vigenteDesde: string; nota: string | null } | null;
-  previsao: { mes: string; salarioCents: number; prolaboreCents: number; reembolsoCents: number }[];
+  previsao: {
+    mes: string;
+    salarioCents: number;
+    prolaboreCents: number;
+    /** Comissão declarada com competência nesse mês (0178). Zero quando não há. */
+    comissaoCents: number;
+    reembolsoCents: number;
+  }[];
   reembolsoPorCompetencia: {
     competencia: string;
     totalCents: number;

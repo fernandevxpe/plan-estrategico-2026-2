@@ -184,11 +184,22 @@ export function Recebiveis() {
   const proximoMes = previsaoMeses[0];
   const totalReembolsoPrevisto = dado.emAbertoCents;
   const totalReembolsoParcelas = previsaoMeses.reduce((a, p) => a + (p.reembolsoCents ?? 0), 0);
-  const remProximoMes = (proximoMes?.salarioCents ?? 0) + (proximoMes?.prolaboreCents ?? 0);
+  const comissaoProximoMes = proximoMes?.comissaoCents ?? 0;
+  const remProximoMes =
+    (proximoMes?.salarioCents ?? 0) + (proximoMes?.prolaboreCents ?? 0) + comissaoProximoMes;
   const previstoProximoMes = remProximoMes + (proximoMes?.reembolsoCents ?? 0);
   const reembolsosFuturosCents =
     dado.emAbertoCents > 0 ? dado.emAbertoCents : totalReembolsoParcelas;
-  const totalPrevisto = remProximoMes + totalReembolsoPrevisto;
+  /*
+   * O "previsto" do cabeçalho é o MÊS SEGUINTE inteiro — salário, pró-labore,
+   * comissão e a PARCELA de reembolso daquele mês.
+   *
+   * Antes somava `emAbertoCents`, que é o saldo INTEIRO da dívida de reembolso:
+   * uma série de 6× R$ 1.000 entrava como R$ 6.000 num número que a pessoa lê
+   * como "o que recebo mês que vem". O saldo continua visível logo abaixo, com
+   * o nome certo.
+   */
+  const totalPrevisto = previstoProximoMes;
   const temPrevisoes = totalPrevisto > 0 || previsaoMeses.length > 0;
 
   return (
@@ -306,6 +317,18 @@ export function Recebiveis() {
                     <small>{nomeMesTitulo(proximoMes.mes)}</small>
                   </span>
                   <b className="rec-nat-valor">{brl(proximoMes.prolaboreCents)}</b>
+                </div>
+              </li>
+            ) : null}
+            {proximoMes && proximoMes.comissaoCents > 0 ? (
+              <li>
+                <div className="rec-nat-linha">
+                  <i className={`rec-ponto ${CLASSE.comissao}`} aria-hidden />
+                  <span className="rec-nat-nome">
+                    Comissão
+                    <small>{nomeMesTitulo(proximoMes.mes)}</small>
+                  </span>
+                  <b className="rec-nat-valor">{brl(proximoMes.comissaoCents)}</b>
                 </div>
               </li>
             ) : null}

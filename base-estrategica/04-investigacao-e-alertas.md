@@ -1,6 +1,6 @@
 # Investigação e alertas
 
-Gerado em: 22/08/2026, 15:16:22
+Gerado em: 24/08/2026, 17:13:48
 
 ## Alertas de performance
 
@@ -54,7 +54,7 @@ Gerado em: 22/08/2026, 15:16:22
 
 ## Alertas de qualidade de dados
 
-- **Cobertura de CNPJ parcial** (high): 279/1696 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
+- **Cobertura de CNPJ parcial** (high): 279/1697 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
 - **Negócios ganhos sem etiqueta comercial explícita** (medium): 3/246 ganhos usam fallback de serviço/funil como tipo principal.
 - **Negócios com múltiplas etiquetas** (medium): 47 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
 - **Base aberta contém negócios antigos** (high): 176 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.

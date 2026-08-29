@@ -1,23 +1,23 @@
 # Visão geral e metas — XPE Consultoria
 
-Gerado em: 22/08/2026, 15:16:22
+Gerado em: 24/08/2026, 17:13:48
 
 ## Escopo dos dados
 
 - Pipedrive deals and ClickUp project tasks for 2025 and 2026.1/2026 focus
-- Negócios analisados: **1128**
+- Negócios analisados: **1129**
 - Negócios ganhos no período: **246**
-- Foco 2026: **598** negócios
-- Pipedrive total: **1790** negócios
+- Foco 2026: **599** negócios
+- Pipedrive total: **1791** negócios
 - ClickUp: **1791** tarefas
-- Organizações no CRM: **1696**
+- Organizações no CRM: **1697**
 
 ## Receita e volume
 
 | Período | Receita | Fechamentos | Novos negócios | Ticket médio |
 | --- | ---: | ---: | ---: | ---: |
 | 2025 (ano) | R$ 890.413 | 101 | 466 | R$ 8.816 |
-| 2026 YTD (parcial) | R$ 1.676.056 | 145 | 575 | R$ 11.559 |
+| 2026 YTD (parcial) | R$ 1.676.056 | 145 | 576 | R$ 11.559 |
 | H1/2025 realizado | R$ 283.360 | 32 | 225 | R$ 8.855 |
 | H2/2025 realizado | R$ 607.053 | 69 | 241 | R$ 8.798 |
 | H1/2026 realizado | R$ 1.220.357 | 102 | 455 | R$ 11.964 |
@@ -61,7 +61,7 @@ Gerado em: 22/08/2026, 15:16:22
 | 2025-Q4 | R$ 349.899 | 34 | 117 | R$ 10.291 |
 | 2026-Q1 | R$ 600.747 | 48 | 200 | R$ 12.516 |
 | 2026-Q2 | R$ 619.610 | 54 | 255 | R$ 11.474 |
-| 2026-Q3 | R$ 455.700 | 43 | 120 | R$ 10.598 |
+| 2026-Q3 | R$ 455.700 | 43 | 121 | R$ 10.598 |
 
 ## Timeline 2026 (mês a mês)
 
@@ -74,7 +74,7 @@ Gerado em: 22/08/2026, 15:16:22
 | 2026-05 | actual | R$ 130.800 | 14 | 90 | - |
 | 2026-06 | actual | R$ 333.210 | 25 | 91 | - |
 | 2026-07 | actual | R$ 311.100 | 29 | 67 | - |
-| 2026-08 | partial | R$ 144.600 | 14 | 53 | R$ 218.779 |
+| 2026-08 | partial | R$ 144.600 | 14 | 54 | R$ 218.779 |
 | 2026-09 | projected | R$ 0 | 0 | 0 | R$ 192.681 |
 | 2026-10 | projected | R$ 0 | 0 | 0 | R$ 262.522 |
 | 2026-11 | projected | R$ 0 | 0 | 0 | R$ 232.817 |
@@ -107,12 +107,12 @@ Gerado em: 22/08/2026, 15:16:22
 
 ## Qualidade de dados
 
-- **Cobertura de CNPJ parcial**: 279/1696 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
+- **Cobertura de CNPJ parcial**: 279/1697 organizações têm CNPJ preenchido. Pós-venda por CNPJ é confiável, mas incompleto.
 - **Negócios ganhos sem etiqueta comercial explícita**: 3/246 ganhos usam fallback de serviço/funil como tipo principal.
 - **Negócios com múltiplas etiquetas**: 47 ganhos têm mais de uma etiqueta. O painel executivo usa apenas tipo principal para não duplicar receita.
 - **Base aberta contém negócios antigos**: 176 negócios abertos têm mais de 120 dias. Tratar pipeline aberto como bruto, não forecast.
 
 ## Cobertura CNPJ
 
-- Organizações com CNPJ: **279/1696**
+- Organizações com CNPJ: **279/1697**
 - Ganhos com CNPJ: **139/246**

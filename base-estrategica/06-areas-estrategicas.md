@@ -1,6 +1,6 @@
 # Áreas estratégicas — XPE Consultoria
 
-Gerado em: 22/08/2026, 15:16:22
+Gerado em: 24/08/2026, 17:13:48
 
 Todas as 11 áreas em um único documento. Para conversar sobre uma área específica, referencie a seção pelo nome.
 
@@ -18,7 +18,7 @@ Funil comercial, fechamentos, conversão e capacidade da equipe de 2 comerciais.
 
 ### Destaques
 - 2 comerciais · 9.0 fech./pessoa meta H2
-- Pipeline aberto: 672 negócios (R$ 3.370.886)
+- Pipeline aberto: 672 negócios (R$ 3.357.086)
 - Recomendado: 3 comerciais no cenário 2x
 
 ## Notas estratégicas
@@ -510,7 +510,7 @@ CRM, ClickUp, automações internas e produtividade da operação.
 
 ### Destaques
 - 1.791 tarefas ClickUp
-- 1.790 negócios no Pipedrive
+- 1.791 negócios no Pipedrive
 - 4 alerta(s) de qualidade de dados
 
 ## Notas estratégicas

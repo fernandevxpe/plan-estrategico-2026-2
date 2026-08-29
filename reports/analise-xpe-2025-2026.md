@@ -1,17 +1,17 @@
 # Analise comercial e projetos - XPE Consultoria
 
-Gerado em: 22/08/2026, 15:16:22
+Gerado em: 24/08/2026, 17:13:48
 
 ## Resumo executivo
 
-- Negocios analisados no Pipedrive: 1128 em 2025-2026.
+- Negocios analisados no Pipedrive: 1129 em 2025-2026.
 - Negocios ganhos no periodo: 246, somando R$ 2.566.470.
 - Ticket medio geral dos negocios ganhos: R$ 10.433.
 - Tarefas/projetos encontrados no ClickUp: 1791; candidatos de producao ligados a projetos/operacao: 1347.
-- 2026-08 deve ser lido como parcial, pois a base foi extraida em 22/08/2026.
+- 2026-08 deve ser lido como parcial, pois a base foi extraida em 24/08/2026.
 - O Pipedrive nao trouxe produtos por negocio; a classificacao inicial de servico usa principalmente funil/etapa e, quando necessario, termos explicitos no titulo.
 - Para tipos de negocio, a fonte principal agora e a etiqueta comercial do Pipedrive: LIE, LDC, LCC, PIE, OBRA, PROJETOS, LSPDA, CDM, ICV e instalacao de carregador.
-- Cobertura de CNPJ nas organizacoes: 279/1696; nos ganhos analisados: 139/246.
+- Cobertura de CNPJ nas organizacoes: 279/1697; nos ganhos analisados: 139/246.
 - Arquivos tabulares gerados em `data/processed/*.csv` para revisao e uso em planilhas.
 
 ## Funil comercial mensal
@@ -37,7 +37,7 @@ Gerado em: 22/08/2026, 15:16:22
 | 2026-05 | 90 | 14 | R$ 130.800 | R$ 9.343 | -15,9% |
 | 2026-06 | 91 | 25 | R$ 333.210 | R$ 13.328 | +154,7% |
 | 2026-07 | 67 | 29 | R$ 311.100 | R$ 10.728 | -6,6% |
-| 2026-08 | 53 | 14 | R$ 144.600 | R$ 10.329 | -53,5% |
+| 2026-08 | 54 | 14 | R$ 144.600 | R$ 10.329 | -53,5% |
 
 ## Leitura de crescimento em 2026
 

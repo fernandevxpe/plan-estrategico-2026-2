@@ -1,6 +1,6 @@
 # Clientes e recorrência
 
-Gerado em: 22/08/2026, 15:16:22
+Gerado em: 24/08/2026, 17:13:48
 
 ## Recorrência
 
@@ -60,7 +60,7 @@ Gerado em: 22/08/2026, 15:16:22
 
 ## Organizações no CRM
 
-- Total cadastradas: **1696**
+- Total cadastradas: **1697**
 - Com pelo menos 1 fechamento: **174**
 - Com repetição (2+ fechamentos): **51**
 - Com negócios abertos agora: **637**

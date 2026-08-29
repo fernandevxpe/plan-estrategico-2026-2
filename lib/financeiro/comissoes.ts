@@ -290,11 +290,17 @@ export async function criarComissaoAvulsa(
 ): Promise<{ ok: true; item: ComissaoItem } | { ok: false; status: number; error: string }> {
   const competencia = competenciaValida(input.competencia);
   if (!competencia) return { ok: false, status: 422, error: "competencia precisa ser AAAA-MM" };
-  if (!Number.isInteger(input.valorCents) || input.valorCents <= 0) {
-    return { ok: false, status: 422, error: "valorCents precisa ser inteiro positivo" };
+  // ZERO É VÁLIDO. "Olhei o mês e não houve comissão" é uma afirmação, e é
+  // diferente de não existir linha, que quer dizer "ninguém olhou". Enquanto
+  // zero era recusado (CHECK `> 0` até a 0177), a saída era lançar R$ 0,01 —
+  // e foi o que entrou na base quatro vezes em 29/08/2026.
+  if (!Number.isInteger(input.valorCents) || input.valorCents < 0) {
+    return { ok: false, status: 422, error: "valorCents precisa ser inteiro não negativo" };
   }
-  const descricao = input.descricao?.trim();
-  if (!descricao) return { ok: false, status: 422, error: "descricao é obrigatória — a que se refere?" };
+  // A descrição continua obrigatória NO BANCO: toda linha se explica. O que
+  // mudou é quem preenche — o servidor gera uma quando o campo vem vazio, em
+  // vez de recusar o lançamento e travar quem só queria zerar o mês.
+  const descricao = input.descricao?.trim() || (input.valorCents === 0 ? "Sem comissão no mês" : "Comissão");
   const nota = input.nota?.trim() || null;
 
   const pessoa = await query<{ entity_id: number; nome: string }>(
@@ -371,8 +377,9 @@ export async function criarComissaoParcelada(
   if (!Number.isInteger(input.parcelas) || input.parcelas < 2 || input.parcelas > 60) {
     return { ok: false, status: 422, error: "parcelas entre 2 e 60 (à vista use o modo avulso)" };
   }
-  const descricao = input.descricao?.trim();
-  if (!descricao) return { ok: false, status: 422, error: "descricao é obrigatória — a que se refere?" };
+  // Aqui o total continua tendo de ser positivo (checado acima): parcelar zero
+  // não existe. Só a descrição ganha o mesmo padrão da avulsa.
+  const descricao = input.descricao?.trim() || "Comissão parcelada";
   const nota = input.nota?.trim() || null;
 
   const valores = repartirParcelas(input.totalCents, input.parcelas);

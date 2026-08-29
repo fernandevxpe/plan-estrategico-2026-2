@@ -35,6 +35,15 @@ function IconeLapis() {
   );
 }
 
+function IconeMais() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
 function ChipRemuneracao({
   rotulo,
   valor,
@@ -43,7 +52,12 @@ function ChipRemuneracao({
   historico,
   editando,
   onEditar,
-  formulario
+  formulario,
+  // Salário-base e pró-labore têm UM valor vigente: mexer neles é editar.
+  // Comissão não — várias no mesmo mês somam, e o que o botão faz é LANÇAR
+  // mais uma. Com o lápis de "Editar" nos três, a ação de acrescentar
+  // comissão não tinha nome em lugar nenhum da tela.
+  acao = "editar"
 }: {
   rotulo: string;
   valor: ReactNode;
@@ -53,6 +67,7 @@ function ChipRemuneracao({
   editando: boolean;
   onEditar: () => void;
   formulario?: ReactNode;
+  acao?: "editar" | "lancar";
 }) {
   const [histAberto, setHistAberto] = useState(false);
   const temHistorico = Boolean(historico);
@@ -66,8 +81,14 @@ function ChipRemuneracao({
           {detalhe ? <span className="pp-chip-detalhe">{detalhe}</span> : null}
         </div>
         <div className="pp-chip-acoes">
-          <button type="button" className="pp-btn-icone" onClick={onEditar} aria-label={`Editar ${rotulo.toLowerCase()}`} title="Editar">
-            <IconeLapis />
+          <button
+            type="button"
+            className="pp-btn-icone"
+            onClick={onEditar}
+            aria-label={acao === "lancar" ? `Lançar ${rotulo.toLowerCase()}` : `Editar ${rotulo.toLowerCase()}`}
+            title={acao === "lancar" ? `Lançar ${rotulo.toLowerCase()}` : "Editar"}
+          >
+            {acao === "lancar" ? <IconeMais /> : <IconeLapis />}
           </button>
           {temHistorico ? (
             <button
@@ -293,9 +314,14 @@ export function FinComissaoForm({
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
-    const valorCents = centavosDoTexto(valor);
-    if (valorCents <= 0) return setErro("informe um valor maior que zero");
-    if (!nota.trim()) return setErro("descrição obrigatória — a que se refere?");
+    // Campo VAZIO e campo com "0,00" precisam ser coisas diferentes: zero é a
+    // declaração de que não houve comissão no mês, e recusá-lo foi o que fez
+    // quatro lançamentos de R$ 0,01 entrarem na base em 29/08/2026.
+    const digitos = valor.replace(/\D/g, "");
+    if (!digitos) return setErro("informe um valor — use 0,00 para declarar que não houve comissão no mês");
+    const valorCents = Number(digitos);
+    // A descrição não barra mais: vazia, o servidor grava "Sem comissão no mês"
+    // ou "Comissão".
 
     setSalvando(true);
     const r = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${personId}/comissao`), {
@@ -321,6 +347,7 @@ export function FinComissaoForm({
       valor={comissaoAtual ? brl(comissaoAtual.valorCents) : "—"}
       detalhe={comissaoAtual ? comissaoAtual.competencia : temSalarioBase ? "mês a mês" : "defina salário-base antes"}
       editando={aberto}
+      acao="lancar"
       onEditar={() => setAberto((v) => !v)}
       historico={historico.length > 0 ? <HistoricoComissao historico={historico} /> : null}
       formulario={
@@ -329,7 +356,8 @@ export function FinComissaoForm({
             <p className="pp-remuneracao-aviso">Defina o salário-base primeiro — sem ele a comissão não separa do PIX.</p>
           ) : null}
           <p className="pp-remuneracao-aviso">
-            Para várias no mês ou parcelar, use{" "}
+            Cada lançamento ACRESCENTA — duas comissões no mesmo mês somam. Use <strong>0,00</strong> para declarar que
+            não houve comissão (é diferente de deixar o mês em branco). Para parcelar, use{" "}
             <a href="/financeiro/comissoes">Comissões</a>.
           </p>
           <div className="pp-remuneracao-campos">
@@ -344,7 +372,12 @@ export function FinComissaoForm({
           </div>
           <label className="pp-remuneracao-nota">
             <span>Descrição</span>
-            <input className="fin-input" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ex.: comissão obra X" />
+            <input
+              className="fin-input"
+              value={nota}
+              onChange={(e) => setNota(e.target.value)}
+              placeholder="Ex.: comissão obra X (opcional)"
+            />
           </label>
           <FormSalvar campos={null} erro={erro} salvando={salvando} onCancelar={() => setAberto(false)} />
         </form>

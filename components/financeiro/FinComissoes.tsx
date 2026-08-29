@@ -24,12 +24,20 @@ function mascaraDinheiro(texto: string): string {
   return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function centavosDoTexto(texto: string): number {
+/**
+ * Centavos do texto, ou `null` quando o campo está VAZIO.
+ *
+ * A distinção entre vazio e zero é o ponto. Antes as duas situações devolviam
+ * 0 e o formulário recusava as duas com "informe um valor maior que zero" — e
+ * como zero é uma resposta legítima ("olhei o mês e não houve comissão"), a
+ * única saída era digitar R$ 0,01. Foi o que entrou na base quatro vezes.
+ */
+function centavosDoTexto(texto: string): number | null {
   const limpo = texto.trim().replace(/[R$\s]/g, "");
-  if (!limpo) return 0;
+  if (!limpo) return null;
   const normalizado = limpo.includes(",") ? limpo.replace(/\./g, "").replace(",", ".") : limpo;
   const valor = Number(normalizado);
-  if (!Number.isFinite(valor) || valor <= 0) return 0;
+  if (!Number.isFinite(valor) || valor < 0) return null;
   return Math.round(valor * 100);
 }
 
@@ -392,9 +400,17 @@ function FormComissao({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErroLocal(null);
-    if (!descricao.trim()) return setErroLocal("descrição obrigatória — a que se refere?");
     const valorCents = centavosDoTexto(valor);
-    if (valorCents <= 0) return setErroLocal("informe um valor maior que zero");
+    if (valorCents === null) {
+      return setErroLocal("informe um valor — use 0,00 para declarar que não houve comissão no mês");
+    }
+    // Parcelar zero não existe; à vista, zero é a declaração de que não houve.
+    if (modo === "parcelada" && valorCents <= 0) {
+      return setErroLocal("parcelamento exige um valor maior que zero");
+    }
+    // A descrição deixou de barrar: vazia, o servidor grava "Sem comissão no
+    // mês" ou "Comissão". A linha continua se explicando, sem travar quem só
+    // queria zerar o mês.
 
     if (modo === "avulsa") {
       await onEnviar({
@@ -452,13 +468,12 @@ function FormComissao({
           </p>
         ) : null}
         <label>
-          Descrição (obrigatória)
+          Descrição
           <input
             className="fin-input"
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
-            placeholder="Ex.: Comissão obra Residencial Aurora"
-            required
+            placeholder="Ex.: Comissão obra Residencial Aurora (opcional)"
           />
         </label>
         <div className="fin-form-row">

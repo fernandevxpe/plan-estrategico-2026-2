@@ -18045,6 +18045,17 @@ body:has(.time-shell) > .theme-toggle { display: none; }
 .nat-recorrente, .nat-prolabore, .nat-estagio { background: var(--nat-recorrente); }
 .nat-salario { background: var(--nat-salario); }
 .nat-comissao { background: var(--nat-comissao); }
+
+/* A composição do que a pessoa vai receber, no Perfil do app. Substituiu o
+   "Recebo de hábito": o total sozinho não diz de onde vem, e é a divisão que
+   ela quer conferir contra o que combinou. */
+.perfil-composicao { display: grid; gap: 2px; margin: 10px 0 18px; padding: 0; list-style: none; }
+.perfil-composicao li {
+  display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 10px; background: var(--card-2, var(--card));
+}
+.perfil-composicao li span { color: var(--muted); font-size: .9rem; }
+.perfil-composicao li b { font-variant-numeric: tabular-nums; font-weight: 650; }
 :root[data-theme="escuro"] { --nat-comissao: #f8fafc; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="claro"]) { --nat-comissao: #f8fafc; }

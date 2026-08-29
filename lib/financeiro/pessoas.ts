@@ -924,7 +924,8 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
         // Previsão do mês seguinte pelos cadastros — a mesma base do perfil.
         // Salário e pró-labore: vigência mais recente. Comissão: competência do
         // mês previsto (soma se houver várias, 0167). Reembolso: próxima parcela
-        // de cada série ainda aberta (`fin_reembolso_saldo_v`).
+        // de cada série ainda aberta (`fin_reembolso_saldo_unificado_v`, 0179:
+        // planilha E pedidos do app).
         query<{
           person_id: number;
           mes: string;
@@ -956,7 +957,7 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
            ),
            ree AS (
              SELECT person_id, SUM(valor_parcela_cents)::bigint AS valor_cents
-               FROM fin_reembolso_saldo_v
+               FROM fin_reembolso_saldo_unificado_v
               WHERE NOT quitado AND parcelas_restantes >= 1
               GROUP BY person_id
            )

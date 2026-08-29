@@ -1798,8 +1798,8 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
      */
     query<Record<string, unknown>>(
       `SELECT slug, descricao, parcela, parcelas_total, parcelas_restantes,
-              valor_parcela_cents, saldo_cents
-         FROM fin_reembolso_saldo_v
+              valor_parcela_cents, saldo_cents, origem
+         FROM fin_reembolso_saldo_unificado_v
         WHERE person_id = $1 AND NOT quitado
         ORDER BY saldo_cents DESC`,
       [sessao.personId]
@@ -1949,30 +1949,25 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
   ]);
 
   // Unifica o saldo em aberto: itens da planilha + itens solicitados no app
-  const saldo = [...saldoPlanilha];
-  for (const itemApp of itensAppAbertos) {
-    const valor = Number(itemApp.amount_cents);
-    const parTotal = itemApp.installment_total ?? 1;
-    const parAtual = itemApp.installment_number ?? 1;
-    const parRest = Math.max(1, parTotal - parAtual + 1);
-    const valorPar = parTotal > 1 ? Math.round(valor / parTotal) : valor;
-    const saldoTotal = parTotal > 1 ? valorPar * parRest : valor;
-
-    const jaExiste = saldo.some(
-      (s) => Number(s.saldo_cents) === saldoTotal || Number(s.valor_parcela_cents) === valorPar
-    );
-    if (!jaExiste) {
-      saldo.push({
-        slug: `app-reembolso-${itemApp.id}`,
-        descricao: itemApp.descricao,
-        parcela: parAtual,
-        parcelas_total: parTotal,
-        parcelas_restantes: parRest,
-        valor_parcela_cents: valorPar,
-        saldo_cents: saldoTotal
-      });
-    }
-  }
+  /*
+   * A FUSÃO SAIU DAQUI E VIROU VIEW (0179).
+   *
+   * Este trecho juntava, à mão, o saldo da planilha com os pedidos do app, e
+   * deduplicava assim:
+   *
+   *     saldo.some(s => s.saldo_cents === saldoTotal || s.valor_parcela_cents === valorPar)
+   *
+   * — igualdade de VALOR, sem olhar pessoa, descrição nem competência. Dois
+   * Ubers de R$ 45,00 no mesmo mês viravam um só, e some o segundo sem aviso.
+   * Pior: a plataforma não fazia fusão nenhuma, então as duas telas davam
+   * números diferentes para a mesma dívida — e a do app era a única que
+   * enxergava o que a pessoa tinha acabado de pedir.
+   *
+   * `fin_reembolso_saldo_unificado_v` faz a união uma vez, com identidade de
+   * verdade (pessoa + competência + valor OU descrição), e as DUAS telas leem
+   * dela. É a mesma dívida vista do mesmo jeito dos dois lados.
+   */
+  const saldo = saldoPlanilha;
 
   const itens: RecebivelLinha[] = linhas.map((l) => ({
     data: String(l.data).slice(0, 10),
@@ -3303,7 +3298,7 @@ export async function meuReembolso(sessao: Sessao) {
         ORDER BY 1 DESC`,
       [sessao.personId]
     ).catch(() => []),
-    // Saldo em aberto da planilha
+    // Saldo em aberto — planilha E app, pela view unificada (0179).
     query<{
       slug: string;
       descricao: string;
@@ -3315,7 +3310,7 @@ export async function meuReembolso(sessao: Sessao) {
     }>(
       `SELECT slug, descricao, parcela, parcelas_total, valor_parcela_cents::text,
               parcelas_restantes, saldo_cents::text
-         FROM fin_reembolso_saldo_v
+         FROM fin_reembolso_saldo_unificado_v
         WHERE person_id = $1 AND NOT quitado
         ORDER BY saldo_cents DESC`,
       [sessao.personId]
@@ -3449,32 +3444,12 @@ export async function meuReembolso(sessao: Sessao) {
     saldoCents: Number(l.saldo_cents)
   }));
 
-  for (const itemApp of todosItensApp) {
-    const ehPago = itemApp.reembolso_status === "pago" || itemApp.item_status === "pago";
-    const ehRejeitado = itemApp.item_status === "rejeitado" || itemApp.reembolso_status === "rejeitado";
-    if (ehPago || ehRejeitado) continue;
-
-    const valor = Number(itemApp.amount_cents);
-    const parTotal = itemApp.installment_total ?? 1;
-    const parAtual = itemApp.installment_number ?? 1;
-    const parRest = Math.max(1, parTotal - parAtual + 1);
-    const valorPar = parTotal > 1 ? Math.round(valor / parTotal) : valor;
-    const saldoTotal = parTotal > 1 ? valorPar * parRest : valor;
-
-    const jaExiste = restantes.some(
-      (r) => r.saldoCents === saldoTotal || (r.parcelaCents === valorPar && r.parcelasTotal === parTotal)
-    );
-    if (!jaExiste) {
-      restantes.push({
-        descricao: itemApp.descricao,
-        parcela: parAtual,
-        parcelasTotal: parTotal,
-        parcelaCents: valorPar,
-        parcelasRestantes: parRest,
-        saldoCents: saldoTotal
-      });
-    }
-  }
+  /*
+   * A segunda fusão manual também saiu (0179). Ela deduplicava com uma regra
+   * DIFERENTE da primeira — `saldoCents === saldoTotal || (parcelaCents ===
+   * valorPar && parcelasTotal === parTotal)` —, então o Início e esta tela
+   * podiam discordar entre si sobre a mesma dívida. Agora as duas leem a view.
+   */
 
   const totalEmAbertoCents = restantes.reduce((s, r) => s + r.saldoCents, 0);
 

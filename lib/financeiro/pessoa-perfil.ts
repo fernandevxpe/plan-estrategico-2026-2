@@ -106,7 +106,13 @@ export type ComissaoDeclaradaLinha = {
   nota: string | null;
 };
 
-/** Série parcelada em `fin_reembolso_saldo_v` — o que falta e o que já caiu. */
+/**
+ * Série parcelada em `fin_reembolso_saldo_unificado_v` (0179) — o que falta e o
+ * que já caiu, da planilha E do app.
+ *
+ * Era `fin_reembolso_saldo_v`, que só conhece a planilha: um reembolso pedido
+ * pelo aplicativo aparecia para a pessoa no /time e sumia aqui, para quem paga.
+ */
 export type ReembolsoSerie = {
   slug: string;
   descricao: string;
@@ -230,7 +236,7 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
               (SELECT to_char(min(i.criado_em), 'YYYY-MM-DD')
                  FROM fin_reembolso_item i
                 WHERE i.person_id = s.person_id AND i.slug = s.slug) AS cadastrado_em
-         FROM fin_reembolso_saldo_v s
+         FROM fin_reembolso_saldo_unificado_v s
         WHERE s.person_id = $1
         ORDER BY s.quitado ASC, s.saldo_cents DESC, s.descricao`,
       [personId]

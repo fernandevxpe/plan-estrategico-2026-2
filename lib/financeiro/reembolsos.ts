@@ -406,7 +406,8 @@ export async function getPainelReembolsos(): Promise<PainelReembolsos> {
         WHERE e.slug = $1 AND c.is_active ORDER BY c.code`,
       [ENTITY]
     ),
-    // Mesma fonte do perfil (`fin_reembolso_saldo_v`): restante = saldo das
+    // Mesma fonte do perfil (`fin_reembolso_saldo_unificado_v`, 0179 — planilha
+    // E app): restante = saldo das
     // séries; previsão = soma das próximas cotas (parcelas_restantes >= 1).
     // Não usa fin_installment_plan: os itens históricos estão com
     // installment_plan_id NULL, então "parcelas futuras" do plano zera e a
@@ -419,7 +420,7 @@ export async function getPainelReembolsos(): Promise<PainelReembolsos> {
                 SUM(valor_parcela_cents) FILTER (WHERE parcelas_restantes >= 1),
                 0
               )::bigint AS previsao_parcelas_cents
-         FROM fin_reembolso_saldo_v
+         FROM fin_reembolso_saldo_unificado_v
         WHERE NOT quitado
         GROUP BY person_id`
     )

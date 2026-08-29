@@ -2432,7 +2432,16 @@ function TelaPerfil({
    * componente — não é o caso de duas telas discordando, é o caso de um número
    * aparecer onde ele é procurado.
    */
-  const [resumoRec, setResumoRec] = useState<{ mediana: number; aberto: number; desde: string | null } | null>(null);
+  const [resumoRec, setResumoRec] = useState<{
+    mes: string;
+    salario: number;
+    prolabore: number;
+    comissao: number;
+    reembolso: number;
+    total: number;
+    aberto: number;
+    desde: string | null;
+  } | null>(null);
   const [salvandoConta, setSalvandoConta] = useState(false);
   const [erroConta, setErroConta] = useState<string | null>(null);
   const [contaOk, setContaOk] = useState(false);
@@ -2448,8 +2457,27 @@ function TelaPerfil({
       const j = await r.json().catch(() => ({}));
       void carregarRecebiveis().then(({ dado }) => {
         if (dado) {
+          /*
+           * A COMPOSIÇÃO CADASTRADA, não a mediana do que já caiu.
+           *
+           * O perfil dizia "Recebo de hábito — R$ X, mediana por mês". É um
+           * número honesto sobre o passado e inútil como resposta à pergunta
+           * que se faz olhando o próprio cadastro: "quanto eu recebo". Quem
+           * tinha acabado de ter o pró-labore ajustado via o valor antigo, e
+           * quem tinha comissão lançada não via comissão nenhuma.
+           */
+          const prox = (dado.previsao ?? [])[0];
           setResumoRec({
-            mediana: dado.medianaRecorrenteCents ?? 0,
+            mes: prox?.mes ?? "",
+            salario: prox?.salarioCents ?? 0,
+            prolabore: prox?.prolaboreCents ?? 0,
+            comissao: prox?.comissaoCents ?? 0,
+            reembolso: prox?.reembolsoCents ?? 0,
+            total:
+              (prox?.salarioCents ?? 0) +
+              (prox?.prolaboreCents ?? 0) +
+              (prox?.comissaoCents ?? 0) +
+              (prox?.reembolsoCents ?? 0),
             aberto: dado.emAbertoCents ?? 0,
             desde: dado.desde ?? null
           });
@@ -2703,21 +2731,39 @@ function TelaPerfil({
         pessoa vem preencher quando abre esta tela pela primeira vez.
       */}
       {resumoRec ? (
-        <div className="perfil-numeros">
-          <div>
-            <span>Recebo de hábito</span>
-            <strong>{brl(resumoRec.mediana)}</strong>
-            {/* "mediana" escrito: não é o contrato, é o que costuma cair.
-                A média seria puxada pelos extremos — nos oito meses do
-                Fernando os valores vão de R$ 2.386 a R$ 7.644. */}
-            <small>mediana por mês</small>
+        <>
+          <div className="perfil-numeros">
+            <div>
+              <span>Vou receber</span>
+              <strong>{brl(resumoRec.total)}</strong>
+              <small>{resumoRec.mes ? nomeMesRec(resumoRec.mes) : "próximo mês"}</small>
+            </div>
+            <div>
+              <span>Reembolso em aberto</span>
+              <strong>{brl(resumoRec.aberto)}</strong>
+              <small>{resumoRec.aberto > 0 ? "a dívida inteira, não a parcela" : "nada em aberto"}</small>
+            </div>
           </div>
-          <div>
-            <span>Reembolso previsto</span>
-            <strong>{brl(resumoRec.aberto)}</strong>
-            <small>{resumoRec.aberto > 0 ? "aprovado, ainda não pago" : "nada em aberto"}</small>
-          </div>
-        </div>
+          {/* A COMPOSIÇÃO, aberta. O total sozinho não diz de onde vem, e é
+              justamente a divisão que a pessoa quer conferir contra o que
+              combinou. Cada faixa só aparece quando existe. */}
+          <ul className="perfil-composicao">
+            {([
+              ["Salário", resumoRec.salario, "nat-salario"],
+              ["Pró-labore", resumoRec.prolabore, "nat-recorrente"],
+              ["Comissão", resumoRec.comissao, "nat-comissao"],
+              ["Reembolso", resumoRec.reembolso, "nat-reembolso"]
+            ] as [string, number, string][])
+              .filter(([, v]) => v > 0)
+              .map(([rotulo, valor, classe]) => (
+                <li key={rotulo}>
+                  <i className={`rec-ponto ${classe}`} aria-hidden />
+                  <span>{rotulo}</span>
+                  <b>{brl(valor)}</b>
+                </li>
+              ))}
+          </ul>
+        </>
       ) : null}
 
       <form className="time-porta-form conta-pgto time-perfil-secao" onSubmit={salvarConta}>

@@ -4610,7 +4610,7 @@ export type MinhasComissoes = {
   };
   itens: ItemComissao[];
   meses: { mes: string; totalCents: number; futura: boolean; n: number }[];
-  porTipo: { slug: string; nome: string; totalCents: number; n: number }[];
+  porTipo: { slug: string; nome: string; totalCents: number; aReceberCents: number; n: number }[];
   clientes: string[];
 };
 
@@ -4648,7 +4648,7 @@ export async function minhasComissoes(sessao: Sessao): Promise<MinhasComissoes> 
   }));
 
   const porMes = new Map<string, { mes: string; totalCents: number; futura: boolean; n: number }>();
-  const porTipo = new Map<string, { slug: string; nome: string; totalCents: number; n: number }>();
+  const porTipo = new Map<string, { slug: string; nome: string; totalCents: number; aReceberCents: number; n: number }>();
   const clientes = new Set<string>();
   let recebido = 0;
   let aReceber = 0;
@@ -4661,8 +4661,9 @@ export async function minhasComissoes(sessao: Sessao): Promise<MinhasComissoes> 
 
     // "sem_tipo" é lacuna visível, não erro: são as linhas anteriores à 0178.
     const slug = i.tipoSlug ?? "sem_tipo";
-    const t = porTipo.get(slug) ?? { slug, nome: i.tipoNome ?? "Sem tipo", totalCents: 0, n: 0 };
+    const t = porTipo.get(slug) ?? { slug, nome: i.tipoNome ?? "Sem tipo", totalCents: 0, aReceberCents: 0, n: 0 };
     t.totalCents += i.valorCents;
+    if (i.futura) t.aReceberCents += i.valorCents;
     t.n += 1;
     porTipo.set(slug, t);
 

@@ -1349,7 +1349,7 @@ type ComissoesTela = {
   };
   itens: ItemComissaoTela[];
   meses: { mes: string; totalCents: number; futura: boolean; n: number }[];
-  porTipo: { slug: string; nome: string; totalCents: number; n: number }[];
+  porTipo: { slug: string; nome: string; totalCents: number; aReceberCents: number; n: number }[];
   clientes: string[];
 };
 
@@ -1438,6 +1438,23 @@ function TelaComissoesVisao() {
   const nRecebido = dados.itens.filter((i) => !i.futura).length;
   const nAReceber = dados.itens.filter((i) => i.futura).length;
 
+  /*
+   * O mês dos indicadores: o filtrado, ou o próximo mês. Cair no próximo (e
+   * não no total) é o que faz os quatro cartões responderem ao gráfico — tocar
+   * numa barra recompõe os indicadores daquele mês.
+   */
+  const mesIndicador = mesFiltro ?? resumo.proximoMes ?? meses[meses.length - 1]?.mes ?? "";
+  const doMes = dados.itens.filter((i) => i.competencia === mesIndicador);
+  const somaTipo = (slug: string) =>
+    doMes.filter((i) => i.tipoSlug === slug).reduce((s, i) => s + i.valorCents, 0);
+  const kpiTotal = doMes.reduce((s, i) => s + i.valorCents, 0);
+  const kpiN = doMes.length;
+  const kpiConsultoria = somaTipo("vendas_consultoria");
+  const kpiObras = somaTipo("vendas_obras");
+  // "Outros" é tudo menos consultoria e obras — por subtração, para que nenhum
+  // tipo novo fique fora da conta sem ninguém perceber.
+  const kpiOutros = kpiTotal - kpiConsultoria - kpiObras;
+
   const limparTudo = () => {
     setBusca(""); setFiltroQuando("todos"); setTipoFiltro(null);
     setClienteFiltro(null); setMesFiltro(null);
@@ -1450,28 +1467,39 @@ function TelaComissoesVisao() {
         <p>Declaradas, parcelas e o que ainda vai cair</p>
       </header>
 
-      {/* KPIs — as classes já existiam no CSS sem uso. */}
-      <section className="reemb-destaques" aria-label="Resumo das comissões">
+      {/*
+        OS QUATRO INDICADORES SÃO DO MÊS, não do total da vida.
+        "Quanto eu recebo de comissão em setembro, e de quê" é a pergunta;
+        um total acumulado desde maio não responde. O mês é o que estiver
+        filtrado — pelo chip ou pela barra do gráfico — e, sem filtro, o
+        próximo mês, que é o que ainda vai cair.
+      */}
+      <section className="reemb-destaques" aria-label={`Comissões de ${mesNome(`${mesIndicador}-01`)}`}>
         <article className="reemb-destaque-card">
-          <span className="reemb-kpi-rotulo">A receber</span>
-          <strong className="reemb-kpi-valor">{brl(resumo.aReceberCents)}</strong>
+          <span className="reemb-kpi-rotulo">Total do mês</span>
+          <strong className="reemb-kpi-valor">{brl(kpiTotal)}</strong>
           <span className="reemb-kpi-detalhe">
-            {resumo.proximoMes
-              ? `${brl(resumo.proximoMesCents)} em ${mesNome(`${resumo.proximoMes}-01`)}`
-              : "nada lançado para frente"}
+            {MES_CURTO(mesIndicador)} · {kpiN} {kpiN === 1 ? "lançamento" : "lançamentos"}
           </span>
         </article>
         <article className="reemb-destaque-card">
-          <span className="reemb-kpi-rotulo">Já recebido</span>
-          <strong className="reemb-kpi-valor">{brl(resumo.recebidoCents)}</strong>
-          <span className="reemb-kpi-detalhe">competências até este mês</span>
+          <span className="reemb-kpi-rotulo">Consultoria</span>
+          <strong className="reemb-kpi-valor">{brl(kpiConsultoria)}</strong>
+          <span className="reemb-kpi-detalhe">
+            {kpiTotal > 0 ? `${Math.round((kpiConsultoria / kpiTotal) * 100)}% do mês` : "—"}
+          </span>
         </article>
         <article className="reemb-destaque-card">
-          <span className="reemb-kpi-rotulo">Total declarado</span>
-          <strong className="reemb-kpi-valor">{brl(resumo.totalDeclaradoCents)}</strong>
+          <span className="reemb-kpi-rotulo">Obras</span>
+          <strong className="reemb-kpi-valor">{brl(kpiObras)}</strong>
           <span className="reemb-kpi-detalhe">
-            {resumo.itensCount} {resumo.itensCount === 1 ? "lançamento" : "lançamentos"}
+            {kpiTotal > 0 ? `${Math.round((kpiObras / kpiTotal) * 100)}% do mês` : "—"}
           </span>
+        </article>
+        <article className="reemb-destaque-card">
+          <span className="reemb-kpi-rotulo">Outros</span>
+          <strong className="reemb-kpi-valor">{brl(kpiOutros)}</strong>
+          <span className="reemb-kpi-detalhe">lotes, gestão, diárias e demais</span>
         </article>
       </section>
 
@@ -1556,6 +1584,12 @@ function TelaComissoesVisao() {
                   <div className="reemb-cartao-valores">
                     <span className="reemb-cartao-subrotulo">Total</span>
                     <strong className="reemb-cartao-val-gasto">{brl(t.totalCents)}</strong>
+                    {t.aReceberCents > 0 ? (
+                      <>
+                        <span className="reemb-cartao-subrotulo">A receber</span>
+                        <strong className="reemb-cartao-val-rec">{brl(t.aReceberCents)}</strong>
+                      </>
+                    ) : null}
                   </div>
                 </button>
               );
@@ -1636,6 +1670,38 @@ function TelaComissoesVisao() {
               ))}
             </div>
           ) : null}
+
+          {/*
+            Chips de MÊS além do clique no gráfico. O gráfico já filtrava, mas
+            era preciso descobrir que a barra é clicável; aqui o recorte tem
+            nome, valor e conta — "set/26 · R$ 10,00 · 4" —, que é como se
+            compara a composição de um mês com a do outro sem abrir cada um.
+          */}
+          {colunas.length > 1 ? (
+            <div className="reemb-filtro-chips">
+              <button
+                type="button"
+                className={`reemb-chip ${!mesFiltro ? "ativo" : ""}`}
+                onClick={() => setMesFiltro(null)}
+              >
+                Todos os meses
+              </button>
+              {colunas
+                .filter((c) => c.valorCents > 0)
+                .map((c) => (
+                  <button
+                    key={`chip-${c.mes}`}
+                    type="button"
+                    className={`reemb-chip ${mesFiltro === c.mes ? "ativo" : ""}`}
+                    aria-pressed={mesFiltro === c.mes}
+                    onClick={() => setMesFiltro(mesFiltro === c.mes ? null : c.mes)}
+                    title={`${c.nomeMes}${c.previsto ? " · previsto" : " · fechado"}`}
+                  >
+                    {MES_CURTO(c.mes)} · {brl(c.valorCents)}
+                  </button>
+                ))}
+            </div>
+          ) : null}
         </div>
 
         {temFiltro || mesFiltro ? (
@@ -1656,64 +1722,94 @@ function TelaComissoesVisao() {
               : "Nenhuma comissão com esses filtros."}
           </p>
         ) : (
-          <ul className="reemb-lista">
-            {ordenados.map((i) => (
-              <li key={i.id}>
-                <details className="reemb-item">
-                  <summary className="reemb-item-cabeca">
-                    <span className="reemb-item-titulo">
-                      {i.descricao}
-                      <span className="reemb-item-sub">
-                        {[
-                          mesNome(`${i.competencia}-01`),
-                          i.tipoNome,
-                          i.cliente,
-                          i.ehEntrada
-                            ? "entrada"
-                            : i.parcelasTotal && i.parcelasTotal > 1
-                              ? `parcela ${i.parcela} de ${i.parcelasTotal}`
-                              : null
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    </span>
-                    <span className="reemb-item-valor">
-                      <b>{brl(i.valorCents)}</b>
-                      <small>{i.futura ? "a receber" : "fechada"}</small>
-                    </span>
-                  </summary>
-                  <div className="reemb-item-corpo">
-                    <dl className="reemb-item-dados">
-                      <div>
-                        <dt>Competência</dt>
-                        <dd>{mesNome(`${i.competencia}-01`)}</dd>
+          <>
+            <div className="reemb-lista-sumario">
+              <span className="reemb-sumario-qtd">
+                {ordenados.length} {ordenados.length === 1 ? "lançamento" : "lançamentos"}
+                {filtroQuando === "areceber" ? " a receber" : filtroQuando === "recebido" ? " fechados" : ""}
+              </span>
+              <span className="reemb-sumario-total">
+                Total <strong>{brl(totalFiltrado)}</strong>
+              </span>
+            </div>
+
+            <ul className="reemb-lista">
+              {ordenados.map((i) => {
+                const ehParcelado = Boolean(i.parcelasTotal && i.parcelasTotal > 1);
+                return (
+                  <li key={`c-${i.id}`} className="reemb-item-linha">
+                    <details className="reemb-item-dobravel">
+                      <summary className="reemb-item-resumo">
+                        <div className="reemb-item-principal">
+                          <div className="reemb-item-topo-linha">
+                            <span className="reemb-item-titulo">{i.descricao}</span>
+                            <span className="reemb-item-valor">{brl(i.valorCents)}</span>
+                          </div>
+                          <div className="reemb-item-sub-linha">
+                            <span>{MES_CURTO(i.competencia)}</span>
+                            {i.tipoNome ? <span>· {i.tipoNome}</span> : null}
+                            {i.cliente ? <span>· {i.cliente}</span> : null}
+                            <span className={`reemb-badge ${i.futura ? "aprovado" : "pago"}`}>
+                              {i.futura ? "A receber" : "Fechada"}
+                            </span>
+                            {i.ehEntrada ? (
+                              <span className="reemb-badge parcelas">entrada</span>
+                            ) : ehParcelado ? (
+                              <span className="reemb-badge parcelas">
+                                {i.parcela}/{i.parcelasTotal}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        <svg className="reemb-item-seta" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+                          <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </summary>
+
+                      <div className="reemb-item-detalhes-expansao">
+                        <div className="reemb-detalhe-grid">
+                          <div>
+                            <span className="reemb-detalhe-rotulo">Competência</span>
+                            <span className="reemb-detalhe-dado">{mesNome(`${i.competencia}-01`)}</span>
+                          </div>
+                          <div>
+                            <span className="reemb-detalhe-rotulo">Tipo</span>
+                            <span className="reemb-detalhe-dado">{i.tipoNome ?? "—"}</span>
+                          </div>
+                          <div>
+                            <span className="reemb-detalhe-rotulo">Cliente / obra</span>
+                            <span className="reemb-detalhe-dado">{i.cliente ?? "—"}</span>
+                          </div>
+                          <div>
+                            <span className="reemb-detalhe-rotulo">Forma de pagamento</span>
+                            <span className="reemb-detalhe-dado">
+                              {i.ehEntrada
+                                ? `Entrada de ${i.parcelasTotal} lançamentos`
+                                : ehParcelado
+                                  ? `Parcela ${i.parcela} de ${i.parcelasTotal}`
+                                  : "À vista"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="reemb-detalhe-rotulo">Situação</span>
+                            <span className="reemb-detalhe-dado">
+                              {i.futura ? "Competência ainda não chegou" : "Competência fechada"}
+                            </span>
+                          </div>
+                        </div>
+                        {i.nota ? (
+                          <div className="reemb-detalhe-campo">
+                            <span className="reemb-detalhe-rotulo">Nota</span>
+                            <span className="reemb-detalhe-dado">{i.nota}</span>
+                          </div>
+                        ) : null}
                       </div>
-                      <div>
-                        <dt>Tipo</dt>
-                        <dd>{i.tipoNome ?? "—"}</dd>
-                      </div>
-                      <div>
-                        <dt>Cliente</dt>
-                        <dd>{i.cliente ?? "—"}</dd>
-                      </div>
-                      <div>
-                        <dt>Pagamento</dt>
-                        <dd>
-                          {i.ehEntrada
-                            ? `entrada de ${i.parcelasTotal} lançamentos`
-                            : i.parcelasTotal && i.parcelasTotal > 1
-                              ? `parcela ${i.parcela} de ${i.parcelasTotal}`
-                              : "à vista"}
-                        </dd>
-                      </div>
-                    </dl>
-                    {i.nota ? <p className="reemb-item-nota">{i.nota}</p> : null}
-                  </div>
-                </details>
-              </li>
-            ))}
-          </ul>
+                    </details>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </section>
     </div>

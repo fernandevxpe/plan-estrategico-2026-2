@@ -16947,7 +16947,24 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 
 /* ---- Meu reembolso: o dinheiro que a empresa deve à pessoa ---------------- */
-.reemb { display: grid; gap: 16px; }
+/*
+ * A COLUNA NÃO PODE CRESCER ALÉM DO CONTÊINER.
+ *
+ * Sem `grid-template-columns`, a coluna implícita é `auto` — que resolve para
+ * o max-content do filho mais largo. `.reemb-cartoes-grid` usa
+ * `repeat(auto-fit, minmax(180px, 1fr))`, e com SEIS azulejos o max-content
+ * dele é 6×180 + gaps = 1134px. Isso esticava a coluna e, com ela, todo o
+ * resto: KPIs, chips e a lista inteira nasciam com 1134px num viewport de
+ * 390px, e o valor de cada linha ia parar em x=1071 — fora da tela.
+ *
+ * Em Reembolsos o mesmo defeito existia e não aparecia: com dois cartões o
+ * max-content dá 368px, que cabe. Era uma bomba com pavio de contagem.
+ *
+ * `minmax(0, 1fr)` prende a coluna à largura disponível; o `min-width: 0` nos
+ * filhos deixa cada um encolher em vez de empurrar.
+ */
+.reemb { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.reemb > * { min-width: 0; }
 .reemb h1 { font-size: 22px; font-weight: 750; margin: 0; }
 .reemb h3 { margin: 0 0 10px; font-size: 15px; font-weight: 650; }
 
@@ -16983,9 +17000,15 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 
 .reemb-destaques {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  /*
+   * Era `display: flex` sem `wrap`: os cartões ficavam numa linha só e, no
+   * celular, o segundo em diante saía pela direita. Grade de duas colunas
+   * quebra em 2×2 — o formato em que quatro indicadores se comparam.
+   */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 10px;
   margin: 10px 0 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--line);
@@ -17394,7 +17417,13 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   background: rgba(245, 158, 11, 0.2);
 }
 
-.reemb-bloco { display: grid; gap: 8px; }
+/* Mesma trava de `.reemb`: sem `grid-template-columns` a coluna implícita vira
+   max-content, e aí `.reemb-filtro-chips` (que tem `overflow-x: auto`) nunca
+   ganha largura definida para rolar — ele simplesmente cresce, levando a lista
+   junto. Foi o que jogava o valor de cada linha para x=1071 num viewport de
+   390px. A cadeia inteira precisa de `min-width: 0`, não só o topo. */
+.reemb-bloco { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.reemb-bloco > *, .reemb-toolbar > *, .reemb-lista > * { min-width: 0; }
 
 /* Doze barras de um valor só não justificam trazer uma biblioteca de gráfico
    para o bundle de um app de celular. SVG puro, e o `aria-label` carrega os
@@ -17417,8 +17446,10 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 
 .reemb-cartoes-grid {
+  /* 140px em vez de 180px: com seis tipos, 180 forçava uma sétima coluna
+     virtual e o max-content explodia. 140 cabe em duas colunas num 390px. */
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 8px;
 }
 
@@ -17447,10 +17478,10 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 
 .reemb-cartao-cabeca {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px;
+  /* Empilha nome e contagem: em 175px eles não convivem na mesma linha. */
+  display: grid;
+  gap: 2px;
+  margin-bottom: 6px;
 }
 
 .reemb-cartao-nome {
@@ -17465,11 +17496,23 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 }
 
 .reemb-cartao-valores {
-  display: flex;
+  /*
+   * Duas colunas fixas — rótulo à esquerda, número à direita — em vez de
+   * `justify-content: space-between` num flex.
+   *
+   * O flex funcionava enquanto o azulejo era largo (em Reembolsos há dois, um
+   * por linha). Com seis tipos os azulejos vão a dois por linha, ~175px, e aí
+   * "Total R$ 19,00  A receber R$ 14,00" não cabe numa linha só: o segundo par
+   * era cortado no meio do número. A grade empilha os pares, que é o que
+   * sobrevive a qualquer largura.
+   */
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  column-gap: 8px;
+  row-gap: 2px;
 }
+.reemb-cartao-valores > strong { text-align: right; }
 
 .reemb-cartao-subrotulo {
   display: block;

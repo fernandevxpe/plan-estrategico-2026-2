@@ -181,6 +181,16 @@ export function Recebiveis() {
     .join("; ");
 
   const porMesDesc = [...dado.porMes].reverse();
+  const ultimoMesRec = porMesDesc[0] ?? null;
+  const ultimoRemun = ultimoMesRec
+    ? (ultimoMesRec.porNatureza?.salario ?? 0) +
+      (ultimoMesRec.porNatureza?.prolabore ?? 0) +
+      (ultimoMesRec.porNatureza?.estagio ?? 0) +
+      (ultimoMesRec.porNatureza?.comissao ?? 0) +
+      (ultimoMesRec.porNatureza?.extra ?? 0)
+    : 0;
+  const ultimoReemb = ultimoMesRec?.porNatureza?.reembolso ?? 0;
+
   const previsaoMeses = dado.previsao ?? [];
   const proximoMes = previsaoMeses[0];
   const totalReembolsoPrevisto = dado.emAbertoCents;
@@ -188,9 +198,21 @@ export function Recebiveis() {
   const comissaoProximoMes = proximoMes?.comissaoCents ?? 0;
   const remProximoMes =
     (proximoMes?.salarioCents ?? 0) + (proximoMes?.prolaboreCents ?? 0) + comissaoProximoMes;
-  const previstoProximoMes = remProximoMes + (proximoMes?.reembolsoCents ?? 0);
+  const reembProximoMes = proximoMes?.reembolsoCents ?? 0;
+  const previstoProximoMes = remProximoMes + reembProximoMes;
   const reembolsosFuturosCents =
     dado.emAbertoCents > 0 ? dado.emAbertoCents : totalReembolsoParcelas;
+  const totalComissaoFutura = (dado.previsao ?? []).reduce(
+    (acc, p) => acc + (p.comissaoCents ?? 0),
+    0
+  );
+  const comissoesFuturasPorComp = (dado.comissaoPorCompetencia ?? []).filter(
+    (c) => !proximoMes || c.competencia >= proximoMes.mes
+  );
+  const comissoesDoProximoMes = (dado.comissaoPorCompetencia ?? []).find(
+    (c) => c.competencia === proximoMes?.mes
+  )?.itens ?? [];
+  const temFuturos = reembolsosFuturosCents > 0 || totalComissaoFutura > 0;
   /*
    * O "previsto" do cabeçalho é o MÊS SEGUINTE inteiro — salário, pró-labore,
    * comissão e a PARCELA de reembolso daquele mês.
@@ -207,37 +229,82 @@ export function Recebiveis() {
     <div className="time-tela-padrao">
       <header className="time-form-cabeca">
         <h1>Recebíveis</h1>
-        <p>Tudo que a XPE te pagou desde {dado.desde ? nomeMes(dado.desde) : "janeiro de 2026"}.</p>
+        <p>Gestão financeira das entradas</p>
       </header>
 
       <div className="time-faixa">
         <article className="time-faixa-item time-faixa-destaque">
-          <span className="time-faixa-rotulo">{porMesDesc[0] ? mesNome(porMesDesc[0].mes) : "no mês"}</span>
-          <strong className="time-faixa-valor">{brl(porMesDesc[0]?.totalCents ?? 0)}</strong>
-          <small className="time-faixa-nota">
-            {porMesDesc[0]
-              ? plural(dado.linhas.filter((l) => l.mes === porMesDesc[0].mes).length, "pagamento", "pagamentos")
-              : "nada ainda"}
-          </small>
+          <strong className="time-faixa-valor">
+            {brl(ultimoRemun > 0 ? ultimoRemun : (ultimoMesRec?.totalCents ?? 0))}
+          </strong>
+          {ultimoMesRec && ultimoReemb > 0 && ultimoRemun > 0 ? (
+            <span className="time-faixa-nota time-nota-reemb">
+              + {brl(ultimoReemb)}
+            </span>
+          ) : (
+            <small className="time-faixa-nota">
+              {ultimoMesRec
+                ? plural(dado.linhas.filter((l) => l.mes === ultimoMesRec.mes).length, "pagamento", "pagamentos")
+                : "nada ainda"}
+            </small>
+          )}
+          <span className="time-faixa-rotulo">{ultimoMesRec ? mesNome(ultimoMesRec.mes) : "no mês"}</span>
         </article>
         <article className="time-faixa-item time-faixa-previsto">
+          <strong className="time-faixa-valor">
+            {brl(remProximoMes > 0 ? remProximoMes : previstoProximoMes)}
+          </strong>
+          {proximoMes && reembProximoMes > 0 && remProximoMes > 0 ? (
+            <span className="time-faixa-nota time-nota-reemb">
+              + {brl(reembProximoMes)}
+            </span>
+          ) : (
+            <small className="time-faixa-nota">previsto</small>
+          )}
           <span className="time-faixa-rotulo">
             {proximoMes ? mesNome(proximoMes.mes) : "Próximo mês"}
           </span>
-          <strong className="time-faixa-valor">{brl(previstoProximoMes)}</strong>
-          <small className="time-faixa-nota">previsto</small>
         </article>
-        {reembolsosFuturosCents > 0 ? (
+        {temFuturos ? (
           <a className="time-faixa-item time-faixa-reembolso" href="#aberto">
-            <span className="time-faixa-rotulo">Reembolso</span>
-            <strong className="time-faixa-valor">{brl(reembolsosFuturosCents)}</strong>
-            <small className="time-faixa-nota">à receber</small>
+            {totalComissaoFutura > 0 && reembolsosFuturosCents > 0 ? (
+              <div className="time-faixa-par">
+                <div className="time-faixa-par-item">
+                  <strong className="time-faixa-valor time-valor-reemb">
+                    {brl(reembolsosFuturosCents)}
+                  </strong>
+                  <span className="time-faixa-rotulo">Reembolso</span>
+                </div>
+                <div className="time-faixa-par-item">
+                  <strong className="time-faixa-valor time-valor-comissao">
+                    + {brl(totalComissaoFutura)}
+                  </strong>
+                  <span className="time-faixa-rotulo">Comissão</span>
+                </div>
+              </div>
+            ) : totalComissaoFutura > 0 ? (
+              <>
+                <strong className="time-faixa-valor time-valor-comissao">
+                  {brl(totalComissaoFutura)}
+                </strong>
+                <small className="time-faixa-nota">à receber</small>
+                <span className="time-faixa-rotulo">Comissão futura</span>
+              </>
+            ) : (
+              <>
+                <strong className="time-faixa-valor time-valor-reemb">
+                  {brl(reembolsosFuturosCents)}
+                </strong>
+                <small className="time-faixa-nota">à receber</small>
+                <span className="time-faixa-rotulo">Reembolso total</span>
+              </>
+            )}
           </a>
         ) : (
           <article className="time-faixa-item">
-            <span className="time-faixa-rotulo">Em 2026</span>
             <strong className="time-faixa-valor">{brl(dado.totalCents)}</strong>
             <small className="time-faixa-nota">nada em aberto</small>
+            <span className="time-faixa-rotulo">Em 2026</span>
           </article>
         )}
       </div>
@@ -289,7 +356,7 @@ export function Recebiveis() {
                 {totalPrevisto > 0 ? (
                   <span className="rec-secao-total">
                     <strong>{brl(totalPrevisto)}</strong>
-                    <small>previsto</small>
+                    <small>{proximoMes ? mesNome(proximoMes.mes) : "previsto"}</small>
                   </span>
                 ) : null}
                 <IconeSeta />
@@ -303,9 +370,12 @@ export function Recebiveis() {
                   <i className={`rec-ponto ${CLASSE.salario}`} aria-hidden />
                   <span className="rec-nat-nome">
                     Salário
-                    <small>{nomeMesTitulo(proximoMes.mes)}</small>
+                    <small>Salário base 2026</small>
                   </span>
-                  <b className="rec-nat-valor">{brl(proximoMes.salarioCents)}</b>
+                  <b className="rec-nat-valor">
+                    <span>{brl(proximoMes.salarioCents)}</span>
+                    <small className="rec-nat-sub">{nomeMesTitulo(proximoMes.mes)}</small>
+                  </b>
                 </div>
               </li>
             ) : null}
@@ -315,50 +385,120 @@ export function Recebiveis() {
                   <i className={`rec-ponto ${CLASSE.prolabore}`} aria-hidden />
                   <span className="rec-nat-nome">
                     Pró-labore
-                    <small>{nomeMesTitulo(proximoMes.mes)}</small>
+                    <small>Recorrente 2026</small>
                   </span>
-                  <b className="rec-nat-valor">{brl(proximoMes.prolaboreCents)}</b>
+                  <b className="rec-nat-valor">
+                    <span>{brl(proximoMes.prolaboreCents)}</span>
+                    <small className="rec-nat-sub">{nomeMesTitulo(proximoMes.mes)}</small>
+                  </b>
                 </div>
               </li>
             ) : null}
-            {proximoMes && proximoMes.comissaoCents > 0 ? (
+            {totalComissaoFutura > 0 || comissaoProximoMes > 0 ? (
               <li>
-                <div className="rec-nat-linha">
-                  <i className={`rec-ponto ${CLASSE.comissao}`} aria-hidden />
-                  <span className="rec-nat-nome">
-                    Comissão
-                    <small>{nomeMesTitulo(proximoMes.mes)}</small>
-                  </span>
-                  <b className="rec-nat-valor">{brl(proximoMes.comissaoCents)}</b>
-                </div>
+                <details className="rec-nat-prev" open>
+                  <summary className="rec-nat-linha">
+                    <i className={`rec-ponto ${CLASSE.comissao}`} aria-hidden />
+                    <span className="rec-nat-nome">
+                      Comissão
+                      {totalComissaoFutura > 0 ? (
+                        <small>
+                          {totalComissaoFutura > comissaoProximoMes
+                            ? `total declarado ${brl(totalComissaoFutura)}`
+                            : `total em aberto ${brl(totalComissaoFutura)}`}
+                        </small>
+                      ) : null}
+                    </span>
+                    <b className="rec-nat-valor">
+                      <span>{brl(comissaoProximoMes > 0 ? comissaoProximoMes : totalComissaoFutura)}</span>
+                      {proximoMes ? (
+                        <small className="rec-nat-sub">{nomeMesTitulo(proximoMes.mes)}</small>
+                      ) : null}
+                    </b>
+                    <IconeSeta />
+                  </summary>
+                  <ul className="rec-aberto-lista rec-aberto-lista-aninhada">
+                    {(comissoesDoProximoMes.length > 0 ? comissoesDoProximoMes : comissoesFuturasPorComp[0]?.itens ?? []).map((it, idx) => (
+                      <li key={`${it.descricao}-${idx}`}>
+                        <span className="rec-aberto-nome">
+                          {it.descricao}
+                          <span className="rec-aberto-parc">
+                            {[
+                              it.tipo,
+                              it.cliente,
+                              it.ehEntrada
+                                ? "entrada"
+                                : it.parcelasTotal && it.parcelasTotal > 1
+                                  ? `parcela ${it.parcela} de ${it.parcelasTotal}`
+                                  : null
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                            {it.nota ? (
+                              <span style={{ display: "block", color: "var(--muted)", fontStyle: "italic", marginTop: 2 }}>
+                                {it.nota}
+                              </span>
+                            ) : null}
+                          </span>
+                        </span>
+                        <span className="rec-aberto-valor">{brl(it.valorCents)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {previsaoMeses.filter((p) => p.comissaoCents > 0).length > 1 ? (
+                    <ul className="rec-prev-meses rec-prev-meses-aninhada rec-prev-parcelas">
+                      {previsaoMeses
+                        .filter((p) => p.comissaoCents > 0)
+                        .map((p) => (
+                          <li key={p.mes}>
+                            <span className="rec-prev-mes">{nomeMesTitulo(p.mes)}</span>
+                            <b>{brl(p.comissaoCents)}</b>
+                          </li>
+                        ))}
+                    </ul>
+                  ) : null}
+                </details>
               </li>
             ) : null}
-            {totalReembolsoPrevisto > 0 ? (
+            {totalReembolsoPrevisto > 0 || reembProximoMes > 0 ? (
               <li>
                 <details className="rec-nat-prev">
                   <summary className="rec-nat-linha">
                     <i className={`rec-ponto ${CLASSE.reembolso}`} aria-hidden />
                     <span className="rec-nat-nome">
                       Reembolso
-                      <small>aprovado, ainda não pago</small>
+                      {totalReembolsoPrevisto > 0 ? (
+                        <small>
+                          total em aberto {brl(totalReembolsoPrevisto)}
+                        </small>
+                      ) : (
+                        <small>aprovado, ainda não pago</small>
+                      )}
                     </span>
-                    <b className="rec-nat-valor">{brl(totalReembolsoPrevisto)}</b>
+                    <b className="rec-nat-valor">
+                      <span>{brl(reembProximoMes > 0 ? reembProximoMes : totalReembolsoPrevisto)}</span>
+                      {proximoMes ? (
+                        <small className="rec-nat-sub">{nomeMesTitulo(proximoMes.mes)}</small>
+                      ) : null}
+                    </b>
                     <IconeSeta />
                   </summary>
                   <ul className="rec-aberto-lista rec-aberto-lista-aninhada">
-                    {dado.emAberto.map((a) => (
-                      <li key={a.slug}>
-                        <span className="rec-aberto-nome">
-                          {nomeDoItem(a.descricao, a.slug)}
-                          <span className="rec-aberto-parc">
-                            {a.parcelasTotal > 1
-                              ? `parcela ${a.parcela} de ${a.parcelasTotal} · faltam ${plural(a.parcelasRestantes, "parcela", "parcelas")} de ${brl(a.valorParcelaCents)}`
-                              : `${plural(a.parcelasRestantes, "parcela", "parcelas")} de ${brl(a.valorParcelaCents)}`}
+                    {dado.emAberto
+                      .filter((a) => a.parcelasRestantes > 0)
+                      .map((a) => (
+                        <li key={a.slug}>
+                          <span className="rec-aberto-nome">
+                            {nomeDoItem(a.descricao, a.slug)}
+                            <span className="rec-aberto-parc">
+                              {a.parcelasTotal > 1
+                                ? `parcela ${a.parcela} de ${a.parcelasTotal} · saldo ${brl(a.saldoCents)} (faltam ${plural(a.parcelasRestantes, "parcela", "parcelas")})`
+                                : `parcela única · saldo ${brl(a.saldoCents)}`}
+                            </span>
                           </span>
-                        </span>
-                        <span className="rec-aberto-valor">{brl(a.saldoCents)}</span>
-                      </li>
-                    ))}
+                          <span className="rec-aberto-valor">{brl(a.valorParcelaCents)}</span>
+                        </li>
+                      ))}
                   </ul>
                   {totalReembolsoParcelas > 0 ? (
                     <ul className="rec-prev-meses rec-prev-meses-aninhada rec-prev-parcelas">

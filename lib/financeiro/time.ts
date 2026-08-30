@@ -1737,6 +1737,7 @@ type RecebivelComissaoItem = {
   valorCents: number;
   tipo: string | null;
   cliente: string | null;
+  nota: string | null;
   parcela: number | null;
   parcelasTotal: number | null;
   ehEntrada: boolean;
@@ -1936,7 +1937,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
      */
     query<Record<string, unknown>>(
       `SELECT to_char(c.competencia, 'YYYY-MM') AS competencia,
-              c.descricao, c.valor_cents, c.cliente, c.parcela, c.parcelas_total,
+              c.descricao, c.valor_cents, c.cliente, c.nota, c.parcela, c.parcelas_total,
               t.nome AS tipo_nome,
               (c.parcela = 1 AND COALESCE(s.entrada_cents, 0) > 0) AS eh_entrada
          FROM fin_pessoa_comissao_declarada c
@@ -1978,6 +1979,39 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
     conta: String(l.conta),
     descricao: String(l.descricao ?? "")
   }));
+
+  /*
+   * RECONCILIA OS LANÇAMENTOS INDIVIDUAIS COM O CORTE DA FOLHA.
+   *
+   * O ledger marca todos os PIX dos sócios sob a mesma categoria (6.02). A view
+   * da folha (0164) separa a fatia de salário base, mas os lançamentos
+   * individuais continuavam com a etiqueta crua do banco — deixando a seção de
+   * Salário vazia e jogando o PIX de salário dentro do Pró-labore.
+   */
+  for (const r of porNaturezaMes) {
+    if (r.natureza === "salario") {
+      const mes = String(r.mes);
+      const salValor = Number(r.valor_cents);
+      if (salValor <= 0) continue;
+
+      const itemExato = itens.find(
+        (it) => it.mes === mes && it.natureza === "prolabore" && it.valorCents === salValor
+      );
+      if (itemExato) {
+        itemExato.natureza = "salario";
+      } else {
+        let restante = salValor;
+        for (const it of itens) {
+          if (it.mes === mes && it.natureza === "prolabore" && restante > 0) {
+            if (it.valorCents <= restante) {
+              it.natureza = "salario";
+              restante -= it.valorCents;
+            }
+          }
+        }
+      }
+    }
+  }
 
   /*
    * O MÊS É MONTADO PELA VIEW DA FOLHA, e a lista de lançamentos é só o
@@ -2144,6 +2178,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
           valorCents: v,
           tipo: (r.tipo_nome as string) ?? null,
           cliente: (r.cliente as string) ?? null,
+          nota: (r.nota as string) ?? null,
           parcela: r.parcela == null ? null : Number(r.parcela),
           parcelasTotal: r.parcelas_total == null ? null : Number(r.parcelas_total),
           ehEntrada: Boolean(r.eh_entrada)
@@ -3376,6 +3411,9 @@ export async function meuReembolso(sessao: Sessao) {
     competencia: string;
     parcela: number | null;
     parcelasTotal: number | null;
+    parcelasRestantes?: number | null;
+    saldoCents?: number | null;
+    valorParcelaCents?: number | null;
     tipo: string | null;
     temComprovante: boolean;
     chaveComprovante: string | null;
@@ -3432,6 +3470,26 @@ export async function meuReembolso(sessao: Sessao) {
       status: p.quitado ? "pago" : "aprovado",
       statusFormatado: p.quitado ? "Pago" : "Aprovado"
     });
+  }
+
+  // Enriquece itens aprovados com o saldo unificado em aberto (parcelas restantes e saldo)
+  for (const item of itensRegistrados) {
+    if (item.status === "aprovado") {
+      const match = saldoPlanilha.find(
+        (sp) =>
+          sp.slug === `app-${item.id}` ||
+          sp.descricao.trim().toLowerCase() === item.descricao.trim().toLowerCase() ||
+          (Number(sp.valor_parcela_cents) === item.valorCents &&
+            sp.descricao.toLowerCase().includes(item.descricao.toLowerCase().slice(0, 10)))
+      );
+      if (match) {
+        item.saldoCents = Number(match.saldo_cents);
+        item.parcelasRestantes = match.parcelas_restantes;
+        item.valorParcelaCents = Number(match.valor_parcela_cents);
+        item.parcela = match.parcela;
+        item.parcelasTotal = match.parcelas_total;
+      }
+    }
   }
 
   // Monta os itens a receber / saldo em aberto
@@ -4165,6 +4223,57 @@ export async function cadastrarCartao(sessao: Sessao, corpo: NovoCartao) {
     );
 
     return { id: Number(r.rows[0].id), final, apelido, bandeira, cor, natureza, titularId };
+  });
+}
+
+export async function atualizarCartaoPessoal(
+  sessao: Sessao,
+  cardId: number,
+  dados: { apelido?: string | null; cor?: string | null; bandeira?: string | null }
+) {
+  const apelido = opcionalTexto(dados.apelido, 60);
+  const cor = dados.cor && CORES.has(dados.cor) ? dados.cor : null;
+  const bandeira = dados.bandeira && BANDEIRAS.has(dados.bandeira) ? dados.bandeira : null;
+
+  return transaction(async (client) => {
+    const dono = await client.query<{ id: number; label: string | null; cor: string | null; brand: string | null }>(
+      `SELECT id, label, cor, brand
+         FROM fin_card
+        WHERE id = $1 AND holder_person_id = $2 AND card_account_id IS NULL AND status <> 'cancelado'`,
+      [cardId, sessao.personId]
+    );
+    if (!dono.rows[0]) throw new TimeError("cartão não encontrado", 404);
+
+    const r = await client.query<{ id: number; last4: string; label: string | null; brand: string | null; cor: string | null }>(
+      `UPDATE fin_card
+          SET label = $1,
+              cor = coalesce($2, cor),
+              brand = coalesce($3, brand)
+        WHERE id = $4 AND holder_person_id = $5
+        RETURNING id, last4, label, brand, cor`,
+      [apelido, cor, bandeira, cardId, sessao.personId]
+    );
+
+    await client.query(
+      `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, before, after, fields, actor, entity_type)
+       VALUES ($1, 'fin_card', $2, 'update', $3::jsonb, $4::jsonb, '{"label","cor","brand"}', $5, $6)`,
+      [
+        cardId,
+        cardId,
+        JSON.stringify(dono.rows[0]),
+        JSON.stringify(r.rows[0]),
+        `time:${sessao.personId}`,
+        ENTITY
+      ]
+    );
+
+    return {
+      id: Number(r.rows[0].id),
+      final: r.rows[0].last4,
+      apelido: r.rows[0].label,
+      bandeira: r.rows[0].brand,
+      cor: r.rows[0].cor
+    };
   });
 }
 

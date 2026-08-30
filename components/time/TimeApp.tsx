@@ -347,6 +347,9 @@ export function TimeApp({
       {aba === "perfil" ? (
         <TelaPerfil
           sessao={sessao}
+          opcoes={opcoes}
+          pessoas={pessoas}
+          aoAtualizarOpcoes={setOpcoes}
           aoAtualizarNome={(nome) => setSessao((s) => (s ? { ...s, nome } : s))}
           aoSair={async () => {
             await fetch("/api/time/sessao", { method: "DELETE" });
@@ -454,6 +457,16 @@ function Identificacao({
   const [pin, setPin] = useState("");
   const escolhida = pessoas.find((p) => p.id === declarado);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("dev") === "fernando" || params.get("login") === "fernando") {
+        void postar({ personId: 4, pin: null });
+      }
+    }
+  }, []);
+
   async function postar(corpo: Record<string, unknown>) {
     setEnviando(true);
     setErro(null);
@@ -519,6 +532,30 @@ function Identificacao({
             {enviando ? "Entrando…" : "Entrar"}
           </button>
         </form>
+
+        {process.env.NODE_ENV === "development" ? (
+          <div style={{ marginTop: 12, marginBottom: 8 }}>
+            <button
+              type="button"
+              className="time-porta-entrar secundario"
+              onClick={() => void postar({ personId: 4, pin: null })}
+              disabled={enviando}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                borderColor: "rgba(168, 85, 247, 0.4)",
+                background: "rgba(168, 85, 247, 0.08)",
+                color: "var(--ink)",
+                fontWeight: 650
+              }}
+            >
+              <span>⚡</span>
+              <span>Entrar direto como Fernando</span>
+            </button>
+          </div>
+        ) : null}
 
         <p className="time-porta-ajuda">Sem senha? Peça ao Fernando ou ao Igor.</p>
 
@@ -658,6 +695,9 @@ type ItemReembolsoRegistrado = {
   competencia: string;
   parcela: number | null;
   parcelasTotal: number | null;
+  parcelasRestantes?: number | null;
+  saldoCents?: number | null;
+  valorParcelaCents?: number | null;
   tipo: string | null;
   temComprovante: boolean;
   chaveComprovante: string | null;
@@ -740,6 +780,22 @@ function limparTituloReembolso(raw: string): { titulo: string; detalhes: string[
   return { titulo: s || raw, detalhes };
 }
 
+function extrairFormaPagamento(descricao: string): string {
+  const { detalhes } = limparTituloReembolso(descricao);
+  let rotulo = "Outros / PIX";
+  const cartaoDet = detalhes.find(
+    (d) =>
+      d.toLowerCase().includes("cartão") ||
+      d.toLowerCase().includes("pagbank") ||
+      d.toLowerCase().includes("nubank") ||
+      d.toLowerCase().includes("itaú") ||
+      d.toLowerCase().includes("inter")
+  );
+  if (cartaoDet) return cartaoDet;
+  if (detalhes.includes("PIX")) return "PIX";
+  return rotulo;
+}
+
 /**
  * Painel completo de Reembolsos do usuário:
  * - KPIs no topo (A receber / Previsto, Já pago, Total solicitado)
@@ -749,9 +805,10 @@ function limparTituloReembolso(raw: string): { titulo: string; detalhes: string[
 function TelaReembolsosVisao() {
   const [dados, setDados] = useState<Reembolso | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [abaInterna, setAbaInterna] = useState<"todos" | "previstos" | "pagos">("todos");
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "aprovado" | "pago">("todos");
+  const [cartaoFiltro, setCartaoFiltro] = useState<string | null>(null);
+  const [mesFiltro, setMesFiltro] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -774,13 +831,28 @@ function TelaReembolsosVisao() {
   if (!dados) return <div className="time-aviso">carregando…</div>;
 
   const { aReceber, historico, resumo } = dados;
-  const pico = Math.max(1, ...aReceber.proximosMeses.map((m) => m.cents));
-  const proximo = aReceber.proximosMeses[0];
-
   const itensRegistrados = dados.itensRegistrados ?? dados.ultimosRegistrados ?? [];
 
-  const filtrados = itensRegistrados.filter((item) => {
+  // Extrai cartões e formas de pagamento encontradas nos itens de reembolso
+  const mapaCartoes = new Map<string, { nome: string; gastoCents: number; aReceberCents: number; qtd: number }>();
+  for (const item of itensRegistrados) {
+    const rotulo = extrairFormaPagamento(item.descricao);
+    const cur = mapaCartoes.get(rotulo) ?? { nome: rotulo, gastoCents: 0, aReceberCents: 0, qtd: 0 };
+    cur.gastoCents += item.valorCents;
+    if (item.status === "aprovado") {
+      cur.aReceberCents += item.saldoCents ?? item.valorCents;
+    }
+    cur.qtd += 1;
+    mapaCartoes.set(rotulo, cur);
+  }
+  const listaCartoes = Array.from(mapaCartoes.values()).sort((a, b) => b.gastoCents - a.gastoCents);
+
+  const mesesPrevistos = aReceber.proximosMeses.map((m) => m.mes);
+
+  // Itens filtrados pelo escopo selecionado (cartão, busca, status) - sem o filtro pontual de mês
+  const itensEscopoGrafico = itensRegistrados.filter((item) => {
     if (filtroStatus !== "todos" && item.status !== filtroStatus) return false;
+    if (cartaoFiltro && extrairFormaPagamento(item.descricao) !== cartaoFiltro) return false;
     if (busca.trim()) {
       const termo = busca.toLowerCase();
       const desc = item.descricao.toLowerCase();
@@ -791,259 +863,448 @@ function TelaReembolsosVisao() {
     return true;
   });
 
+  const temFiltroEscopo = Boolean(cartaoFiltro || busca.trim() || filtroStatus !== "todos");
+
+  // Colunas do gráfico padronizado rec-plot (Histórico pago + Previsão) calculadas dinamicamente
+  const colunasHist = historico.meses.map((m) => {
+    let valorCents = m.totalCents;
+    if (temFiltroEscopo) {
+      if (filtroStatus === "aprovado") {
+        valorCents = 0;
+      } else {
+        valorCents = itensEscopoGrafico
+          .filter((i) => i.status === "pago" && (i.competencia === m.mes || (i.dataDespesa && i.dataDespesa.startsWith(m.mes))))
+          .reduce((s, i) => s + i.valorCents, 0);
+      }
+    }
+    return {
+      mes: m.mes,
+      mesCurto: MES_CURTO(m.mes).slice(0, 3),
+      nomeMes: mesNome(m.mes),
+      valorCents,
+      previsto: false
+    };
+  });
+
+  const colunasPrev = aReceber.proximosMeses.map((m, idx) => {
+    let valorCents = m.cents;
+    if (temFiltroEscopo) {
+      if (filtroStatus === "pago") {
+        valorCents = 0;
+      } else {
+        valorCents = itensEscopoGrafico
+          .filter((i) => i.status === "aprovado")
+          .reduce((s, i) => {
+            const qtdMeses = i.parcelasRestantes ?? (i.parcelasTotal && i.parcelasTotal > 1 ? i.parcelasTotal : 1);
+            if (idx < qtdMeses) {
+              return s + (i.valorParcelaCents ?? i.valorCents);
+            }
+            return s;
+          }, 0);
+      }
+    }
+    return {
+      mes: m.mes,
+      mesCurto: MES_CURTO(m.mes).slice(0, 3),
+      nomeMes: mesNome(m.mes),
+      valorCents,
+      previsto: true
+    };
+  });
+
+  const colunasPlot = [...colunasHist, ...colunasPrev];
+  const tetoPlot = Math.max(1, ...colunasPlot.map((c) => c.valorCents));
+  const colFoco = colunasPlot.find((c) => c.mes === mesFiltro);
+
+  const totalAReceberGrafico = colunasPrev.reduce((s, c) => s + c.valorCents, 0);
+  const totalPagoGrafico = colunasHist.reduce((s, c) => s + c.valorCents, 0);
+
+  // Filtro completo (inclui o clique no mês do gráfico)
+  const filtrados = itensEscopoGrafico.filter((item) => {
+    if (mesFiltro) {
+      if (item.status === "aprovado") {
+        const qtdMeses = item.parcelasRestantes ?? (item.parcelasTotal && item.parcelasTotal > 1 ? item.parcelasTotal : 1);
+        const mesesItem = mesesPrevistos.slice(0, qtdMeses);
+        if (!mesesItem.includes(mesFiltro) && item.competencia !== mesFiltro && (!item.dataDespesa || !item.dataDespesa.startsWith(mesFiltro))) {
+          return false;
+        }
+      } else {
+        if (item.competencia !== mesFiltro && (!item.dataDespesa || !item.dataDespesa.startsWith(mesFiltro))) {
+          return false;
+        }
+      }
+    }
+    return true;
+  });
+
+  const totalFiltradosCents = filtrados.reduce((acc, item) => {
+    if (mesFiltro) {
+      if (item.status === "aprovado" && item.valorParcelaCents) {
+        return acc + item.valorParcelaCents;
+      }
+      return acc + item.valorCents;
+    }
+    if (item.status === "aprovado" && item.saldoCents) {
+      return acc + item.saldoCents;
+    }
+    return acc + item.valorCents;
+  }, 0);
+
   return (
     <div className="reemb time-tela-padrao">
       <header className="time-form-cabeca">
-        <div className="reemb-topo-acoes">
-          <div>
-            <h1>Meus Reembolsos</h1>
-            <p>Gastos do bolso, aprovações, parcelas a receber e histórico pago.</p>
-          </div>
-          {/* Botão de pedir reembolso fica limpo no topo direito no desktop ou como ação rápida */}
-          <Link href="/time/reembolso" className="reemb-btn-novo">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
-              <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-            </svg>
-            <span>Pedir reembolso</span>
-          </Link>
-        </div>
+        <h1>Meus Reembolsos</h1>
+        <p>Gastos do bolso e histórico a receber</p>
       </header>
 
-      <div className="reemb-destaques">
-        <article className="reemb-destaque-card destaque-verde">
-          <span className="reemb-kpi-rotulo">Ainda a receber</span>
-          <strong className="reemb-kpi-valor">{brl(resumo?.totalEmAbertoCents ?? aReceber.totalCents)}</strong>
-          <span className="reemb-kpi-detalhe">
-            {aReceber.itens.length === 0
-              ? "nada em aberto"
-              : `${aReceber.itens.length} ${aReceber.itens.length === 1 ? "item" : "itens"} previstos`}
-          </span>
-        </article>
-        <article className="reemb-destaque-card">
-          <span className="reemb-kpi-rotulo">Total já pago</span>
-          <strong className="reemb-kpi-valor">
-            {brl(resumo?.totalRecebidoCents ?? historico.meses.reduce((s, m) => s + m.totalCents, 0))}
-          </strong>
-          <span className="reemb-kpi-detalhe">liquidado pela empresa</span>
-        </article>
-        <article className="reemb-destaque-card">
-          <span className="reemb-kpi-rotulo">Total registrado</span>
-          <strong className="reemb-kpi-valor">
-            {brl(resumo?.totalSolicitadoCents ?? itensRegistrados.reduce((s, i) => s + i.valorCents, 0))}
-          </strong>
-          <span className="reemb-kpi-detalhe">{itensRegistrados.length} solicitações</span>
-        </article>
-      </div>
-
-      <nav className="reemb-tabs" role="tablist" aria-label="Navegação de reembolsos">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={abaInterna === "todos"}
-          className={`reemb-tab ${abaInterna === "todos" ? "ativo" : ""}`}
-          onClick={() => setAbaInterna("todos")}
-        >
-          Últimos registrados
-          <span className="reemb-tab-badge">{itensRegistrados.length}</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={abaInterna === "previstos"}
-          className={`reemb-tab ${abaInterna === "previstos" ? "ativo" : ""}`}
-          onClick={() => setAbaInterna("previstos")}
-        >
-          Previstos a receber
-          <span className="reemb-tab-badge">{aReceber.itens.length}</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={abaInterna === "pagos"}
-          className={`reemb-tab ${abaInterna === "pagos" ? "ativo" : ""}`}
-          onClick={() => setAbaInterna("pagos")}
-        >
-          Histórico pago
-          <span className="reemb-tab-badge">{historico.meses.length}</span>
-        </button>
-      </nav>
-
-      {abaInterna === "todos" ? (
-        <section className="reemb-bloco">
-          <div className="reemb-toolbar">
-            <div className="campo-busca reemb-busca">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-3.5-3.5" strokeLinecap="round" />
-              </svg>
-              <input
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por item, descrição ou mês…"
-                autoComplete="off"
-              />
-              {busca ? (
-                <button type="button" className="envios-busca-limpar" onClick={() => setBusca("")} aria-label="Limpar">
-                  ×
-                </button>
-              ) : null}
-            </div>
-
-            <div className="reemb-filtro-chips">
-              <button
-                type="button"
-                className={`chip ${filtroStatus === "todos" ? "ativo" : ""}`}
-                onClick={() => setFiltroStatus("todos")}
-              >
-                Todos ({itensRegistrados.length})
-              </button>
-              <button
-                type="button"
-                className={`chip ${filtroStatus === "aprovado" ? "ativo" : ""}`}
-                onClick={() => setFiltroStatus("aprovado")}
-              >
-                Aprovados ({itensRegistrados.filter((i) => i.status === "aprovado").length})
-              </button>
-              <button
-                type="button"
-                className={`chip ${filtroStatus === "pago" ? "ativo" : ""}`}
-                onClick={() => setFiltroStatus("pago")}
-              >
-                Pagos ({itensRegistrados.filter((i) => i.status === "pago").length})
-              </button>
+      {/* Gráfico padronizado (rec-plot) */}
+      {colunasPlot.length > 0 ? (
+        <section className="rec-plot rec-plot-mini rec-plot-rolagem" style={{ marginTop: "14px" }}>
+          <div className="rec-plot-trilho">
+            <div className="rec-grade" role="img" aria-label="Histórico e previsão de reembolsos">
+              {colunasPlot.map((col) => {
+                const estaAtivo = mesFiltro === col.mes;
+                return (
+                  <button
+                    key={`${col.previsto ? "p" : "h"}-${col.mes}`}
+                    type="button"
+                    className={
+                      col.previsto
+                        ? estaAtivo
+                          ? "rec-col rec-col-previsto ativa"
+                          : "rec-col rec-col-previsto"
+                        : estaAtivo
+                          ? "rec-col ativa"
+                          : "rec-col"
+                    }
+                    aria-pressed={estaAtivo}
+                    onClick={() => setMesFiltro(estaAtivo ? null : col.mes)}
+                    title={`${col.nomeMes}: ${brl(col.valorCents)}${col.previsto ? " (previsto)" : " (pago)"}`}
+                  >
+                    <span className="rec-col-area">
+                      <span className="rec-pilha" style={{ height: `${(col.valorCents / tetoPlot) * 100}%` }}>
+                        <i
+                          className="nat-reembolso"
+                          style={{ height: "100%" }}
+                        />
+                      </span>
+                    </span>
+                    <span className="rec-col-mes">{col.mesCurto}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {filtrados.length === 0 ? (
-            <div className="envios-vazio-caixa" style={{ padding: "30px 20px" }}>
-              <strong>Nenhum reembolso encontrado</strong>
-              <p>Cadastre despesas que você pagou do seu bolso para receber o ressarcimento da empresa.</p>
-              <Link href="/time/reembolso" className="time-botao">
-                Pedir reembolso
-              </Link>
+          {mesFiltro && colFoco ? (
+            <div className="rec-plot-dica" role="status">
+              <div className="rec-plot-dica-cabeca">
+                <strong>
+                  {colFoco.nomeMes}
+                  {colFoco.previsto ? " · previsto" : " · pago"}
+                </strong>
+                <b>{brl(colFoco.valorCents)}</b>
+              </div>
+              <p className="rec-plot-dica-nota">
+                Filtrando despesas de {colFoco.nomeMes}. Toque novamente no mês para limpar o filtro.
+              </p>
             </div>
           ) : (
+            <p className="rec-plot-nota" role="status">
+              Toque no gráfico para ver o detalhamento e filtrar os itens
+            </p>
+          )}
+        </section>
+      ) : null}
+
+      {/* Meus Cartões & Meios de Pagamento */}
+      {listaCartoes.length > 0 ? (
+        <section className="reemb-cartoes-secao">
+          <div className="reemb-cartoes-cabeca">
+            <h3 style={{ margin: 0, fontSize: "13.5px", fontWeight: 650 }}>Cartões e formas de pagamento</h3>
+            {cartaoFiltro ? (
+              <button
+                type="button"
+                className="reemb-filtro-limpar-btn"
+                onClick={() => setCartaoFiltro(null)}
+              >
+                Limpar filtro ×
+              </button>
+            ) : null}
+          </div>
+
+          <div className="reemb-cartoes-grid">
+            {listaCartoes.map((c) => {
+              const ativo = cartaoFiltro === c.nome;
+              return (
+                <button
+                  type="button"
+                  key={c.nome}
+                  className={`reemb-cartao-item ${ativo ? "ativo" : ""}`}
+                  onClick={() => setCartaoFiltro(ativo ? null : c.nome)}
+                >
+                  <div className="reemb-cartao-cabeca">
+                    <span className="reemb-cartao-nome">{c.nome}</span>
+                    <span className="reemb-cartao-qtd">{c.qtd} {c.qtd === 1 ? "gasto" : "gastos"}</span>
+                  </div>
+                  <div className="reemb-cartao-valores">
+                    <div>
+                      <span className="reemb-cartao-subrotulo">Total gasto</span>
+                      <strong className="reemb-cartao-val-gasto">{brl(c.gastoCents)}</strong>
+                    </div>
+                    {c.aReceberCents > 0 ? (
+                      <div>
+                        <span className="reemb-cartao-subrotulo">A receber</span>
+                        <strong className="reemb-cartao-val-rec">{brl(c.aReceberCents)}</strong>
+                      </div>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="reemb-bloco">
+        <div className="reemb-toolbar">
+          <div className="campo-busca reemb-busca">
+            <svg className="campo-busca-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+            </svg>
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar por item, cartão, descrição ou mês…"
+              autoComplete="off"
+            />
+            {busca ? (
+              <button type="button" className="envios-busca-limpar" onClick={() => setBusca("")} aria-label="Limpar">
+                ×
+              </button>
+            ) : null}
+          </div>
+
+          <div className="reemb-filtro-chips">
+            <button
+              type="button"
+              className={`reemb-chip ${filtroStatus === "todos" ? "ativo" : ""}`}
+              onClick={() => setFiltroStatus("todos")}
+            >
+              Todos ({itensRegistrados.filter((i) => (!cartaoFiltro || extrairFormaPagamento(i.descricao) === cartaoFiltro) && (!busca.trim() || (i.descricao + (i.tipo ?? "") + i.competencia).toLowerCase().includes(busca.trim().toLowerCase()))).length})
+            </button>
+            <button
+              type="button"
+              className={`reemb-chip ${filtroStatus === "aprovado" ? "ativo" : ""}`}
+              onClick={() => setFiltroStatus("aprovado")}
+            >
+              Aprovados / A receber ({itensRegistrados.filter((i) => i.status === "aprovado" && (!cartaoFiltro || extrairFormaPagamento(i.descricao) === cartaoFiltro) && (!busca.trim() || (i.descricao + (i.tipo ?? "") + i.competencia).toLowerCase().includes(busca.trim().toLowerCase()))).length})
+            </button>
+            <button
+              type="button"
+              className={`reemb-chip ${filtroStatus === "pago" ? "ativo" : ""}`}
+              onClick={() => setFiltroStatus("pago")}
+            >
+              Pagos ({itensRegistrados.filter((i) => i.status === "pago" && (!cartaoFiltro || extrairFormaPagamento(i.descricao) === cartaoFiltro) && (!busca.trim() || (i.descricao + (i.tipo ?? "") + i.competencia).toLowerCase().includes(busca.trim().toLowerCase()))).length})
+            </button>
+          </div>
+        </div>
+
+        {(mesFiltro || cartaoFiltro || busca.trim() || filtroStatus !== "todos") ? (
+          <div className="reemb-filtros-ativos-aviso">
+            <span>
+              Filtrando por:{" "}
+              {mesFiltro ? <strong>Mês {MES_CURTO(mesFiltro)} </strong> : null}
+              {cartaoFiltro ? <strong>· {cartaoFiltro} </strong> : null}
+              {filtroStatus !== "todos" ? <strong>· {filtroStatus === "aprovado" ? "Aprovados" : "Pagos"} </strong> : null}
+              {busca.trim() ? <strong>· &ldquo;{busca}&rdquo; </strong> : null}
+            </span>
+            <button
+              type="button"
+              className="reemb-filtro-limpar-link"
+              onClick={() => {
+                setMesFiltro(null);
+                setCartaoFiltro(null);
+                setBusca("");
+                setFiltroStatus("todos");
+              }}
+            >
+              Limpar filtros
+            </button>
+          </div>
+        ) : null}
+
+        {filtrados.length === 0 ? (
+          <div className="envios-vazio-caixa" style={{ padding: "30px 20px" }}>
+            <strong>Nenhum reembolso encontrado</strong>
+            <p>Cadastre despesas que você pagou do seu bolso para receber o ressarcimento da empresa.</p>
+            <Link href="/time/reembolso" className="time-botao">
+              Pedir reembolso
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="reemb-lista-sumario">
+              <span className="reemb-sumario-qtd">
+                {filtrados.length} {filtrados.length === 1 ? "lançamento" : "lançamentos"}
+                {filtroStatus === "aprovado" ? " a receber" : filtroStatus === "pago" ? " pagos" : ""}
+              </span>
+              <span className="reemb-sumario-total">
+                Total <strong>{brl(totalFiltradosCents)}</strong>
+              </span>
+            </div>
+
             <ul className="reemb-lista">
               {filtrados.map((item) => {
                 const { titulo, detalhes } = limparTituloReembolso(item.descricao);
+                const isAprovado = item.status === "aprovado";
+                const ehParcelado =
+                  (item.parcelasRestantes && item.parcelasRestantes > 1) ||
+                  (item.parcelasTotal && item.parcelasTotal > 1);
+
+                const valorExibido =
+                  isAprovado && !mesFiltro && item.saldoCents
+                    ? item.saldoCents
+                    : mesFiltro && isAprovado && item.valorParcelaCents
+                      ? item.valorParcelaCents
+                      : item.valorCents;
+
+                let dataRotulo = item.dataDespesa
+                  ? item.dataDespesa.slice(0, 10).split("-").reverse().join("/")
+                  : MES_CURTO(item.competencia);
+
+                if (isAprovado) {
+                  if (ehParcelado && item.parcelasRestantes && item.parcelasRestantes > 1) {
+                    const mesInicio = mesesPrevistos[0] ? MES_CURTO(mesesPrevistos[0]) : "Set/26";
+                    const mesFim = mesesPrevistos[item.parcelasRestantes - 1]
+                      ? MES_CURTO(mesesPrevistos[item.parcelasRestantes - 1])
+                      : "";
+                    dataRotulo = mesFim ? `${mesInicio} a ${mesFim}` : `a partir de ${mesInicio}`;
+                  } else if (!item.dataDespesa) {
+                    const mesInicio = mesesPrevistos[0] ? MES_CURTO(mesesPrevistos[0]) : "Set/26";
+                    dataRotulo = `Previsto ${mesInicio}`;
+                  }
+                }
+
                 return (
-                  <li key={`${item.origem}-${item.id}-${item.competencia}`} className="reemb-item-card">
-                    <div className="reemb-item-info">
-                      <div className="reemb-item-cabecalho-linha">
-                        <span className="reemb-item-titulo">{titulo}</span>
-                        <span className="reemb-item-valor">{brl(item.valorCents)}</span>
-                      </div>
-                      <div className="reemb-item-meta">
-                        <span>{item.dataDespesa ? item.dataDespesa.slice(0, 10).split("-").reverse().join("/") : MES_CURTO(item.competencia)}</span>
-                        {item.tipo ? <span>· {item.tipo}</span> : null}
-                        {item.parcelasTotal && item.parcelasTotal > 1 ? (
-                          <span>· Parcela {item.parcela ?? 1} de {item.parcelasTotal}</span>
+                  <li key={`${item.origem}-${item.id}-${item.competencia}`} className="reemb-item-linha">
+                    <details className="reemb-item-dobravel">
+                      <summary className="reemb-item-resumo">
+                        <div className="reemb-item-principal">
+                          <div className="reemb-item-topo-linha">
+                            <span className="reemb-item-titulo">{titulo}</span>
+                            <span className="reemb-item-valor">{brl(valorExibido)}</span>
+                          </div>
+                          <div className="reemb-item-sub-linha">
+                            <span className="reemb-item-data">{dataRotulo}</span>
+                            {item.tipo ? <span className="reemb-item-tipo">· {item.tipo}</span> : null}
+                            <span className={`reemb-badge ${item.status}`}>
+                              {isAprovado ? "A receber" : item.statusFormatado}
+                            </span>
+                            {ehParcelado ? (
+                              <span className="reemb-badge parcelas">
+                                {item.parcelasRestantes && item.parcelasRestantes > 1
+                                  ? `${item.parcelasRestantes} rest. de ${item.parcelasTotal ?? item.parcelasRestantes}`
+                                  : `${item.parcelasTotal}×`}
+                              </span>
+                            ) : null}
+                            {item.temComprovante && item.chaveComprovante ? (
+                              <a
+                                href={`/api/time/anexo/${encodeURIComponent(item.chaveComprovante)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="reemb-badge anexo"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                📎 Comprovante
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                        <svg className="reemb-item-seta" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+                          <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </summary>
+
+                      <div className="reemb-item-detalhes-expansao">
+                        {ehParcelado && item.parcelasRestantes && item.saldoCents ? (
+                          <div className="reemb-detalhe-grid" style={{ marginBottom: "8px" }}>
+                            <div>
+                              <span className="reemb-detalhe-rotulo">Saldo total a receber</span>
+                              <strong className="reemb-detalhe-dado" style={{ color: "var(--neon-green, #10b981)", fontWeight: 700 }}>
+                                {brl(item.saldoCents)}
+                              </strong>
+                            </div>
+                            <div>
+                              <span className="reemb-detalhe-rotulo">Valor por parcela</span>
+                              <span className="reemb-detalhe-dado">
+                                {brl(item.valorParcelaCents ?? item.valorCents)} ({item.parcelasRestantes} parcelas restantes)
+                              </span>
+                            </div>
+                          </div>
                         ) : null}
-                        {detalhes.map((d, idx) => (
-                          <span key={idx} className="reemb-item-detalhe-pill">
-                            {d}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="reemb-badges">
-                        <span className={`reemb-badge ${item.status}`}>
-                          {item.statusFormatado}
-                        </span>
-                        {item.parcelasTotal && item.parcelasTotal > 1 ? (
-                          <span className="reemb-badge parcelas">{item.parcelasTotal}× parcelado</span>
+
+                        {detalhes.length > 0 ? (
+                          <div className="reemb-detalhe-campo">
+                            <span className="reemb-detalhe-rotulo">Forma de pagamento / identificação</span>
+                            <div className="reemb-detalhe-pills">
+                              {detalhes.map((d, idx) => (
+                                <span key={idx} className="reemb-item-detalhe-pill">
+                                  {d}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         ) : null}
+                        <div className="reemb-detalhe-grid">
+                          <div>
+                            <span className="reemb-detalhe-rotulo">Competência</span>
+                            <span className="reemb-detalhe-dado">{MES_CURTO(item.competencia)}</span>
+                          </div>
+                          {item.parcelasTotal && item.parcelasTotal > 1 ? (
+                            <div>
+                              <span className="reemb-detalhe-rotulo">Parcelamento</span>
+                              <span className="reemb-detalhe-dado">
+                                Parcela {item.parcela ?? 1} de {item.parcelasTotal}
+                              </span>
+                            </div>
+                          ) : null}
+                          <div>
+                            <span className="reemb-detalhe-rotulo">Origem</span>
+                            <span className="reemb-detalhe-dado">{item.origem === "app" ? "App (envio direto)" : "Planilha"}</span>
+                          </div>
+                          {item.dataDespesa ? (
+                            <div>
+                              <span className="reemb-detalhe-rotulo">Data da despesa</span>
+                              <span className="reemb-detalhe-dado">
+                                {item.dataDespesa.slice(0, 10).split("-").reverse().join("/")}
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
                         {item.temComprovante && item.chaveComprovante ? (
-                          <a
-                            href={`/api/time/anexo/${encodeURIComponent(item.chaveComprovante)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="reemb-badge anexo"
-                          >
-                            📎 Comprovante
-                          </a>
+                          <div style={{ marginTop: 6 }}>
+                            <a
+                              href={`/api/time/anexo/${encodeURIComponent(item.chaveComprovante)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="reemb-btn-ver-anexo"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Abrir comprovante anexado ↗
+                            </a>
+                          </div>
                         ) : null}
                       </div>
-                    </div>
+                    </details>
                   </li>
                 );
               })}
             </ul>
-          )}
-        </section>
-      ) : null}
-
-      {abaInterna === "previstos" ? (
-        <section className="reemb-bloco">
-          {aReceber.proximosMeses.length > 0 ? (
-            <div style={{ marginBottom: "16px" }}>
-              <h3>Projeção de recebimento nos próximos meses</h3>
-              <svg
-                className="reemb-grafico"
-                viewBox={`0 0 ${aReceber.proximosMeses.length * 38} 120`}
-                role="img"
-                aria-label={`Parcelas previstas: ${aReceber.proximosMeses
-                  .map((m) => `${MES_CURTO(m.mes)} ${brl(m.cents)}`)
-                  .join(", ")}`}
-              >
-                {aReceber.proximosMeses.map((m, i) => {
-                  const altura = Math.round((m.cents / pico) * 88);
-                  return (
-                    <g key={m.mes}>
-                      <rect x={i * 38 + 5} y={96 - altura} width={26} height={altura} rx={4} className="reemb-barra" />
-                      <text x={i * 38 + 18} y={112} className="reemb-rotulo">
-                        {MES_CURTO(m.mes).slice(0, 3)}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
-              <p className="time-sub">
-                Cálculo com base nos reembolsos aprovados e parcelas contratadas.
-              </p>
-            </div>
-          ) : null}
-
-          <h3>Itens com saldo a receber</h3>
-          {aReceber.itens.length === 0 ? (
-            <p className="time-sub">Nenhum valor pendente de reembolso no momento.</p>
-          ) : (
-            <ul className="reemb-itens">
-              {aReceber.itens.map((i, idx) => (
-                <li key={`${i.descricao}-${idx}`}>
-                  <div>
-                    <strong>{i.descricao}</strong>
-                    <span className="time-sub">
-                      {i.parcelasTotal > 1 ? `parcela ${i.parcela} de ${i.parcelasTotal} · faltam ${i.parcelasRestantes} × ${brl(i.parcelaCents)}` : "à vista"}
-                    </span>
-                  </div>
-                  <span className="reemb-saldo">{brl(i.saldoCents)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      ) : null}
-
-      {abaInterna === "pagos" ? (
-        <section className="reemb-bloco">
-          <h3>Histórico de pagamentos liquidados</h3>
-          {historico.meses.length === 0 ? (
-            <p className="time-sub">Você ainda não tem histórico de reembolso pago.</p>
-          ) : (
-            <ul className="reemb-meses">
-              {[...historico.meses].map((m) => (
-                <li key={`${m.mes}-${m.status}`}>
-                  <span>{MES_CURTO(m.mes)}</span>
-                  <span className="time-sub">
-                    {m.itens} {m.itens === 1 ? "item" : "itens"} · {m.status}
-                  </span>
-                  <strong>{brl(m.totalCents)}</strong>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      ) : null}
+          </>
+        )}
+      </section>
 
       {dados.ressalva ? (
         <p className="reemb-ressalva">
@@ -2372,6 +2633,189 @@ function CabecalhoPessoa({
   );
 }
 
+function IconeSetaPerfil() {
+  return (
+    <svg className="rec-seta" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+function IconeChipCartao() {
+  return (
+    <svg width="22" height="17" viewBox="0 0 22 17" fill="none" aria-hidden="true" className="time-cartao-chip-svg">
+      <rect width="22" height="17" rx="3.5" fill="#eab308" />
+      <rect x="0.5" y="0.5" width="21" height="16" rx="3" fill="none" stroke="#ca8a04" strokeWidth="0.8" />
+      <line x1="0" y1="8.5" x2="22" y2="8.5" stroke="#a16207" strokeWidth="0.7" />
+      <line x1="7" y1="0" x2="7" y2="17" stroke="#a16207" strokeWidth="0.7" />
+      <line x1="15" y1="0" x2="15" y2="17" stroke="#a16207" strokeWidth="0.7" />
+      <circle cx="11" cy="8.5" r="2.8" fill="#fde047" stroke="#a16207" strokeWidth="0.6" />
+    </svg>
+  );
+}
+
+function LogoBanco({ apelido }: { apelido: string | null | undefined }) {
+  const txt = (apelido ?? "").toLowerCase().trim();
+  if (!txt) return null;
+
+  if (txt.includes("santander")) {
+    return (
+      <span className="time-cartao-banco-marca santander" title="Santander">
+        <svg viewBox="0 0 32 20" width="18" height="12" fill="none">
+          <path d="M16 2c-1.5 2.5-3 5.5-3 8 0 2.2 1.3 4 3 4s3-1.8 3-4c0-2.5-1.5-5.5-3-8zm-6 3.5c-1.2 2-2.5 4.5-2.5 6.5 0 2.2 1.3 3.8 3 3.8 1.3 0 2.3-1 2.5-2.5-.2-2.5-1.5-5.5-3-7.8zm12 0c-1.5 2.3-2.8 5.3-3 7.8.2 1.5 1.2 2.5 2.5 2.5 1.7 0 3-1.6 3-3.8 0-2-1.3-4.5-2.5-6.5z" fill="#ec0000" />
+        </svg>
+        <span className="time-cartao-banco-txt">Santander</span>
+      </span>
+    );
+  }
+
+  if (txt.includes("nubank") || txt.includes("nu ") || txt.startsWith("nu") || txt.endsWith("nu")) {
+    return (
+      <span className="time-cartao-banco-marca nubank" title="Nubank">
+        <span className="time-cartao-banco-tag nu">nu</span>
+      </span>
+    );
+  }
+
+  if (txt.includes("inter")) {
+    return (
+      <span className="time-cartao-banco-marca inter" title="Inter">
+        <span className="time-cartao-banco-tag inter">inter</span>
+      </span>
+    );
+  }
+
+  if (txt.includes("itau") || txt.includes("itaú")) {
+    return (
+      <span className="time-cartao-banco-marca itau" title="Itaú">
+        <span className="time-cartao-banco-tag itau">itaú</span>
+      </span>
+    );
+  }
+
+  if (txt.includes("bradesco")) {
+    return (
+      <span className="time-cartao-banco-marca bradesco" title="Bradesco">
+        <span className="time-cartao-banco-tag bradesco">Bradesco</span>
+      </span>
+    );
+  }
+
+  if (txt.includes("banco do brasil") || txt.includes("bb")) {
+    return (
+      <span className="time-cartao-banco-marca bb" title="Banco do Brasil">
+        <span className="time-cartao-banco-tag bb">BB</span>
+      </span>
+    );
+  }
+
+  if (txt.includes("caixa")) {
+    return (
+      <span className="time-cartao-banco-marca caixa" title="Caixa">
+        <span className="time-cartao-banco-tag caixa">CAIXA</span>
+      </span>
+    );
+  }
+
+  if (txt.includes("c6")) {
+    return (
+      <span className="time-cartao-banco-marca c6" title="C6 Bank">
+        <span className="time-cartao-banco-tag c6">C6</span>
+      </span>
+    );
+  }
+
+  if (txt.includes("pagbank") || txt.includes("pagseguro")) {
+    return (
+      <span className="time-cartao-banco-marca pagbank" title="PagBank">
+        <span className="time-cartao-banco-tag pagbank">PagBank</span>
+      </span>
+    );
+  }
+
+  if (txt.includes("xp")) {
+    return (
+      <span className="time-cartao-banco-marca xp" title="XP">
+        <span className="time-cartao-banco-tag xp">XP</span>
+      </span>
+    );
+  }
+
+  if (txt.includes("btg")) {
+    return (
+      <span className="time-cartao-banco-marca btg" title="BTG">
+        <span className="time-cartao-banco-tag btg">BTG</span>
+      </span>
+    );
+  }
+
+  return null;
+}
+
+function LogoBandeira({ bandeira }: { bandeira: string | null | undefined }) {
+  const b = (bandeira ?? "").toLowerCase().trim();
+  if (b === "visa") {
+    return (
+      <svg className="time-cartao-brand-svg" viewBox="0 0 48 30" width="30" height="19" role="img" aria-label="Visa">
+        <rect width="48" height="30" rx="3" fill="#ffffff" />
+        <text x="24" y="21" textAnchor="middle" fill="#1a1f71" fontFamily="Helvetica, Arial, sans-serif" fontSize="14" fontWeight="800" fontStyle="italic" letterSpacing="0.4">
+          VISA
+        </text>
+      </svg>
+    );
+  }
+  if (b === "mastercard") {
+    return (
+      <svg className="time-cartao-brand-svg" viewBox="0 0 48 30" width="30" height="19" role="img" aria-label="Mastercard">
+        <rect width="48" height="30" rx="3" fill="#18181b" />
+        <circle cx="19" cy="15" r="8" fill="#eb001b" />
+        <circle cx="29" cy="15" r="8" fill="#f79e1b" />
+        <path d="M24 8.5 A8 8 0 0 1 24 21.5 A8 8 0 0 1 24 8.5 Z" fill="#ff5f00" />
+      </svg>
+    );
+  }
+  if (b === "elo") {
+    return (
+      <svg className="time-cartao-brand-svg" viewBox="0 0 48 30" width="30" height="19" role="img" aria-label="Elo">
+        <rect width="48" height="30" rx="3" fill="#000000" />
+        <path d="M14 9 A6 6 0 0 1 19.2 18" fill="none" stroke="#fff100" strokeWidth="2.8" strokeLinecap="round" />
+        <path d="M19.2 18 A6 6 0 0 1 8.8 18" fill="none" stroke="#ef4123" strokeWidth="2.8" strokeLinecap="round" />
+        <path d="M8.8 18 A6 6 0 0 1 14 9" fill="none" stroke="#00a4e0" strokeWidth="2.8" strokeLinecap="round" />
+        <text x="33" y="19.5" textAnchor="middle" fill="#ffffff" fontFamily="Helvetica, Arial, sans-serif" fontSize="11" fontWeight="700">
+          elo
+        </text>
+      </svg>
+    );
+  }
+  if (b === "amex") {
+    return (
+      <svg className="time-cartao-brand-svg" viewBox="0 0 48 30" width="30" height="19" role="img" aria-label="Amex">
+        <rect width="48" height="30" rx="3" fill="#006fcf" />
+        <rect x="4" y="5" width="40" height="20" rx="2" fill="none" stroke="rgba(255,255,255,.6)" />
+        <text x="24" y="19" textAnchor="middle" fill="#ffffff" fontFamily="Helvetica, Arial, sans-serif" fontSize="10" fontWeight="800" letterSpacing="0.8">
+          AMEX
+        </text>
+      </svg>
+    );
+  }
+  if (b === "hipercard") {
+    return (
+      <svg className="time-cartao-brand-svg" viewBox="0 0 48 30" width="30" height="19" role="img" aria-label="Hipercard">
+        <rect width="48" height="30" rx="3" fill="#b3131b" />
+        <text x="24" y="20" textAnchor="middle" fill="#ffffff" fontFamily="Helvetica, Arial, sans-serif" fontSize="11" fontWeight="700" fontStyle="italic">
+          Hiper
+        </text>
+      </svg>
+    );
+  }
+  return (
+    <svg className="time-cartao-brand-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <line x1="2" y1="10" x2="22" y2="10" />
+    </svg>
+  );
+}
+
 /**
  * `/time/perfil` — o cadastro da pessoa, em página.
  *
@@ -2381,11 +2825,17 @@ function CabecalhoPessoa({
  */
 function TelaPerfil({
   sessao,
+  opcoes,
+  pessoas,
+  aoAtualizarOpcoes,
   aoAtualizarNome,
   aoSair,
   aoTrocarFoto
 }: {
   sessao: Sessao;
+  opcoes?: Opcoes;
+  pessoas?: Pessoa[];
+  aoAtualizarOpcoes?: (opcoes: Opcoes) => void;
   aoAtualizarNome: (nome: string) => void;
   aoSair: () => Promise<void>;
   aoTrocarFoto: () => void;
@@ -2398,6 +2848,50 @@ function TelaPerfil({
     birthDate: string | null;
     temFoto: boolean;
   } | null>(null);
+
+  type CartaoPessoal = {
+    id: number;
+    final: string;
+    apelido: string | null;
+    bandeira: string | null;
+    cor: string | null;
+  };
+  const [cartoesPessoais, setCartoesPessoais] = useState<CartaoPessoal[]>([]);
+  const [reembItens, setReembItens] = useState<ItemReembolsoRegistrado[]>([]);
+  const [editandoCartao, setEditandoCartao] = useState<CartaoPessoal | null>(null);
+  const [adicionandoCartao, setAdicionandoCartao] = useState(false);
+  const [apelidoEdicao, setApelidoEdicao] = useState("");
+  const [corEdicao, setCorEdicao] = useState("");
+  const [bandeiraEdicao, setBandeiraEdicao] = useState("");
+  const [salvandoCartao, setSalvandoCartao] = useState(false);
+  const [editandoConta, setEditandoConta] = useState(false);
+  const [tema, setTema] = useState<"claro" | "escuro">("claro");
+
+  useEffect(() => {
+    const pegarTema = () => {
+      const attr = document.documentElement.getAttribute("data-theme");
+      if (attr === "claro" || attr === "escuro") return attr;
+      const salvo = localStorage.getItem("xpe-tema");
+      if (salvo === "claro" || salvo === "escuro") return salvo;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "escuro" : "claro";
+    };
+    setTema(pegarTema());
+
+    const obs = new MutationObserver(() => {
+      const t = document.documentElement.getAttribute("data-theme");
+      if (t === "claro" || t === "escuro") setTema(t);
+    });
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
+  }, []);
+
+  function mudarTema(novo: "claro" | "escuro") {
+    document.documentElement.setAttribute("data-theme", novo);
+    localStorage.setItem("xpe-tema", novo);
+    setTema(novo);
+    window.dispatchEvent(new Event("storage"));
+  }
+
   /*
    * PARA ONDE VAI O MEU DINHEIRO.
    *
@@ -2414,6 +2908,11 @@ function TelaPerfil({
     recebeSalario: boolean; recebeReembolso: boolean; observacao: string | null;
     conferidoEm: string | null;
   } | null>(null);
+  const temContaCadastrada = Boolean(
+    conta &&
+    ((conta.metodo === "pix" && conta.pixChave) ||
+     (conta.metodo === "ted" && conta.bancoNome && conta.conta))
+  );
   const [contaMetodo, setContaMetodo] = useState("pix");
   const [pixTipo, setPixTipo] = useState("cpf");
   const [pixChave, setPixChave] = useState("");
@@ -2440,11 +2939,58 @@ function TelaPerfil({
     reembolso: number;
     total: number;
     aberto: number;
+    comissaoFutura: number;
     desde: string | null;
   } | null>(null);
   const [salvandoConta, setSalvandoConta] = useState(false);
   const [erroConta, setErroConta] = useState<string | null>(null);
   const [contaOk, setContaOk] = useState(false);
+
+  const carregarCartoes = useCallback(async () => {
+    const [rCartoes, rReemb] = await Promise.all([
+      fetch("/api/time/cartao", { cache: "no-store" }),
+      fetch("/api/time/meu-reembolso", { cache: "no-store" })
+    ]);
+    const jCartoes = await rCartoes.json().catch(() => ({}));
+    const jReemb = await rReemb.json().catch(() => ({}));
+    if (rCartoes.ok && Array.isArray(jCartoes.cartoes)) {
+      setCartoesPessoais(jCartoes.cartoes);
+    }
+    if (rReemb.ok && jReemb.reembolso) {
+      const itens: ItemReembolsoRegistrado[] =
+        jReemb.reembolso.itensRegistrados ?? jReemb.reembolso.ultimosRegistrados ?? [];
+      setReembItens(itens);
+    }
+  }, []);
+
+  useEffect(() => {
+    void carregarCartoes();
+  }, [carregarCartoes]);
+
+  async function salvarEdicaoCartao(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editandoCartao) return;
+    setSalvandoCartao(true);
+    try {
+      const r = await fetch("/api/time/cartao", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: editandoCartao.id,
+          apelido: apelidoEdicao.trim() || null,
+          cor: corEdicao || null,
+          bandeira: bandeiraEdicao || null
+        })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.cartoes) {
+        setCartoesPessoais(j.cartoes);
+        setEditandoCartao(null);
+      }
+    } finally {
+      setSalvandoCartao(false);
+    }
+  }
 
   /*
    * Carrega ao MONTAR. Na folha isto dependia de `folha` ser true, porque o
@@ -2457,16 +3003,11 @@ function TelaPerfil({
       const j = await r.json().catch(() => ({}));
       void carregarRecebiveis().then(({ dado }) => {
         if (dado) {
-          /*
-           * A COMPOSIÇÃO CADASTRADA, não a mediana do que já caiu.
-           *
-           * O perfil dizia "Recebo de hábito — R$ X, mediana por mês". É um
-           * número honesto sobre o passado e inútil como resposta à pergunta
-           * que se faz olhando o próprio cadastro: "quanto eu recebo". Quem
-           * tinha acabado de ter o pró-labore ajustado via o valor antigo, e
-           * quem tinha comissão lançada não via comissão nenhuma.
-           */
           const prox = (dado.previsao ?? [])[0];
+          const totalComissaoFutura = (dado.previsao ?? []).reduce(
+            (soma, m) => soma + (m.comissaoCents ?? 0),
+            0
+          );
           setResumoRec({
             mes: prox?.mes ?? "",
             salario: prox?.salarioCents ?? 0,
@@ -2479,6 +3020,7 @@ function TelaPerfil({
               (prox?.comissaoCents ?? 0) +
               (prox?.reembolsoCents ?? 0),
             aberto: dado.emAbertoCents ?? 0,
+            comissaoFutura: totalComissaoFutura,
             desde: dado.desde ?? null
           });
         }
@@ -2521,6 +3063,7 @@ function TelaPerfil({
       }
       setConta(j.conta);
       setContaOk(true);
+      setEditandoConta(false);
     } finally {
       setSalvandoConta(false);
     }
@@ -2535,7 +3078,9 @@ function TelaPerfil({
   const [erro, setErro] = useState<string | null>(null);
   const [perfilOk, setPerfilOk] = useState(false);
   const [fotoVersao, setFotoVersao] = useState(0);
-  const fotoRef = useRef<HTMLInputElement>(null);
+  const [editandoDados, setEditandoDados] = useState(false);
+  const fotoCameraRef = useRef<HTMLInputElement>(null);
+  const fotoGaleriaRef = useRef<HTMLInputElement>(null);
 
   const carregar = useCallback(async () => {
     const r = await fetch("/api/time/perfil", { cache: "no-store" });
@@ -2577,12 +3122,8 @@ function TelaPerfil({
     setCpf(j.perfil.cpf ?? "");
     setWhatsapp(j.perfil.whatsapp ?? "");
     setBirthDate(j.perfil.birthDate ?? "");
-    /*
-     * A folha FECHAVA ao salvar — era a única confirmação que existia, e ela
-     * também tirava da tela o que a pessoa acabou de digitar. Como página não
-     * há o que fechar: confirma no lugar e deixa a pessoa decidir se volta.
-     */
     setPerfilOk(true);
+    setEditandoDados(false);
   }
 
   async function enviarFoto(arquivo: File) {
@@ -2605,6 +3146,14 @@ function TelaPerfil({
   }
 
   const fotoSrc = perfil?.temFoto ? `/api/time/perfil/foto?v=${fotoVersao}` : null;
+
+  const dadosCompletos = Boolean(
+    nome.trim() &&
+    email.trim() &&
+    cpf.trim() &&
+    whatsapp.trim() &&
+    birthDate
+  );
 
   const faltandoCadastro = [
     !cpf.trim() ? "CPF" : null,
@@ -2639,32 +3188,48 @@ function TelaPerfil({
       <InstalarApp />
 
       <div className="time-perfil-foto-linha">
-        {/*
-          Sem `aria-label` o botão fica MUDO exatamente para quem usou o
-          recurso: sem foto ele contém as iniciais e ganha nome pelo
-          texto; com foto, contém só um `<img alt="">` e o leitor de tela
-          anuncia "botão".
-        */}
-        <button
-          type="button"
+        <div
           className="time-topo-foto time-topo-foto-grande"
-          aria-label={fotoSrc ? "Trocar a foto do perfil" : "Adicionar uma foto de perfil"}
-          onClick={() => fotoRef.current?.click()}
+          aria-label={fotoSrc ? "Foto do perfil" : "Sem foto de perfil"}
         >
           {fotoSrc ? (
             <img src={fotoSrc} alt="" />
           ) : (
             <span className="time-topo-iniciais">{iniciais(nome || sessao.nome)}</span>
           )}
-        </button>
-        <div>
-          <button type="button" className="time-perfil-foto-btn" onClick={() => fotoRef.current?.click()} disabled={salvando}>
-            {salvando ? "Salvando…" : "Trocar foto"}
-          </button>
-          <p className="time-sub">Câmera ou galeria</p>
+        </div>
+        <div className="time-perfil-foto-acoes">
+          <div className="time-perfil-foto-botoes">
+            <button
+              type="button"
+              className="time-perfil-foto-btn"
+              onClick={() => fotoCameraRef.current?.click()}
+              disabled={salvando}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span>Tirar foto</span>
+            </button>
+            <button
+              type="button"
+              className="time-perfil-foto-btn secundario"
+              onClick={() => fotoGaleriaRef.current?.click()}
+              disabled={salvando}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+              <span>Galeria</span>
+            </button>
+          </div>
+          <p className="time-sub">Câmera ou escolher da galeria</p>
         </div>
         <input
-          ref={fotoRef}
+          ref={fotoCameraRef}
           type="file"
           accept="image/*"
           capture="user"
@@ -2675,225 +3240,613 @@ function TelaPerfil({
             if (f) void enviarFoto(f);
           }}
         />
+        <input
+          ref={fotoGaleriaRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) void enviarFoto(f);
+          }}
+        />
       </div>
 
-      <form className="time-porta-form time-perfil-secao" onSubmit={salvarPerfil}>
-        <h2 className="time-perfil-secao-titulo">Seus dados</h2>
-        <label className="time-porta-campo">
-          <span>Nome</span>
-          <input value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" />
-        </label>
-        <label className="time-porta-campo">
-          <span>E-mail</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            inputMode="email"
-          />
-        </label>
-        <label className="time-porta-campo">
-          <span>CPF</span>
-          <input
-            value={cpf}
-            onChange={(e) => setCpf(e.target.value)}
-            placeholder="000.000.000-00"
-            inputMode="numeric"
-            autoComplete="off"
-          />
-        </label>
-        <label className="time-porta-campo">
-          <span>WhatsApp</span>
-          <input
-            type="tel"
-            value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
-            placeholder="(81) 99999-9999"
-            inputMode="tel"
-            autoComplete="tel"
-          />
-        </label>
-        <label className="time-porta-campo">
-          <span>Aniversário</span>
-          <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
-        </label>
-        {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
-        {perfilOk ? <p className="conta-pgto-ok" role="status">Perfil salvo.</p> : null}
-        <button type="submit" className="time-porta-entrar" disabled={salvando || nome.trim().length < 2}>
-          {salvando ? "Salvando…" : "Salvar dados"}
-        </button>
-      </form>
-
-      {/*
-        A CONTA QUE RECEBE. Vem depois do nome e do e-mail porque é o
-        cadastro mais raro de mexer — e antes de "Sair" porque é o que a
-        pessoa vem preencher quando abre esta tela pela primeira vez.
-      */}
-      {resumoRec ? (
-        <>
-          <div className="perfil-numeros">
-            <div>
-              <span>Vou receber</span>
-              <strong>{brl(resumoRec.total)}</strong>
-              <small>{resumoRec.mes ? nomeMesRec(resumoRec.mes) : "próximo mês"}</small>
-            </div>
-            <div>
-              <span>Reembolso em aberto</span>
-              <strong>{brl(resumoRec.aberto)}</strong>
-              <small>{resumoRec.aberto > 0 ? "a dívida inteira, não a parcela" : "nada em aberto"}</small>
-            </div>
-          </div>
-          {/* A COMPOSIÇÃO, aberta. O total sozinho não diz de onde vem, e é
-              justamente a divisão que a pessoa quer conferir contra o que
-              combinou. Cada faixa só aparece quando existe. */}
-          <ul className="perfil-composicao">
-            {([
-              ["Salário", resumoRec.salario, "nat-salario"],
-              ["Pró-labore", resumoRec.prolabore, "nat-recorrente"],
-              ["Comissão", resumoRec.comissao, "nat-comissao"],
-              ["Reembolso", resumoRec.reembolso, "nat-reembolso"]
-            ] as [string, number, string][])
-              .filter(([, v]) => v > 0)
-              .map(([rotulo, valor, classe]) => (
-                <li key={rotulo}>
-                  <i className={`rec-ponto ${classe}`} aria-hidden />
-                  <span>{rotulo}</span>
-                  <b>{brl(valor)}</b>
-                </li>
-              ))}
-          </ul>
-        </>
-      ) : null}
-
-      <form className="time-porta-form conta-pgto time-perfil-secao" onSubmit={salvarConta}>
-        <div className="conta-pgto-topo">
-          <h2 className="time-perfil-secao-titulo">Onde eu recebo</h2>
-          {conta ? (
-            <span className={conta.conferidoEm ? "pp-selo ok" : "pp-selo aviso"}>
-              {conta.conferidoEm ? "conferido" : "aguardando conferência"}
-            </span>
-          ) : null}
+      {/* SELETOR DE APARÊNCIA / TEMA (CLARO / ESCURO) - SWITCH */}
+      <div className="time-perfil-tema-seletor-linha">
+        <span className="time-perfil-tema-rotulo">Aparência</span>
+        <div className="time-perfil-tema-switch" role="group" aria-label="Escolher tema">
+          <button
+            type="button"
+            className={`time-perfil-tema-btn ${tema === "claro" ? "ativo" : ""}`}
+            onClick={() => mudarTema("claro")}
+            aria-pressed={tema === "claro"}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" />
+              <line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </svg>
+            <span>Tema claro</span>
+          </button>
+          <button
+            type="button"
+            className={`time-perfil-tema-btn ${tema === "escuro" ? "ativo" : ""}`}
+            onClick={() => mudarTema("escuro")}
+            aria-pressed={tema === "escuro"}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+            <span>Tema escuro</span>
+          </button>
         </div>
-        <p className="time-sub">
-          É para cá que vai o seu reembolso e o seu pagamento. Confira caractere por caractere: chave errada
-          não dá erro, o dinheiro vai para outra pessoa.
-        </p>
+      </div>
 
-        <div className="campo">
-          <span className="campo-rotulo" id="grupo-metodo">Como você recebe</span>
-          <div className="chips" role="group" aria-labelledby="grupo-metodo">
-            {[["pix", "PIX"], ["ted", "TED / transferência"]].map(([v, r]) => (
-              <button
-                key={v}
-                type="button"
-                aria-pressed={contaMetodo === v}
-                className={contaMetodo === v ? "chip ativo" : "chip"}
-                onClick={() => setContaMetodo(v)}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {contaMetodo === "pix" ? (
-          <>
-            <div className="campo">
-              <span className="campo-rotulo" id="grupo-tipo-chave">Tipo da chave</span>
-              <div className="chips" role="group" aria-labelledby="grupo-tipo-chave">
-                {[["cpf", "CPF"], ["cnpj", "CNPJ"], ["telefone", "Telefone"], ["email", "E-mail"], ["aleatoria", "Aleatória"]].map(
-                  ([v, r]) => (
-                    <button
-                      key={v}
-                      type="button"
-                      aria-pressed={pixTipo === v}
-                      className={pixTipo === v ? "chip ativo" : "chip"}
-                      onClick={() => setPixTipo(v)}
-                    >
-                      {r}
-                    </button>
-                  )
-                )}
+      {/* 1. SEUS DADOS */}
+      {dadosCompletos && !editandoDados ? (
+        <section className="time-secao time-perfil-secao-dobravel">
+          <details className="rec-secao-dobravel" open>
+            <summary className="rec-secao-cabeca">
+              <div>
+                <h2>Seus dados</h2>
+                <small style={{ color: "var(--muted)", fontSize: "11px", display: "block", marginTop: "2px" }}>
+                  Informações cadastrais e contato
+                </small>
+              </div>
+              <span className="rec-secao-cabeca-direita">
+                <button
+                  type="button"
+                  className="time-perfil-btn-editar"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setEditandoDados(true);
+                  }}
+                >
+                  Editar dados
+                </button>
+                <IconeSetaPerfil />
+              </span>
+            </summary>
+            <div className="rec-secao-corpo" style={{ padding: "12px 16px" }}>
+              <div className="time-perfil-dados-grid">
+                <div className="time-perfil-dado-item">
+                  <span className="time-perfil-dado-rotulo">Nome</span>
+                  <span className="time-perfil-dado-valor">{nome}</span>
+                </div>
+                <div className="time-perfil-dado-item">
+                  <span className="time-perfil-dado-rotulo">E-mail</span>
+                  <span className="time-perfil-dado-valor">{email}</span>
+                </div>
+                <div className="time-perfil-dado-item">
+                  <span className="time-perfil-dado-rotulo">CPF</span>
+                  <span className="time-perfil-dado-valor">{cpf}</span>
+                </div>
+                <div className="time-perfil-dado-item">
+                  <span className="time-perfil-dado-rotulo">WhatsApp</span>
+                  <span className="time-perfil-dado-valor">{whatsapp}</span>
+                </div>
+                <div className="time-perfil-dado-item">
+                  <span className="time-perfil-dado-rotulo">Aniversário</span>
+                  <span className="time-perfil-dado-valor">
+                    {birthDate.includes("-")
+                      ? birthDate.split("-").reverse().join("/")
+                      : birthDate}
+                  </span>
+                </div>
               </div>
             </div>
-            <label className="time-porta-campo">
-              <span>Chave PIX</span>
-              <input
-                value={pixChave}
-                onChange={(e) => setPixChave(e.target.value)}
-                inputMode={pixTipo === "cpf" || pixTipo === "cnpj" || pixTipo === "telefone" ? "numeric" : "text"}
-                placeholder={
-                  pixTipo === "cpf" ? "000.000.000-00"
-                  : pixTipo === "cnpj" ? "00.000.000/0000-00"
-                  : pixTipo === "telefone" ? "(81) 99999-9999"
-                  : pixTipo === "email" ? "voce@exemplo.com"
-                  : "a chave que o banco gerou"
-                }
-              />
-            </label>
-          </>
-        ) : (
-          <>
-            <label className="time-porta-campo">
-              <span>Banco</span>
-              <input value={bancoNome} onChange={(e) => setBancoNome(e.target.value)} placeholder="Inter, Nubank…" />
-            </label>
+          </details>
+        </section>
+      ) : (
+        <form className="time-porta-form time-perfil-secao" onSubmit={salvarPerfil}>
+          <div className="time-perfil-dados-topo">
+            <h2 className="time-perfil-secao-titulo">Seus dados</h2>
+            {dadosCompletos ? (
+              <button
+                type="button"
+                className="time-perfil-btn-cancelar"
+                onClick={() => setEditandoDados(false)}
+              >
+                Cancelar
+              </button>
+            ) : null}
+          </div>
+          <label className="time-porta-campo">
+            <span>Nome</span>
+            <input value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" />
+          </label>
+          <label className="time-porta-campo">
+            <span>E-mail</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              inputMode="email"
+            />
+          </label>
+          <label className="time-porta-campo">
+            <span>CPF</span>
+            <input
+              value={cpf}
+              onChange={(e) => setCpf(e.target.value)}
+              placeholder="000.000.000-00"
+              inputMode="numeric"
+              autoComplete="off"
+            />
+          </label>
+          <label className="time-porta-campo">
+            <span>WhatsApp</span>
+            <input
+              type="tel"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              placeholder="(81) 99999-9999"
+              inputMode="tel"
+              autoComplete="tel"
+            />
+          </label>
+          <label className="time-porta-campo">
+            <span>Aniversário</span>
+            <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+          </label>
+          {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
+          {perfilOk ? <p className="conta-pgto-ok" role="status">Perfil salvo.</p> : null}
+          <button type="submit" className="time-porta-entrar" disabled={salvando || nome.trim().length < 2}>
+            {salvando ? "Salvando…" : "Salvar dados"}
+          </button>
+        </form>
+      )}
+
+      {/* 2. SEÇÃO FINANCEIRO & PREVISÃO UNIFICADA */}
+      {resumoRec ? (
+        <section className="time-secao time-perfil-secao-dobravel">
+          <details className="rec-secao-dobravel" open>
+            <summary className="rec-secao-cabeca">
+              <div className="time-perfil-fin-titulo-grupo">
+                <span className="time-perfil-fin-super">Previsão de recebimento</span>
+                <h2 className="time-perfil-fin-mes">
+                  {resumoRec.mes ? nomeMesRec(resumoRec.mes) : "Próximo mês"}
+                </h2>
+              </div>
+              <span className="rec-secao-cabeca-direita">
+                <div className="time-perfil-fin-total-bloco">
+                  <strong className="time-perfil-fin-total-val">{brl(resumoRec.total)}</strong>
+                  <small className="time-perfil-fin-subrotulo">total previsto</small>
+                </div>
+                <IconeSetaPerfil />
+              </span>
+            </summary>
+
+            <div className="rec-secao-corpo" style={{ padding: "12px 16px" }}>
+              {/* Composição detalhada do mês */}
+              <ul className="time-perfil-fin-composicao" style={{ margin: 0, padding: 0 }}>
+                {([
+                  ["Salário", resumoRec.salario, "nat-salario"],
+                  ["Pró-labore", resumoRec.prolabore, "nat-recorrente"],
+                  ["Comissão", resumoRec.comissao, "nat-comissao"],
+                  ["Reembolso", resumoRec.reembolso, "nat-reembolso"]
+                ] as [string, number, string][])
+                  .filter(([, v]) => v > 0)
+                  .map(([rotulo, valor, classe]) => (
+                    <li key={rotulo} className="time-perfil-fin-item">
+                      <div className="time-perfil-fin-item-esq">
+                        <i className={`rec-ponto ${classe}`} aria-hidden />
+                        <span>{rotulo}</span>
+                      </div>
+                      <b>{brl(valor)}</b>
+                    </li>
+                  ))}
+              </ul>
+
+              {/* Totais acumulados em aberto / futuros */}
+              {(resumoRec.aberto > 0 || (resumoRec.comissaoFutura ?? 0) > 0) ? (
+                <div className="time-perfil-fin-abertos">
+                  {resumoRec.aberto > 0 ? (
+                    <div className="time-perfil-fin-aberto-card">
+                      <span className="time-perfil-fin-aberto-rotulo">Reembolso em aberto</span>
+                      <strong className="time-perfil-fin-aberto-val reemb-cor">{brl(resumoRec.aberto)}</strong>
+                      <small className="time-perfil-fin-aberto-nota">total de parcelas a receber</small>
+                    </div>
+                  ) : null}
+
+                  {(resumoRec.comissaoFutura ?? 0) > 0 ? (
+                    <div className="time-perfil-fin-aberto-card">
+                      <span className="time-perfil-fin-aberto-rotulo">Comissão futura</span>
+                      <strong className="time-perfil-fin-aberto-val comissao-cor">{brl(resumoRec.comissaoFutura)}</strong>
+                      <small className="time-perfil-fin-aberto-nota">total declarado em aberto</small>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className="time-perfil-fin-links" style={{ marginTop: "10px" }}>
+                <Link href="/time/recebiveis" className="time-perfil-fin-link">
+                  Ver gestão financeira das entradas →
+                </Link>
+              </div>
+            </div>
+          </details>
+        </section>
+      ) : null}
+
+      {/* 3. A CONTA QUE RECEBE (ONDE EU RECEBO) */}
+      {temContaCadastrada && !editandoConta ? (
+        <section className="time-secao time-perfil-secao-dobravel">
+          <details className="rec-secao-dobravel" open>
+            <summary className="rec-secao-cabeca">
+              <div>
+                <h2>Onde eu recebo</h2>
+                <small style={{ color: "var(--muted)", fontSize: "11px", display: "block", marginTop: "2px" }}>
+                  {conta?.metodo === "pix" ? `PIX: ${conta.pixChave}` : `TED: ${conta?.bancoNome}`}
+                </small>
+              </div>
+              <span className="rec-secao-cabeca-direita">
+                <button
+                  type="button"
+                  className="time-perfil-btn-editar"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setEditandoConta(true);
+                  }}
+                >
+                  Editar conta
+                </button>
+                <IconeSetaPerfil />
+              </span>
+            </summary>
+
+            <div className="rec-secao-corpo" style={{ padding: "12px 16px" }}>
+              <div className="time-perfil-dados-grid time-perfil-conta-grid">
+                <div className="time-perfil-dado-item">
+                  <span className="time-perfil-dado-rotulo">
+                    {conta?.metodo === "pix" ? `Chave PIX (${conta.pixTipo?.toUpperCase() ?? "CHAVE"})` : "Método"}
+                  </span>
+                  <span className="time-perfil-dado-valor">
+                    {conta?.metodo === "pix" ? conta.pixChave : "TED / Transferência"}
+                  </span>
+                </div>
+                {conta?.metodo === "ted" ? (
+                  <>
+                    <div className="time-perfil-dado-item">
+                      <span className="time-perfil-dado-rotulo">Banco</span>
+                      <span className="time-perfil-dado-valor">{conta.bancoNome}</span>
+                    </div>
+                    <div className="time-perfil-dado-item">
+                      <span className="time-perfil-dado-rotulo">Agência / Conta</span>
+                      <span className="time-perfil-dado-valor">Ag: {conta.agencia} · Cc: {conta.conta}</span>
+                    </div>
+                  </>
+                ) : null}
+                <div className="time-perfil-dado-item">
+                  <span className="time-perfil-dado-rotulo">Titular</span>
+                  <span className="time-perfil-dado-valor">
+                    {conta?.titularEhAPessoa
+                      ? "Eu mesmo"
+                      : `${conta?.titularNome ?? "Outro"}${conta?.titularDocumento ? ` (Doc: ${conta.titularDocumento})` : ""}`}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+      ) : (
+        <form className="time-porta-form conta-pgto time-perfil-secao" onSubmit={salvarConta}>
+          <div className="conta-pgto-topo">
+            <h2 className="time-perfil-secao-titulo">Onde eu recebo</h2>
+            {temContaCadastrada ? (
+              <button
+                type="button"
+                className="time-perfil-btn-cancelar"
+                onClick={() => setEditandoConta(false)}
+              >
+                Cancelar
+              </button>
+            ) : null}
+          </div>
+          <p className="time-sub">
+            É para cá que vai o seu reembolso e o seu pagamento. Confira caractere por caractere: chave errada
+            não dá erro, o dinheiro vai para outra pessoa.
+          </p>
+
+          <div className="campo">
+            <span className="campo-rotulo" id="grupo-metodo">Como você recebe</span>
+            <div className="chips" role="group" aria-labelledby="grupo-metodo">
+              {[["pix", "PIX"], ["ted", "TED / transferência"]].map(([v, r]) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={contaMetodo === v}
+                  className={contaMetodo === v ? "chip ativo" : "chip"}
+                  onClick={() => setContaMetodo(v)}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {contaMetodo === "pix" ? (
+            <>
+              <div className="campo">
+                <span className="campo-rotulo" id="grupo-tipo-chave">Tipo da chave</span>
+                <div className="chips" role="group" aria-labelledby="grupo-tipo-chave">
+                  {[["cpf", "CPF"], ["cnpj", "CNPJ"], ["telefone", "Telefone"], ["email", "E-mail"], ["aleatoria", "Aleatória"]].map(
+                    ([v, r]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        aria-pressed={pixTipo === v}
+                        className={pixTipo === v ? "chip ativo" : "chip"}
+                        onClick={() => setPixTipo(v)}
+                      >
+                        {r}
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+              <label className="time-porta-campo">
+                <span>Chave PIX</span>
+                <input
+                  value={pixChave}
+                  onChange={(e) => setPixChave(e.target.value)}
+                  inputMode={pixTipo === "cpf" || pixTipo === "cnpj" || pixTipo === "telefone" ? "numeric" : "text"}
+                  placeholder={
+                    pixTipo === "cpf" ? "000.000.000-00"
+                    : pixTipo === "cnpj" ? "00.000.000/0000-00"
+                    : pixTipo === "telefone" ? "(81) 99999-9999"
+                    : pixTipo === "email" ? "voce@exemplo.com"
+                    : "a chave que o banco gerou"
+                  }
+                />
+              </label>
+            </>
+          ) : (
+            <>
+              <label className="time-porta-campo">
+                <span>Banco</span>
+                <input value={bancoNome} onChange={(e) => setBancoNome(e.target.value)} placeholder="Inter, Nubank…" />
+              </label>
+              <div className="campo-par">
+                <label className="time-porta-campo">
+                  <span>Agência</span>
+                  <input value={agencia} onChange={(e) => setAgencia(e.target.value)} inputMode="numeric" />
+                </label>
+                <label className="time-porta-campo">
+                  <span>Conta</span>
+                  <input value={contaNum} onChange={(e) => setContaNum(e.target.value)} inputMode="numeric" />
+                </label>
+              </div>
+            </>
+          )}
+
+          <div className="campo">
+            <span className="campo-rotulo" id="grupo-titular">De quem é a conta</span>
+            <div className="chips" role="group" aria-labelledby="grupo-titular">
+              <button type="button" aria-pressed={titularEhEu} className={titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(true)}>
+                Minha
+              </button>
+              <button type="button" aria-pressed={!titularEhEu} className={!titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(false)}>
+                Do meu CNPJ / de outra pessoa
+              </button>
+            </div>
+            <small>
+              {titularEhEu
+                ? "O comprovante vai sair no seu nome."
+                : "Comum aqui: o time é MEI e recebe no CNPJ. Diga o titular para o comprovante fazer sentido depois."}
+            </small>
+          </div>
+
+          {!titularEhEu ? (
             <div className="campo-par">
               <label className="time-porta-campo">
-                <span>Agência</span>
-                <input value={agencia} onChange={(e) => setAgencia(e.target.value)} inputMode="numeric" />
+                <span>Nome do titular</span>
+                <input value={titularNome} onChange={(e) => setTitularNome(e.target.value)} />
               </label>
               <label className="time-porta-campo">
-                <span>Conta</span>
-                <input value={contaNum} onChange={(e) => setContaNum(e.target.value)} inputMode="numeric" />
+                <span>CPF ou CNPJ dele</span>
+                <input value={titularDoc} onChange={(e) => setTitularDoc(e.target.value)} inputMode="numeric" />
               </label>
             </div>
-          </>
-        )}
+          ) : null}
 
-        <div className="campo">
-          <span className="campo-rotulo" id="grupo-titular">De quem é a conta</span>
-          <div className="chips" role="group" aria-labelledby="grupo-titular">
-            <button type="button" aria-pressed={titularEhEu} className={titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(true)}>
-              Minha
-            </button>
-            <button type="button" aria-pressed={!titularEhEu} className={!titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(false)}>
-              Do meu CNPJ / de outra pessoa
-            </button>
+          {erroConta ? <p className="time-porta-erro" role="alert">{erroConta}</p> : null}
+          {contaOk ? <p className="conta-pgto-ok" role="status">Conta salva. O financeiro vai conferir antes do próximo pagamento.</p> : null}
+          <button type="submit" className="time-porta-entrar" disabled={salvandoConta}>
+            {salvandoConta ? "Salvando…" : conta ? "Atualizar conta" : "Salvar conta"}
+          </button>
+        </form>
+      )}
+
+      {/* 4. MEUS CARTÕES PESSOAIS */}
+      <section className="time-secao time-perfil-secao-dobravel">
+        <details className="rec-secao-dobravel" open>
+          <summary className="rec-secao-cabeca">
+            <div>
+              <h2>Meus cartões</h2>
+              <small style={{ color: "var(--muted)", fontSize: "11px", display: "block", marginTop: "2px" }}>
+                {cartoesPessoais.length} {cartoesPessoais.length === 1 ? "cartão pessoal cadastrado" : "cartões pessoais cadastrados"}
+              </small>
+            </div>
+            <span className="rec-secao-cabeca-direita">
+              <button
+                type="button"
+                className="time-perfil-btn-editar"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAdicionandoCartao(true);
+                }}
+              >
+                + Novo cartão
+              </button>
+              <IconeSetaPerfil />
+            </span>
+          </summary>
+
+          <div className="rec-secao-corpo" style={{ padding: "14px 16px" }}>
+            {editandoCartao ? (
+              <form className="time-perfil-cartao-form-edit" onSubmit={salvarEdicaoCartao}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong style={{ fontSize: "13.5px" }}>Editar cartão •••• {editandoCartao.final}</strong>
+                  <button
+                    type="button"
+                    className="time-perfil-btn-cancelar"
+                    onClick={() => setEditandoCartao(null)}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+                <label className="time-porta-campo">
+                  <span>Apelido do cartão</span>
+                  <input
+                    value={apelidoEdicao}
+                    onChange={(e) => setApelidoEdicao(e.target.value)}
+                    placeholder="Ex.: Nubank Roxinho, PagBank Pessoal, Inter Black"
+                    autoFocus
+                  />
+                </label>
+                <div className="campo-par">
+                  <label className="time-porta-campo">
+                    <span>Bandeira</span>
+                    <select value={bandeiraEdicao} onChange={(e) => setBandeiraEdicao(e.target.value)}>
+                      <option value="">Indeterminada</option>
+                      <option value="visa">Visa</option>
+                      <option value="mastercard">Mastercard</option>
+                      <option value="elo">Elo</option>
+                      <option value="amex">Amex</option>
+                      <option value="hipercard">Hipercard</option>
+                      <option value="outra">Outra</option>
+                    </select>
+                  </label>
+                  <label className="time-porta-campo">
+                    <span>Cor</span>
+                    <select value={corEdicao} onChange={(e) => setCorEdicao(e.target.value)}>
+                      <option value="">Padrão</option>
+                      <option value="roxo">Roxo</option>
+                      <option value="preto">Preto / Black</option>
+                      <option value="azul">Azul</option>
+                      <option value="laranja">Laranja</option>
+                      <option value="verde">Verde</option>
+                      <option value="vermelho">Vermelho</option>
+                      <option value="prata">Prata</option>
+                      <option value="dourado">Dourado</option>
+                      <option value="branco">Branco</option>
+                    </select>
+                  </label>
+                </div>
+                <button type="submit" className="time-porta-entrar" disabled={salvandoCartao}>
+                  {salvandoCartao ? "Salvando…" : "Salvar alterações"}
+                </button>
+              </form>
+            ) : null}
+
+            {cartoesPessoais.length === 0 ? (
+              <div className="time-perfil-cartoes-vazio">
+                <p className="time-sub">Nenhum cartão pessoal cadastrado.</p>
+                <button
+                  type="button"
+                  className="time-perfil-foto-btn"
+                  onClick={() => setAdicionandoCartao(true)}
+                >
+                  Cadastrar primeiro cartão
+                </button>
+              </div>
+            ) : (
+              <div className="time-perfil-cartoes-grid">
+                {cartoesPessoais.map((c) => {
+                  const finalDigitos = c.final.replace(/\D/g, "");
+                  const apelidoLower = (c.apelido ?? "").toLowerCase().trim();
+
+                  const itensDoCartao = reembItens.filter((i) => {
+                    const descLower = i.descricao.toLowerCase();
+                    if (finalDigitos && descLower.includes(finalDigitos)) return true;
+                    if (apelidoLower && apelidoLower.length >= 3 && descLower.includes(apelidoLower)) return true;
+                    return false;
+                  });
+
+                  const aReceberCents = itensDoCartao
+                    .filter((i) => i.status === "aprovado")
+                    .reduce((s, i) => s + (i.saldoCents ?? i.valorCents), 0);
+
+                  const corClasse = c.cor ? `cor-${c.cor}` : "cor-padrao";
+
+                  return (
+                    <div key={c.id} className={`time-perfil-cartao-mini ${corClasse}`}>
+                      <div className="time-perfil-cartao-mini-topo">
+                        <div className="time-perfil-cartao-topo-esq">
+                          <LogoBanco apelido={c.apelido} />
+                          <div className="time-perfil-cartao-chip-box">
+                            <IconeChipCartao />
+                          </div>
+                        </div>
+                        <div className="time-perfil-cartao-brand-box">
+                          <LogoBandeira bandeira={c.bandeira} />
+                        </div>
+                      </div>
+
+                      <div className="time-perfil-cartao-mini-corpo">
+                        <span className="time-perfil-cartao-final">•••• {c.final}</span>
+                        <span className="time-perfil-cartao-apelido" title={c.apelido ?? undefined}>
+                          {c.apelido || "Cartão pessoal"}
+                        </span>
+                      </div>
+
+                      <div className="time-perfil-cartao-mini-rodape">
+                        <div className="time-perfil-cartao-saldo-info">
+                          <span className="time-perfil-cartao-saldo-rotulo">A receber</span>
+                          <strong className="time-perfil-cartao-saldo-val">
+                            {aReceberCents > 0 ? brl(aReceberCents) : "R$ 0,00"}
+                          </strong>
+                        </div>
+                        <button
+                          type="button"
+                          className="time-perfil-cartao-btn-acao"
+                          onClick={() => {
+                            setEditandoCartao(c);
+                            setApelidoEdicao(c.apelido || "");
+                            setCorEdicao(c.cor || "");
+                            setBandeiraEdicao(c.bandeira || "");
+                          }}
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-          <small>
-            {titularEhEu
-              ? "O comprovante vai sair no seu nome."
-              : "Comum aqui: o time é MEI e recebe no CNPJ. Diga o titular para o comprovante fazer sentido depois."}
-          </small>
-        </div>
+        </details>
+      </section>
 
-        {!titularEhEu ? (
-          <div className="campo-par">
-            <label className="time-porta-campo">
-              <span>Nome do titular</span>
-              <input value={titularNome} onChange={(e) => setTitularNome(e.target.value)} />
-            </label>
-            <label className="time-porta-campo">
-              <span>CPF ou CNPJ dele</span>
-              <input value={titularDoc} onChange={(e) => setTitularDoc(e.target.value)} inputMode="numeric" />
-            </label>
-          </div>
-        ) : null}
-
-        {erroConta ? <p className="time-porta-erro" role="alert">{erroConta}</p> : null}
-        {contaOk ? <p className="conta-pgto-ok" role="status">Conta salva. O financeiro vai conferir antes do próximo pagamento.</p> : null}
-        <button type="submit" className="time-porta-entrar" disabled={salvandoConta}>
-          {salvandoConta ? "Salvando…" : conta ? "Atualizar conta" : "Salvar conta"}
-        </button>
-      </form>
+      {adicionandoCartao ? (
+        <CadastrarCartao
+          bancos={opcoes?.bancos ?? []}
+          pessoas={pessoas ?? []}
+          inicial={{ natureza: "pessoal" }}
+          aoCadastrar={async (novasOpcoes) => {
+            if (aoAtualizarOpcoes) aoAtualizarOpcoes(novasOpcoes);
+            setAdicionandoCartao(false);
+            await carregarCartoes();
+          }}
+          aoFechar={() => setAdicionandoCartao(false)}
+        />
+      ) : null}
 
       <div className="time-perfil-rodape">
-        <div className="time-perfil-tema">
-          <span>Aparência</span>
-          <BotaoTema className="time-topo-tema" />
-        </div>
         <button type="button" className="time-perfil-sair" onClick={() => void aoSair()}>
           Sair da conta
         </button>
@@ -2945,6 +3898,22 @@ function Inicio({ envios }: { envios: Envio[] }) {
   const voltaram = envios.filter((e) => e.statusExtrato === "nao_pago");
 
   const ultimoMes = rec && rec.porMes.length > 0 ? rec.porMes[rec.porMes.length - 1] : null;
+  const proxMes = rec?.previsao?.[0] ?? null;
+
+  const mesUltimoNome = ultimoMes ? mesNome(ultimoMes.mes) : "—";
+  const recUltimoRemun = (ultimoMes?.porNatureza?.salario ?? 0) + (ultimoMes?.porNatureza?.prolabore ?? 0) + (ultimoMes?.porNatureza?.estagio ?? 0) + (ultimoMes?.porNatureza?.comissao ?? 0) + (ultimoMes?.porNatureza?.extra ?? 0);
+  const recUltimoReemb = ultimoMes?.porNatureza?.reembolso ?? 0;
+
+  const mesProxNome = proxMes?.mes ? mesNome(proxMes.mes) : "Próximo mês";
+  const salProx = proxMes?.salarioCents ?? 0;
+  const prolabProx = proxMes?.prolaboreCents ?? 0;
+  const comissaoProx = proxMes?.comissaoCents ?? 0;
+  const reembProx = proxMes?.reembolsoCents ?? 0;
+
+  const remunProxTotal = salProx + prolabProx + comissaoProx;
+  const totalProxMes = remunProxTotal + reembProx;
+  const saldoReembTotalAberto = rec?.emAbertoCents ?? 0;
+
   const nCompras = envios.filter((e) => e.origem === "custo" || e.origem === "compra").length;
 
   const textoHistorico =
@@ -2958,24 +3927,38 @@ function Inicio({ envios }: { envios: Envio[] }) {
         <div className="time-faixa time-faixa-inicio">
           <Link href="/time/recebiveis" className="time-faixa-item time-faixa-destaque" id="guia-recebido">
             <span className="time-faixa-topo">Recebido</span>
-            <strong className="time-faixa-valor">{brl(ultimoMes?.totalCents ?? 0)}</strong>
+            <strong className="time-faixa-valor">
+              {brl(recUltimoRemun > 0 ? recUltimoRemun : (ultimoMes?.totalCents ?? 0))}
+            </strong>
+            {ultimoMes && recUltimoReemb > 0 && recUltimoRemun > 0 ? (
+              <span className="time-faixa-nota time-nota-reemb">
+                + {brl(recUltimoReemb)}
+              </span>
+            ) : null}
+            <span className="time-faixa-rotulo">{mesUltimoNome}</span>
+          </Link>
+          <Link
+            href="/time/recebiveis"
+            className="time-faixa-item time-faixa-previsto"
+            title="Ver previsão completa em recebíveis"
+          >
+            <span className="time-faixa-topo">A receber</span>
+            <strong className="time-faixa-valor">
+              {brl(remunProxTotal > 0 ? remunProxTotal : (totalProxMes > 0 ? totalProxMes : (saldoReembTotalAberto > 0 ? saldoReembTotalAberto : (rec?.totalCents ?? 0))))}
+            </strong>
+            {proxMes && reembProx > 0 && remunProxTotal > 0 ? (
+              <span className="time-faixa-nota time-nota-reemb">
+                + {brl(reembProx)}
+              </span>
+            ) : (proxMes && remunProxTotal > 0 && saldoReembTotalAberto > 0 ? (
+              <span className="time-faixa-nota time-nota-reemb">
+                + {brl(saldoReembTotalAberto)}
+              </span>
+            ) : null)}
             <span className="time-faixa-rotulo">
-              {ultimoMes ? mesNome(ultimoMes.mes) : "—"}
+              {proxMes ? mesProxNome : (saldoReembTotalAberto > 0 ? "Reembolso" : "Total")}
             </span>
           </Link>
-          {rec && rec.emAbertoCents > 0 ? (
-            <Link href="/time/reembolsos" className="time-faixa-item time-faixa-reembolso">
-              <span className="time-faixa-topo">À receber</span>
-              <strong className="time-faixa-valor">{brl(rec.emAbertoCents)}</strong>
-              <span className="time-faixa-rotulo">Reembolso</span>
-            </Link>
-          ) : (
-            <Link href="/time/recebiveis" className="time-faixa-item">
-              <span className="time-faixa-topo">Em 2026</span>
-              <strong className="time-faixa-valor">{brl(rec?.totalCents ?? 0)}</strong>
-              <span className="time-faixa-rotulo">Total</span>
-            </Link>
-          )}
         </div>
         <nav className="time-menu-atalhos" aria-label="Recebíveis">
           <Atalho

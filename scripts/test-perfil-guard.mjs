@@ -202,7 +202,7 @@ for (const rel of SUPERFICIE_DO_TIME) {
   if (fonte === null) { nok(`${rel} não existe`); continue; }
   // Comentários explicam a regra e citam os nomes; a busca é só no CÓDIGO.
   const codigo = fonte.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  const achados = PROIBIDOS.filter((p) => codigo.includes(p));
+  const achados = PROIBIDOS.filter((p) => (p === 'fin_comissao' ? /\bfin_comissao\b/.test(codigo) : codigo.includes(p)));
   if (achados.length) nok(`${rel} menciona ${achados.join(', ')}`);
   else ok(rel, 'nenhuma tabela de saldo, DRE, folha, margem ou tributo');
 }

@@ -1,8 +1,15 @@
 import { exigirContexto, respostaDeErro } from "@/app/api/time/_sessao";
-import { cadastrarCartao, listarMeusCartoesPessoais, opcoesDoTime, procurarCartaoPeloFinal } from "@/lib/financeiro/time";
+import {
+  atualizarCartaoPessoal,
+  cadastrarCartao,
+  listarMeusCartoesPessoais,
+  opcoesDoTime,
+  procurarCartaoPeloFinal
+} from "@/lib/financeiro/time";
 
 /**
  * POST /api/time/cartao — cadastra um plástico pelo celular.
+ * PATCH /api/time/cartao — renomeia ou ajusta um cartão pessoal.
  *
  * Era o único jeito de o Inter (zero plásticos) e os nove Nubank sem apelido
  * saírem do estado em que estão: não havia caminho de escrita para cartão em
@@ -45,6 +52,25 @@ export async function POST(request: Request) {
     const corpo = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const cartao = await cadastrarCartao(sessao, corpo);
     return Response.json({ ok: true, cartao, opcoes: await opcoesDoTime() }, { status: 201 });
+  } catch (erro) {
+    return respostaDeErro(erro);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const { sessao } = await exigirContexto();
+    const corpo = (await request.json().catch(() => ({}))) as {
+      id?: number;
+      apelido?: string | null;
+      cor?: string | null;
+      bandeira?: string | null;
+    };
+    if (!corpo.id || typeof corpo.id !== "number") {
+      return Response.json({ error: "id do cartão é obrigatório" }, { status: 400 });
+    }
+    const cartao = await atualizarCartaoPessoal(sessao, corpo.id, corpo);
+    return Response.json({ ok: true, cartao, cartoes: await listarMeusCartoesPessoais(sessao) });
   } catch (erro) {
     return respostaDeErro(erro);
   }

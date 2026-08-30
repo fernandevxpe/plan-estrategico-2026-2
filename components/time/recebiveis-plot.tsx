@@ -49,6 +49,24 @@ export function calcLegenda(janela: ColunaPlot[]) {
     .sort((a, b) => b.cents - a.cents);
 }
 
+const ORDEM_NATUREZAS = [
+  "salario",
+  "prolabore",
+  "comissao",
+  "reembolso",
+  "estagio",
+  "extra",
+  "encargo_beneficio"
+];
+
+function ordenarNaturezas(naturezas: string[]): string[] {
+  return [...naturezas].sort((a, b) => {
+    const ia = ORDEM_NATUREZAS.indexOf(a);
+    const ib = ORDEM_NATUREZAS.indexOf(b);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+}
+
 function gruposDoMes(
   dado: DadoRecebiveis,
   mes: string,
@@ -56,7 +74,9 @@ function gruposDoMes(
   natFoco: string | null,
   ocultas: Set<string>
 ): GrupoGrafico[] {
-  const naturezas = (natFoco ? [natFoco] : Object.keys(porNatureza)).filter((n) => !ocultas.has(n));
+  const naturezas = ordenarNaturezas(
+    (natFoco ? [natFoco] : Object.keys(porNatureza)).filter((n) => !ocultas.has(n))
+  );
   return naturezas
     .map((natureza) => {
       const totalCents = porNatureza[natureza] ?? 0;
@@ -134,7 +154,7 @@ function gruposPrevistos(
   porNatureza: Record<string, number>,
   natFoco: string | null
 ): GrupoGrafico[] {
-  const naturezas = natFoco ? [natFoco] : Object.keys(porNatureza);
+  const naturezas = ordenarNaturezas(natFoco ? [natFoco] : Object.keys(porNatureza));
   return naturezas
     .map((natureza) => {
       const totalCents = porNatureza[natureza] ?? 0;
@@ -294,7 +314,11 @@ export function RecebiveisPlot({
               <span className="rec-col-area">
                 <span className="rec-pilha" style={{ height: `${(m.totalCents / teto) * 100}%` }}>
                   {Object.entries(m.porNatureza)
-                    .sort((a, b) => b[1] - a[1])
+                    .sort((a, b) => {
+                      const ia = ORDEM_NATUREZAS.indexOf(a[0]);
+                      const ib = ORDEM_NATUREZAS.indexOf(b[0]);
+                      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+                    })
                     .map(([nat, v]) => (
                       <i
                         key={nat}
@@ -325,24 +349,35 @@ export function RecebiveisPlot({
             <ul className="rec-plot-dica-grupos">
               {gruposFoco.map((g) => (
                 <li key={g.natureza}>
-                  <div className="rec-plot-dica-nat">
-                    <i className={`rec-ponto ${CLASSE[g.natureza] ?? "nat-encargo"}`} aria-hidden />
-                    <span>{g.rotulo}</span>
-                    <b>{brl(g.totalCents)}</b>
-                  </div>
                   {g.itens.length > 0 ? (
-                    <ul className="rec-plot-dica-itens">
-                      {g.itens.map((it, k) => (
-                        <li key={`${it.nome}-${k}`}>
-                          <span className="rec-plot-dica-nome">
-                            {it.nome}
-                            {it.detalhe ? <small>{it.detalhe}</small> : null}
-                          </span>
-                          <b>{brl(it.valorCents)}</b>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
+                    <details className="rec-plot-dica-dobravel" open={foco.nat === g.natureza}>
+                      <summary className="rec-plot-dica-nat">
+                        <i className={`rec-ponto ${CLASSE[g.natureza] ?? "nat-encargo"}`} aria-hidden />
+                        <span>{g.rotulo}</span>
+                        <b>{brl(g.totalCents)}</b>
+                        <svg className="rec-seta" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+                          <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </summary>
+                      <ul className="rec-plot-dica-itens">
+                        {g.itens.map((it, k) => (
+                          <li key={`${it.nome}-${k}`}>
+                            <span className="rec-plot-dica-nome">
+                              {it.nome}
+                              {it.detalhe ? <small>{it.detalhe}</small> : null}
+                            </span>
+                            <b>{brl(it.valorCents)}</b>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  ) : (
+                    <div className="rec-plot-dica-nat">
+                      <i className={`rec-ponto ${CLASSE[g.natureza] ?? "nat-encargo"}`} aria-hidden />
+                      <span>{g.rotulo}</span>
+                      <b>{brl(g.totalCents)}</b>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -355,25 +390,9 @@ export function RecebiveisPlot({
         </div>
       ) : (
         <p className="rec-plot-nota" role="status">
-          Toque num mês para ver cada pagamento. Toque numa banda para focar numa natureza.
+          Toque no gráfico para ver o detalhamento
         </p>
       )}
-      <ul className="rec-legenda rec-legenda-filtro">
-        {dado.porNatureza.map((n) => {
-          const dentro = legenda.find((l) => l.natureza === n.natureza);
-          const liga = !ocultas.has(n.natureza);
-          return (
-            <li key={n.natureza}>
-              <button type="button" aria-pressed={liga} onClick={() => alternar(n.natureza)}>
-                <i className={`rec-ponto ${CLASSE[n.natureza] ?? "nat-encargo"}${liga ? "" : " vazado"}`} />
-                <span>{ROTULO[n.natureza] ?? n.natureza}</span>
-                <b>{liga ? brl(dentro?.cents ?? 0) : "—"}</b>
-                <em>{liga ? plural(dentro?.n ?? 0, "mês", "meses") : "oculto"}</em>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
     </>
   );
 }

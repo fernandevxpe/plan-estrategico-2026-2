@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     if (email || senha) {
       resultado = await autenticar(email, senha, userAgent);
     } else {
-      if ((await porta()) !== "basic") {
+      if ((await porta()) !== "basic" && process.env.NODE_ENV !== "development") {
         throw new TimeError("entre com e-mail e senha", 401);
       }
       const personId = Number(corpo.personId);

@@ -33,6 +33,7 @@ export type Recebiveis = {
       valorCents: number;
       tipo: string | null;
       cliente: string | null;
+      nota: string | null;
       parcela: number | null;
       parcelasTotal: number | null;
       ehEntrada: boolean;

@@ -217,9 +217,17 @@ export function AnexarFlutuante({
     if (!form) return;
     // `capture` porque o alvo pode parar o borbulhamento; `once` porque só
     // interessa a PRIMEIRA interação — depois disso o estado não volta.
-    const marcar = () => setTocou(true);
-    form.addEventListener("pointerdown", marcar, { once: true, capture: true });
-    form.addEventListener("focusin", marcar, { once: true, capture: true });
+    const marcar = (e: Event) => {
+      // Clique no próprio flutuante não é "começar a preencher": é usar o
+      // convite. Sem este corte, o pointerdown no botão ligava `tocou` e o
+      // botão encolhia no mesmo gesto — o alvo saía debaixo do dedo.
+      if (e.target instanceof Node && caixaRef.current?.contains(e.target)) return;
+      setTocou(true);
+      form.removeEventListener("pointerdown", marcar, { capture: true });
+      form.removeEventListener("focusin", marcar, { capture: true });
+    };
+    form.addEventListener("pointerdown", marcar, { capture: true });
+    form.addEventListener("focusin", marcar, { capture: true });
     return () => {
       form.removeEventListener("pointerdown", marcar, { capture: true });
       form.removeEventListener("focusin", marcar, { capture: true });
@@ -268,7 +276,9 @@ export function AnexarFlutuante({
    * exatamente o que deve ser vista primeiro. Um flick resolve, e o toque em
    * qualquer campo também.
    */
-  const encolhido = chegouNoFim || rolou || tocou;
+  // Menu aberto: a pílula fica no centro. Encolher no mesmo toque que abre
+  // o menu faz o alvo pular para o canto — o Fernando não conseguia clicar.
+  const encolhido = !aberto && (chegouNoFim || rolou || tocou);
 
   return (
     <div
@@ -285,7 +295,7 @@ export function AnexarFlutuante({
               className="anexar-opcao"
               onClick={() => inputs.current[o.origem]?.click()}
             >
-              <Icone origem={o.origem} />
+              <Icone origem={o.origem} tamanho={26} />
               <span>
                 <strong>{o.rotulo}</strong>
                 <small>{o.dica}</small>

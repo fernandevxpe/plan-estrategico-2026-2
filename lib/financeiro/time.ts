@@ -4564,3 +4564,128 @@ export async function opcoesDoTime() {
     )
   };
 }
+
+/**
+ * MINHAS COMISSÕES — o espelho de `meuReembolso`, para a comissão declarada.
+ *
+ * POR QUE UMA TELA PRÓPRIA, E NÃO UMA FAIXA EM RECEBÍVEIS
+ * -------------------------------------------------------
+ * Recebíveis responde "quanto entrou e quanto entra"; a comissão tem perguntas
+ * que só ela tem: de que VENDA veio, de que CLIENTE, em que PARCELA está, e
+ * quanto de cada TIPO. Espremer isso numa faixa do gráfico de recebíveis daria
+ * um total sem procedência — que é exatamente o que existia antes.
+ *
+ * O ESCOPO É A SESSÃO, como em todo este arquivo: a função recebe `Sessao` e
+ * nunca `personId`, então não existe assinatura onde caiba a pessoa errada.
+ *
+ * PASSADO E FUTURO NA MESMA LISTA. A competência do mês corrente para trás é
+ * histórico; do mês seguinte em diante é previsão. Quem decide é a data, não um
+ * campo de status — comissão declarada não tem "aprovada": ela existe ou não.
+ */
+export type ItemComissao = {
+  id: number;
+  competencia: string;
+  descricao: string;
+  valorCents: number;
+  tipoSlug: string | null;
+  tipoNome: string | null;
+  cliente: string | null;
+  nota: string | null;
+  parcela: number | null;
+  parcelasTotal: number | null;
+  ehEntrada: boolean;
+  serieId: number | null;
+  /** `true` quando a competência ainda não chegou — é previsão, não histórico. */
+  futura: boolean;
+};
+
+export type MinhasComissoes = {
+  resumo: {
+    totalDeclaradoCents: number;
+    recebidoCents: number;
+    aReceberCents: number;
+    proximoMesCents: number;
+    proximoMes: string | null;
+    itensCount: number;
+  };
+  itens: ItemComissao[];
+  meses: { mes: string; totalCents: number; futura: boolean; n: number }[];
+  porTipo: { slug: string; nome: string; totalCents: number; n: number }[];
+  clientes: string[];
+};
+
+export async function minhasComissoes(sessao: Sessao): Promise<MinhasComissoes> {
+  const linhas = await query<Record<string, unknown>>(
+    `SELECT c.id,
+            to_char(c.competencia, 'YYYY-MM') AS competencia,
+            c.descricao, c.valor_cents, c.cliente, c.nota,
+            c.tipo_slug, t.nome AS tipo_nome,
+            c.parcela, c.parcelas_total, c.serie_id,
+            (c.parcela = 1 AND COALESCE(s.entrada_cents, 0) > 0) AS eh_entrada,
+            (c.competencia > date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo')::date) AS futura
+       FROM fin_pessoa_comissao_declarada c
+       LEFT JOIN fin_comissao_tipo t ON t.slug = c.tipo_slug
+       LEFT JOIN fin_pessoa_comissao_serie s ON s.id = c.serie_id
+      WHERE c.person_id = $1
+      ORDER BY c.competencia DESC, c.valor_cents DESC, c.id DESC`,
+    [sessao.personId]
+  ).catch(() => []);
+
+  const itens: ItemComissao[] = linhas.map((r) => ({
+    id: Number(r.id),
+    competencia: String(r.competencia),
+    descricao: String(r.descricao ?? ""),
+    valorCents: Number(r.valor_cents),
+    tipoSlug: (r.tipo_slug as string) ?? null,
+    tipoNome: (r.tipo_nome as string) ?? null,
+    cliente: (r.cliente as string) ?? null,
+    nota: (r.nota as string) ?? null,
+    parcela: r.parcela == null ? null : Number(r.parcela),
+    parcelasTotal: r.parcelas_total == null ? null : Number(r.parcelas_total),
+    ehEntrada: Boolean(r.eh_entrada),
+    serieId: r.serie_id == null ? null : Number(r.serie_id),
+    futura: Boolean(r.futura)
+  }));
+
+  const porMes = new Map<string, { mes: string; totalCents: number; futura: boolean; n: number }>();
+  const porTipo = new Map<string, { slug: string; nome: string; totalCents: number; n: number }>();
+  const clientes = new Set<string>();
+  let recebido = 0;
+  let aReceber = 0;
+
+  for (const i of itens) {
+    const m = porMes.get(i.competencia) ?? { mes: i.competencia, totalCents: 0, futura: i.futura, n: 0 };
+    m.totalCents += i.valorCents;
+    m.n += 1;
+    porMes.set(i.competencia, m);
+
+    // "sem_tipo" é lacuna visível, não erro: são as linhas anteriores à 0178.
+    const slug = i.tipoSlug ?? "sem_tipo";
+    const t = porTipo.get(slug) ?? { slug, nome: i.tipoNome ?? "Sem tipo", totalCents: 0, n: 0 };
+    t.totalCents += i.valorCents;
+    t.n += 1;
+    porTipo.set(slug, t);
+
+    if (i.cliente) clientes.add(i.cliente);
+    if (i.futura) aReceber += i.valorCents;
+    else recebido += i.valorCents;
+  }
+
+  const meses = [...porMes.values()].sort((a, b) => a.mes.localeCompare(b.mes));
+  const proximo = meses.find((m) => m.futura) ?? null;
+
+  return {
+    resumo: {
+      totalDeclaradoCents: recebido + aReceber,
+      recebidoCents: recebido,
+      aReceberCents: aReceber,
+      proximoMesCents: proximo?.totalCents ?? 0,
+      proximoMes: proximo?.mes ?? null,
+      itensCount: itens.length
+    },
+    itens,
+    meses,
+    porTipo: [...porTipo.values()].sort((a, b) => b.totalCents - a.totalCents),
+    clientes: [...clientes].sort((a, b) => a.localeCompare(b, "pt-BR"))
+  };
+}

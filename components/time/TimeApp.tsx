@@ -130,7 +130,7 @@ type DetalheEnvio = {
 export type AbaTime =
   | "inicio" | "reembolso" | "reembolsos" | "custo" | "nota" | "compra"
   | "envios" | "meu-reembolso" | "comprar" | "item" | "recebiveis" | "compras"
-  | "perfil";
+  | "comissoes" | "perfil";
 
 const HOJE = () => new Date().toISOString().slice(0, 10);
 
@@ -393,6 +393,7 @@ export function TimeApp({
       {aba === "compra" ? <FormCompra aoEnviar={aoEnviar} aoFalhar={setRecado} /> : null}
       {aba === "envios" ? <Historico envios={envios} /> : null}
       {aba === "reembolsos" || aba === "meu-reembolso" ? <TelaReembolsosVisao /> : null}
+        {aba === "comissoes" ? <TelaComissoesVisao /> : null}
       {/*
         Recebíveis vive em arquivo próprio: ela busca o próprio dado e não usa
         `sessao`, `opcoes` nem `envios` — os três que justificam este arquivo
@@ -1320,6 +1321,405 @@ function TelaReembolsosVisao() {
 }
 
 const MeuReembolso = TelaReembolsosVisao;
+
+type ItemComissaoTela = {
+  id: number;
+  competencia: string;
+  descricao: string;
+  valorCents: number;
+  tipoSlug: string | null;
+  tipoNome: string | null;
+  cliente: string | null;
+  nota: string | null;
+  parcela: number | null;
+  parcelasTotal: number | null;
+  ehEntrada: boolean;
+  serieId: number | null;
+  futura: boolean;
+};
+
+type ComissoesTela = {
+  resumo: {
+    totalDeclaradoCents: number;
+    recebidoCents: number;
+    aReceberCents: number;
+    proximoMesCents: number;
+    proximoMes: string | null;
+    itensCount: number;
+  };
+  itens: ItemComissaoTela[];
+  meses: { mes: string; totalCents: number; futura: boolean; n: number }[];
+  porTipo: { slug: string; nome: string; totalCents: number; n: number }[];
+  clientes: string[];
+};
+
+/**
+ * MINHAS COMISSÕES — a mesma casca de `TelaReembolsosVisao`, para a comissão.
+ *
+ * Reusa as classes que a guia de reembolsos já usa (`.rec-plot*` para o
+ * gráfico, `.reemb-*` para azulejos, chips e lista), de propósito: duas telas
+ * irmãs com CSS próprio divergem no primeiro ajuste, e o app já viveu isso.
+ *
+ * O que muda em relação a reembolso é o EIXO DE FILTRO. Lá a dimensão útil é o
+ * cartão, derivada da descrição; aqui é o TIPO — que é dado de verdade, com FK
+ * (0178). O filtro de cliente vem junto porque "quanto o cliente X ainda me
+ * gera" é a pergunta que o cadastro passou a saber responder.
+ *
+ * Os KPIs do topo usam `.reemb-destaques`/`.reemb-kpi-*`, que existiam no CSS
+ * sem nenhuma referência em .tsx — o docstring da tela de reembolso os promete
+ * e a tela nunca os desenhou. Aqui eles ganham uso.
+ */
+function TelaComissoesVisao() {
+  const [dados, setDados] = useState<ComissoesTela | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
+  const [filtroQuando, setFiltroQuando] = useState<"todos" | "recebido" | "areceber">("todos");
+  const [tipoFiltro, setTipoFiltro] = useState<string | null>(null);
+  const [clienteFiltro, setClienteFiltro] = useState<string | null>(null);
+  const [mesFiltro, setMesFiltro] = useState<string | null>(null);
+  const [ordem, setOrdem] = useState<"mes" | "valor">("mes");
+
+  useEffect(() => {
+    void (async () => {
+      const r = await fetch("/api/time/minhas-comissoes", { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return setErro(j.error ?? "não consegui carregar");
+      setDados(j.comissoes as ComissoesTela);
+    })();
+  }, []);
+
+  if (erro) return <p className="time-erro" role="alert">{erro}</p>;
+  if (!dados) return <p className="time-sub">Carregando…</p>;
+
+  const { resumo, meses, porTipo, clientes } = dados;
+
+  // Escopo do gráfico: tudo menos o filtro de mês — senão a barra que você
+  // acabou de tocar seria a única a sobrar, e o gráfico perderia a função.
+  const noEscopo = (i: ItemComissaoTela) => {
+    if (filtroQuando === "recebido" && i.futura) return false;
+    if (filtroQuando === "areceber" && !i.futura) return false;
+    if (tipoFiltro && (i.tipoSlug ?? "sem_tipo") !== tipoFiltro) return false;
+    if (clienteFiltro && i.cliente !== clienteFiltro) return false;
+    const q = busca.trim().toLowerCase();
+    if (!q) return true;
+    return [i.descricao, i.tipoNome, i.cliente, i.nota, i.competencia]
+      .filter(Boolean)
+      .some((c) => String(c).toLowerCase().includes(q));
+  };
+
+  const itensEscopo = dados.itens.filter(noEscopo);
+  const temFiltro = Boolean(busca.trim() || tipoFiltro || clienteFiltro || filtroQuando !== "todos");
+
+  // As colunas do gráfico saem do escopo filtrado, não do total: filtrar por
+  // tipo tem de redesenhar as barras, senão o filtro mente sobre si mesmo.
+  const colunas = meses.map((m) => {
+    const valorCents = temFiltro
+      ? itensEscopo.filter((i) => i.competencia === m.mes).reduce((s, i) => s + i.valorCents, 0)
+      : m.totalCents;
+    return {
+      mes: m.mes,
+      mesCurto: MES_CURTO(m.mes).slice(0, 3),
+      nomeMes: mesNome(`${m.mes}-01`),
+      valorCents,
+      previsto: m.futura
+    };
+  });
+  const tetoPlot = Math.max(1, ...colunas.map((c) => c.valorCents));
+  const colFoco = colunas.find((c) => c.mes === mesFiltro) ?? null;
+
+  const filtrados = itensEscopo.filter((i) => !mesFiltro || i.competencia === mesFiltro);
+  const ordenados = [...filtrados].sort((a, b) =>
+    ordem === "valor"
+      ? b.valorCents - a.valorCents
+      : b.competencia.localeCompare(a.competencia) || b.valorCents - a.valorCents
+  );
+  const totalFiltrado = filtrados.reduce((s, i) => s + i.valorCents, 0);
+
+  const nRecebido = dados.itens.filter((i) => !i.futura).length;
+  const nAReceber = dados.itens.filter((i) => i.futura).length;
+
+  const limparTudo = () => {
+    setBusca(""); setFiltroQuando("todos"); setTipoFiltro(null);
+    setClienteFiltro(null); setMesFiltro(null);
+  };
+
+  return (
+    <div className="reemb time-tela-padrao">
+      <header className="time-form-cabeca">
+        <h1>Minhas Comissões</h1>
+        <p>Declaradas, parcelas e o que ainda vai cair</p>
+      </header>
+
+      {/* KPIs — as classes já existiam no CSS sem uso. */}
+      <section className="reemb-destaques" aria-label="Resumo das comissões">
+        <article className="reemb-destaque-card">
+          <span className="reemb-kpi-rotulo">A receber</span>
+          <strong className="reemb-kpi-valor">{brl(resumo.aReceberCents)}</strong>
+          <span className="reemb-kpi-detalhe">
+            {resumo.proximoMes
+              ? `${brl(resumo.proximoMesCents)} em ${mesNome(`${resumo.proximoMes}-01`)}`
+              : "nada lançado para frente"}
+          </span>
+        </article>
+        <article className="reemb-destaque-card">
+          <span className="reemb-kpi-rotulo">Já recebido</span>
+          <strong className="reemb-kpi-valor">{brl(resumo.recebidoCents)}</strong>
+          <span className="reemb-kpi-detalhe">competências até este mês</span>
+        </article>
+        <article className="reemb-destaque-card">
+          <span className="reemb-kpi-rotulo">Total declarado</span>
+          <strong className="reemb-kpi-valor">{brl(resumo.totalDeclaradoCents)}</strong>
+          <span className="reemb-kpi-detalhe">
+            {resumo.itensCount} {resumo.itensCount === 1 ? "lançamento" : "lançamentos"}
+          </span>
+        </article>
+      </section>
+
+      {colunas.length > 0 ? (
+        <section className="rec-plot rec-plot-mini rec-plot-rolagem" style={{ marginTop: "14px" }}>
+          <div className="rec-plot-trilho">
+            <div className="rec-grade" role="img" aria-label="Histórico e previsão de comissões">
+              {colunas.map((col) => {
+                const ativo = mesFiltro === col.mes;
+                return (
+                  <button
+                    key={`${col.previsto ? "p" : "h"}-${col.mes}`}
+                    type="button"
+                    className={`rec-col${col.previsto ? " rec-col-previsto" : ""}${ativo ? " ativa" : ""}`}
+                    aria-pressed={ativo}
+                    onClick={() => setMesFiltro(ativo ? null : col.mes)}
+                    title={`${col.nomeMes}: ${brl(col.valorCents)}${col.previsto ? " (previsto)" : " (competência fechada)"}`}
+                  >
+                    <span className="rec-col-area">
+                      <span
+                        className="rec-pilha"
+                        style={{ height: `${(col.valorCents / tetoPlot) * 100}%` }}
+                      >
+                        <i className="nat-comissao" style={{ height: "100%" }} />
+                      </span>
+                    </span>
+                    <span className="rec-col-mes">{col.mesCurto}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {colFoco ? (
+            <div className="rec-plot-dica" role="status">
+              <div className="rec-plot-dica-cabeca">
+                <strong>
+                  {colFoco.nomeMes}
+                  {colFoco.previsto ? " · previsto" : " · fechado"}
+                </strong>
+                <b>{brl(colFoco.valorCents)}</b>
+              </div>
+              <p className="rec-plot-dica-nota">
+                Filtrando comissões de {colFoco.nomeMes}. Toque novamente no mês para limpar.
+              </p>
+            </div>
+          ) : (
+            <p className="rec-plot-nota" role="status">
+              Toque no gráfico para ver o detalhamento e filtrar os itens
+            </p>
+          )}
+        </section>
+      ) : null}
+
+      {/* Por tipo — o eixo que substitui os "cartões" da tela de reembolso. */}
+      {porTipo.length > 0 ? (
+        <section className="reemb-cartoes-secao">
+          <div className="reemb-cartoes-cabeca">
+            <h3 style={{ margin: 0, fontSize: "13.5px", fontWeight: 650 }}>Por tipo de comissão</h3>
+            {tipoFiltro ? (
+              <button type="button" className="reemb-filtro-limpar-btn" onClick={() => setTipoFiltro(null)}>
+                Limpar filtro ×
+              </button>
+            ) : null}
+          </div>
+          <div className="reemb-cartoes-grid">
+            {porTipo.map((t) => {
+              const ativo = tipoFiltro === t.slug;
+              return (
+                <button
+                  key={t.slug}
+                  type="button"
+                  className={`reemb-cartao-item ${ativo ? "ativo" : ""}`}
+                  aria-pressed={ativo}
+                  onClick={() => setTipoFiltro(ativo ? null : t.slug)}
+                >
+                  <div className="reemb-cartao-cabeca">
+                    <span className="reemb-cartao-nome">{t.nome}</span>
+                    <span className="reemb-cartao-qtd">
+                      {t.n} {t.n === 1 ? "lançamento" : "lançamentos"}
+                    </span>
+                  </div>
+                  <div className="reemb-cartao-valores">
+                    <span className="reemb-cartao-subrotulo">Total</span>
+                    <strong className="reemb-cartao-val-gasto">{brl(t.totalCents)}</strong>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="reemb-bloco">
+        <div className="reemb-toolbar">
+          <div className="campo-busca reemb-busca">
+            <svg className="campo-busca-icone" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" aria-hidden>
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar por venda, cliente, tipo ou mês…"
+              autoComplete="off"
+            />
+            {busca ? (
+              <button type="button" className="envios-busca-limpar" aria-label="Limpar" onClick={() => setBusca("")}>
+                ×
+              </button>
+            ) : null}
+          </div>
+
+          <div className="reemb-filtro-chips">
+            {(
+              [
+                ["todos", `Todas (${dados.itens.length})`],
+                ["areceber", `A receber (${nAReceber})`],
+                ["recebido", `Recebidas (${nRecebido})`]
+              ] as [typeof filtroQuando, string][]
+            ).map(([v, r]) => (
+              <button
+                key={v}
+                type="button"
+                className={`reemb-chip ${filtroQuando === v ? "ativo" : ""}`}
+                aria-pressed={filtroQuando === v}
+                onClick={() => setFiltroQuando(v)}
+              >
+                {r}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`reemb-chip ${ordem === "valor" ? "ativo" : ""}`}
+              aria-pressed={ordem === "valor"}
+              onClick={() => setOrdem(ordem === "valor" ? "mes" : "valor")}
+              title="Alterna entre ordenar por mês e por valor"
+            >
+              {ordem === "valor" ? "Por valor ↓" : "Por mês ↓"}
+            </button>
+          </div>
+
+          {clientes.length > 1 ? (
+            <div className="reemb-filtro-chips">
+              <button
+                type="button"
+                className={`reemb-chip ${!clienteFiltro ? "ativo" : ""}`}
+                onClick={() => setClienteFiltro(null)}
+              >
+                Todos os clientes
+              </button>
+              {clientes.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`reemb-chip ${clienteFiltro === c ? "ativo" : ""}`}
+                  aria-pressed={clienteFiltro === c}
+                  onClick={() => setClienteFiltro(clienteFiltro === c ? null : c)}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        {temFiltro || mesFiltro ? (
+          <p className="time-sub" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <span>
+              {ordenados.length} {ordenados.length === 1 ? "lançamento" : "lançamentos"} · {brl(totalFiltrado)}
+            </span>
+            <button type="button" className="reemb-filtro-limpar-btn" onClick={limparTudo}>
+              Limpar tudo ×
+            </button>
+          </p>
+        ) : null}
+
+        {ordenados.length === 0 ? (
+          <p className="time-sub">
+            {dados.itens.length === 0
+              ? "Nenhuma comissão declarada ainda. Quando o financeiro lançar uma, ela aparece aqui."
+              : "Nenhuma comissão com esses filtros."}
+          </p>
+        ) : (
+          <ul className="reemb-lista">
+            {ordenados.map((i) => (
+              <li key={i.id}>
+                <details className="reemb-item">
+                  <summary className="reemb-item-cabeca">
+                    <span className="reemb-item-titulo">
+                      {i.descricao}
+                      <span className="reemb-item-sub">
+                        {[
+                          mesNome(`${i.competencia}-01`),
+                          i.tipoNome,
+                          i.cliente,
+                          i.ehEntrada
+                            ? "entrada"
+                            : i.parcelasTotal && i.parcelasTotal > 1
+                              ? `parcela ${i.parcela} de ${i.parcelasTotal}`
+                              : null
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </span>
+                    <span className="reemb-item-valor">
+                      <b>{brl(i.valorCents)}</b>
+                      <small>{i.futura ? "a receber" : "fechada"}</small>
+                    </span>
+                  </summary>
+                  <div className="reemb-item-corpo">
+                    <dl className="reemb-item-dados">
+                      <div>
+                        <dt>Competência</dt>
+                        <dd>{mesNome(`${i.competencia}-01`)}</dd>
+                      </div>
+                      <div>
+                        <dt>Tipo</dt>
+                        <dd>{i.tipoNome ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Cliente</dt>
+                        <dd>{i.cliente ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Pagamento</dt>
+                        <dd>
+                          {i.ehEntrada
+                            ? `entrada de ${i.parcelasTotal} lançamentos`
+                            : i.parcelasTotal && i.parcelasTotal > 1
+                              ? `parcela ${i.parcela} de ${i.parcelasTotal}`
+                              : "à vista"}
+                        </dd>
+                      </div>
+                    </dl>
+                    {i.nota ? <p className="reemb-item-nota">{i.nota}</p> : null}
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
 
 type CompraAprovada = {
   id: number; code: string; titulo: string; pedidoCents: number;
@@ -2483,6 +2883,7 @@ const VOLTA: Record<AbaTime, string | null> = {
   recebiveis: "/time",
   reembolso: "/time",
   reembolsos: "/time",
+  comissoes: "/time",
   custo: "/time",
   nota: "/time",
   compra: "/time",
@@ -3916,10 +4317,18 @@ function Inicio({ envios }: { envios: Envio[] }) {
 
   const nCompras = envios.filter((e) => e.origem === "custo" || e.origem === "compra").length;
 
+  /*
+   * O texto do atalho de Movimentações passa a carregar a contagem de
+   * "aguardando", que antes era um cartão separado no Início. A informação
+   * sobrevive; o cartão não — ela é um recorte da mesma lista, e cabe onde a
+   * lista está.
+   */
   const textoHistorico =
     envios.length === 0
       ? "Nada enviado ainda"
-      : `${envios.length} ${envios.length === 1 ? "envio" : "envios"} no histórico`;
+      : aguardando.length > 0
+        ? `${envios.length} ${envios.length === 1 ? "envio" : "envios"} · ${aguardando.length} aguardando`
+        : `${envios.length} ${envios.length === 1 ? "envio" : "envios"} no histórico`;
 
   return (
     <div className="time-tela-padrao time-inicio-guia">
@@ -3975,6 +4384,13 @@ function Inicio({ envios }: { envios: Envio[] }) {
             tipo="reembolso"
             cor="verde"
           />
+          <Atalho
+            href="/time/comissoes"
+            titulo="Comissões"
+            texto="Declaradas, parcelas e o que ainda vai cair"
+            tipo="recebiveis"
+            cor="verde"
+          />
         </nav>
       </section>
 
@@ -4024,21 +4440,17 @@ function Inicio({ envios }: { envios: Envio[] }) {
             cor="branco"
           />
           {/*
-            Era "aguardando análise", e deixou de ser verdade quando a conta
-            passou a ser a do extrato: `aprovado` entra aqui, e esse já foi
-            analisado — falta só o dinheiro sair. "Aguardando" é a palavra que
-            o selo de cada linha usa na tela de destino, então é a que não
-            contradiz o que a pessoa vai ler quando chegar lá.
+            O atalho "N aguardando" morava aqui e saiu: era um cartão inteiro
+            no Início para uma informação que é um FILTRO da tela de
+            Movimentações, não um destino próprio. Quem tinha dois envios
+            parados via dois cartões dizendo quase a mesma coisa — "aguardando"
+            e "voltaram" — antes de ver o histórico. A contagem continua, como
+            etiqueta no atalho de Movimentações, que é para onde ela levava.
+
+            "Voltou para você" fica: aquele é AÇÃO pendente da pessoa
+            (devolvido ou recusado, precisa de correção), não um recorte de
+            leitura — e por isso continua merecendo o próprio cartão.
           */}
-          {aguardando.length > 0 ? (
-            <Atalho
-              href="/time/envios#status-aguardando"
-              titulo={aguardando.length === 1 ? "1 aguardando" : `${aguardando.length} aguardando`}
-              texto="Em análise ou já aprovado — ainda não caiu"
-              tipo="aguardando"
-              tom="alerta"
-            />
-          ) : null}
           {voltaram.length > 0 ? (
             <Atalho
               href="/time/envios#status-nao_pago"

@@ -505,9 +505,16 @@ export function FinPessoasMatriz({
       ariaLabel="Custo rateado por time, área da empresa e categoria"
     >
       <FinPessoasCustoGraficos
-        porTime={porTime}
-        porArea={porArea}
-        porCategoria={porCategoria}
+        paineis={[
+          { titulo: "Por time", fatias: porTime, corDe: (slug: string) => COR_TIME[slug] ?? "var(--muted)" },
+          {
+            titulo: "Por área da empresa",
+            fatias: porArea,
+            corDe: (slug: string) => (slug === SEM_AREA ? "var(--area-sem_area)" : corAreaEmpresa(slug))
+          },
+          { titulo: "Por categoria", fatias: porCategoria, corDe: (slug: string) => COR[slug] ?? "var(--muted)" }
+        ]}
+        nota="Quem trabalha em N áreas divide o custo em N partes iguais. O salário não conta duas vezes. As três leituras (separado, empilhado, pizza) são o mesmo número."
         ultimoMesLabel={rotuloA}
         mediaLabel={rotuloB}
         opcoesComparativo={opcoesComparativo}
@@ -524,9 +531,6 @@ export function FinPessoasMatriz({
             ? [{ id: "atual-previsto", nome: "Atual × próximo", a: `mes:${ultimoMes}`, b: "previsto" }]
             : [])
         ]}
-        corTime={(slug) => COR_TIME[slug] ?? "var(--muted)"}
-        corArea={(slug) => (slug === SEM_AREA ? "var(--area-sem_area)" : corAreaEmpresa(slug))}
-        corCategoria={(slug) => COR[slug] ?? "var(--muted)"}
       />
     </FinSecaoColapsavel>
     <FinSecaoColapsavel

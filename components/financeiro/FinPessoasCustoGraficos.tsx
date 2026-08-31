@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import {
   Bar,
   BarChart,
@@ -594,10 +596,22 @@ function PainelGrafico({
   );
 }
 
+/**
+ * Um painel por dimensão. Eram três props fixas (`porTime`, `porArea`,
+ * `porCategoria`) porque só Pessoas usava o componente; a guia de Custos tem
+ * dimensões diferentes — não há "time" num aluguel, e há "fixo × variável" que
+ * pessoa não tem. Uma LISTA acomoda as duas telas sem que nenhuma carregue as
+ * dimensões da outra como `undefined`.
+ */
+export type PainelDimensao = {
+  titulo: string;
+  fatias: FatiaCusto[];
+  corDe: (slug: string) => string;
+};
+
 export function FinPessoasCustoGraficos({
-  porTime,
-  porArea,
-  porCategoria,
+  paineis,
+  nota,
   ultimoMesLabel,
   mediaLabel,
   opcoesComparativo,
@@ -605,14 +619,11 @@ export function FinPessoasCustoGraficos({
   serieB,
   onSerieA,
   onSerieB,
-  atalhos,
-  corTime,
-  corArea,
-  corCategoria
+  atalhos
 }: {
-  porTime: FatiaCusto[];
-  porArea: FatiaCusto[];
-  porCategoria: FatiaCusto[];
+  paineis: PainelDimensao[];
+  /** O texto abaixo do comparador. Cada tela explica a própria regra de rateio. */
+  nota?: ReactNode;
   ultimoMesLabel: string;
   mediaLabel: string;
   opcoesComparativo: { id: string; nome: string }[];
@@ -621,9 +632,6 @@ export function FinPessoasCustoGraficos({
   onSerieA: (id: string) => void;
   onSerieB: (id: string) => void;
   atalhos: { id: string; nome: string; a: string; b: string }[];
-  corTime: (slug: string) => string;
-  corArea: (slug: string) => string;
-  corCategoria: (slug: string) => string;
 }) {
   return (
     <div className="fin-pessoas-custo-graficos">
@@ -687,33 +695,18 @@ export function FinPessoasCustoGraficos({
           </div>
         ) : null}
       </div>
-      <p className="fin-pessoas-custo-nota">
-        Quem trabalha em N áreas divide o custo em N partes iguais. O salário não
-        conta duas vezes. As três leituras (separado, empilhado, pizza) são o
-        mesmo número.
-      </p>
+      {nota ? <p className="fin-pessoas-custo-nota">{nota}</p> : null}
       <div className="fin-pessoas-custo-grade">
-        <PainelGrafico
-          titulo="Por time"
-          fatias={porTime}
-          ultimoMesLabel={ultimoMesLabel}
-          mediaLabel={mediaLabel}
-          corDe={corTime}
-        />
-        <PainelGrafico
-          titulo="Por área da empresa"
-          fatias={porArea}
-          ultimoMesLabel={ultimoMesLabel}
-          mediaLabel={mediaLabel}
-          corDe={corArea}
-        />
-        <PainelGrafico
-          titulo="Por categoria"
-          fatias={porCategoria}
-          ultimoMesLabel={ultimoMesLabel}
-          mediaLabel={mediaLabel}
-          corDe={corCategoria}
-        />
+        {paineis.map((painel) => (
+          <PainelGrafico
+            key={painel.titulo}
+            titulo={painel.titulo}
+            fatias={painel.fatias}
+            ultimoMesLabel={ultimoMesLabel}
+            mediaLabel={mediaLabel}
+            corDe={painel.corDe}
+          />
+        ))}
       </div>
     </div>
   );

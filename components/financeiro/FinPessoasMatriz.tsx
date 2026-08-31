@@ -1,11 +1,17 @@
 "use client";
 
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, PieChart, Search, Users } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 
 import type { BandaRemuneracao, CustoPessoas, Pessoa, PrevisaoCadastro } from "@/lib/financeiro/pessoas";
 import { brlPrecise, monthKeyLabel, pct } from "@/lib/financeiro/format";
+import {
+  atribuirCents,
+  destinosAreaEmpresa,
+  somarComparativo
+} from "@/lib/financeiro/repartir-custo-area";
 
+import { FinPessoasCustoGraficos } from "./FinPessoasCustoGraficos";
 import { CelulaArea, CelulaAreasEmpresa, catalogoAreasEmpresa, corAreaEmpresa } from "./FinPessoaEditor";
 import { BotaoPrevisaoPessoa } from "./FinPrevisaoPessoaPop";
 import { FinSecaoColapsavel } from "./FinSecaoColapsavel";
@@ -123,6 +129,36 @@ function pessoaPassaArea(pessoa: Pessoa, areasAtivos: Ativos, slugsCatalogo: rea
   return delas.some((s) => estaLigado(areasAtivos, s));
 }
 
+function GrupoFiltro({
+  rotulo,
+  aberto,
+  estreito,
+  onToggle,
+  children
+}: {
+  rotulo: string;
+  aberto: boolean;
+  estreito: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className={aberto ? "fin-pessoas-matriz-filtro-grupo aberto" : "fin-pessoas-matriz-filtro-grupo"}>
+      <button
+        type="button"
+        className={aberto ? "fin-pessoas-matriz-grupo-cab aberto" : "fin-pessoas-matriz-grupo-cab"}
+        aria-expanded={aberto}
+        onClick={onToggle}
+      >
+        {rotulo}
+        {estreito ? <i>filtro</i> : null}
+        <ChevronRight size={14} strokeWidth={2.2} className={aberto ? "fin-chevron-aberto" : undefined} aria-hidden />
+      </button>
+      {aberto ? children : null}
+    </div>
+  );
+}
+
 function somarAtivos(porTipo: Record<string, number> | undefined, ativos: Ativos) {
   if (!porTipo) return 0;
   let s = 0;
@@ -130,6 +166,42 @@ function somarAtivos(porTipo: Record<string, number> | undefined, ativos: Ativos
     if (ativos[nat]) s += cents;
   }
   return s;
+}
+
+export type OpcaoComparativoCusto = { id: string; nome: string };
+
+function centsSeriePessoa(
+  linha: { porTipoMes: Record<string, Record<string, number>>; previsao: Record<string, number> },
+  id: string,
+  ativos: Ativos,
+  mesesVisiveis: string[],
+  nMeses: number
+) {
+  if (id === "media") {
+    let t = 0;
+    for (const mes of mesesVisiveis) t += somarAtivos(linha.porTipoMes[mes], ativos);
+    return Math.round(t / Math.max(nMeses, 1));
+  }
+  if (id === "previsto") return somarAtivos(linha.previsao, ativos);
+  if (id.startsWith("mes:")) return somarAtivos(linha.porTipoMes[id.slice(4)], ativos);
+  return 0;
+}
+
+function centsSerieNatureza(
+  linha: { porTipoMes: Record<string, Record<string, number>>; previsao: Record<string, number> },
+  nat: string,
+  id: string,
+  mesesVisiveis: string[],
+  nMeses: number
+) {
+  if (id === "media") {
+    let t = 0;
+    for (const mes of mesesVisiveis) t += linha.porTipoMes[mes]?.[nat] ?? 0;
+    return Math.round(t / Math.max(nMeses, 1));
+  }
+  if (id === "previsto") return linha.previsao[nat] ?? 0;
+  if (id.startsWith("mes:")) return linha.porTipoMes[id.slice(4)]?.[nat] ?? 0;
+  return 0;
 }
 
 function compsAtivos(
@@ -169,6 +241,11 @@ export function FinPessoasMatriz({
   const [timesAtivos, setTimesAtivos] = useState<Ativos>({});
   const [areasAtivos, setAreasAtivos] = useState<Ativos>({});
   const [ocultarDetalhes, setOcultarDetalhes] = useState(false);
+  const [mostrarTime, setMostrarTime] = useState(false);
+  const [mostrarArea, setMostrarArea] = useState(false);
+  const [mostrarTipo, setMostrarTipo] = useState(false);
+  const [serieA, setSerieA] = useState(() => `mes:${mesAtual}`);
+  const [serieB, setSerieB] = useState("media");
   const cabecalhoRef = useRef<HTMLTableRowElement>(null);
   const [alturaCabecalho, setAlturaCabecalho] = useState(46);
 
@@ -305,6 +382,105 @@ export function FinPessoasMatriz({
     grupoEstreito(areasAtivos, chavesArea) ||
     grupoEstreito(ativos, naturezasDisponiveis);
 
+  const ultimoMes = mesesVisiveis.includes(mesAtual) ? mesAtual : (mesesVisiveis.at(-1) ?? mesAtual);
+  const nMesesMedia = Math.max(mesesVisiveis.length, 1);
+  const slugsAreaLigados = useMemo(() => {
+    if (!grupoEstreito(areasAtivos, chavesArea)) return null;
+    return new Set(chavesArea.filter((s) => estaLigado(areasAtivos, s)));
+  }, [areasAtivos, chavesArea]);
+
+  const opcoesComparativo = useMemo(() => {
+    const lista: OpcaoComparativoCusto[] = [];
+    const vistos = new Set<string>();
+    const porMes = (mes: string, extra = "") => {
+      const id = `mes:${mes}`;
+      if (vistos.has(id)) return;
+      vistos.add(id);
+      lista.push({
+        id,
+        nome: `${monthKeyLabel(mes)}${mes === mesAtual ? " · atual" : ""}${extra}`
+      });
+    };
+    porMes(ultimoMes, ultimoMes === mesAtual ? " · parcial" : "");
+    for (const mes of [...mesesVisiveis].reverse()) porMes(mes);
+    if (mesPrevisto) {
+      lista.push({ id: "previsto", nome: `${monthKeyLabel(mesPrevisto)} · previsto` });
+    }
+    lista.push({
+      id: "media",
+      nome: `Média de ${mesesVisiveis.length} ${mesesVisiveis.length === 1 ? "mês" : "meses"}`
+    });
+    return lista;
+  }, [mesesVisiveis, mesAtual, mesPrevisto, ultimoMes]);
+
+  const idsComparativo = useMemo(() => new Set(opcoesComparativo.map((o) => o.id)), [opcoesComparativo]);
+  const serieAEfetiva = idsComparativo.has(serieA) ? serieA : `mes:${ultimoMes}`;
+  const serieBEfetiva = idsComparativo.has(serieB) ? serieB : "media";
+  const rotuloA = opcoesComparativo.find((o) => o.id === serieAEfetiva)?.nome ?? "Série A";
+  const rotuloB = opcoesComparativo.find((o) => o.id === serieBEfetiva)?.nome ?? "Série B";
+  const idxAtual = mesesVisiveis.indexOf(mesAtual);
+  const mesAnterior = (idxAtual > 0 ? mesesVisiveis[idxAtual - 1] : mesesVisiveis.at(-2)) ?? null;
+
+  const { porTime, porArea, porCategoria } = useMemo(() => {
+    const itensTime: { slug: string; nome: string; aCents: number; bCents: number }[] = [];
+    const itensArea: { slug: string; nome: string; aCents: number; bCents: number }[] = [];
+    const itensCat: { slug: string; nome: string; aCents: number; bCents: number }[] = [];
+
+    for (const linha of linhas) {
+      const a = centsSeriePessoa(linha, serieAEfetiva, ativos, mesesVisiveis, nMesesMedia);
+      const b = centsSeriePessoa(linha, serieBEfetiva, ativos, mesesVisiveis, nMesesMedia);
+
+      itensTime.push({
+        slug: linha.pessoa.time,
+        nome: ROTULO_TIME[linha.pessoa.time] ?? linha.pessoa.timeRotulo,
+        aCents: a,
+        bCents: b
+      });
+
+      const destinos = destinosAreaEmpresa(linha.pessoa.areasEmpresa, areasCatalogo, slugsAreaLigados);
+      const partesA = atribuirCents(a, destinos);
+      const partesB = atribuirCents(b, destinos);
+      for (let i = 0; i < destinos.length; i++) {
+        itensArea.push({
+          slug: destinos[i].slug,
+          nome: destinos[i].nome,
+          aCents: partesA[i]?.cents ?? 0,
+          bCents: partesB[i]?.cents ?? 0
+        });
+      }
+
+      for (const nat of naturezasDisponiveis) {
+        if (!estaLigado(ativos, nat)) continue;
+        const ua = centsSerieNatureza(linha, nat, serieAEfetiva, mesesVisiveis, nMesesMedia);
+        const ub = centsSerieNatureza(linha, nat, serieBEfetiva, mesesVisiveis, nMesesMedia);
+        if (ua > 0 || ub > 0) {
+          itensCat.push({
+            slug: nat,
+            nome: ROTULO[nat] ?? nat,
+            aCents: ua,
+            bCents: ub
+          });
+        }
+      }
+    }
+
+    return {
+      porTime: somarComparativo(itensTime),
+      porArea: somarComparativo(itensArea),
+      porCategoria: somarComparativo(itensCat)
+    };
+  }, [
+    linhas,
+    serieAEfetiva,
+    serieBEfetiva,
+    mesesVisiveis,
+    ativos,
+    areasCatalogo,
+    slugsAreaLigados,
+    naturezasDisponiveis,
+    nMesesMedia
+  ]);
+
   useLayoutEffect(() => {
     const el = cabecalhoRef.current;
     if (!el) return;
@@ -319,17 +495,76 @@ export function FinPessoasMatriz({
     1 + mesesVisiveis.length + (mesPrevisto ? 1 : 0) + 5; // pessoa + meses + previsto? + total + média + fixo + acima + Δ
 
   return (
+    <>
+    <FinSecaoColapsavel
+      className="fin-painel-grafico fin-pessoas-custo-secao"
+      titulo="Custos por área e categoria"
+      icone={PieChart}
+      abertoPadrao
+      meta={`${rotuloA} × ${rotuloB}`}
+      ariaLabel="Custo rateado por time, área da empresa e categoria"
+    >
+      <FinPessoasCustoGraficos
+        porTime={porTime}
+        porArea={porArea}
+        porCategoria={porCategoria}
+        ultimoMesLabel={rotuloA}
+        mediaLabel={rotuloB}
+        opcoesComparativo={opcoesComparativo}
+        serieA={serieAEfetiva}
+        serieB={serieBEfetiva}
+        onSerieA={setSerieA}
+        onSerieB={setSerieB}
+        atalhos={[
+          { id: "atual-media", nome: "Atual × média", a: `mes:${ultimoMes}`, b: "media" },
+          ...(mesAnterior
+            ? [{ id: "atual-anterior", nome: "Atual × anterior", a: `mes:${ultimoMes}`, b: `mes:${mesAnterior}` }]
+            : []),
+          ...(mesPrevisto
+            ? [{ id: "atual-previsto", nome: "Atual × próximo", a: `mes:${ultimoMes}`, b: "previsto" }]
+            : [])
+        ]}
+        corTime={(slug) => COR_TIME[slug] ?? "var(--muted)"}
+        corArea={(slug) => (slug === SEM_AREA ? "var(--area-sem_area)" : corAreaEmpresa(slug))}
+        corCategoria={(slug) => COR[slug] ?? "var(--muted)"}
+      />
+    </FinSecaoColapsavel>
     <FinSecaoColapsavel
       className="fin-painel-grafico fin-pessoas-matriz"
       titulo="Pessoas"
+      icone={Users}
       abertoPadrao
       meta={`${linhas.length} ${linhas.length === 1 ? "pessoa" : "pessoas"} · ${mesesVisiveis.length} ${mesesVisiveis.length === 1 ? "mês" : "meses"} · ${brlPrecise(totalGeral)}`}
       ariaLabel="Custo por pessoa, mês a mês"
+      cabExtra={
+        <label className="fin-pessoas-matriz-campo fin-pessoas-matriz-busca">
+          <span className="fin-pessoas-matriz-busca-campo">
+            <Search size={15} strokeWidth={2.2} aria-hidden />
+            <input
+              type="search"
+              className="fin-input"
+              placeholder="Buscar por nome…"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              aria-label="Buscar pessoa"
+            />
+          </span>
+          {termoBusca ? (
+            <small>
+              {linhas.length} de {pessoasComBanda.length}
+            </small>
+          ) : null}
+        </label>
+      }
     >
       <div className="fin-pessoas-matriz-filtros">
         <div className="fin-pessoas-matriz-filtro-linha">
-          <div className="fin-pessoas-matriz-filtro-grupo">
-            <span>Time</span>
+          <GrupoFiltro
+            rotulo="Time"
+            aberto={mostrarTime}
+            estreito={grupoEstreito(timesAtivos, timesDisponiveis)}
+            onToggle={() => setMostrarTime((v) => !v)}
+          >
             <div className="fin-pessoas-matriz-chips" role="group" aria-label="Times visíveis">
               {timesDisponiveis.map((slug) => {
                 const ligado = estaLigado(timesAtivos, slug);
@@ -350,30 +585,13 @@ export function FinPessoasMatriz({
                 );
               })}
             </div>
-          </div>
-          <label className="fin-pessoas-matriz-campo fin-pessoas-matriz-busca">
-            <span>Pessoa</span>
-            <span className="fin-pessoas-matriz-busca-campo">
-              <Search size={15} strokeWidth={2.2} aria-hidden />
-              <input
-                type="search"
-                className="fin-input"
-                placeholder="Buscar por nome…"
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                aria-label="Buscar pessoa"
-              />
-            </span>
-            {termoBusca ? (
-              <small>
-                {linhas.length} de {pessoasComBanda.length}
-              </small>
-            ) : null}
-          </label>
-        </div>
-        <div className="fin-pessoas-matriz-filtro-linha">
-          <div className="fin-pessoas-matriz-filtro-grupo">
-            <span>Área da empresa</span>
+          </GrupoFiltro>
+          <GrupoFiltro
+            rotulo="Área da empresa"
+            aberto={mostrarArea}
+            estreito={grupoEstreito(areasAtivos, chavesArea)}
+            onToggle={() => setMostrarArea((v) => !v)}
+          >
             <div className="fin-pessoas-matriz-chips" role="group" aria-label="Áreas da empresa visíveis">
               {areasCatalogo.map((area) => {
                 const ligado = estaLigado(areasAtivos, area.slug);
@@ -404,11 +622,13 @@ export function FinPessoasMatriz({
                 Sem área
               </button>
             </div>
-          </div>
-        </div>
-        <div className="fin-pessoas-matriz-filtro-linha">
-          <div className="fin-pessoas-matriz-filtro-grupo">
-            <span>Tipo de pagamento</span>
+          </GrupoFiltro>
+          <GrupoFiltro
+            rotulo="Tipo de pagamento"
+            aberto={mostrarTipo}
+            estreito={grupoEstreito(ativos, naturezasDisponiveis)}
+            onToggle={() => setMostrarTipo((v) => !v)}
+          >
             <div className="fin-pessoas-matriz-chips" role="group" aria-label="Tipos de pagamento visíveis">
               {naturezasDisponiveis.map((slug) => {
                 const ligado = estaLigado(ativos, slug);
@@ -437,7 +657,7 @@ export function FinPessoasMatriz({
                 {ocultarDetalhes ? "Mostrar detalhes" : "Ocultar todos"}
               </button>
             </div>
-          </div>
+          </GrupoFiltro>
           {filtrosEstreitos ? (
             <button
               type="button"
@@ -673,6 +893,7 @@ export function FinPessoasMatriz({
       </div>
       {rodape}
     </FinSecaoColapsavel>
+    </>
   );
 }
 

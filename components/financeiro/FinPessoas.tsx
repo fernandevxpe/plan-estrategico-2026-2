@@ -1,21 +1,14 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
-import { ChevronRight } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Fragment, useId, useMemo, useState, type ReactNode } from "react";
+import { CalendarRange, ChevronRight, Link2, UsersRound } from "lucide-react";
 
-import type { CustoPessoas, Pactuado, Pessoa, SaidaSemDono } from "@/lib/financeiro/pessoas";
+import type { CustoPessoas, Pactuado, Pessoa } from "@/lib/financeiro/pessoas";
 import { brlCents, brlPrecise, monthKeyLabel, pct } from "@/lib/financeiro/format";
-import {
-  TIPOS_SAIDA_SEM_DONO,
-  nomeSugeridoDoExtrato,
-  type TipoSaidaSemDono
-} from "@/lib/financeiro/saida-sem-dono-ui";
-import { urlDaOrigem } from "@/lib/url-origem";
 
 import { Nota } from "@/components/ui/Nota";
 
-import { FinLigacaoPropostaAcoes, FinPessoaCadastro } from "./FinPessoaEditor";
+import { FinPessoaCadastro } from "./FinPessoaEditor";
 import { FinPessoasMatriz, type ResumoPessoaMatriz } from "./FinPessoasMatriz";
 import { FinSecaoColapsavel } from "./FinSecaoColapsavel";
 
@@ -34,14 +27,7 @@ import { FinSecaoColapsavel } from "./FinSecaoColapsavel";
  *    servidor a cada clique tornaria "mês a mês" perceptivelmente lento sem ganho
  *    nenhum. Mesma escolha do extrato (FinLedgerTable).
  *
- * 3. A COBERTURA FICA ACIMA DA TABELA, NÃO NO RODAPÉ. O custo que não pôde ser
- *    atribuído a ninguém está no segundo cartão da primeira linha, do lado do
- *    total. Em abril/2026 o total atribuído despenca para R$ 25.035,41 enquanto
- *    R$ 50.949,07 de PIX para gente do roster ficam de fora por falta de
- *    favorecido: quem lesse só o total concluiria que a folha caiu 64% num mês.
- *    Um aviso no rodapé não teria evitado essa leitura.
- *
- * 4. "ACIMA DO FIXO" VEM VAZIO, NÃO ZERADO, ONDE NÃO HÁ PACTUADO. O extrato não
+ * 3. "ACIMA DO FIXO" VEM VAZIO, NÃO ZERADO, ONDE NÃO HÁ PACTUADO. O extrato não
  *    sabe separar fixo de comissão; a planilha de comissionamento sabe, e está
  *    carregada só para ago/26. Nos outros meses a coluna mostra "—". Um zero ali
  *    seria indistinguível de "esta pessoa não recebeu nada acima do fixo", que é
@@ -89,17 +75,212 @@ function DeltaCusto({
   );
 }
 
+function mesesEntre(de: string, ate: string) {
+  const [ya, ma] = de.slice(0, 7).split("-").map(Number);
+  const [yb, mb] = ate.slice(0, 7).split("-").map(Number);
+  return (yb - ya) * 12 + (mb - ma);
+}
+
+/**
+ * Taxa composta mês a mês. Soma simples (último/primeiro − 1) mente no ano:
+ * oito meses de +4% viram "+32%", e não é o que o dono lê como crescimento anual.
+ */
+function taxaComposta(inicial: number, final: number, passos: number) {
+  if (inicial <= 0 || passos <= 0 || !Number.isFinite(final)) return null;
+  return Math.pow(final / inicial, 1 / passos) - 1;
+}
+
+type SparkPonto = { mes: string; cents: number; previsto?: boolean };
+
+type Crescimento = {
+  de: string;
+  ate: string;
+  mediaMes: number | null;
+  anual: number | null;
+  previstoMes: number | null;
+};
+
+function crescimentoDe(pontos: SparkPonto[]): Crescimento | null {
+  const realizados = pontos.filter((p) => !p.previsto && p.cents > 0);
+  const primeiro = realizados[0];
+  const recente = realizados[realizados.length - 1];
+  const previsto = pontos.find((p) => p.previsto && p.cents > 0);
+  if (!primeiro || !recente) return null;
+  const passos = mesesEntre(primeiro.mes, recente.mes);
+  const mediaMes = taxaComposta(primeiro.cents, recente.cents, passos);
+  return {
+    de: primeiro.mes,
+    ate: recente.mes,
+    mediaMes,
+    anual: mediaMes === null ? null : Math.pow(1 + mediaMes, 12) - 1,
+    previstoMes: previsto && recente.cents > 0 ? previsto.cents / recente.cents - 1 : null
+  };
+}
+
+function classeTaxa(v: number | null) {
+  if (v === null) return undefined;
+  if (v > 0.0005) return "fin-pessoas-kpi-sobe";
+  if (v < -0.0005) return "fin-pessoas-kpi-desce";
+  return undefined;
+}
+
+function rotuloTaxa(v: number | null, sufixo: string, casas: number) {
+  if (v === null) return "—";
+  return `${v >= 0 ? "+" : "−"}${pct(Math.abs(v) * 100, casas)}${sufixo}`;
+}
+
+function TaxasCrescimento({ c }: { c: Crescimento | null }) {
+  if (!c) return null;
+  return (
+    <p className="fin-pessoas-kpi-taxas">
+      <span
+        className={classeTaxa(c.mediaMes)}
+        title={`${monthKeyLabel(c.de)} → ${monthKeyLabel(c.ate)}, composta`}
+      >
+        {rotuloTaxa(c.mediaMes, "/mês", 1)}
+        <small>início → recente</small>
+      </span>
+      <span className={classeTaxa(c.anual)} title="A mesma taxa, anualizada: (1 + média/mês)¹² − 1">
+        {rotuloTaxa(c.anual, "/ano", 0)}
+        <small>anual</small>
+      </span>
+      <span className={classeTaxa(c.previstoMes)} title="Previsto do cadastro contra o último mês realizado">
+        {rotuloTaxa(c.previstoMes, "", 1)}
+        <small>previsto</small>
+      </span>
+    </p>
+  );
+}
+
+function SparkArea({
+  pontos,
+  ariaLabel
+}: {
+  pontos: SparkPonto[];
+  ariaLabel: string;
+}) {
+  // useId gera ":r1:" — Safari quebra url(#:r1:) no fill do degradê.
+  const id = `kpi-area-${useId().replace(/:/g, "")}`;
+  const w = 240;
+  const h = 52;
+  const base = h - 1;
+  if (pontos.length < 2) return null;
+  const ys = pontos.map((p) => p.cents);
+  const min = Math.min(...ys);
+  const max = Math.max(...ys);
+  const span = max - min || 1;
+  const coords = pontos.map((p, i) => {
+    const x = (i / (pontos.length - 1)) * (w - 8) + 4;
+    const y = h - 7 - ((p.cents - min) / span) * (h - 14);
+    return { x, y, ...p };
+  });
+  const realizados = coords.filter((c) => !c.previsto);
+  const dLinha = realizados.map((c, i) => `${i ? "L" : "M"}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
+  const primeiro = realizados[0];
+  const ultimoReal = realizados[realizados.length - 1];
+  const dArea =
+    primeiro && ultimoReal
+      ? `${dLinha} L${ultimoReal.x.toFixed(1)},${base} L${primeiro.x.toFixed(1)},${base} Z`
+      : "";
+  const previsto = coords.find((c) => c.previsto);
+  const dPrevistoArea =
+    ultimoReal && previsto
+      ? `M${ultimoReal.x.toFixed(1)},${ultimoReal.y.toFixed(1)} L${previsto.x.toFixed(1)},${previsto.y.toFixed(1)} L${previsto.x.toFixed(1)},${base} L${ultimoReal.x.toFixed(1)},${base} Z`
+      : "";
+  return (
+    <svg
+      className="fin-pessoas-kpi-spark"
+      viewBox={`0 0 ${w} ${h}`}
+      role="img"
+      aria-label={ariaLabel}
+    >
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.48" />
+          <stop offset="55%" stopColor="var(--purple)" stopOpacity="0.16" />
+          <stop offset="100%" stopColor="var(--purple)" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      {dArea ? <path d={dArea} fill={`url(#${id})`} /> : null}
+      {dPrevistoArea ? <path d={dPrevistoArea} fill={`url(#${id})`} opacity="0.45" /> : null}
+      <path
+        d={dLinha}
+        fill="none"
+        stroke="var(--purple)"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      {ultimoReal && previsto ? (
+        <path
+          d={`M${ultimoReal.x.toFixed(1)},${ultimoReal.y.toFixed(1)} L${previsto.x.toFixed(1)},${previsto.y.toFixed(1)}`}
+          fill="none"
+          stroke="var(--purple)"
+          strokeWidth="1.6"
+          strokeDasharray="3 3"
+          opacity="0.75"
+        />
+      ) : null}
+      {coords.map((c) => (
+        <circle
+          key={c.mes}
+          cx={c.x}
+          cy={c.y}
+          r={c.previsto ? 3.2 : 2.1}
+          fill={c.previsto ? "var(--card)" : "var(--purple)"}
+          stroke="var(--purple)"
+          strokeWidth={c.previsto ? 1.6 : 0}
+        >
+          <title>
+            {`${monthKeyLabel(c.mes)}${c.previsto ? " previsto" : ""}: ${brlCents(c.cents)}`}
+          </title>
+        </circle>
+      ))}
+    </svg>
+  );
+}
+
+function KpiAnalise({
+  rotulo,
+  valor,
+  delta,
+  extra,
+  pontos,
+  crescimento,
+  destaque,
+  ariaSpark
+}: {
+  rotulo: ReactNode;
+  valor: ReactNode;
+  delta: ReactNode;
+  extra?: ReactNode;
+  pontos: SparkPonto[];
+  crescimento: Crescimento | null;
+  destaque?: boolean;
+  ariaSpark: string;
+}) {
+  return (
+    <article className={destaque ? "fin-pessoas-kpi-item destaque" : "fin-pessoas-kpi-item"}>
+      <div className="fin-pessoas-kpi-folha-topo">
+        <div>
+          <p className="fin-pessoas-kpi-rotulo">{rotulo}</p>
+          <p className="fin-pessoas-kpi-valor">{valor}</p>
+          {delta}
+          {extra}
+        </div>
+        <SparkArea pontos={pontos} ariaLabel={ariaSpark} />
+      </div>
+      <TaxasCrescimento c={crescimento} />
+    </article>
+  );
+}
+
 export function FinPessoas({ dados }: { dados: CustoPessoas }) {
   // O padrão é TODO o período, não o mês recente: a primeira pergunta do dono é
   // "quanto custa o time", e responder isso com um mês parcial (ago/26 vai só
   // até o dia 7) daria um número menor que a realidade logo na abertura.
   const [mesDe, setMesDe] = useState(dados.meses[0] ?? "");
   const [mesAte, setMesAte] = useState(dados.meses[dados.meses.length - 1] ?? "");
-  const [busca, setBusca] = useState("");
-  const [conta, setConta] = useState("");
-  const [time, setTime] = useState("");
-  const [vinculo, setVinculo] = useState("");
-  const [natureza, setNatureza] = useState("");
 
   if (!dados.disponivel) {
     return (
@@ -116,8 +297,8 @@ export function FinPessoas({ dados }: { dados: CustoPessoas }) {
   return (
     <ConteudoPessoas
       dados={dados}
-      estado={{ mesDe, mesAte, busca, conta, time, vinculo, natureza }}
-      set={{ setMesDe, setMesAte, setBusca, setConta, setTime, setVinculo, setNatureza }}
+      estado={{ mesDe, mesAte }}
+      set={{ setMesDe, setMesAte }}
     />
   );
 }
@@ -125,21 +306,11 @@ export function FinPessoas({ dados }: { dados: CustoPessoas }) {
 type Estado = {
   mesDe: string;
   mesAte: string;
-  busca: string;
-  conta: string;
-  time: string;
-  vinculo: string;
-  natureza: string;
 };
 
 type Setters = {
   setMesDe: (v: string) => void;
   setMesAte: (v: string) => void;
-  setBusca: (v: string) => void;
-  setConta: (v: string) => void;
-  setTime: (v: string) => void;
-  setVinculo: (v: string) => void;
-  setNatureza: (v: string) => void;
 };
 
 /**
@@ -147,7 +318,7 @@ type Setters = {
  * `return` de indisponibilidade. É a mesma tela.
  */
 function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: Estado; set: Setters }) {
-  const { mesDe, mesAte, busca, conta, time, vinculo, natureza } = estado;
+  const { mesDe, mesAte } = estado;
   const [vinculoAberto, setVinculoAberto] = useState<string | null>(null);
 
   const pessoaPorId = useMemo(() => new Map(dados.pessoas.map((p) => [p.id, p])), [dados.pessoas]);
@@ -172,41 +343,14 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
     [mesesNoPeriodo, dados.pactuado]
   );
 
-  /** A pessoa passa nos filtros que são dela (não do lançamento). */
-  const pessoaPassa = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
-    return (pessoa: Pessoa | undefined) => {
-      if (!pessoa) return false;
-      if (time && pessoa.time !== time) return false;
-      if (vinculo && pessoa.vinculo !== vinculo) return false;
-      if (termo) {
-        const alvo = `${pessoa.nome} ${pessoa.nomeLegal ?? ""} ${pessoa.contrapartes
-          .map((c) => c.nome)
-          .join(" ")}`.toLowerCase();
-        if (!alvo.includes(termo)) return false;
-      }
-      return true;
-    };
-  }, [busca, time, vinculo]);
-
   const celulasFiltradas = useMemo(
-    () =>
-      dados.celulas.filter((celula) => {
-        if (celula.mes < mesDe || celula.mes > mesAte) return false;
-        if (conta && celula.conta !== conta) return false;
-        if (natureza && celula.natureza !== natureza) return false;
-        return pessoaPassa(pessoaPorId.get(celula.personId));
-      }),
-    [dados.celulas, mesDe, mesAte, conta, natureza, pessoaPassa, pessoaPorId]
+    () => dados.celulas.filter((celula) => celula.mes >= mesDe && celula.mes <= mesAte),
+    [dados.celulas, mesDe, mesAte]
   );
 
   const bandasFiltradas = useMemo(
-    () =>
-      dados.bandas.filter((banda) => {
-        if (banda.mes < mesDe || banda.mes > mesAte) return false;
-        return pessoaPassa(pessoaPorId.get(banda.personId));
-      }),
-    [dados.bandas, mesDe, mesAte, pessoaPassa, pessoaPorId]
+    () => dados.bandas.filter((banda) => banda.mes >= mesDe && banda.mes <= mesAte),
+    [dados.bandas, mesDe, mesAte]
   );
 
   const totalCents = celulasFiltradas.reduce((s, c) => s + c.cents, 0);
@@ -308,14 +452,14 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
       if (!mesesNoPeriodo.includes(pact.mes)) continue;
       if (comLinha.has(pact.personId)) continue;
       const pessoa = pessoaPorId.get(pact.personId);
-      if (!pessoa || !pessoaPassa(pessoa)) continue;
+      if (!pessoa) continue;
       pendentes.set(pact.personId, Math.max(pendentes.get(pact.personId) ?? 0, pact.fixoContratadoCents));
     }
     return {
       pactuadosSemLancamento: [...pendentes.keys()].map((id) => pessoaPorId.get(id)!),
       fixoSemLancamentoCents: [...pendentes.values()].reduce((s, v) => s + v, 0)
     };
-  }, [linhas, dados.pactuado, mesesNoPeriodo, pessoaPorId, pessoaPassa]);
+  }, [linhas, dados.pactuado, mesesNoPeriodo, pessoaPorId]);
 
   // ── Divisão do total: por conta e por natureza ──────────────────────────
   const porConta = useMemo(
@@ -433,58 +577,6 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
       .sort((a, b) => b.centsMes - a.centsMes || b.centsTotal - a.centsTotal);
   }, [celulasFiltradas, pessoaPorId, mesUltimoNoRecorte]);
 
-  const saidasSemDonoNoPeriodo = useMemo(
-    () =>
-      dados.cobertura.saidasSemDono.filter((s) => {
-        const mes = `${s.data.slice(0, 7)}-01`;
-        if (mes < mesDe || mes > mesAte) return false;
-        if (conta && s.conta !== conta) return false;
-        return true;
-      }),
-    [dados.cobertura.saidasSemDono, mesDe, mesAte, conta]
-  );
-
-  // ── Cobertura no mesmo recorte de período e conta ───────────────────────
-  const buracosNoPeriodo = useMemo(
-    () =>
-      dados.cobertura.buracos.filter(
-        (b) => b.mes >= mesDe && b.mes <= mesAte && (!conta || b.conta === conta)
-      ),
-    [dados.cobertura.buracos, mesDe, mesAte, conta]
-  );
-  const naoAtribuidoCents = buracosNoPeriodo.reduce((s, b) => s + b.semContraparteCents, 0);
-  const naoAtribuidoN = buracosNoPeriodo.reduce((s, b) => s + b.semContraparteN, 0);
-
-  const suspeitosNoPeriodo = useMemo(
-    () =>
-      dados.cobertura.suspeitos
-        .filter((x) => x.mes >= mesDe && x.mes <= mesAte && (!conta || x.conta === conta))
-        .filter((x) => pessoaPassa(pessoaPorId.get(x.personId)))
-        .sort((a, b) => b.cents - a.cents),
-    [dados.cobertura.suspeitos, mesDe, mesAte, conta, pessoaPassa, pessoaPorId]
-  );
-  const suspeitoCents = suspeitosNoPeriodo.reduce((s, x) => s + x.cents, 0);
-
-  /**
-   * Cobertura = quanto do dinheiro daquelas contas, naqueles meses, ganhou dono.
-   *
-   * O denominador ignora os filtros de PESSOA (time, vínculo, busca) de
-   * propósito, e o numerador também. A saída sem favorecido não pertence a
-   * ninguém — logo não encolhe quando se filtra por Hardware. Dividir um
-   * numerador filtrado por um denominador que não filtra produzia "cobertura de
-   * 59,3%" ao escolher um time, o que não é uma medida de nada: é o custo de um
-   * time dividido pelo buraco da empresa inteira.
-   */
-  const totalDoUniversoCents = useMemo(
-    () =>
-      dados.celulas
-        .filter((c) => c.mes >= mesDe && c.mes <= mesAte && (!conta || c.conta === conta))
-        .reduce((s, c) => s + c.cents, 0),
-    [dados.celulas, mesDe, mesAte, conta]
-  );
-  const universoCents = totalDoUniversoCents + naoAtribuidoCents;
-  const pctAtribuido = universoCents ? (totalDoUniversoCents / universoCents) * 100 : 100;
-
   // ── Mês recente e a comparação com o anterior ───────────────────────────
   const mesesComCusto = mesesNoPeriodo.filter((mes) =>
     celulasFiltradas.some((c) => c.mes === mes && c.cents !== 0)
@@ -525,6 +617,100 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
       ? Math.round(penultimoMesCents / pessoasNoMes(penultimoMes))
       : null;
 
+  const previstoProximoCents = useMemo(
+    () => dados.previsaoCadastro.reduce((s, p) => s + p.totalCents, 0),
+    [dados.previsaoCadastro]
+  );
+
+  const serieFolha = useMemo(() => {
+    const porMes = new Map<string, number>();
+    for (const mes of mesesNoPeriodo) porMes.set(mes, 0);
+    for (const c of celulasFiltradas) {
+      porMes.set(c.mes, (porMes.get(c.mes) ?? 0) + c.cents);
+    }
+    const pontos = mesesNoPeriodo.map((mes) => ({
+      mes,
+      cents: porMes.get(mes) ?? 0,
+      previsto: false
+    }));
+    if (dados.mesPrevisto && previstoProximoCents > 0) {
+      pontos.push({ mes: dados.mesPrevisto, cents: previstoProximoCents, previsto: true });
+    }
+    return pontos;
+  }, [mesesNoPeriodo, celulasFiltradas, dados.mesPrevisto, previstoProximoCents]);
+
+  const serieAcumulada = useMemo(() => {
+    let acc = 0;
+    const pontos: SparkPonto[] = [];
+    for (const p of serieFolha) {
+      if (p.previsto) {
+        pontos.push({ mes: p.mes, cents: acc + p.cents, previsto: true });
+      } else {
+        acc += p.cents;
+        pontos.push({ mes: p.mes, cents: acc, previsto: false });
+      }
+    }
+    return pontos;
+  }, [serieFolha]);
+
+  // Ritmo do recorte (acumulado / n meses). No card do total, taxa sobre o
+  // estoque mentiria: jan=primeiro mês e ago=soma de oito sempre "cresce".
+  const serieRitmo = useMemo(() => {
+    let acc = 0;
+    let n = 0;
+    const pontos: SparkPonto[] = [];
+    for (const p of serieFolha) {
+      if (p.previsto) {
+        pontos.push({
+          mes: p.mes,
+          cents: n ? Math.round((acc + p.cents) / (n + 1)) : p.cents,
+          previsto: true
+        });
+      } else {
+        acc += p.cents;
+        n += 1;
+        pontos.push({ mes: p.mes, cents: n ? Math.round(acc / n) : 0, previsto: false });
+      }
+    }
+    return pontos;
+  }, [serieFolha]);
+
+  const seriePorPessoa = useMemo(() => {
+    const porMes = new Map<string, { cents: number; ids: Set<number> }>();
+    for (const mes of mesesNoPeriodo) porMes.set(mes, { cents: 0, ids: new Set() });
+    for (const c of celulasFiltradas) {
+      const atual = porMes.get(c.mes);
+      if (!atual) continue;
+      atual.cents += c.cents;
+      if (c.cents > 0) atual.ids.add(c.personId);
+    }
+    const pontos: SparkPonto[] = mesesNoPeriodo.map((mes) => {
+      const atual = porMes.get(mes);
+      const n = atual?.ids.size ?? 0;
+      return { mes, cents: n ? Math.round((atual?.cents ?? 0) / n) : 0, previsto: false };
+    });
+    const nPrev = dados.previsaoCadastro.filter((p) => p.totalCents > 0).length;
+    if (dados.mesPrevisto && nPrev && previstoProximoCents) {
+      pontos.push({
+        mes: dados.mesPrevisto,
+        cents: Math.round(previstoProximoCents / nPrev),
+        previsto: true
+      });
+    }
+    return pontos;
+  }, [
+    mesesNoPeriodo,
+    celulasFiltradas,
+    dados.previsaoCadastro,
+    dados.mesPrevisto,
+    previstoProximoCents
+  ]);
+
+  const crescimentoFolha = useMemo(() => crescimentoDe(serieFolha), [serieFolha]);
+  const crescimentoTotal = useMemo(() => crescimentoDe(serieRitmo), [serieRitmo]);
+  const crescimentoPessoa = useMemo(() => crescimentoDe(seriePorPessoa), [seriePorPessoa]);
+  const mediaPrevistaCents = seriePorPessoa.find((p) => p.previsto)?.cents ?? 0;
+
   // Período anterior de mesmo comprimento — Δ do total.
   let totalPeriodoAnteriorCents: number | null = null;
   {
@@ -536,12 +722,7 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
       const deAnt = Math.max(0, ateAnt - len + 1);
       const de = dados.meses[deAnt];
       const ate = dados.meses[ateAnt];
-      const celulasAnt = dados.celulas.filter((celula) => {
-        if (celula.mes < de || celula.mes > ate) return false;
-        if (conta && celula.conta !== conta) return false;
-        if (natureza && celula.natureza !== natureza) return false;
-        return pessoaPassa(pessoaPorId.get(celula.personId));
-      });
+      const celulasAnt = dados.celulas.filter((celula) => celula.mes >= de && celula.mes <= ate);
       totalPeriodoAnteriorCents = celulasAnt.reduce((s, c) => s + c.cents, 0);
     }
   }
@@ -566,48 +747,112 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
     <>
       <section className="fin-pessoas-kpis" aria-label="Indicadores de custo com pessoas">
         <div className="fin-pessoas-kpi-faixa">
-          <article className="fin-pessoas-kpi-item destaque">
-            <p className="fin-pessoas-kpi-rotulo">Total com pessoas</p>
-            <p className="fin-pessoas-kpi-valor">{brlCents(totalCents)}</p>
-            <DeltaCusto
-              atual={totalCents}
-              anterior={totalPeriodoAnteriorCents}
-              contra="período anterior"
-            />
-          </article>
-
-          <article className="fin-pessoas-kpi-item">
-            <p className="fin-pessoas-kpi-rotulo">
-              Mês {ultimoMes ? monthKeyLabel(ultimoMes) : "—"}
-              {ultimoMesParcial ? <span className="fin-tag">parcial</span> : null}
-            </p>
-            <p className="fin-pessoas-kpi-valor">{brlCents(ultimoMesCents)}</p>
-            <DeltaCusto
-              atual={ultimoMesCents}
-              anterior={penultimoMes ? penultimoMesCents : null}
-              contra={penultimoMes ? monthKeyLabel(penultimoMes) : ""}
-            />
-          </article>
-
-          <article className="fin-pessoas-kpi-item">
-            <p className="fin-pessoas-kpi-rotulo">Média mensal / pessoa</p>
-            <p className="fin-pessoas-kpi-valor">{brlCents(mediaMensalPorPessoaCents)}</p>
-            {mediaPessoaUltimo !== null ? (
+          <KpiAnalise
+            destaque
+            rotulo="Total com pessoas"
+            valor={brlCents(totalCents)}
+            delta={
               <DeltaCusto
-                atual={mediaPessoaUltimo}
-                anterior={mediaPessoaPenultimo}
+                atual={totalCents}
+                anterior={totalPeriodoAnteriorCents}
+                contra="período anterior"
+              />
+            }
+            extra={
+              previstoProximoCents ? (
+                <p className="fin-pessoas-kpi-extra">
+                  com previsto {dados.mesPrevisto ? monthKeyLabel(dados.mesPrevisto) : "próximo"}{" "}
+                  {brlCents(totalCents + previstoProximoCents)}
+                </p>
+              ) : null
+            }
+            pontos={serieAcumulada}
+            crescimento={crescimentoTotal}
+            ariaSpark="Custo acumulado no recorte"
+          />
+          <KpiAnalise
+            rotulo={
+              <>
+                Mês {ultimoMes ? monthKeyLabel(ultimoMes) : "—"}
+                {ultimoMesParcial ? <span className="fin-tag">parcial</span> : null}
+              </>
+            }
+            valor={brlCents(ultimoMesCents)}
+            delta={
+              <DeltaCusto
+                atual={ultimoMesCents}
+                anterior={penultimoMes ? penultimoMesCents : null}
                 contra={penultimoMes ? monthKeyLabel(penultimoMes) : ""}
               />
-            ) : (
-              <p className="fin-delta neutro">sem base</p>
-            )}
-          </article>
+            }
+            extra={
+              previstoProximoCents ? (
+                <p className="fin-pessoas-kpi-extra">
+                  previsto {dados.mesPrevisto ? monthKeyLabel(dados.mesPrevisto) : "próximo"}{" "}
+                  {brlCents(previstoProximoCents)}
+                </p>
+              ) : (
+                <p className="fin-pessoas-kpi-extra">sem cadastro previsto</p>
+              )
+            }
+            pontos={serieFolha}
+            crescimento={crescimentoFolha}
+            ariaSpark="Custo mensal da folha"
+          />
+          <KpiAnalise
+            rotulo="Média mensal / pessoa"
+            valor={brlCents(mediaMensalPorPessoaCents)}
+            delta={
+              mediaPessoaUltimo !== null ? (
+                <DeltaCusto
+                  atual={mediaPessoaUltimo}
+                  anterior={mediaPessoaPenultimo}
+                  contra={penultimoMes ? monthKeyLabel(penultimoMes) : ""}
+                />
+              ) : (
+                <p className="fin-delta neutro">sem base</p>
+              )
+            }
+            extra={
+              mediaPrevistaCents ? (
+                <p className="fin-pessoas-kpi-extra">
+                  previsto {dados.mesPrevisto ? monthKeyLabel(dados.mesPrevisto) : "próximo"}{" "}
+                  {brlCents(mediaPrevistaCents)}
+                </p>
+              ) : null
+            }
+            pontos={seriePorPessoa}
+            crescimento={crescimentoPessoa}
+            ariaSpark="Custo médio por pessoa no recorte"
+          />
         </div>
       </section>
+
+      <FinPessoasMatriz
+        dados={dados}
+        bandas={bandasFiltradas}
+        meses={mesesNoPeriodo}
+        pessoaPorId={pessoaPorId}
+        mesAtual={dados.mesAtual}
+        resumoPorPessoa={resumoPorPessoa}
+        rodape={
+          <Nota rotulo="Por que as colunas de pactuado às vezes não fecham com o total">
+            <p>
+              {mesesComPactuadoNoPeriodo.length
+                ? `Fixo e "acima" cobrem só ${mesesComPactuadoNoPeriodo.map(monthKeyLabel).join(", ")} — meses com planilha de comissionamento. O total cobre ${mesesNoPeriodo.length} ${mesesNoPeriodo.length === 1 ? "mês" : "meses"}.`
+                : "Nenhum mês deste recorte tem fixo contratado na planilha de comissionamento, então as colunas de pactuado vêm vazias."}{" "}
+              {pactuadosSemLancamento.length
+                ? `${pactuadosSemLancamento.map((p) => p.nome).join(", ")} ${pactuadosSemLancamento.length === 1 ? "tem" : "têm"} fixo sem saída vista: ${brlPrecise(fixoSemLancamentoCents)}.`
+                : "Todo mundo com fixo contratado tem ao menos um lançamento neste recorte."}
+            </p>
+          </Nota>
+        }
+      />
 
       <FinSecaoColapsavel
         className="fin-pessoas-recorte"
         titulo="Recorte"
+        icone={CalendarRange}
         abertoPadrao
         meta={
           mesesNoPeriodo.length === 1
@@ -634,68 +879,6 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
               : `${monthKeyLabel(mesDe)} → ${monthKeyLabel(mesAte)}`}
           </p>
         </header>
-
-        <div className="fin-pessoas-filtros">
-          <input
-            type="search"
-            className="fin-input"
-            placeholder="Buscar pessoa…"
-            value={busca}
-            onChange={(e) => set.setBusca(e.target.value)}
-            aria-label="Buscar pessoa"
-          />
-          <select className="fin-select" value={mesDe} onChange={(e) => set.setMesDe(e.target.value)} aria-label="Mês inicial">
-            {dados.meses.map((mes) => (
-              <option key={mes} value={mes}>
-                de {monthKeyLabel(mes)}
-              </option>
-            ))}
-          </select>
-          <select className="fin-select" value={mesAte} onChange={(e) => set.setMesAte(e.target.value)} aria-label="Mês final">
-            {dados.meses.map((mes) => (
-              <option key={mes} value={mes}>
-                até {monthKeyLabel(mes)}
-              </option>
-            ))}
-          </select>
-          <select className="fin-select" value={conta} onChange={(e) => set.setConta(e.target.value)} aria-label="Conta">
-            <option value="">Todas as contas</option>
-            {dados.contas.map((item) => (
-              <option key={item.slug} value={item.slug}>
-                {item.nome}
-              </option>
-            ))}
-          </select>
-          <select className="fin-select" value={time} onChange={(e) => set.setTime(e.target.value)} aria-label="Time">
-            <option value="">Todos os times</option>
-            {dados.times.map((item) => (
-              <option key={item.slug} value={item.slug}>
-                {item.nome}
-              </option>
-            ))}
-          </select>
-          <select className="fin-select" value={vinculo} onChange={(e) => set.setVinculo(e.target.value)} aria-label="Vínculo">
-            <option value="">Todos os vínculos</option>
-            {dados.vinculos.map((item) => (
-              <option key={item.slug} value={item.slug}>
-                {item.nome}
-              </option>
-            ))}
-          </select>
-          <select
-            className="fin-select"
-            value={natureza}
-            onChange={(e) => set.setNatureza(e.target.value)}
-            aria-label="Natureza"
-          >
-            <option value="">Todas as naturezas</option>
-            {dados.naturezas.map((item) => (
-              <option key={item.slug} value={item.slug}>
-                {item.nome}
-              </option>
-            ))}
-          </select>
-        </div>
 
         <div className="fin-pessoas-divisao">
           <div className="fin-pessoas-painel">
@@ -756,30 +939,10 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
         </div>
       </FinSecaoColapsavel>
 
-      <FinPessoasMatriz
-        dados={dados}
-        bandas={bandasFiltradas}
-        meses={mesesNoPeriodo}
-        pessoaPorId={pessoaPorId}
-        mesAtual={dados.mesAtual}
-        resumoPorPessoa={resumoPorPessoa}
-        rodape={
-          <Nota rotulo="Por que as colunas de pactuado às vezes não fecham com o total">
-            <p>
-              {mesesComPactuadoNoPeriodo.length
-                ? `Fixo e "acima" cobrem só ${mesesComPactuadoNoPeriodo.map(monthKeyLabel).join(", ")} — meses com planilha de comissionamento. O total cobre ${mesesNoPeriodo.length} ${mesesNoPeriodo.length === 1 ? "mês" : "meses"}.`
-                : "Nenhum mês deste recorte tem fixo contratado na planilha de comissionamento, então as colunas de pactuado vêm vazias."}{" "}
-              {pactuadosSemLancamento.length
-                ? `${pactuadosSemLancamento.map((p) => p.nome).join(", ")} ${pactuadosSemLancamento.length === 1 ? "tem" : "têm"} fixo sem saída vista: ${brlPrecise(fixoSemLancamentoCents)}.`
-                : "Todo mundo com fixo contratado tem ao menos um lançamento neste recorte."}
-            </p>
-          </Nota>
-        }
-      />
-
       <section className="fin-two-col">
         <FinSecaoColapsavel
           titulo="Por time"
+          icone={UsersRound}
           meta={`${porTime.length} ${porTime.length === 1 ? "time" : "times"} · ${monthKeyLabel(mesUltimoNoRecorte)}`}
         >
           <div className="table-wrap">
@@ -830,6 +993,7 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
 
         <FinSecaoColapsavel
           titulo="Por vínculo"
+          icone={Link2}
           meta={`${porVinculo.length} ${porVinculo.length === 1 ? "tipo" : "tipos"} · ${monthKeyLabel(mesUltimoNoRecorte)}`}
         >
           <div className="table-wrap">
@@ -928,353 +1092,6 @@ function ConteudoPessoas({ dados, estado, set }: { dados: CustoPessoas; estado: 
       </section>
 
       <FinPessoaCadastro dados={dados} />
-      <Cobertura
-        dados={dados}
-        totalCents={totalDoUniversoCents}
-        naoAtribuidoCents={naoAtribuidoCents}
-        naoAtribuidoN={naoAtribuidoN}
-        pctAtribuido={pctAtribuido}
-        suspeitos={suspeitosNoPeriodo}
-        suspeitoCents={suspeitoCents}
-        saidasSemDono={saidasSemDonoNoPeriodo}
-      />
-
-
     </>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Cobertura: o que NÃO entrou no total, com valor
-// ---------------------------------------------------------------------------
-function Cobertura({
-  dados,
-  totalCents,
-  naoAtribuidoCents,
-  naoAtribuidoN,
-  pctAtribuido,
-  suspeitos,
-  suspeitoCents,
-  saidasSemDono
-}: {
-  dados: CustoPessoas;
-  totalCents: number;
-  naoAtribuidoCents: number;
-  naoAtribuidoN: number;
-  pctAtribuido: number;
-  suspeitos: CustoPessoas["cobertura"]["suspeitos"];
-  suspeitoCents: number;
-  saidasSemDono: SaidaSemDono[];
-}) {
-  const { linksPropostos, pessoasSemContraparte, faturaCartaoCents, faturaCartaoN } = dados.cobertura;
-  const linksCents = linksPropostos.reduce((s, l) => s + l.saidaCents, 0);
-  const suspeitoN = suspeitos.reduce((s, x) => s + x.n, 0);
-
-  const indicadores = [
-    suspeitoCents > 0
-      ? {
-          key: "suspeitos",
-          alerta: true,
-          rotulo: "Nome no extrato, sem contraparte",
-          valor: brlCents(suspeitoCents),
-          topicos: [
-            `${suspeitoN} saídas neste recorte`,
-            "Texto casa com alguém do roster",
-            "Sem favorecido → não soma no total"
-          ]
-        }
-      : null,
-    faturaCartaoCents > 0
-      ? {
-          key: "fatura",
-          alerta: false,
-          rotulo: "Fatura de cartão (excluída)",
-          valor: brlCents(faturaCartaoCents),
-          topicos: [
-            `${faturaCartaoN} lançamentos`,
-            `~${brlCents(Math.round(faturaCartaoCents / Math.max(1, dados.meses.length)))}/mês`,
-            "Sai no nome do sócio — não é pró-labore"
-          ]
-        }
-      : null,
-    linksPropostos.length > 0
-      ? {
-          key: "links",
-          alerta: linksPropostos.some((l) => l.ehBanco),
-          rotulo: "Ligações a decidir",
-          valor: String(linksPropostos.length),
-          topicos: [
-            `${brlCents(linksCents)} pendurados`,
-            "Só confirmada entra no custo",
-            ...(linksPropostos.some((l) => l.ehBanco) ? ["Há proposta de banco (não confirmar)"] : [])
-          ]
-        }
-      : null,
-    pessoasSemContraparte.length > 0
-      ? {
-          key: "sem-cp",
-          alerta: true,
-          rotulo: "Sem contraparte nenhuma",
-          valor: String(pessoasSemContraparte.length),
-          topicos: [
-            pessoasSemContraparte.map((p) => p.nome).join(", "),
-            "Aparecem R$ 0 até ligar"
-          ]
-        }
-      : null
-  ].filter(Boolean) as {
-    key: string;
-    alerta: boolean;
-    rotulo: string;
-    valor: string;
-    topicos: string[];
-  }[];
-
-  return (
-    <FinSecaoColapsavel
-      className="fin-painel-grafico"
-      titulo="Cobertura"
-      abertoPadrao={naoAtribuidoCents > 0 || linksPropostos.length > 0}
-      meta={
-        pctAtribuido >= 99.5
-          ? `${pct(pctAtribuido, 1)} atribuído`
-          : `${pct(100 - pctAtribuido, 1)} sem dono · ${brlCents(naoAtribuidoCents)}`
-      }
-      ariaLabel="Cobertura do custo com pessoas"
-    >
-      <p className="fin-card-hint fin-card-hint-curto">
-        {brlCents(totalCents)} atribuídos · {brlCents(naoAtribuidoCents)} sem favorecido
-        {naoAtribuidoN ? ` · ${naoAtribuidoN} saídas` : ""}
-      </p>
-
-      {indicadores.length ? (
-        <div className="fin-painel-blocos">
-          {indicadores.map((ind) => (
-            <article
-              key={ind.key}
-              className={ind.alerta ? "fin-painel-ind tendencia-piorando" : "fin-painel-ind"}
-            >
-              <p className="fin-painel-ind-rotulo">{ind.rotulo}</p>
-              <p className="fin-painel-ind-valor">{ind.valor}</p>
-              <ul className="fin-painel-ind-topicos">
-                {ind.topicos.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      ) : null}
-
-      {saidasSemDono.length ? (
-        <div className="table-wrap">
-          <h3 className="fin-painel-sub">Saídas sem favorecido — diga o que é</h3>
-          <table className="fin-table fin-table-saidas-sem-dono">
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th className="num">Valor</th>
-                <th>Extrato</th>
-                <th>O que é</th>
-              </tr>
-            </thead>
-            <tbody>
-              {saidasSemDono.map((linha) => (
-                <tr key={linha.id}>
-                  <td className="fin-nowrap">{linha.data}</td>
-                  <td className="num fin-table-money fin-out">{brlPrecise(linha.cents)}</td>
-                  <td>
-                    <span className="fin-desc-sub">{linha.descricao}</span>
-                    <span className="fin-desc-sub">
-                      {dados.contas.find((c) => c.slug === linha.conta)?.nome ?? linha.conta}
-                    </span>
-                  </td>
-                  <td>
-                    <FinSaidaSemDonoAcoes saida={linha} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-
-      {suspeitos.length ? (
-        <div className="table-wrap">
-          <h3 className="fin-painel-sub">Provável gente do roster (ainda fora do total)</h3>
-          <table className="fin-table">
-            <thead>
-              <tr>
-                <th>Provável favorecido</th>
-                <th>Mês</th>
-                <th>Conta</th>
-                <th className="num">Lanç.</th>
-                <th className="num">Valor</th>
-                <th>Extrato</th>
-              </tr>
-            </thead>
-            <tbody>
-              {suspeitos.map((linha) => (
-                <tr key={`${linha.personId}-${linha.mes}-${linha.conta}`}>
-                  <td>{linha.pessoa}</td>
-                  <td className="fin-nowrap">{monthKeyLabel(linha.mes)}</td>
-                  <td>{dados.contas.find((c) => c.slug === linha.conta)?.nome ?? linha.conta}</td>
-                  <td className="num">{linha.n}</td>
-                  <td className="num fin-table-money fin-out">{brlPrecise(linha.cents)}</td>
-                  <td>
-                    <span className="fin-desc-sub">{linha.amostra}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th colSpan={4}>Total</th>
-                <td className="num fin-table-money fin-out">
-                  <strong>{brlPrecise(suspeitoCents)}</strong>
-                </td>
-                <td />
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      ) : null}
-
-      {linksPropostos.length ? (
-        <div className="table-wrap">
-          <h3 className="fin-painel-sub">Confirmar ou rejeitar ligação</h3>
-          <p className="fin-card-hint fin-card-hint-curto">
-            Confirmar: soma no custo da pessoa. Rejeitar: não propõe de novo. R$ 0 = nome parecido sem saída
-            (rejeitar).
-          </p>
-          <table className="fin-table">
-            <thead>
-              <tr>
-                <th>Pessoa</th>
-                <th>Contraparte proposta</th>
-                <th>Método</th>
-                <th className="num">Confiança</th>
-                <th className="num">Lanç.</th>
-                <th className="num">Saída</th>
-                <th>Decidir</th>
-              </tr>
-            </thead>
-            <tbody>
-              {linksPropostos.map((linha) => (
-                <tr key={linha.linkId}>
-                  <td>{linha.pessoa}</td>
-                  <td>
-                    {linha.contraparte}
-                    {linha.ehBanco ? (
-                      <span className="fin-badge-pendente" title="Instituição financeira">
-                        é banco
-                      </span>
-                    ) : null}
-                  </td>
-                  <td>{linha.metodo}</td>
-                  <td className="num">{linha.confianca.toFixed(2)}</td>
-                  <td className="num">{linha.n}</td>
-                  <td className="num fin-table-money">{brlPrecise(linha.saidaCents)}</td>
-                  <td>
-                    <FinLigacaoPropostaAcoes link={linha} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-    </FinSecaoColapsavel>
-  );
-}
-
-function FinSaidaSemDonoAcoes({ saida }: { saida: SaidaSemDono }) {
-  const router = useRouter();
-  const [, startTransition] = useTransition();
-  const sugerido = nomeSugeridoDoExtrato(saida.descricao) ?? "";
-  const [tipo, setTipo] = useState<TipoSaidaSemDono | "">("");
-  const [nome, setNome] = useState(sugerido);
-  const [iguais, setIguais] = useState(true);
-  const [emVoo, setEmVoo] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
-
-  async function aplicar() {
-    if (!tipo) return;
-    setErro(null);
-    setEmVoo(true);
-    try {
-      const resposta = await fetch(urlDaOrigem(`/api/financeiro/lancamentos/${saida.id}/favorecido`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo,
-          nome: nome.trim() || null,
-          aplicarIguais: iguais
-        })
-      });
-      const resultado = await resposta.json();
-      if (!resposta.ok) {
-        setErro(resultado.error ?? "não gravou");
-        return;
-      }
-      const cat = resultado.categoryCode ? ` · ${resultado.categoryCode}` : "";
-      setOk(
-        `${resultado.aplicados}× → ${resultado.nome}${cat}`
-      );
-      startTransition(() => router.refresh());
-    } catch (falha) {
-      setErro(falha instanceof Error ? falha.message : "não gravou");
-    } finally {
-      setEmVoo(false);
-    }
-  }
-
-  if (ok) return <span className="fin-desc-sub">{ok}</span>;
-
-  return (
-    <div className="fin-saida-acoes">
-      <select
-        className="fin-select fin-select-inline"
-        value={tipo}
-        disabled={emVoo}
-        onChange={(e) => setTipo(e.target.value as TipoSaidaSemDono | "")}
-        aria-label="Tipo da saída"
-      >
-        <option value="">O que é?</option>
-        {(Object.keys(TIPOS_SAIDA_SEM_DONO) as TipoSaidaSemDono[]).map((chave) => (
-          <option key={chave} value={chave}>
-            {TIPOS_SAIDA_SEM_DONO[chave].rotulo}
-          </option>
-        ))}
-      </select>
-      <input
-        className="fin-input fin-input-mini"
-        value={nome}
-        disabled={emVoo}
-        placeholder="Favorecido"
-        onChange={(e) => setNome(e.target.value)}
-        aria-label="Nome do favorecido"
-      />
-      <label className="fin-saida-iguais">
-        <input
-          type="checkbox"
-          checked={iguais}
-          disabled={emVoo}
-          onChange={(e) => setIguais(e.target.checked)}
-        />
-        iguais
-      </label>
-      <button
-        type="button"
-        className="fin-btn-ghost fin-btn-mini"
-        disabled={emVoo || !tipo || nome.trim().length < 3}
-        onClick={() => void aplicar()}
-      >
-        {emVoo ? "…" : "Gravar"}
-      </button>
-      {erro ? <span className="fin-badge-atencao">{erro}</span> : null}
-    </div>
-  );
-}
-

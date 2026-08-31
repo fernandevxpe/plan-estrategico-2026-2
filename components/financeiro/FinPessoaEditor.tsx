@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { ClipboardList } from "lucide-react";
 
 import type { CustoPessoas, LinkProposto, Opcao, Pessoa } from "@/lib/financeiro/pessoas";
 import { brlPrecise } from "@/lib/financeiro/format";
@@ -76,7 +77,7 @@ export function FinPessoaCadastro({ dados }: Props) {
     return dados.pessoas.filter((pessoa) => {
       if (!ehPendente(pessoa)) return false;
       if (!termo) return true;
-      return `${pessoa.nome} ${pessoa.nomeLegal ?? ""} ${pessoa.area ?? ""}`.toLowerCase().includes(termo);
+      return `${pessoa.nome} ${pessoa.nomeLegal ?? ""} ${pessoa.area ?? ""} ${(pessoa.areasEmpresa ?? []).map((a) => a.nome).join(" ")}`.toLowerCase().includes(termo);
     });
   }, [dados.pessoas, busca, dados.categoriaPadraoDisponivel]);
 
@@ -94,7 +95,7 @@ export function FinPessoaCadastro({ dados }: Props) {
     (semArea && (indefinidos || propostas || semApp) ? " · " : "") +
     (indefinidos ? `${indefinidos} vínculo indefinido` : "") +
     (indefinidos && (propostas || semApp) ? " · " : "") +
-    (propostas ? `${propostas} ligação${propostas === 1 ? "" : "ões"} a decidir` : "") +
+      (propostas ? `${propostas} ${propostas === 1 ? "ligação" : "ligações"} a decidir` : "") +
     ((propostas || semArea || indefinidos) && semApp ? " · " : "") +
     (semApp ? `${semApp} cadastro do app incompleto` : "");
 
@@ -104,6 +105,7 @@ export function FinPessoaCadastro({ dados }: Props) {
       <FinSecaoColapsavel
         className="fin-pessoas-cadastro"
         titulo="Pendências de cadastro"
+        icone={ClipboardList}
         meta="nenhuma"
       >
         <p className="fin-card-hint fin-card-hint-curto">
@@ -117,13 +119,10 @@ export function FinPessoaCadastro({ dados }: Props) {
     <FinSecaoColapsavel
       className="fin-pessoas-cadastro"
       titulo="Pendências de cadastro"
-      abertoPadrao
+      icone={ClipboardList}
       meta={pendencias || `${lista.length} pendências`}
       ariaLabel="Pendências de cadastro"
     >
-      <p className="fin-card-hint fin-card-hint-curto">
-        Área e vínculo mudam na tabela Pessoas. Aqui: tipo de custo, ligações, contato/PIX/senha do app e quem ainda falta decidir.
-      </p>
       <div className="fin-regra-form">
         <label className="fin-field">
           <span>Buscar</span>
@@ -141,7 +140,8 @@ export function FinPessoaCadastro({ dados }: Props) {
           <thead>
             <tr>
               <th>Pessoa</th>
-              <th>Área</th>
+              <th>Time</th>
+              <th>Área da empresa</th>
               <th>Vínculo</th>
               <th>Tipo de custo padrão</th>
               <th>Situação</th>
@@ -160,7 +160,7 @@ export function FinPessoaCadastro({ dados }: Props) {
             ))}
             {!lista.length ? (
               <tr>
-                <td colSpan={6} className="fin-empty-row">
+                <td colSpan={7} className="fin-empty-row">
                   Nenhuma pendência neste filtro.
                 </td>
               </tr>
@@ -200,6 +200,12 @@ function LinhaPessoa({
               sem time
             </span>
           ) : null}
+        </td>
+        <td onClick={(e) => e.stopPropagation()}>
+          <CelulaAreasEmpresa
+            pessoa={pessoa}
+            areas={catalogoAreasEmpresa(dados.areasEmpresa, pessoa.areasEmpresa ?? [])}
+          />
         </td>
         <td className={pessoa.vinculo === "indefinido" || pessoa.vinculo === "irregular" ? "fin-badge-atencao" : undefined}>
           {pessoa.vinculoRotulo}
@@ -245,7 +251,7 @@ function LinhaPessoa({
       </tr>
       {aberta ? (
         <tr>
-          <td colSpan={6}>
+          <td colSpan={7}>
             <FinPessoaEditor pessoa={pessoa} dados={dados} />
           </td>
         </tr>

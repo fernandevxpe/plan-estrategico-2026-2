@@ -17,7 +17,9 @@ lidas na própria plataforma em `/auditorias`.
 | **Dados** | Volume persistente montado em `/data` |
 | **Sync** | Diário às 08:00 BRT, dentro do próprio serviço |
 
-O deploy é automático a cada push na `main`.
+O deploy é automático a cada push na `main`. O caminho completo — o que rodar
+antes, como conferir depois, como desfazer e as armadilhas que já derrubaram um
+build — está em [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ### Por que o Vercel só redireciona
 

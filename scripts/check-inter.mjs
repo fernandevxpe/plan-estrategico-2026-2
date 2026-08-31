@@ -6,8 +6,12 @@
 // serve para pegar o erro mais comum (variável colada pela metade).
 //
 // Uso:
-//   node scripts/check-inter.mjs          só confere arquivos e variáveis
-//   node scripts/check-inter.mjs --live   também bate na API (token + extrato)
+//   node scripts/check-inter.mjs            só confere arquivos e variáveis
+//   node scripts/check-inter.mjs --live     também bate na API (token + extrato)
+//   node scripts/check-inter.mjs --escopos  pergunta ao banco QUAIS escopos a
+//                                           credencial abre (não move dinheiro:
+//                                           só pede token, nunca chama rota de
+//                                           pagamento)
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { X509Certificate } from 'node:crypto';
 import { request as httpsRequest } from 'node:https';
@@ -47,6 +51,8 @@ const alvoKey = acharCredencial('INTER_KEY_PATH', '.key', 'chave');
 const CERT_PATH = alvoCert.caminho;
 const KEY_PATH = alvoKey.caminho;
 const LIVE = process.argv.includes('--live');
+const ESCOPOS = process.argv.includes('--escopos');
+const REDE = LIVE || ESCOPOS;
 
 let problemas = 0;
 const ok = (m) => console.log(`  [32m✓[0m ${m}`);
@@ -111,8 +117,9 @@ for (const nome of ['INTER_CLIENT_ID', 'INTER_CLIENT_SECRET']) {
 }
 
 // ------------------------------------------------------------- teste ao vivo
-if (!LIVE) {
-  console.log('\nPara testar contra a API do Inter: node scripts/check-inter.mjs --live\n');
+if (!REDE) {
+  console.log('\nPara testar contra a API do Inter: node scripts/check-inter.mjs --live');
+  console.log('Para saber que escopos a credencial abre: node scripts/check-inter.mjs --escopos\n');
   process.exit(problemas ? 1 : 0);
 }
 
@@ -193,6 +200,72 @@ if (token) {
   } catch (e) {
     erro(`Extrato falhou na conexão: ${e.message}`);
   }
+}
+
+// --------------------------------------------------------------- escopos
+/*
+ * QUE ESCOPOS ESTA CREDENCIAL ABRE?
+ *
+ * A pergunta importa porque o escopo é contratado no Internet Banking, não no
+ * código: um `client_id` que lê extrato não paga nada, e a diferença só aparece
+ * quando alguém tenta. `docs/DUVIDAS_FINANCEIRO.md:1053` já registra o sintoma
+ * pelo outro lado — "boleto agendado no Inter: a credencial usa escopo
+ * extrato.read, o extrato só mostra depois de pago".
+ *
+ * O teste é o mesmo que `sync-cartao-inter.mjs --provar-api` usou para provar
+ * que a API não expõe cartão, e ele é SEGURO: pedir um token não move dinheiro.
+ * Nenhuma rota de pagamento é chamada aqui — só `/oauth/v2/token`. Escopo
+ * ACEITO significa "o banco emitiria a chave", nunca "algo foi pago".
+ *
+ * A resposta que interessa é literal: escopo não contratado volta 401 com
+ * "No registered scope value for this client has been requested".
+ *
+ * 20s entre pedidos: o 5º pedido de token em menos de um minuto volta 429.
+ */
+const ESCOPOS_DE_PAGAMENTO = ['pagamento-pix.write', 'pagamento-boleto.write', 'pix.write', 'pagamento.write'];
+
+if (ESCOPOS) {
+  console.log('\nEscopos que a credencial abre');
+  console.log('  (só pede token; nenhuma rota de pagamento é chamada)\n');
+
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  let algumAceito = false;
+
+  for (const escopo of ESCOPOS_DE_PAGAMENTO) {
+    const corpo = new URLSearchParams({
+      client_id: process.env.INTER_CLIENT_ID,
+      client_secret: process.env.INTER_CLIENT_SECRET,
+      grant_type: 'client_credentials',
+      scope: escopo
+    }).toString();
+    try {
+      const res = await pedir({
+        path: '/oauth/v2/token',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(corpo)
+        },
+        body: corpo
+      });
+      // Nunca ecoa o corpo enviado: ali vai o client_secret.
+      const nota = res.status === 200 ? 'ACEITO' : res.body.replace(/\s+/g, ' ').slice(0, 90);
+      if (res.status === 200) algumAceito = true;
+      console.log(`  ${String(res.status).padEnd(4)} ${escopo.padEnd(24)} ${nota}`);
+    } catch (e) {
+      console.log(`  ---  ${escopo.padEnd(24)} falhou na conexão: ${e.message}`);
+    }
+    await espera(20_000);
+  }
+
+  console.log(
+    algumAceito
+      ? '\n  → Há escopo de pagamento contratado. Programar pagamento pela API é possível.'
+      : '\n  → Nenhum escopo de pagamento contratado. Com esta credencial a plataforma\n' +
+          '    PODE LER o que há a pagar e NÃO PODE pagar. Para liberar, é preciso criar\n' +
+          '    uma integração no Internet Banking PJ com a permissão de pagamento e trazer\n' +
+          '    certificado, chave, client_id e client_secret novos.'
+  );
 }
 
 console.log(

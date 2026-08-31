@@ -25093,3 +25093,878 @@ details.fin-cartao-ressalvas > ul {
 .fin-cartao-an .recharts-cartesian-axis-line {
   stroke: var(--line);
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   CONTAS A PAGAR — a aba de caixa do Custo da empresa (FinContasAPagar.tsx)
+
+   Quase tudo aqui é REUSO: os blocos são `.fin-custo-parte` da matriz, a barra
+   de ação é `.fin-custo-mover`, a tabela é `.fin-table` dentro de
+   `.fin-table-wrap`, o checkbox é `.fin-custo-sel`, o selo de certeza é
+   `.cert-selo`. As regras abaixo são só o que faltava, com prefixo `fin-cap-`.
+
+   Nenhuma cor literal: o tema escuro desta tela sai inteiro dos tokens
+   (`--line`, `--muted`, `--ink`, `--card`, `--surface-2`, `--tint-*`,
+   `--cert-*`), como no bloco de Custo da empresa logo acima.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* ── topo: competência, selecionar tudo, resumo ──────────────────────────── */
+.fin-cap-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 12px;
+}
+.fin-cap-mes {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.fin-cap-mes > span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+.fin-cap-mes .fin-select {
+  min-width: 170px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.fin-cap-topo-resumo {
+  margin: 0 0 0 auto;
+  font-size: 12.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.fin-cap-tudo {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.fin-cap-tudo input:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+/* ── O aviso que não pode faltar ─────────────────────────────────────────────
+   Âmbar e com borda à esquerda, no molde do <Ressalva> de Certeza.tsx: a
+   ressalva vem ANTES do número, não num rodapé apagado. Aqui ela é permanente
+   — não tem botão de fechar de propósito, porque "programar não paga" não é
+   uma notificação, é a regra da tela. */
+.fin-cap-aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 11px 14px;
+  border: 1px solid var(--tint-amber-line, var(--line));
+  border-left: 3px solid var(--ink-amber);
+  border-radius: 0 10px 10px 0;
+  background: var(--tint-amber-soft);
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.fin-cap-aviso svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--ink-amber);
+}
+.fin-cap-aviso b { font-weight: 700; }
+
+/* ── barra de ação (herda o sticky de .fin-custo-mover) ────────────────────
+   `top: 72px` e não o `0` herdado: a `.topbar` do AppShell tem 68px e fica
+   grudada no alto com z-index 20. Com `top: 0` a barra desliza POR BAIXO dela
+   e o botão de programar some justamente quando a pessoa rola a lista. É o
+   mesmo offset de `.fin-bulk-bar`, a barra de lote das outras telas. */
+.fin-cap-barra {
+  top: 72px;
+  border-color: color-mix(in srgb, var(--purple) 34%, var(--line));
+  background: var(--card);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.fin-cap-barra-total {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.fin-cap-data {
+  flex: none;
+  min-width: 0;
+  width: 160px;
+  font-size: 13px;
+}
+.fin-cap-barra-nota {
+  font-size: 12px;
+  color: var(--ink-amber);
+  font-weight: 600;
+}
+
+/* ── resultado do POST: as três contagens, e o motivo de cada recusa ─────── */
+.fin-cap-resultado {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.fin-cap-resultado-contagens {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.fin-cap-resultado-contagens b { font-variant-numeric: tabular-nums; }
+.fin-cap-recusadas {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--ink-amber);
+  line-height: 1.6;
+}
+
+/* ── grupo (empresa · pessoas · DAS · cartão) ────────────────────────────── */
+.fin-cap-grupo-texto { flex: 1; min-width: 0; }
+.fin-cap-selo-onde {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--tint-purple-soft);
+  color: var(--purple-text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  text-decoration: none;
+  vertical-align: 2px;
+}
+.fin-cap-selo-onde:hover { text-decoration: underline; }
+
+/* ── parte da matriz, dentro do grupo `empresa` ──────────────────────────── */
+.fin-cap-parte {
+  display: grid;
+  gap: 8px;
+  padding-left: 10px;
+  border-left: 2px solid var(--line);
+}
+.fin-cap-parte-cab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fin-cap-parte-icone {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--muted);
+  flex: none;
+}
+.fin-cap-parte-titulo {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+.fin-cap-parte-meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── tabela ──────────────────────────────────────────────────────────────── */
+/* Sete colunas não cabem nos 640px que .fin-table-wrap assume por padrão. */
+.fin-table-wrap .fin-cap-tabela { min-width: 860px; }
+/* Especificidade e não `!important`: o padding vem de `.fin-table th/td`
+   (0,1,1), então a coluna precisa do elemento junto para vencer. */
+.fin-cap-tabela th.fin-cap-col-sel,
+.fin-cap-tabela td.fin-cap-col-sel {
+  width: 34px;
+  padding-right: 0;
+}
+.fin-cap-col-sel input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+.fin-cap-col-sel input:disabled { opacity: .35; cursor: default; }
+.fin-cap-dia {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.fin-cap-nome {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+}
+.fin-cap-sub {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.fin-cap-pix {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.fin-cap-cat-code {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--muted);
+}
+.fin-cap-sit { font-size: 12.5px; }
+.fin-cap-ordem-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--ink);
+}
+.fin-cap-ordem-marca { color: var(--cert-firme); font-weight: 700; }
+
+/* Vencida ganha a barra vermelha à esquerda — cor sozinha não basta para quem
+   não distingue vermelho, e o selo "vencido" na coluna do dia é o par textual. */
+.fin-cap-tabela tr.fin-cap-vencida > td:first-child {
+  box-shadow: inset 3px 0 0 var(--cert-atrasado);
+}
+.fin-cap-tabela tr.fin-cap-vencida > td { background: var(--cert-atrasado-bg); }
+
+/* A linha que não soma. Apagada e hachurada, NUNCA escondida: ela é a prova de
+   que o dedupe da 0104 aconteceu. Escondê-la faria o mês parecer menor do que
+   é, e é o mesmo desenho de `.cf-conflito` em custos fixos. */
+.fin-cap-tabela tr.fin-cap-fora > td {
+  color: var(--muted);
+  background: repeating-linear-gradient(135deg, transparent 0 6px, var(--surface-2) 6px 7px);
+}
+.fin-cap-tabela tr.fin-cap-fora .fin-cap-nome { font-weight: 500; color: var(--muted); }
+.fin-cap-tabela tr.fin-cap-fora .fin-table-money { font-weight: 400; }
+
+.fin-cap-tabela tr.fin-cap-marcada > td {
+  background: color-mix(in srgb, var(--purple) 8%, var(--card));
+}
+
+@media (max-width: 720px) {
+  .fin-cap-topo-resumo { margin-left: 0; }
+  .fin-cap-data { width: 100%; }
+}
+
+/* ── Contas a pagar · bloco Pessoas ────────────────────────────────────────
+   Acrescentado quando o bloco passou a mostrar a folha QUEBRADA POR PARTE, uma
+   linha por (pessoa x natureza), e a distinguir "não confirmada" de
+   "duplicada". Continua sem cor literal: tudo sai dos tokens.
+
+   Duas notas, dois pesos. A roxa explica o desenho (cada parte marcada é um PIX
+   no Inter); a âmbar avisa que a composição exibida é MOLDE do último mês
+   fechado, não fechamento do mês pedido. A segunda é ressalva e por isso herda
+   o molde de `.fin-cap-aviso`, com a barra à esquerda; a primeira é instrução e
+   fica mais leve. */
+.fin-cap-pessoas-nota,
+.fin-cap-bloqueio,
+.fin-cap-molde {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.fin-cap-pessoas-nota svg,
+.fin-cap-bloqueio svg,
+.fin-cap-molde svg { flex: none; margin-top: 1px; }
+.fin-cap-pessoas-nota b,
+.fin-cap-bloqueio b,
+.fin-cap-molde b { font-weight: 700; }
+
+.fin-cap-pessoas-nota {
+  border: 1px solid color-mix(in srgb, var(--purple) 22%, var(--line));
+  background: var(--tint-purple-soft);
+  color: var(--ink);
+}
+.fin-cap-pessoas-nota svg { color: var(--purple-text); }
+
+/* Mesmo âmbar do molde: as duas são ressalva sobre o que a tela NÃO pode
+   afirmar. A do bloqueio fica no topo, junto do aviso de "programar não paga",
+   porque é lá que a pessoa procura o botão que não responde. */
+.fin-cap-bloqueio {
+  margin: -6px 0 16px;
+  border: 1px solid var(--tint-amber-line, var(--line));
+  border-left: 3px solid var(--ink-amber);
+  border-radius: 0 10px 10px 0;
+  background: var(--tint-amber-soft);
+  color: var(--ink);
+}
+.fin-cap-bloqueio svg { color: var(--ink-amber); }
+
+.fin-cap-molde {
+  margin-bottom: 12px;
+  border: 1px solid var(--tint-amber-line, var(--line));
+  border-left: 3px solid var(--ink-amber);
+  border-radius: 0 10px 10px 0;
+  background: var(--tint-amber-soft);
+  color: var(--ink);
+}
+.fin-cap-molde svg { color: var(--ink-amber); }
+
+/* A faixa da pessoa dentro da tabela. É `<tr>` num `<tbody>` próprio, e não um
+   cabeçalho fora da tabela, para o checkbox cair na MESMA coluna dos
+   checkboxes das partes dela — o gesto "paga o Gabriel" precisa parecer o
+   "marcar tudo" da coluna, porque é isso que ele é. */
+.fin-cap-tabela tbody + tbody > tr:first-child > td { border-top: 1px solid var(--line); }
+.fin-cap-tabela tr.fin-cap-grupo-linha > td {
+  padding-top: 10px;
+  padding-bottom: 6px;
+  background: var(--surface-2);
+}
+.fin-cap-pessoa-cel { white-space: nowrap; }
+.fin-cap-pessoa-nome {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.fin-cap-pessoa-meta {
+  margin-left: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A natureza é o que decide em quantos PIX o pagamento se parte — por isso ela
+   é pílula ao lado do nome fora do bloco Pessoas, e o TÍTULO da linha dentro
+   dele, onde o nome já está no cabeçalho da pessoa. */
+.fin-cap-natureza {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--tint-purple-soft);
+  color: var(--purple-text);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+.fin-cap-nome-natureza { color: var(--purple-text); }
+
+/* De onde a linha do bloco Pessoas vem. Discreta de propósito: ela qualifica,
+   não classifica — quem soma continua sendo `entra_no_total`. */
+.fin-cap-leitura {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 10.5px;
+  letter-spacing: .02em;
+}
+.fin-cap-leitura[data-leitura="composicao"] {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--purple) 28%, var(--line));
+  color: var(--purple-text);
+}
+
+/* A projeção agregada antiga: fechada por padrão, aberta a um clique. Não é
+   `display: none` — a divergência entre R$ 439.556,81 e os ~R$ 105 mil que
+   saem de fato é o número mais caro desta tela, e ela precisa continuar
+   alcançável por quem for conferir. */
+.fin-cap-agregada {
+  margin: 10px 0 0;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.fin-cap-agregada > summary {
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.fin-cap-agregada > summary span {
+  font-weight: 400;
+  font-variant-numeric: normal;
+}
+.fin-cap-agregada > summary:hover { color: var(--ink); }
+.fin-cap-agregada .fin-table-wrap { padding: 0 6px 6px; }
+
+/* A CONTA QUE NINGUÉM ESTÁ CONTANDO.
+
+   Ela também tem `entra_no_total = false`, mas NÃO leva a hachura de
+   `.fin-cap-fora`: hachurar é dizer "descartada", e em set/26 isso rotulou 31
+   contas reais de R$ 40.044,75 — aluguel da Ancora, Compesa, Neoenergia, Claro
+   — como duplicata. Aqui a linha fica legível, com a barra âmbar da fila de
+   decisão à esquerda, porque ela É pagável: o impedimento dela é null. */
+.fin-cap-tabela tr.fin-cap-aconfirmar > td:first-child {
+  box-shadow: inset 3px 0 0 var(--ink-amber);
+}
+.fin-cap-tabela tr.fin-cap-aconfirmar > td {
+  background: var(--tint-amber-soft);
+}
+.fin-cap-selo-confirmar {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-amber) 16%, transparent);
+  color: var(--ink-amber);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+@media (max-width: 720px) {
+  .fin-cap-pessoa-cel { white-space: normal; }
+  .fin-cap-pessoa-meta { display: block; margin-left: 0; }
+}
+
+/* ── BARRA DE FILTRO E DATA DE AGENDAMENTO ──────────────────────────────────
+   Uma faixa só, três linhas: situação, natureza/categoria e a data. São o
+   MESMO gesto — escolher a fatia, escolher o dia, marcar, pagar — e o pedido
+   do dono descreve os dois juntos ("filtrar por salário, prolabore, reembolso
+   … para pagar todos reembolsos primeiro" e "configurar o dia de agendamento").
+   A data morava dentro de `.fin-cap-barra`, que só nasce depois da primeira
+   seleção: ela só aparecia depois da hora em que mudá-la ainda era barato.
+
+   Os chips reusam o VOCABULÁRIO de `.fin-chip` (a DRE) e não a classe: lá são
+   <a> de navegação com um estado só, aqui são <button> com contagem e total
+   dentro. Nenhuma cor literal — tudo sai dos tokens do topo do arquivo. */
+.fin-cap-filtros {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.fin-cap-filtro-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+.fin-cap-filtro-rot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  width: 132px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+.fin-cap-filtro-rot svg { flex: none; }
+.fin-cap-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+/* O chip carrega TRÊS coisas — rótulo, contagem e total — porque a pergunta do
+   dono antes de marcar é "quanto é pagar todos os reembolsos agora". Contagem
+   sem valor obriga a marcar para descobrir, que é justamente o clique que a
+   barra existe para tornar informado. */
+.fin-cap-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.fin-cap-chip b { font-weight: 650; color: var(--ink); }
+.fin-cap-chip-n { font-variant-numeric: tabular-nums; }
+.fin-cap-chip-total {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  opacity: .85;
+}
+.fin-cap-chip:hover:not(:disabled) { border-color: var(--purple); }
+.fin-cap-chip:disabled { opacity: .45; cursor: default; }
+
+/* MARCADO É FUNDO CHEIO, NÃO SÓ BORDA — e tintado, não sólido.
+   Com até 12 chips na faixa, 1px de borda não se acha de relance, e um filtro
+   ativo que não se vê é o que faz alguém ler um recorte achando que é o mês.
+   O preenchimento sólido pediria texto branco, e branco literal é a única cor
+   que este arquivo não pode escrever: `--on-bright` vira tinta ESCURA no tema
+   escuro (#0d1a16), e sobre `--purple` (#9a1de0 lá) o chip ficaria ilegível.
+   Tinta roxa sobre `--tint-purple` resolve nos dois temas, com o anel interno
+   fazendo o papel do peso da borda. */
+.fin-cap-chip.ativo {
+  background: var(--tint-purple);
+  border-color: var(--purple);
+  box-shadow: inset 0 0 0 1px var(--purple);
+  color: var(--ink-purple);
+}
+.fin-cap-chip.ativo b { color: var(--ink-purple); }
+.fin-cap-chip.ativo .fin-cap-chip-total { opacity: 1; }
+
+/* Natureza é pagamento de gente — o corte que o dono usa primeiro, e o que os
+   chips ordenam à frente das categorias de custo. */
+.fin-cap-chip.natureza:not(.ativo) { border-color: var(--tint-purple-line); }
+.fin-cap-chip.natureza:not(.ativo) b { color: var(--purple-text); }
+.fin-cap-chip-mais { font-style: italic; }
+
+/* Os chips de ciclo levam a MESMA tinta do selo do estado na coluna Situação.
+   Se o chip "Paga" fosse roxo e o selo verde, seriam dois vocabulários para o
+   mesmo fato — e o resumo deixaria de ser a leitura da lista. */
+.fin-cap-chip-pronta:not(.ativo) b { color: var(--purple-text); }
+.fin-cap-chip-paga:not(.ativo) b { color: var(--ink-green); }
+.fin-cap-chip-aguardando:not(.ativo) b { color: var(--ink-amber); }
+.fin-cap-chip-a_confirmar:not(.ativo) b { color: var(--ink-amber); }
+.fin-cap-chip-falta_cadastro:not(.ativo) b { color: var(--muted); }
+
+/* ── a data e os quatro atalhos ─────────────────────────────────────────── */
+.fin-cap-agenda-data {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  margin: 0;
+}
+.fin-cap-agenda-data .fin-cap-filtro-rot { width: auto; }
+.fin-cap-agenda .fin-cap-chips { flex: 0 1 auto; }
+
+/* A FRASE POR EXTENSO. É a última coisa lida antes do clique, e a única que
+   diz as duas metades juntas: quantos pagamentos e para que dia. O input está
+   no formato do navegador (que muda com o idioma do sistema) e a contagem só
+   existia dentro do botão. */
+.fin-cap-agenda-frase {
+  flex: 1 1 260px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.fin-cap-agenda-frase b { color: var(--ink); font-weight: 700; }
+.fin-cap-agenda-frase.erro,
+.fin-cap-agenda-frase.erro b { color: var(--ink-red); }
+
+.fin-cap-filtro-ativo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  padding-top: 9px;
+  border-top: 1px dashed var(--line);
+  font-size: 12.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.fin-cap-filtro-ativo b { color: var(--ink); font-weight: 700; }
+.fin-cap-limpar {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--purple-text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* O que está marcado mas o filtro esconde. Ele VAI no envio, então tem de
+   aparecer ao lado do botão — a alternativa seria desmarcar em silêncio, que
+   é perder trabalho já feito sem avisar. */
+.fin-cap-barra-ocultas {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--tint-amber);
+  color: var(--ink-amber);
+  font-size: 11.5px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* ── A COLUNA SITUAÇÃO: UM SELO POR ESTADO DO CICLO ─────────────────────────
+   TEXTO SEMPRE, COR NUNCA SOZINHA. A tela decide pagamento, e a distinção mais
+   cara dela — "o dinheiro saiu" contra "está parado esperando você no app do
+   banco" — não pode depender de quem enxerga a diferença entre verde e âmbar.
+   Cada selo diz o estado por escrito; a cor só acelera o olho.
+
+   O âmbar significa aqui a mesma coisa que em `.fin-apr-esquecida` e em
+   `.fin-cap-aconfirmar`: fila de decisão humana, nunca erro. */
+.fin-cap-selo {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.55;
+  letter-spacing: .02em;
+}
+/* PRONTA é contorno, ENVIADO é preenchido. As duas são roxas porque as duas
+   estão no caminho feliz, mas só uma espera um gesto DELE aqui — a outra já
+   saiu daqui e espera o dedo dele no aplicativo do banco. Preenchimento
+   separa as duas sem gastar uma terceira cor num vocabulário que já usa verde
+   para "saiu" e âmbar para "parado". */
+.fin-cap-selo-pronta {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--tint-purple-line);
+  color: var(--purple-text);
+}
+.fin-cap-selo-espera { background: var(--tint-purple); color: var(--ink-purple); }
+/* Dois dias no aplicativo do banco sem ninguém aprovar. O prazo é medido de
+   `scheduledFor` porque `OrdemExistente` não traz quando a ordem foi entregue
+   — o erro cai para o lado de alertar cedo, nunca de alertar tarde. */
+.fin-cap-selo-espera.parada { background: var(--tint-amber); color: var(--ink-amber); }
+.fin-cap-selo-programada,
+.fin-cap-selo-curso { background: var(--chip-neutral-bg); color: var(--chip-neutral-ink); }
+.fin-cap-selo-paga { background: var(--tint-green); color: var(--ink-green); }
+/* Falta de cadastro NÃO ganha pílula: ela é a maioria absoluta das linhas
+   enquanto `fin_payee_account` estiver vazia (45 de 45 partes da folha de
+   set/26, medido em 31/08/2026), e uma tela inteira de pílulas cinzas apaga os
+   poucos selos que precisam ser encontrados. */
+.fin-cap-selo-falta {
+  padding-left: 0;
+  border-radius: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.fin-cap-parada { color: var(--ink-amber); font-weight: 600; }
+/* O `code` (PG-2026-0001) cai SOB o selo, não ao lado: ele é a referência para
+   procurar no aplicativo do banco, não parte do estado. `.fin-cap-ordem-code`
+   é inline no resto da tela — aqui a especificidade (0,2,0) o vira bloco. */
+.fin-cap-sit .fin-cap-ordem-code { display: block; margin-top: 3px; }
+
+/* A linha que já saiu do caixa. A barra verde vence a âmbar de "a confirmar" e
+   a de vencido — o que foi pago não é fila de ninguém. */
+.fin-cap-tabela tr.fin-cap-paga > td:first-child { box-shadow: inset 3px 0 0 var(--ink-green); }
+.fin-cap-tabela tr.fin-cap-paga > td { background: var(--tint-green-soft); }
+
+@media (max-width: 720px) {
+  /* O rótulo de largura fixa vira linha própria: com 132px reservados, sobram
+     poucos pixels para os chips e cada um cai numa linha. */
+  .fin-cap-filtro-rot { width: 100%; }
+  .fin-cap-agenda-data { width: 100%; flex-wrap: wrap; }
+  .fin-cap-agenda-data .fin-cap-data { width: 100%; }
+}
+
+/* ===========================================================================
+   APROVAÇÕES — /financeiro/aprovacoes
+   ===========================================================================
+   Prefixo `fin-apr-`. Nenhuma cor literal: tudo sai dos tokens que já existem
+   neste arquivo, e é o que faz o tema escuro funcionar sem uma segunda folha.
+
+   O ÂMBAR AQUI SIGNIFICA UMA COISA SÓ: ordem parada há 2 dias ou mais no
+   aplicativo do banco. O aviso permanente do topo usa o ROXO da casa de
+   propósito — ele é a garantia do produto, não uma pendência, e gastar o âmbar
+   nele apagaria o único alerta que a tela precisa que o olho encontre. É a
+   mesma lição que `.fin-cap-fora` já pagou logo acima: pintar de "problema" o
+   que não é problema esvazia o sinal. */
+
+/* O aviso não colapsa e não tem botão de fechar. Ele é a frase que separa
+   "a plataforma mandou para o banco" de "o dinheiro saiu" — e essa confusão é
+   exatamente o defeito que a tela existe para não criar. */
+.fin-apr-aviso {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border-left: 3px solid var(--ink-purple);
+  background: var(--tint-purple-soft);
+}
+.fin-apr-aviso-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  background: var(--tint-purple);
+  color: var(--ink-purple);
+}
+.fin-apr-aviso .card-title { margin-bottom: 4px; }
+.fin-apr-aviso p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+  max-width: 78ch;
+}
+.fin-apr-aviso strong { color: var(--ink); font-weight: 650; }
+ /* Especificidade (0,2,0) em vez de !important: `.fin-apr-aviso p` já fixa
+    margem e cor, e vencer por seletor deixa a próxima regra ainda vencível. */
+.fin-apr-aviso p.fin-apr-aviso-alerta {
+  margin-top: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--tint-amber);
+  color: var(--ink-amber);
+  font-weight: 600;
+}
+
+.fin-apr-bloco { padding-bottom: 6px; }
+/* O bloco do meio é o motivo da tela; a borda o encontra sem precisar de cor
+   de alerta, que aqui está reservada para a linha parada. */
+.fin-apr-bloco.principal { border-color: var(--tint-purple-line); }
+
+.fin-apr-cab {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+.fin-apr-cab-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.fin-apr-cab > div { flex: 1 1 auto; min-width: 0; }
+.fin-apr-cab-total {
+  margin: 0;
+  text-align: right;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+.fin-apr-cab-total strong { display: block; font-size: 15px; color: var(--ink); }
+.fin-apr-cab-total span { display: block; font-size: 11.5px; color: var(--muted); }
+.fin-apr-explicacao {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+  max-width: 82ch;
+}
+
+/* Sete colunas não cabem nos 640px que .fin-table-wrap assume por padrão —
+   mesma razão de .fin-cap-tabela. */
+.fin-table-wrap .fin-apr-tabela { min-width: 900px; }
+.fin-apr-tabela td { vertical-align: top; }
+
+.fin-apr-code {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+/* O codigoSolicitacao é para COPIAR e procurar no aplicativo do banco: fonte
+   monoespaçada e selecionável, não um selo decorativo. */
+.fin-apr-cod {
+  display: block;
+  margin-top: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  word-break: break-all;
+  user-select: all;
+}
+.fin-apr-cod.vazio { font-style: italic; user-select: auto; opacity: .75; }
+
+.fin-apr-fav > span { display: block; }
+.fin-apr-fav > span:first-child { color: var(--ink); }
+.fin-apr-chave {
+  margin-top: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.fin-apr-chave.vazio { font-family: inherit; font-style: italic; }
+/* A chave que veio do cadastro de hoje, e não da foto congelada na ordem, é
+   uma resposta mais fraca para "para onde ESTA ordem manda" — e a diferença
+   entre as duas é a assinatura da troca de favorecido (0075). Fica dito. */
+.fin-apr-chave em { font-family: inherit; font-style: normal; color: var(--ink-amber); }
+
+.fin-apr-desc { max-width: 34ch; color: var(--muted); }
+
+.fin-apr-datas > span { display: block; white-space: nowrap; }
+.fin-apr-venc { font-size: 11.5px; color: var(--muted); }
+
+.fin-apr-dias { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+.fin-apr-dias.alerta { color: var(--ink-amber); font-weight: 650; }
+
+.fin-apr-selo {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+.fin-apr-selo-rascunho { background: var(--chip-neutral-bg); color: var(--chip-neutral-ink); }
+.fin-apr-selo-espera { background: var(--tint-purple); color: var(--ink-purple); }
+.fin-apr-selo-paga { background: var(--tint-green); color: var(--ink-green); }
+.fin-apr-selo-fim { background: var(--tint-red); color: var(--ink-red); }
+
+.fin-apr-exec {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.fin-apr-exec em {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-style: normal;
+  font-size: 10.5px;
+  word-break: break-all;
+}
+
+/* A linha esquecida. A barra à esquerda repete o vocabulário de
+   `.fin-cap-aconfirmar`: é fila de decisão humana, não erro. */
+.fin-apr-esquecida > td:first-child { box-shadow: inset 3px 0 0 var(--ink-amber); }
+.fin-apr-esquecida > td { background: var(--tint-amber-soft); }
+
+/* Mesma especificidade de `.fin-pessoas-kpi-extra`; vence por vir depois no
+   arquivo, que é a ordem em que este bloco é apendado. */
+.fin-apr-kpi-alerta { color: var(--ink-amber); font-weight: 600; }
+
+.fin-apr-encerradas .fin-apr-explicacao { margin: 0 0 8px; }
+
+.fin-apr-rodape {
+  margin: 4px 2px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .fin-apr-cab { flex-wrap: wrap; }
+  .fin-apr-cab-total { text-align: left; width: 100%; }
+}

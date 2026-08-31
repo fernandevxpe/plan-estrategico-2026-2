@@ -12,6 +12,12 @@
 //                                           credencial abre (não move dinheiro:
 //                                           só pede token, nunca chama rota de
 //                                           pagamento)
+//
+//   Acrescente --pagamento para usar as credenciais da SEGUNDA integração
+//   (INTER_PAG_*) em vez das de extrato. São duas integrações separadas de
+//   propósito, então a sonda precisa saber qual delas está perguntando:
+//
+//   node scripts/check-inter.mjs --escopos --pagamento
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { X509Certificate } from 'node:crypto';
 import { request as httpsRequest } from 'node:https';
@@ -46,8 +52,22 @@ function acharCredencial(envVar, extensao, rotulo) {
   return { caminho: resolve(dir, `inter${extensao}`), erro: null };
 }
 
-const alvoCert = acharCredencial('INTER_CERT_PATH', '.crt', 'certificado');
-const alvoKey = acharCredencial('INTER_KEY_PATH', '.key', 'chave');
+/*
+ * Qual integração está sendo conferida.
+ *
+ * A de extrato (padrão) e a de pagamento têm certificado, client_id e secret
+ * PRÓPRIOS — misturá-las daria um diagnóstico que parece bom e não vale nada:
+ * a credencial de extrato nunca vai abrir escopo de pagamento, e concluir "o
+ * escopo não foi contratado" a partir disso seria errar o alvo.
+ */
+const PAGAMENTO = process.argv.includes('--pagamento');
+const VAR_CERT = PAGAMENTO ? 'INTER_PAG_CERT_PATH' : 'INTER_CERT_PATH';
+const VAR_KEY = PAGAMENTO ? 'INTER_PAG_KEY_PATH' : 'INTER_KEY_PATH';
+const VAR_ID = PAGAMENTO ? 'INTER_PAG_CLIENT_ID' : 'INTER_CLIENT_ID';
+const VAR_SECRET = PAGAMENTO ? 'INTER_PAG_CLIENT_SECRET' : 'INTER_CLIENT_SECRET';
+
+const alvoCert = acharCredencial(VAR_CERT, '.crt', 'certificado');
+const alvoKey = acharCredencial(VAR_KEY, '.key', 'chave');
 const CERT_PATH = alvoCert.caminho;
 const KEY_PATH = alvoKey.caminho;
 const LIVE = process.argv.includes('--live');
@@ -62,7 +82,7 @@ const erro = (m) => {
 };
 const aviso = (m) => console.log(`  [33m![0m ${m}`);
 
-console.log('\nCredenciais do Banco Inter\n');
+console.log(`\nCredenciais do Banco Inter — integração de ${PAGAMENTO ? 'PAGAMENTO' : 'EXTRATO'}\n`);
 
 // ---------------------------------------------------------------- arquivos
 console.log('Certificado e chave');
@@ -108,7 +128,7 @@ if (cert) {
 
 // --------------------------------------------------------------- variáveis
 console.log('\nVariáveis de ambiente');
-for (const nome of ['INTER_CLIENT_ID', 'INTER_CLIENT_SECRET']) {
+for (const nome of [VAR_ID, VAR_SECRET]) {
   const valor = process.env[nome];
   // Tamanho, nunca o valor: pega o segredo colado pela metade sem revelar nada.
   if (!valor) erro(`${nome} ausente no .env.local`);
@@ -150,10 +170,12 @@ console.log('\nTeste contra a API');
 let token = null;
 try {
   const corpo = new URLSearchParams({
-    client_id: process.env.INTER_CLIENT_ID,
-    client_secret: process.env.INTER_CLIENT_SECRET,
+    client_id: process.env[VAR_ID],
+    client_secret: process.env[VAR_SECRET],
     grant_type: 'client_credentials',
-    scope: 'extrato.read'
+    // A de pagamento NÃO tem extrato.read — pedi-lo ali daria um ✗ que assusta
+    // sem significar nada. O controle de cada integração é o escopo dela.
+    scope: PAGAMENTO ? 'pix.write' : 'extrato.read'
   }).toString();
 
   const res = await pedir({
@@ -177,7 +199,7 @@ try {
   erro(`Token falhou na conexão: ${e.message}`);
 }
 
-if (token) {
+if (token && !PAGAMENTO) {
   const fim = new Date();
   const inicio = new Date(fim - 7 * 86_400_000);
   const iso = (d) => d.toISOString().slice(0, 10);
@@ -246,8 +268,8 @@ if (ESCOPOS) {
 
   for (const escopo of ESCOPOS_DE_PAGAMENTO) {
     const corpo = new URLSearchParams({
-      client_id: process.env.INTER_CLIENT_ID,
-      client_secret: process.env.INTER_CLIENT_SECRET,
+      client_id: process.env[VAR_ID],
+      client_secret: process.env[VAR_SECRET],
       grant_type: 'client_credentials',
       scope: escopo
     }).toString();

@@ -222,7 +222,20 @@ if (token) {
  *
  * 20s entre pedidos: o 5º pedido de token em menos de um minuto volta 429.
  */
-const ESCOPOS_DE_PAGAMENTO = ['pagamento-pix.write', 'pagamento-boleto.write', 'pix.write', 'pagamento.write'];
+/*
+ * A ordem é a da PROBABILIDADE, e ela mudou em 31/08/2026.
+ *
+ * A permissão que a conta vai receber é "Receber e enviar pagamentos via Pix" —
+ * família Pix, não família Pagamento. Então `pix.write` passou de terceiro
+ * palpite a primeiro, e `pagamento-boleto.write` saiu da lista: sem a permissão
+ * de boleto marcada, testá-lo é gastar 20 segundos para ver um 401 garantido.
+ *
+ * `cob.write` entra porque é o escopo de cobrança da mesma família — se ele for
+ * ACEITO e `pix.write` recusado, a permissão concedida foi só a metade de
+ * receber, e a integração precisa ser refeita. É o diagnóstico mais valioso que
+ * esta sonda pode dar.
+ */
+const ESCOPOS_DE_PAGAMENTO = ['pix.write', 'pagamento-pix.write', 'pagamento.write', 'cob.write'];
 
 if (ESCOPOS) {
   console.log('\nEscopos que a credencial abre');

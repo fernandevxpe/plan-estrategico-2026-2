@@ -18,13 +18,32 @@ Acrescentar escopo de pagamento na integração de extrato seria arriscar a leit
    Em algumas versões: **Integrar → Configurações avançadas → Nova integração**.
 3. Nome sugerido: `Pagamentos XPE (local)`. Descrição: `ordens de PIX criadas pela plataforma, aprovadas no app`.
 4. Selecione a **conta corrente** da XPE.
-5. **Escopos — marque só o de pagamento PIX.**
+5. **Escopos — marque "Receber e enviar pagamentos via Pix". Só ela.**
 
-   Procure, dentro de **API Banking** ou **API Pix**, a permissão de **incluir/realizar pagamento Pix** (o rótulo varia entre versões da tela: "Realizar pagamentos", "Pagamento de Pix", "Enviar Pix").
+   Confirmado na tela do Inter em 31/08/2026. É a certa, e a razão é a
+   autoridade de tirar dinheiro:
 
-   - **NÃO marque** "Consultar extrato e saldo" aqui — quem faz isso é a outra integração.
-   - **NÃO marque** boleto, DARF, cobrança nem webhook. O código não usa nenhum, e escopo a mais é superfície a mais.
-   - Se houver uma permissão separada de **consulta de pagamento**, pode marcar: ela ajuda a conferir status depois, e é leitura.
+   | opção | dinheiro SAI por | veredito |
+   |---|---|---|
+   | **"Receber e enviar pagamentos via Pix"** | **só PIX** | ✅ **marque esta** |
+   | "Pagar contas, fornecedores e despesas" | boleto, DARF **e** PIX | ❌ mais larga sem necessidade |
+   | "Consultar extrato e saldo" | — | ❌ é da OUTRA integração |
+
+   O "receber" que vem junto é a família de cobrança: cria QR Code e consulta
+   Pix recebidos. **Não tira dinheiro da conta**, e o código não tem endpoint
+   nenhum dela — `npm run test:guarda-pagamento` prova que o adapter só fala
+   `/oauth/v2/token` e `/banking/v2/pix`. Permissão que sobra e código que não
+   usa é uma combinação segura; o contrário não é.
+
+   Não marque mais nada. Em especial **não** marque "Consultar extrato e saldo"
+   aqui: é o escopo da integração que alimenta o sync, e misturá-los é o risco
+   que a Conta Azul documenta.
+
+   > **O rótulo da tela e a string do token são coisas diferentes.** O código
+   > pede `pagamento-pix.write`; como a permissão é da família Pix, `pix.write`
+   > passa a ser o palpite mais provável. A sonda do passo 5 testa os dois — e a
+   > correção, se for outro, é uma linha no topo de
+   > `lib/financeiro/inter-pagamento.ts`.
 
 6. Confirme com o **SMS de 6 dígitos**.
 7. Espere o status sair de "Em validação" para **Ativo** (alguns minutos, com e-mail).

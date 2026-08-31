@@ -1,0 +1,148 @@
+/**
+ * Eixos do custo da empresa — os MESMOS de Pessoas.
+ *
+ * Time (consultoria | obras | administrativo | outros | consultoria_obras) e
+ * área da empresa (Marketing, Vendas…) são cadastro, não detecção. Ninguém
+ * nasce classificado: o dono marca na matriz, um a um. Inventar o time do
+ * aluguel seria o mesmo erro de inventar o salário do sócio.
+ *
+ * `consultoria_obras` é o único que CONTA em duas barras: 50% consultoria,
+ * 50% obras. Os chips de filtro continuam quatro times + "sem time"; o
+ * híbrido não ganha chip próprio — aparece nas duas pontas.
+ *
+ * Classe (operacional × máquinas) SAI do plano de contas, que já desenha essa
+ * fronteira: 5.xx é despesa operacional, 8.01/8.03 é equipamento/veículo, 4.02
+ * é material de obra. Não é o terceiro dropdown — é o filtro "tipo".
+ */
+
+export type TimeCusto =
+  | "consultoria"
+  | "obras"
+  | "administrativo"
+  | "outros"
+  | "consultoria_obras"
+  | "sem_time";
+export type ClasseCusto = "operacional" | "maquinas";
+
+export const TIMES: { slug: Exclude<TimeCusto, "sem_time">; nome: string }[] = [
+  { slug: "consultoria", nome: "Consultoria" },
+  { slug: "obras", nome: "Obras" },
+  { slug: "consultoria_obras", nome: "Consultoria e Obras" },
+  { slug: "administrativo", nome: "Administrativo" },
+  { slug: "outros", nome: "Outros" }
+];
+
+export const ORDEM_TIME: Exclude<TimeCusto, "consultoria_obras">[] = [
+  "consultoria",
+  "obras",
+  "administrativo",
+  "outros",
+  "sem_time"
+];
+
+export const ROTULO_TIME: Record<TimeCusto, string> = {
+  consultoria: "Consultoria",
+  obras: "Obras",
+  administrativo: "Administrativo",
+  outros: "Outros",
+  consultoria_obras: "Consultoria e Obras",
+  sem_time: "Sem time"
+};
+
+export const COR_TIME: Record<Exclude<TimeCusto, "consultoria_obras">, string> = {
+  consultoria: "var(--purple)",
+  obras: "var(--ink-orange, #c2410c)",
+  administrativo: "var(--teal)",
+  outros: "var(--amber)",
+  sem_time: "var(--muted)"
+};
+
+export const CLASSES: { slug: ClasseCusto; nome: string }[] = [
+  { slug: "operacional", nome: "Custo operacional" },
+  { slug: "maquinas", nome: "Máquinas e equipamentos" }
+];
+
+export const ROTULO_CLASSE: Record<ClasseCusto, string> = {
+  operacional: "Custo operacional",
+  maquinas: "Máquinas e equipamentos"
+};
+
+export const COR_CLASSE: Record<ClasseCusto, string> = {
+  operacional: "var(--ink-blue)",
+  maquinas: "var(--ink-amber)"
+};
+
+const TIMES_SET = new Set<string>(TIMES.map((t) => t.slug));
+
+export function timeDe(gravado: string | null): TimeCusto {
+  if (gravado && TIMES_SET.has(gravado)) return gravado as TimeCusto;
+  return "sem_time";
+}
+
+export function timeValido(valor: string | null): valor is Exclude<TimeCusto, "sem_time"> {
+  return Boolean(valor && TIMES_SET.has(valor));
+}
+
+/**
+ * Para onde o gráfico manda este custo. `consultoria_obras` vira as duas
+ * barras; o resto é uma fatia. Recorte estreito (só Consultoria ligada)
+ * devolve só o destino visível — senão a soma do gráfico deixa de bater
+ * com a tabela, que ainda mostra o item inteiro.
+ */
+export function destinosTime(
+  time: TimeCusto,
+  slugsLigados: ReadonlySet<string> | null = null
+): { slug: string; nome: string }[] {
+  const todos =
+    time === "consultoria_obras"
+      ? [
+          { slug: "consultoria", nome: ROTULO_TIME.consultoria },
+          { slug: "obras", nome: ROTULO_TIME.obras }
+        ]
+      : [{ slug: time, nome: ROTULO_TIME[time] }];
+  if (!slugsLigados) return todos;
+  return todos.filter((d) => slugsLigados.has(d.slug));
+}
+
+export function nomeClasse(slug: ClasseCusto): string {
+  return ROTULO_CLASSE[slug];
+}
+
+/**
+ * Operacional vs. máquinas — o plano de contas já desenha essa fronteira.
+ * 4.02 (material/insumo de obra) entra em máquinas porque é ferramenta e
+ * material de campo, não aluguel nem software.
+ */
+export function classeDe(categoriaCode: string | null): ClasseCusto {
+  const c = categoriaCode ?? "";
+  if (c === "8.01" || c === "8.03" || c === "4.02") return "maquinas";
+  return "operacional";
+}
+
+export function chaveCusto(counterpartyId: number | null, categoryId: number): string {
+  return `${counterpartyId ?? 0}:${categoryId}`;
+}
+
+/** 6.% é gente; 4.01 é comissão paga a vendedor, também gente. */
+export function categoriaEGente(code: string | null): boolean {
+  if (!code) return false;
+  return code.startsWith("6.") || code === "4.01";
+}
+
+/**
+ * Predicado SQL: a contraparte está ligada a alguém do roster, confirmada.
+ * É o MESMO JOIN que Pessoas usa no grão (`fin_person_counterparty` +
+ * `status = 'confirmado'`). Qualquer outro critério voltaria a contar o PIX
+ * de Kevin em Marketing aqui e lá.
+ *
+ * `aliasId` é a coluna de counterparty_id (ex.: `t.counterparty_id`).
+ */
+export function sqlContraparteEPessoa(aliasId: string): string {
+  if (!/^[a-z_]+\.counterparty_id$/.test(aliasId)) {
+    throw new Error(`sqlContraparteEPessoa: alias recusado (${aliasId})`);
+  }
+  return (
+    `EXISTS (SELECT 1 FROM fin_person_counterparty l ` +
+    `WHERE l.counterparty_id = ${aliasId} AND l.status = 'confirmado')`
+  );
+}

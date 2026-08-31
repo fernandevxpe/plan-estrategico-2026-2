@@ -115,8 +115,8 @@ export const FINANCEIRO_GRUPOS: Grupo[] = [
       // em setembro", esta responde "o que a empresa paga todo mês, e quanto".
       { href: "/financeiro/custos-fixos", label: "Custos fixos" },
       // Leitura, não catálogo: a série mês a mês do que sai e NÃO é pessoa, na
-      // mesma casca de "Custo com pessoas". Folha, DAS e conta a pagar ficam
-      // fora do total — cada um é contado na tela onde é decidido.
+      // mesma casca de "Custo com pessoas". Gente (folha, comissão, PIX de quem
+      // está no roster), DAS e conta a pagar ficam fora do total.
       { href: "/financeiro/custos-empresa", label: "Custo da empresa" },
       // "Cartões", não "Cartão de crédito": uma das três linhas é pré-paga, e
       // chamar o grupo pelo crédito excluiria justamente a que não é. Fica em

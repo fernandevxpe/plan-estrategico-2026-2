@@ -254,7 +254,7 @@
   color-scheme: dark;
 }
 
-/* Áreas da empresa — 14 tons, um por departamento.
+/* Áreas da empresa — um tom por departamento.
    No claro a cor é tinta (contrasta no card branco). No escuro é a vizinha
    neon da marca: o chip já mistura `--chip-cor` no fundo, então o glow
    aparece sem um hex solto que quebre um dos dois temas. */
@@ -274,6 +274,11 @@
   --area-juridico: #9f1239;
   --area-emprestimo: #b45309;
   --area-dividendo: #a16207;
+  --area-impostos: #b91c1c;
+  --area-material_obras: #9a3412;
+  --area-material_consultoria: #1e3a5f;
+  --area-servicos_terceirizados: #3f6212;
+  --area-escritorio: #57534e;
   --area-sem_area: var(--muted);
 }
 @media (prefers-color-scheme: dark) {
@@ -293,6 +298,11 @@
     --area-juridico: #fb7185;
     --area-emprestimo: #fbbf24;
     --area-dividendo: #fde047;
+    --area-impostos: #f87171;
+    --area-material_obras: #fdba74;
+    --area-material_consultoria: #93c5fd;
+    --area-servicos_terceirizados: #bef264;
+    --area-escritorio: #d6d3d1;
   }
 }
 :root[data-theme="escuro"] {
@@ -311,6 +321,11 @@
   --area-juridico: #fb7185;
   --area-emprestimo: #fbbf24;
   --area-dividendo: #fde047;
+  --area-impostos: #f87171;
+  --area-material_obras: #fdba74;
+  --area-material_consultoria: #93c5fd;
+  --area-servicos_terceirizados: #bef264;
+  --area-escritorio: #d6d3d1;
 }
 
 /* Funil 360° — mídia, pré-vendas e CRM em uma única leitura */
@@ -20744,6 +20759,45 @@ button.rec-plot-acao {
   min-width: 0;
 }
 
+/* Recorrentes fixos: linha (obras/consultoria/casa) × classe (operacional/máquinas). */
+.fin-custo-fixos-tabela .fin-custo-grupo th {
+  background: var(--surface-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink);
+  padding-top: 12px;
+  padding-bottom: 8px;
+  border-top: 1px solid var(--line);
+}
+.fin-custo-fixos-tabela tbody tr:first-child.fin-custo-grupo th {
+  border-top: 0;
+}
+.fin-custo-fixos-tabela .fin-custo-subgrupo th {
+  background: color-mix(in srgb, var(--purple) 6%, var(--card));
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink);
+  padding-top: 8px;
+  padding-bottom: 6px;
+}
+.fin-custo-grupo-meta {
+  margin-left: 8px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.fin-custo-vazio td {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-style: italic;
+  padding-top: 6px;
+  padding-bottom: 8px;
+}
+
 /* Recorte: o topo interno não precisa de margem extra do card-title antigo */
 .fin-pessoas-recorte .fin-pessoas-recorte-topo {
   margin-top: 0;
@@ -21098,33 +21152,38 @@ button.rec-plot-acao {
   display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px;
 }
 .fin-pessoas-matriz-filtro-grupo {
-  display: flex; flex-direction: column; gap: 6px; flex: 0 1 auto; min-width: 0;
+  display: flex; flex-direction: column; gap: 6px; flex: 1 1 100%; min-width: 0;
   font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .05em; color: var(--muted);
 }
-.fin-pessoas-matriz-filtro-grupo.aberto { flex: 1 1 100%; }
 .fin-pessoas-matriz-grupo-cab {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 10px; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--card);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; margin: 0; padding: 2px 0;
+  border: 0; border-radius: 0; background: transparent;
   font: inherit; font-size: 12px; font-weight: 650; color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em;
   cursor: pointer;
 }
-.fin-pessoas-matriz-grupo-cab:hover { color: var(--ink); border-color: var(--purple); }
-.fin-pessoas-matriz-grupo-cab.aberto {
-  color: var(--ink);
-  border-color: color-mix(in srgb, var(--purple) 45%, var(--line));
-  background: color-mix(in srgb, var(--purple) 10%, var(--card));
-}
+.fin-pessoas-matriz-grupo-cab:hover { color: var(--ink); }
+.fin-pessoas-matriz-grupo-cab.aberto { color: var(--ink); }
 .fin-pessoas-matriz-grupo-cab i {
   font-style: normal; font-size: 10px; font-weight: 700;
   text-transform: none; letter-spacing: 0;
+  margin-left: 8px;
   padding: 1px 6px; border-radius: 99px;
-  background: color-mix(in srgb, var(--purple) 16%, var(--card));
+  background: color-mix(in srgb, var(--ink) 8%, var(--card));
   color: var(--ink);
 }
-.fin-pessoas-matriz-grupo-cab svg { color: var(--muted); }
+.fin-pessoas-matriz-grupo-chevron {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 6px;
+}
+.fin-pessoas-matriz-grupo-cab svg {
+  color: var(--muted);
+  transition: transform .15s ease;
+}
+.fin-pessoas-matriz-grupo-cab:hover svg { color: var(--ink); }
 .fin-pessoas-matriz-chips {
   display: flex; flex-wrap: wrap; gap: 6px;
 }
@@ -21298,6 +21357,246 @@ button.rec-plot-acao {
 }
 .fin-pessoas-matriz-tabela thead th.fin-previsao .fin-tag {
   margin-left: 4px;
+}
+
+.fin-custo-parte {
+  display: grid;
+  gap: 14px;
+  padding-top: 18px;
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.fin-custo-parte:first-of-type {
+  border-top: 0;
+  padding-top: 4px;
+  margin-top: 12px;
+}
+.fin-custo-parte-cab {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.fin-custo-parte-icone {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink);
+  flex-shrink: 0;
+}
+.fin-custo-parte-titulo {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.fin-custo-parte-dica {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.fin-custo-subparte {
+  display: grid;
+  gap: 8px;
+}
+.fin-custo-subparte-titulo {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+.fin-custo-subparte-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.fin-custo-subparte-nome {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.fin-custo-subparte-nome span {
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.fin-custo-subparte-cab svg {
+  color: var(--muted);
+  transition: transform .15s ease;
+}
+.fin-custo-subparte-cab:hover svg { color: var(--ink); }
+.fin-custo-subparte-nota {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.fin-pessoas-matriz .fin-custo-subparte .fin-matrix-wrap {
+  max-height: min(52vh, 460px);
+}
+
+.fin-custo-busca {
+  position: relative;
+  max-width: 640px;
+  margin: 2px auto 18px;
+}
+.fin-custo-busca-barra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.fin-custo-busca-barra.foco {
+  box-shadow:
+    0 1px 6px color-mix(in srgb, var(--ink) 8%, transparent),
+    0 4px 18px color-mix(in srgb, var(--ink) 12%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 22%, var(--line));
+}
+.fin-custo-busca-barra svg { flex-shrink: 0; color: var(--muted); }
+.fin-custo-busca-barra input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  font-size: 16px;
+  font-weight: 450;
+  color: var(--ink);
+}
+.fin-custo-busca-barra input::-webkit-search-cancel-button { display: none; }
+.fin-custo-busca-limpar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.fin-custo-busca-limpar:hover { color: var(--ink); background: var(--surface-2); }
+.fin-custo-busca-hits {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--ink) 16%, transparent);
+  max-height: 320px;
+  overflow: auto;
+}
+.fin-custo-busca-hits li.vazio {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.fin-custo-busca-hits button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: 8px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.fin-custo-busca-hits button:hover { background: var(--surface-2); }
+.fin-custo-busca-hits button b {
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.fin-custo-busca-hits button span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.fin-custo-mover {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.fin-custo-mover b { font-size: 13px; }
+.fin-custo-mover label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+}
+.fin-custo-mover .fin-select { min-width: 220px; font-size: 13px; font-weight: 500; color: var(--ink); }
+.fin-custo-linha-cab {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.fin-custo-sel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 0;
+  cursor: pointer;
+}
+.fin-custo-sel input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+.fin-pessoas-matriz-tabela tr.fin-custo-marcada > th,
+.fin-pessoas-matriz-tabela tr.fin-custo-marcada > td {
+  background: color-mix(in srgb, var(--ink) 5%, var(--card));
+}
+.fin-pessoas-matriz-tabela tr.fin-custo-destaque > th,
+.fin-pessoas-matriz-tabela tr.fin-custo-destaque > td {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
 }
 
 /* Popup rápido: previsto × cadastro na matriz de Pessoas */

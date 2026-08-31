@@ -407,7 +407,12 @@ const AREAS_EMPRESA_PADRAO: Opcao[] = [
   { slug: "tecnologia", nome: "Tecnologia" },
   { slug: "juridico", nome: "Jurídico" },
   { slug: "emprestimo", nome: "Empréstimo" },
-  { slug: "dividendo", nome: "Dividendo" }
+  { slug: "dividendo", nome: "Dividendo" },
+  { slug: "impostos", nome: "Impostos" },
+  { slug: "material_obras", nome: "Material de obras" },
+  { slug: "material_consultoria", nome: "Material consultoria" },
+  { slug: "servicos_terceirizados", nome: "Serviços Terceirizados" },
+  { slug: "escritorio", nome: "Escritório" }
 ];
 
 export function catalogoAreasEmpresa(servidor: Opcao[] | undefined, escolhidas: Opcao[]) {

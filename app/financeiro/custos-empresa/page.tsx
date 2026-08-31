@@ -18,6 +18,10 @@ export const revalidate = 0;
  * dado muda a cada escrita (ligar, desligar, reajustar) e a tela precisa
  * recarregar sozinha; aqui é leitura, e o estado de carregamento seria custo
  * sem contrapartida.
+ *
+ * Gente (folha, comissão, PIX de quem está no roster) não entra: Pessoas já
+ * conta, e somar aqui é o mesmo dinheiro duas vezes. Time e área da empresa
+ * são cadastro na matriz, iguais aos da tela de Pessoas.
  */
 export default async function CustosEmpresaPage() {
   const dados = await getCustosEmpresa();

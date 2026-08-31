@@ -150,9 +150,17 @@ function GrupoFiltro({
         aria-expanded={aberto}
         onClick={onToggle}
       >
-        {rotulo}
-        {estreito ? <i>filtro</i> : null}
-        <ChevronRight size={14} strokeWidth={2.2} className={aberto ? "fin-chevron-aberto" : undefined} aria-hidden />
+        <span>
+          {rotulo}
+          {estreito ? <i>filtro</i> : null}
+        </span>
+        <span className="fin-pessoas-matriz-grupo-chevron" aria-hidden>
+          <ChevronRight
+            size={16}
+            strokeWidth={2.2}
+            className={aberto ? "fin-chevron-aberto" : undefined}
+          />
+        </span>
       </button>
       {aberto ? children : null}
     </div>

@@ -185,13 +185,21 @@ export function pareceInstituicaoFinanceira(nome: string): boolean {
 const ROTULO_TIME: Record<string, string> = {
   consultoria: "Consultoria",
   obras: "Obras",
+  administrativo: "Administrativo",
+  outros: "Outros",
   software: "Software",
   hardware: "Hardware",
   sem_time: "Sem time"
 };
 
-/** Ordem do filtro "Por time". Software/hardware saíram do eixo (viram consultoria). */
-const ORDEM_TIME = ["consultoria", "obras", "sem_time"];
+/**
+ * O select de time na matriz. Marketing e software saíram: marketing é
+ * departamento (`fin_area_empresa`), software virou consultoria na 0170.
+ */
+const AREAS_TIME = ["consultoria", "obras", "administrativo", "outros"] as const;
+
+/** Ordem do filtro "Por time". */
+const ORDEM_TIME = ["consultoria", "obras", "administrativo", "outros", "sem_time"];
 
 /**
  * Natureza lida do razão, com o rótulo dizendo de onde ela vem.
@@ -252,21 +260,18 @@ export const GUARDAS_SAIDA = `
  * Time da pessoa, derivado em SQL para que a tabela, a matriz e a cobertura
  * usem literalmente a mesma expressão.
  *
- * Em 24/08/2026 a casa consolidou em dois times de entrega + residual:
- * consultoria, obras e sem_time. Software e hardware deixam de ser times
- * próprios — quem estava neles conta como consultoria (Flavio, Diogo, Belo…).
- * Leon (sócio investidor) e Tiago não entregam em nenhum: cadastro sem área
- * nem núcleo, caem no ELSE.
- *
- * Antes (0168): `area IN (hardware, software)` vencia e abria quatro times.
- * Isso contradizia "hoje são dois times". Núcleo obras/consultoria e area
- * obras/consultoria continuam valendo para quem não veio de software/hardware.
+ * Em 30/08/2026 o eixo do select fechou em quatro: consultoria, obras,
+ * administrativo, outros. Software/hardware continuam caindo em consultoria
+ * (0170). Marketing no campo velho não é time — é departamento — e quem ainda
+ * tem esse slug no `fin_person.area` lê como outros até alguém gravar o novo.
+ * Cadastro sem área (Leon, Tiago) continua sem_time.
  */
 const TIME_SQL = `
   CASE
     WHEN p.area IN ('hardware', 'software') THEN 'consultoria'
+    WHEN p.area IN ('consultoria', 'obras', 'administrativo', 'outros') THEN p.area
+    WHEN p.area IS NOT NULL AND btrim(p.area) <> '' THEN 'outros'
     WHEN p.default_nucleo IN ('obras', 'consultoria') THEN p.default_nucleo
-    WHEN p.area IN ('obras', 'consultoria') THEN p.area
     ELSE 'sem_time'
   END
 `;
@@ -336,6 +341,11 @@ export type Pessoa = {
     nascimento: boolean;
     senha: boolean;
   } | null;
+  /**
+   * Departamentos da casa (Marketing, Vendas…), N:N. Vazio é pendência, não
+   * afirmação. Não confundir com `area` — aquela coluna é o time de entrega.
+   */
+  areasEmpresa: Opcao[];
 };
 
 /**
@@ -520,6 +530,11 @@ export type CustoPessoas = {
   // ── Domínios do editor ───────────────────────────────────────────────────
   /** As áreas EM USO, para sugerir no combo. O campo aceita uma nova a qualquer hora. */
   areas: Opcao[];
+  /**
+   * Catálogo de departamentos da empresa (`fin_area_empresa`). Independente
+   * de `areas` — aquela lista é o time (consultoria/obras).
+   */
+  areasEmpresa: Opcao[];
   /** O CHECK inteiro de employment_type, não só o que já tem linha. */
   vinculosDominio: Opcao[];
   statusDominio: Opcao[];
@@ -567,6 +582,7 @@ function indisponivel(): CustoPessoas {
     },
     lacunas: [],
     areas: [],
+    areasEmpresa: [],
     vinculosDominio: VINCULOS_DOMINIO,
     statusDominio: STATUS_DOMINIO,
     nucleos: [],
@@ -1025,6 +1041,38 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       /* migration 0175 ainda não aplicada — cadastro app fica neutro */
     }
 
+    let areasEmpresaCatalogo: Opcao[] = [];
+    const areasEmpresaPorPessoa = new Map<number, Opcao[]>();
+    try {
+      const [catalogoRows, ligacaoRows] = await Promise.all([
+        query<{ slug: string; nome: string }>(
+          `SELECT a.slug, a.nome
+             FROM fin_area_empresa a
+             JOIN fin_entity e ON e.id = a.entity_id
+            WHERE e.slug = $1 AND a.ativo
+            ORDER BY a.ordem, a.nome`,
+          [ENTITY]
+        ),
+        query<{ person_id: number; slug: string; nome: string }>(
+          `SELECT l.person_id, a.slug, a.nome
+             FROM fin_pessoa_area_empresa l
+             JOIN fin_area_empresa a ON a.id = l.area_id
+             JOIN fin_entity e ON e.id = a.entity_id
+            WHERE e.slug = $1 AND a.ativo
+            ORDER BY a.ordem, a.nome`,
+          [ENTITY]
+        )
+      ]);
+      areasEmpresaCatalogo = catalogoRows.map((r) => ({ slug: r.slug, nome: r.nome }));
+      for (const linha of ligacaoRows) {
+        const lista = areasEmpresaPorPessoa.get(linha.person_id) ?? [];
+        lista.push({ slug: linha.slug, nome: linha.nome });
+        areasEmpresaPorPessoa.set(linha.person_id, lista);
+      }
+    } catch {
+      /* migration 0180 ainda não aplicada — áreas da empresa ficam vazias */
+    }
+
     const pessoas: Pessoa[] = pessoasRows.map((linha) => ({
       id: linha.id,
       nome: linha.nome,
@@ -1045,7 +1093,8 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       categoriaPadraoNome: linha.categoria_padrao_nome,
       categoriaSugerida: CATEGORIA_SUGERIDA_POR_VINCULO[linha.vinculo] ?? null,
       contrapartesPropostas: propostosPorPessoa.get(linha.id) ?? [],
-      cadastroApp: flagsApp.get(linha.id) ?? null
+      cadastroApp: flagsApp.get(linha.id) ?? null,
+      areasEmpresa: areasEmpresaPorPessoa.get(linha.id) ?? []
     }));
 
     const celulas: Celula[] = celulasRows.map((linha) => ({
@@ -1272,19 +1321,9 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       }
     ];
 
-    // Eixo canônico pós-0170: consultoria | obras. Extra no dado (ex. software
-    // em inativos) entra no fim para poder corrigir na própria tabela.
-    const areasCanonicas = ["consultoria", "obras"];
-    const areasExtras = [
-      ...new Set(
-        pessoas
-          .map((p) => p.area)
-          .filter((a): a is string => typeof a === "string" && a.length > 0 && !areasCanonicas.includes(a))
-      )
-    ].sort();
-    const areas: Opcao[] = [...areasCanonicas, ...areasExtras].map((slug) => ({
+    const areas: Opcao[] = AREAS_TIME.map((slug) => ({
       slug,
-      nome: ROTULO_TIME[slug] ?? rotuloArea(slug)
+      nome: ROTULO_TIME[slug]
     }));
 
     const nucleos: Opcao[] = nucleosRows.map((n) => ({ slug: n.slug, nome: n.nome }));
@@ -1325,6 +1364,7 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
       cobertura,
       lacunas,
       areas,
+      areasEmpresa: areasEmpresaCatalogo,
       vinculosDominio: VINCULOS_DOMINIO,
       statusDominio: STATUS_DOMINIO,
       nucleos,

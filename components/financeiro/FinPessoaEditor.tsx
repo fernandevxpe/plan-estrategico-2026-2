@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
-import type { CustoPessoas, LinkProposto, Pessoa } from "@/lib/financeiro/pessoas";
+import type { CustoPessoas, LinkProposto, Opcao, Pessoa } from "@/lib/financeiro/pessoas";
 import { brlPrecise } from "@/lib/financeiro/format";
 import { urlDaOrigem } from "@/lib/url-origem";
 
@@ -65,6 +66,7 @@ export function FinPessoaCadastro({ dados }: Props) {
         : false;
       return (
         !pessoa.area ||
+        (pessoa.areasEmpresa?.length ?? 0) === 0 ||
         pessoa.vinculo === "indefinido" ||
         (dados.categoriaPadraoDisponivel && !pessoa.categoriaPadrao) ||
         pessoa.contrapartesPropostas.length > 0 ||
@@ -252,7 +254,21 @@ function LinhaPessoa({
   );
 }
 
-/** Select na própria célula: mesma API/domínio do editor completo. */
+const TIMES_CELULA = [
+  { slug: "consultoria", nome: "Consultoria" },
+  { slug: "obras", nome: "Obras" },
+  { slug: "administrativo", nome: "Administrativo" },
+  { slug: "outros", nome: "Outros" }
+] as const;
+
+function slugTimeNaCelula(area: string | null): string {
+  if (!area) return "";
+  if (area === "software" || area === "hardware") return "consultoria";
+  if (TIMES_CELULA.some((t) => t.slug === area)) return area;
+  return "outros";
+}
+
+/** Time de entrega na célula — lista fechada; marketing/software não entram. */
 export function CelulaArea({
   pessoa,
   areas
@@ -266,14 +282,15 @@ export function CelulaArea({
   const [erro, setErro] = useState<string | null>(null);
 
   async function mudar(slug: string) {
-    if (!slug || slug === (pessoa.area ?? "")) return;
+    const atual = slugTimeNaCelula(pessoa.area);
+    if (slug === atual) return;
     setErro(null);
     setEmVoo(true);
     try {
       const resposta = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${pessoa.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ area: slug })
+        body: JSON.stringify(slug ? { area: slug } : { area: null, defaultNucleo: null })
       });
       const resultado = await resposta.json();
       if (!resposta.ok) {
@@ -288,24 +305,19 @@ export function CelulaArea({
     }
   }
 
-  const opcoes = [...areas];
-  if (pessoa.area && !opcoes.some((a) => a.slug === pessoa.area)) {
-    opcoes.unshift({
-      slug: pessoa.area,
-      nome: pessoa.areaRotulo ?? pessoa.area
-    });
-  }
+  const opcoes = areas.length ? areas : [...TIMES_CELULA];
+  const valor = slugTimeNaCelula(pessoa.area);
 
   return (
     <span className="fin-celula-area">
       <select
         className="fin-select fin-select-inline"
-        value={pessoa.area ?? ""}
+        value={valor}
         disabled={emVoo}
-        aria-label={`Área de ${pessoa.nome}`}
+        aria-label={`Time de ${pessoa.nome}`}
         onChange={(evento) => void mudar(evento.target.value)}
       >
-        {!pessoa.area ? <option value="">sem área</option> : null}
+        <option value="">sem time</option>
         {opcoes.map((item) => (
           <option key={item.slug} value={item.slug}>
             {item.nome}
@@ -368,6 +380,229 @@ export function CelulaVinculo({
           </option>
         ))}
       </select>
+      {erro ? <span className="fin-badge-atencao">{erro}</span> : null}
+    </span>
+  );
+}
+
+/** Catálogo inicial — a lista da célula não pode nascer vazia. */
+const AREAS_EMPRESA_PADRAO: Opcao[] = [
+  { slug: "marketing", nome: "Marketing" },
+  { slug: "vendas", nome: "Vendas" },
+  { slug: "sucesso", nome: "Sucesso" },
+  { slug: "projetos", nome: "Projetos" },
+  { slug: "gestao_energia", nome: "Gestão Energia" },
+  { slug: "gestao_operacao", nome: "Gestão Operação" },
+  { slug: "diretoria", nome: "Diretoria" },
+  { slug: "financeiro", nome: "Financeiro" },
+  { slug: "campo", nome: "Campo" },
+  { slug: "automacoes", nome: "Automações" },
+  { slug: "limpeza", nome: "Limpeza" },
+  { slug: "tecnologia", nome: "Tecnologia" },
+  { slug: "juridico", nome: "Jurídico" },
+  { slug: "emprestimo", nome: "Empréstimo" },
+  { slug: "dividendo", nome: "Dividendo" }
+];
+
+export function catalogoAreasEmpresa(servidor: Opcao[] | undefined, escolhidas: Opcao[]) {
+  const mapa = new Map<string, Opcao>();
+  for (const a of AREAS_EMPRESA_PADRAO) mapa.set(a.slug, a);
+  for (const a of servidor ?? []) mapa.set(a.slug, a);
+  for (const a of escolhidas) mapa.set(a.slug, a);
+  return [...mapa.values()];
+}
+
+export function corAreaEmpresa(slug: string) {
+  return `var(--area-${slug}, var(--muted))`;
+}
+
+/**
+ * Áreas da empresa, N:N. Substitui o vínculo na matriz: time (consultoria/
+ * obras) continua ao lado; departamento é o que o dono lê primeiro.
+ *
+ * O pop vai para `document.body`: dentro da célula sticky ele nascia atrás
+ * do total congelado e da linha de baixo — o dono só via o campo de escrever.
+ */
+export function CelulaAreasEmpresa({
+  pessoa,
+  areas
+}: {
+  pessoa: Pessoa;
+  areas: Opcao[];
+}) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [aberto, setAberto] = useState(false);
+  const [emVoo, setEmVoo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [nova, setNova] = useState("");
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const gatilhoRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  const escolhidas = pessoa.areasEmpresa ?? [];
+  const slugs = new Set(escolhidas.map((a) => a.slug));
+  const catalogo = catalogoAreasEmpresa(areas, escolhidas);
+
+  function abrir() {
+    const el = gatilhoRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const largura = 260;
+    const left = Math.min(r.left, window.innerWidth - largura - 8);
+    setPos({ top: r.bottom + 4, left: Math.max(8, left) });
+    setAberto(true);
+  }
+
+  useEffect(() => {
+    if (!aberto) return;
+    function fechar(evento: MouseEvent) {
+      const alvo = evento.target as Node;
+      if (popRef.current?.contains(alvo) || gatilhoRef.current?.contains(alvo)) return;
+      setAberto(false);
+    }
+    function tecla(evento: KeyboardEvent) {
+      if (evento.key === "Escape") setAberto(false);
+    }
+    document.addEventListener("mousedown", fechar);
+    document.addEventListener("keydown", tecla);
+    return () => {
+      document.removeEventListener("mousedown", fechar);
+      document.removeEventListener("keydown", tecla);
+    };
+  }, [aberto]);
+
+  async function gravar(proximos: string[]) {
+    setErro(null);
+    setEmVoo(true);
+    try {
+      const resposta = await fetch(urlDaOrigem(`/api/financeiro/pessoas/${pessoa.id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ areasEmpresa: proximos })
+      });
+      const resultado = await resposta.json();
+      if (!resposta.ok) {
+        setErro(resultado.error ?? "não salvou");
+        return;
+      }
+      startTransition(() => router.refresh());
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "não salvou");
+    } finally {
+      setEmVoo(false);
+    }
+  }
+
+  function alternar(slug: string) {
+    const proximo = slugs.has(slug)
+      ? escolhidas.filter((a) => a.slug !== slug).map((a) => a.slug)
+      : [...escolhidas.map((a) => a.slug), slug];
+    void gravar(proximo);
+  }
+
+  function criarNova() {
+    const nome = nova.trim();
+    if (!nome) return;
+    if (catalogo.some((a) => a.nome.toLowerCase() === nome.toLowerCase() || a.slug === nome)) {
+      const hit = catalogo.find(
+        (a) => a.nome.toLowerCase() === nome.toLowerCase() || a.slug === nome
+      );
+      if (hit && !slugs.has(hit.slug)) void gravar([...escolhidas.map((a) => a.slug), hit.slug]);
+      setNova("");
+      return;
+    }
+    void gravar([...escolhidas.map((a) => a.slug), nome]);
+    setNova("");
+  }
+
+  const rotulo = escolhidas.length
+    ? escolhidas.map((a) => a.nome).join(", ")
+    : "sem área";
+
+  return (
+    <span className="fin-celula-areas-empresa">
+      <button
+        ref={gatilhoRef}
+        type="button"
+        className={
+          escolhidas.length
+            ? "fin-areas-empresa-gatilho tem"
+            : "fin-areas-empresa-gatilho vazio"
+        }
+        disabled={emVoo}
+        aria-expanded={aberto}
+        aria-haspopup="listbox"
+        aria-label={`Áreas da empresa de ${pessoa.nome}`}
+        onClick={() => (aberto ? setAberto(false) : abrir())}
+      >
+        {escolhidas.length ? (
+          <span className="fin-areas-empresa-pills">
+            {escolhidas.map((a) => (
+              <i
+                key={a.slug}
+                className="fin-areas-empresa-pill"
+                style={{ ["--chip-cor" as string]: corAreaEmpresa(a.slug) }}
+              >
+                {a.nome}
+              </i>
+            ))}
+          </span>
+        ) : (
+          rotulo
+        )}
+      </button>
+      {aberto && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              ref={popRef}
+              className="fin-areas-empresa-pop"
+              style={{ top: pos.top, left: pos.left }}
+              role="listbox"
+              aria-multiselectable
+              aria-label="Áreas da empresa"
+            >
+              {catalogo.map((item) => {
+                const marcado = slugs.has(item.slug);
+                return (
+                  <label
+                    key={item.slug}
+                    className={marcado ? "ativo" : undefined}
+                    style={{ ["--chip-cor" as string]: corAreaEmpresa(item.slug) }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={marcado}
+                      disabled={emVoo}
+                      onChange={() => alternar(item.slug)}
+                    />
+                    <i className="fin-pessoas-matriz-chip-ponto" aria-hidden />
+                    {item.nome}
+                  </label>
+                );
+              })}
+              <div className="fin-areas-empresa-nova">
+                <input
+                  className="fin-input"
+                  value={nova}
+                  placeholder="Outra área…"
+                  disabled={emVoo}
+                  onChange={(e) => setNova(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      criarNova();
+                    }
+                  }}
+                />
+                <button type="button" className="fin-btn-ghost" disabled={emVoo || !nova.trim()} onClick={criarNova}>
+                  +
+                </button>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
       {erro ? <span className="fin-badge-atencao">{erro}</span> : null}
     </span>
   );
@@ -470,19 +705,27 @@ export function FinPessoaEditor({ pessoa, dados }: { pessoa: Pessoa; dados: Cust
 
       <div className="fin-regra-form">
         <label className="fin-field">
-          <span>Área</span>
+          <span>Time</span>
           <input
             className="fin-input"
             list={`fin-areas-${pessoa.id}`}
             value={area}
             onChange={(evento) => setArea(evento.target.value)}
-            placeholder="consultoria, obras… ou uma nova"
+            placeholder="consultoria, obras, administrativo, outros"
           />
           <em className="fin-field-hint">
-            Escolha uma das existentes ou digite uma nova — ela passa a valer para as próximas pessoas. Hardware e
-            Software também definem o time desta tela.
+            Time de entrega: Consultoria, Obras, Administrativo ou Outros. Marketing e Software não são time —
+            Marketing é departamento, Software virou Consultoria.
           </em>
         </label>
+
+        <div className="fin-field">
+          <span>Áreas da empresa</span>
+          <CelulaAreasEmpresa pessoa={pessoa} areas={dados.areasEmpresa} />
+          <em className="fin-field-hint">
+            Uma pessoa cabe em várias. Clique para marcar; o salvamento é na hora.
+          </em>
+        </div>
 
         <label className="fin-field">
           <span>Vínculo</span>

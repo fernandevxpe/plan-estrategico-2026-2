@@ -912,6 +912,56 @@ try {
     });
   }
 
+  console.log('\n=== 5h. ÁREAS DA EMPRESA (admin — N:N, sem tocar o time) ===');
+  {
+    const adminChamar = async (caminho, opcoes = {}) => {
+      const headers = { ...(opcoes.headers ?? {}), 'content-type': 'application/json' };
+      let r;
+      try {
+        r = await fetch(BASE + caminho, { ...opcoes, headers });
+      } catch {
+        r = await fetch(BASE + caminho, { ...opcoes, headers });
+      }
+      let corpo = null;
+      try {
+        corpo = await r.json();
+      } catch {
+        /* sem JSON */
+      }
+      return { status: r.status, corpo };
+    };
+
+    const antes = await adminChamar(`/api/financeiro/pessoas/${cobaia.id}`);
+    afirma(antes.status === 200, 'GET pessoa devolve áreas da empresa', `status ${antes.status}`);
+    const slugsAntes = (antes.corpo?.areasEmpresa ?? []).map((a) => a.slug);
+
+    const timeAntes = antes.corpo?.pessoa?.area ?? null;
+
+    const patch = await adminChamar(`/api/financeiro/pessoas/${cobaia.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ areasEmpresa: ['marketing', 'vendas'] })
+    });
+    afirma(patch.status === 200, 'PATCH areasEmpresa grava duas áreas', `status ${patch.status} · ${JSON.stringify(patch.corpo?.after)}`);
+
+    const depois = await adminChamar(`/api/financeiro/pessoas/${cobaia.id}`);
+    const slugs = (depois.corpo?.areasEmpresa ?? []).map((a) => a.slug).sort();
+    afirma(
+      slugs.includes('marketing') && slugs.includes('vendas'),
+      'relido bate: Marketing e Vendas',
+      slugs.join(',')
+    );
+    afirma(
+      (depois.corpo?.pessoa?.area ?? null) === timeAntes,
+      'o time (fin_person.area) não mudou',
+      `area=${depois.corpo?.pessoa?.area}`
+    );
+
+    await adminChamar(`/api/financeiro/pessoas/${cobaia.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ areasEmpresa: slugsAntes })
+    });
+  }
+
   console.log('\n=== 6. A SENHA ANTIGA MORREU ===');
   const c2 = criarCliente();
   const velha = await c2('/api/time/sessao', {

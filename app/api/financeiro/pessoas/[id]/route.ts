@@ -178,6 +178,95 @@ async function temColunaCategoriaPadrao(client: pg.PoolClient): Promise<boolean>
   return rows[0]?.tem ?? false;
 }
 
+function rotuloAreaNova(slug: string, original: string | undefined): string {
+  const bruto = original?.trim() ?? "";
+  if (bruto && slugArea(bruto) === slug && /[A-ZÁÉÍÓÚÂÊÔÃÕ]/.test(bruto)) return bruto.slice(0, 80);
+  const texto = slug.replace(/_/g, " ");
+  return (texto.charAt(0).toUpperCase() + texto.slice(1)).slice(0, 80);
+}
+
+/**
+ * Substitui o conjunto de áreas da empresa da pessoa. Cria a linha do
+ * catálogo se o slug ainda não existir — é o que deixa nascer "RH" numa
+ * quinta sem migration, com o slug já normalizado.
+ */
+async function gravarAreasEmpresa(
+  client: pg.PoolClient,
+  args: {
+    personId: number;
+    entityId: number;
+    slugs: string[];
+    nomes: Record<string, string>;
+    batchId: string;
+    ator: string;
+  }
+): Promise<{ before: string[]; after: string[] } | null> {
+  const { rows: temTabela } = await client.query<{ tem: boolean }>(
+    `SELECT to_regclass('fin_area_empresa') IS NOT NULL AS tem`
+  );
+  if (!temTabela[0]?.tem) {
+    throw new ColunaAusenteError(
+      "fin_area_empresa ainda não existe neste banco: aplique a migration 0180"
+    );
+  }
+
+  const { rows: atuais } = await client.query<{ slug: string }>(
+    `SELECT a.slug
+       FROM fin_pessoa_area_empresa l
+       JOIN fin_area_empresa a ON a.id = l.area_id
+      WHERE l.person_id = $1
+      ORDER BY a.ordem, a.nome`,
+    [args.personId]
+  );
+  const antes = atuais.map((r) => r.slug);
+  const depois = [...args.slugs];
+  if (antes.length === depois.length && antes.every((s) => depois.includes(s))) return null;
+
+  const ids: number[] = [];
+  for (const slug of depois) {
+    const { rows: existentes } = await client.query<{ id: number }>(
+      `SELECT id FROM fin_area_empresa WHERE entity_id = $1 AND slug = $2`,
+      [args.entityId, slug]
+    );
+    if (existentes[0]) {
+      ids.push(existentes[0].id);
+      continue;
+    }
+    const { rows: criadas } = await client.query<{ id: number }>(
+      `INSERT INTO fin_area_empresa (entity_id, slug, nome, ordem)
+       VALUES ($1, $2, $3, 200)
+       RETURNING id`,
+      [args.entityId, slug, rotuloAreaNova(slug, args.nomes[slug])]
+    );
+    ids.push(criadas[0].id);
+  }
+
+  await client.query(`DELETE FROM fin_pessoa_area_empresa WHERE person_id = $1`, [args.personId]);
+  for (const areaId of ids) {
+    await client.query(
+      `INSERT INTO fin_pessoa_area_empresa (person_id, area_id) VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [args.personId, areaId]
+    );
+  }
+
+  await client.query(
+    `INSERT INTO fin_audit_log
+        (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
+     VALUES ($1, 'fin_person', $2, 'update', $3::jsonb, $4::jsonb, ARRAY['areas_empresa'], $5, $6)`,
+    [
+      args.entityId,
+      args.personId,
+      JSON.stringify({ areas_empresa: antes }),
+      JSON.stringify({ areas_empresa: depois }),
+      args.batchId,
+      args.ator
+    ]
+  );
+
+  return { before: antes, after: depois };
+}
+
 // ---------------------------------------------------------------------------
 // GET — o cadastro, as ligações (inclusive as propostas) e a trilha
 // ---------------------------------------------------------------------------
@@ -209,6 +298,20 @@ export async function GET(_request: Request, { params }: RouteParams) {
       [idNum, ENTITY]
     );
     if (!pessoas[0]) return Response.json({ error: `pessoa ${idNum} não encontrada` }, { status: 404 });
+
+    let areasEmpresa: { slug: string; nome: string }[] = [];
+    try {
+      areasEmpresa = await query<{ slug: string; nome: string }>(
+        `SELECT a.slug, a.nome
+           FROM fin_pessoa_area_empresa l
+           JOIN fin_area_empresa a ON a.id = l.area_id
+          WHERE l.person_id = $1 AND a.ativo
+          ORDER BY a.ordem, a.nome`,
+        [idNum]
+      );
+    } catch {
+      /* 0180 ainda não aplicada */
+    }
 
     const [ligacoes, historico] = await Promise.all([
       query(
@@ -246,6 +349,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
     return Response.json({
       pessoa: pessoas[0],
+      areasEmpresa,
       ligacoes,
       historico,
       categoriaPadraoDisponivel: temCategoria
@@ -273,6 +377,7 @@ type Corpo = {
   endDate?: unknown;
   defaultNucleo?: unknown;
   defaultCategoryCode?: unknown;
+  areasEmpresa?: unknown;
   ligacoes?: unknown;
 };
 
@@ -295,31 +400,64 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   const camposPedidos = Object.keys(COLUNA).filter((campo) => campo in body);
   const ligacoesPedidas = Array.isArray(body.ligacoes) ? (body.ligacoes as CorpoLigacao[]) : [];
-  if (!camposPedidos.length && !ligacoesPedidas.length) {
+  const pediuAreas = "areasEmpresa" in body;
+  if (!camposPedidos.length && !ligacoesPedidas.length && !pediuAreas) {
     return Response.json(
-      { error: `nada a alterar: informe ao menos um de ${Object.keys(COLUNA).join(", ")} ou ligacoes[]` },
+      {
+        error: `nada a alterar: informe ao menos um de ${Object.keys(COLUNA).join(", ")}, areasEmpresa ou ligacoes[]`
+      },
       { status: 400 }
     );
+  }
+
+  let slugsAreaPedido: string[] | null = null;
+  let nomesAreaPedido: Record<string, string> = {};
+  if (pediuAreas) {
+    if (!Array.isArray(body.areasEmpresa)) {
+      return Response.json({ error: "areasEmpresa deve ser uma lista de slugs" }, { status: 422 });
+    }
+    if (body.areasEmpresa.length > 20) {
+      return Response.json({ error: "uma pessoa não cabe em mais de 20 áreas" }, { status: 422 });
+    }
+    const vistos = new Set<string>();
+    slugsAreaPedido = [];
+    for (const item of body.areasEmpresa) {
+      if (typeof item !== "string" || !item.trim()) {
+        return Response.json({ error: "areasEmpresa[] deve ser texto" }, { status: 422 });
+      }
+      const slug = slugArea(item);
+      if (!slug) {
+        return Response.json(
+          { error: `área "${item}" não gera um nome utilizável (só pontuação?)` },
+          { status: 422 }
+        );
+      }
+      if (vistos.has(slug)) continue;
+      vistos.add(slug);
+      slugsAreaPedido.push(slug);
+      nomesAreaPedido[slug] = item.trim();
+    }
   }
 
   // ── Validação do que não depende do banco ───────────────────────────────
   const valores: Record<string, string | null> = {};
 
   if ("area" in body) {
-    // O invariante é "area não vazia": limpar a área de alguém pela API
-    // devolveria a pessoa para "Sem time" sem que ninguém tivesse decidido isso.
-    // Quem realmente quiser desfazer tem `status`, que é uma decisão declarada.
-    if (typeof body.area !== "string" || !body.area.trim()) {
-      return Response.json({ error: "area não pode ficar vazia" }, { status: 422 });
+    // null / "" é "sem time" — decisão explícita do select, não omissão.
+    if (body.area === null || body.area === "") {
+      valores.area = null;
+    } else if (typeof body.area !== "string" || !body.area.trim()) {
+      return Response.json({ error: "area deve ser texto ou null" }, { status: 422 });
+    } else {
+      const slug = slugArea(body.area);
+      if (!slug) {
+        return Response.json(
+          { error: `area "${body.area}" não gera um nome utilizável (só pontuação?)` },
+          { status: 422 }
+        );
+      }
+      valores.area = slug;
     }
-    const slug = slugArea(body.area);
-    if (!slug) {
-      return Response.json(
-        { error: `area "${body.area}" não gera um nome utilizável (só pontuação?)` },
-        { status: 422 }
-      );
-    }
-    valores.area = slug;
   }
 
   if ("employmentType" in body) {
@@ -523,6 +661,22 @@ export async function PATCH(request: Request, { params }: RouteParams) {
            VALUES ($1, 'fin_person', $2, 'update', $3::jsonb, $4::jsonb, $5::text[], $6, $7)`,
           [pessoa.entity_id, idNum, JSON.stringify(before), JSON.stringify(after), alterados, batchId, ator]
         );
+      }
+
+      if (slugsAreaPedido) {
+        const mudouAreas = await gravarAreasEmpresa(client, {
+          personId: idNum,
+          entityId: pessoa.entity_id,
+          slugs: slugsAreaPedido,
+          nomes: nomesAreaPedido,
+          batchId,
+          ator
+        });
+        if (mudouAreas) {
+          before.areas_empresa = mudouAreas.before;
+          after.areas_empresa = mudouAreas.after;
+          alterados.push("areas_empresa");
+        }
       }
 
       // ── As ligações ─────────────────────────────────────────────────────

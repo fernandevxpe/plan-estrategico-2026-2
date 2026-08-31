@@ -254,6 +254,65 @@
   color-scheme: dark;
 }
 
+/* Áreas da empresa — 14 tons, um por departamento.
+   No claro a cor é tinta (contrasta no card branco). No escuro é a vizinha
+   neon da marca: o chip já mistura `--chip-cor` no fundo, então o glow
+   aparece sem um hex solto que quebre um dos dois temas. */
+:root {
+  --area-marketing: #c8117e;
+  --area-vendas: #b67818;
+  --area-sucesso: #08704f;
+  --area-projetos: #1d4ed8;
+  --area-gestao_energia: #0f766e;
+  --area-gestao_operacao: #155e75;
+  --area-diretoria: #7c1fe0;
+  --area-financeiro: #0e7490;
+  --area-campo: #c2410c;
+  --area-automacoes: #0369a1;
+  --area-limpeza: #4d7c0f;
+  --area-tecnologia: #4338ca;
+  --area-juridico: #9f1239;
+  --area-emprestimo: #b45309;
+  --area-dividendo: #a16207;
+  --area-sem_area: var(--muted);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) {
+    --area-marketing: #ff5cc0;
+    --area-vendas: #f0c46a;
+    --area-sucesso: #2dffc0;
+    --area-projetos: #7aa2ff;
+    --area-gestao_energia: #2dd4c8;
+    --area-gestao_operacao: #67e8f9;
+    --area-diretoria: #d9a3ff;
+    --area-financeiro: #38bdf8;
+    --area-campo: #fb923c;
+    --area-automacoes: #22d3ee;
+    --area-limpeza: #a3e635;
+    --area-tecnologia: #818cf8;
+    --area-juridico: #fb7185;
+    --area-emprestimo: #fbbf24;
+    --area-dividendo: #fde047;
+  }
+}
+:root[data-theme="escuro"] {
+  --area-marketing: #ff5cc0;
+  --area-vendas: #f0c46a;
+  --area-sucesso: #2dffc0;
+  --area-projetos: #7aa2ff;
+  --area-gestao_energia: #2dd4c8;
+  --area-gestao_operacao: #67e8f9;
+  --area-diretoria: #d9a3ff;
+  --area-financeiro: #38bdf8;
+  --area-campo: #fb923c;
+  --area-automacoes: #22d3ee;
+  --area-limpeza: #a3e635;
+  --area-tecnologia: #818cf8;
+  --area-juridico: #fb7185;
+  --area-emprestimo: #fbbf24;
+  --area-dividendo: #fde047;
+}
+
 /* Funil 360° — mídia, pré-vendas e CRM em uma única leitura */
 .revenue-funnel-page { display: grid; gap: 16px; width: 100%; min-width: 0; max-width: 100%; overflow: hidden; }
 .revenue-funnel-page > *, .revenue-main-grid > *, .revenue-time-grid > * { min-width: 0; max-width: 100%; }
@@ -11514,6 +11573,86 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .fin-table-aninhada { margin: 0; width: 100%; }
 .fin-celula-area { display: inline-flex; flex-direction: column; gap: 4px; align-items: flex-start; }
 
+.fin-celula-areas-empresa {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 100%;
+}
+.fin-areas-empresa-gatilho {
+  max-width: 100%;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: normal;
+}
+.fin-areas-empresa-gatilho.vazio { color: var(--muted); font-weight: 500; }
+.fin-areas-empresa-gatilho:disabled { opacity: .55; cursor: default; }
+.fin-areas-empresa-pills {
+  display: flex; flex-wrap: wrap; gap: 3px;
+}
+.fin-areas-empresa-pill {
+  display: inline-flex; align-items: center;
+  padding: 1px 6px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; font-style: normal; line-height: 1.35;
+  color: var(--chip-cor, var(--ink));
+  background: color-mix(in srgb, var(--chip-cor) 16%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--chip-cor) 40%, var(--line));
+}
+.fin-areas-empresa-pop {
+  position: fixed;
+  z-index: 200;
+  width: 260px;
+  max-height: min(380px, 60vh);
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: 0 12px 32px color-mix(in srgb, black 18%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fin-areas-empresa-pop label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.fin-areas-empresa-pop label:hover { background: var(--surface-2); }
+.fin-areas-empresa-pop label.ativo {
+  background: color-mix(in srgb, var(--chip-cor, var(--purple)) 16%, transparent);
+}
+.fin-areas-empresa-pop .fin-pessoas-matriz-chip-ponto { opacity: 1; }
+.fin-areas-empresa-nova {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.fin-areas-empresa-nova .fin-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 8px;
+  font-size: 12.5px;
+}
+.fin-areas-empresa-nova .fin-btn-ghost { padding: 6px 10px; }
+
 /* Cadastro de pessoas: linhas densas, sem “faixa branca” alta */
 .fin-pessoas-cadastro .table-wrap {
   border: 1px solid var(--line);
@@ -20615,12 +20754,20 @@ button.rec-plot-acao {
 
 /* ── Matriz pessoas × mês: filtros e células ─────────────────────────────── */
 .fin-pessoas-matriz-filtros {
-  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;
+  display: flex; flex-direction: column; gap: 10px;
   margin: 0 0 12px; padding: 10px 12px;
   border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2);
 }
+.fin-pessoas-matriz-filtro-linha {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;
+}
+.fin-pessoas-matriz-filtro-grupo {
+  display: flex; flex-direction: column; gap: 6px; flex: 1 1 280px; min-width: 0;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted);
+}
 .fin-pessoas-matriz-chips {
-  display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 280px;
+  display: flex; flex-wrap: wrap; gap: 6px;
 }
 .fin-pessoas-matriz-chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -20632,8 +20779,16 @@ button.rec-plot-acao {
 .fin-pessoas-matriz-chip:hover { border-color: var(--chip-cor, var(--purple)); color: var(--ink); }
 .fin-pessoas-matriz-chip.ativo {
   color: var(--ink);
-  border-color: color-mix(in srgb, var(--chip-cor) 45%, var(--line));
-  background: color-mix(in srgb, var(--chip-cor) 12%, var(--card));
+  border-color: color-mix(in srgb, var(--chip-cor) 55%, var(--line));
+  background: color-mix(in srgb, var(--chip-cor) 16%, var(--card));
+}
+:root[data-theme="escuro"] .fin-pessoas-matriz-chip.ativo {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--chip-cor) 38%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) .fin-pessoas-matriz-chip.ativo {
+    box-shadow: 0 0 14px color-mix(in srgb, var(--chip-cor) 38%, transparent);
+  }
 }
 .fin-pessoas-matriz-chip-ponto {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
@@ -20647,10 +20802,84 @@ button.rec-plot-acao {
   font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .05em; color: var(--muted);
 }
-.fin-pessoas-matriz-campo .fin-select {
+.fin-pessoas-matriz-campo .fin-select,
+.fin-pessoas-matriz-campo .fin-input {
   min-width: 200px; font-size: 13px; font-weight: 500;
   text-transform: none; letter-spacing: 0; color: var(--ink);
 }
+.fin-pessoas-matriz-busca { flex: 0 1 280px; }
+.fin-pessoas-matriz-busca-campo {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 10px 0 10px;
+  border: 1px solid var(--line); border-radius: 9px; background: var(--card);
+}
+.fin-pessoas-matriz-busca-campo svg { flex-shrink: 0; color: var(--muted); }
+.fin-pessoas-matriz-busca-campo .fin-input {
+  flex: 1; min-width: 0; margin: 0; padding: 7px 0;
+  border: 0; background: transparent; box-shadow: none; outline: none;
+}
+.fin-pessoas-matriz-busca-campo:focus-within {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+}
+.fin-pessoas-matriz-busca small {
+  font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0;
+}
+.fin-pessoas-matriz-limpar { margin-left: auto; align-self: flex-end; }
+.fin-pessoas-matriz-ocultar {
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Cabeçalho + total + 1ª coluna congelados: o wrap precisa rolar nas duas
+   dimensões. `separate` é o que faz o sticky do thead sobreviver — collapse
+   cola a célula no fluxo e o top/left deixam de prender. */
+.fin-pessoas-matriz .fin-matrix-wrap {
+  max-height: min(72vh, 780px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+.fin-pessoas-matriz-tabela {
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0;
+}
+.fin-pessoas-matriz-tabela thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--card);
+  box-shadow: 0 1px 0 var(--line);
+}
+.fin-pessoas-matriz-tabela thead tr:first-child .fin-matrix-head {
+  z-index: 6;
+  left: 0;
+}
+.fin-pessoas-matriz-tabela thead .fin-pessoas-matriz-totais th,
+.fin-pessoas-matriz-tabela thead .fin-pessoas-matriz-totais td {
+  position: sticky;
+  top: var(--matriz-head-h, 46px);
+  z-index: 4;
+  background: var(--surface-2);
+  box-shadow: 0 1px 0 var(--line);
+}
+.fin-pessoas-matriz-tabela thead .fin-pessoas-matriz-totais .fin-matrix-head {
+  z-index: 6;
+  left: 0;
+}
+.fin-pessoas-matriz-tabela tfoot th,
+.fin-pessoas-matriz-tabela tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background: var(--surface-2);
+}
+.fin-pessoas-matriz-tabela tfoot .fin-matrix-head { z-index: 5; left: 0; }
 
 .fin-pessoas-matriz-tabela tbody td,
 .fin-pessoas-matriz-tabela tbody th {
@@ -20702,6 +20931,11 @@ button.rec-plot-acao {
 .fin-pessoas-matriz-tabela th.fin-previsao,
 .fin-pessoas-matriz-tabela td.fin-previsao {
   background: color-mix(in srgb, var(--tint-purple-soft, #f3eefc) 70%, transparent);
+}
+.fin-pessoas-matriz-tabela thead th.fin-previsao,
+.fin-pessoas-matriz-tabela thead td.fin-previsao,
+.fin-pessoas-matriz-tabela tfoot td.fin-previsao {
+  background: color-mix(in srgb, var(--tint-purple-soft, #f3eefc) 70%, var(--surface-2));
 }
 .fin-pessoas-matriz-tabela thead th.fin-previsao .fin-tag {
   margin-left: 4px;

@@ -141,10 +141,23 @@ export function subparteCustoDe(item: ItemParaParte): SubparteCusto {
   if (code === "4.03") return "terceiros_obras";
   if (item.time === "obras") return "outros_obras";
 
+  /*
+   * ATENÇÃO: `outros_consultoria` está INALCANÇÁVEL hoje.
+   *
+   * A condição abaixo já captura `item.time === "consultoria"`, então todo
+   * custo de consultoria vira `material_consultoria` — inclusive o que não é
+   * material. O `if` seguinte, que existia para o resto, era código morto: o
+   * TypeScript provou isso estreitando o tipo (TS2367) e o build não passava.
+   *
+   * Removi a linha morta em vez de reordenar as duas, porque reordenar MUDA a
+   * classificação de itens reais, e essa é decisão de quem classifica. O bloco
+   * de obras logo acima tem a forma que este provavelmente queria ter —
+   * específicos primeiro, `outros_*` como rede — e é o desenho a copiar quando
+   * alguém decidir.
+   */
   if (areas.has("material_consultoria") || code === "8.01" || item.time === "consultoria") {
     return "material_consultoria";
   }
-  if (item.time === "consultoria") return "outros_consultoria";
 
   return "resto";
 }

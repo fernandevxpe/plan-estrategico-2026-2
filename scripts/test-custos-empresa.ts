@@ -43,7 +43,10 @@ try {
         AND (c.code IS NULL OR (c.code NOT LIKE '6.%' AND c.code <> '4.01' AND c.code NOT LIKE '9.%'))
         AND NOT ${SQL_PESSOA_V}`
   );
-  ok(catalogo.filter((r) => categoriaEGente(r.code)).length === 0, "zero item 6.% ou 4.01 no catálogo da empresa");
+  ok(
+    catalogo.filter((r: { code: string | null }) => categoriaEGente(r.code)).length === 0,
+    "zero item 6.% ou 4.01 no catálogo da empresa"
+  );
 
   const { rows: serie } = await pool.query<{ com_gente: string; sem_gente: string; itens: number }>(
     `SELECT
@@ -176,7 +179,7 @@ try {
             counterpartyId: Number(alvo.counterparty_id),
             categoryId: Number(alvo.category_id),
             area: areaAntes,
-            areasEmpresa: areasAntes.map((a) => a.slug).filter(Boolean),
+            areasEmpresa: areasAntes.map((a: { slug: string }) => a.slug).filter(Boolean),
             bloco: blocoAntes
           })
         }).catch(() => {});

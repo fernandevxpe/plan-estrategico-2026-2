@@ -114,6 +114,10 @@ export const FINANCEIRO_GRUPOS: Grupo[] = [
       // Logo depois: é a configuração DELE. A tela acima responde "quanto sai
       // em setembro", esta responde "o que a empresa paga todo mês, e quanto".
       { href: "/financeiro/custos-fixos", label: "Custos fixos" },
+      // Leitura, não catálogo: a série mês a mês do que sai e NÃO é pessoa, na
+      // mesma casca de "Custo com pessoas". Folha, DAS e conta a pagar ficam
+      // fora do total — cada um é contado na tela onde é decidido.
+      { href: "/financeiro/custos-empresa", label: "Custo da empresa" },
       // "Cartões", não "Cartão de crédito": uma das três linhas é pré-paga, e
       // chamar o grupo pelo crédito excluiria justamente a que não é. Fica em
       // PAGAR porque é onde a pergunta nasce — "quanto sai por cartão" —, e ao

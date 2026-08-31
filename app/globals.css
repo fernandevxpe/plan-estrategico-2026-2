@@ -20538,7 +20538,18 @@ button.rec-plot-acao {
 }
 .fin-pessoas-kpi-faixa {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /*
+   * `auto-fit` em vez de `repeat(3, …)`: a faixa nasceu com três KPIs em
+   * Pessoas e o três ficou escrito no CSS. Custo da empresa tem QUATRO — o
+   * quarto quebrava para uma segunda linha sozinho, deixando dois terços de
+   * vazio ao lado.
+   *
+   * Com `minmax(220px, 1fr)` o número de colunas passa a ser consequência da
+   * largura: três KPIs continuam em três colunas (auto-fit descarta as trilhas
+   * vazias), quatro entram em quatro, e o dia em que alguém acrescentar o
+   * quinto não vira um bug de layout.
+   */
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1px;
   background: var(--line);
   border: 1px solid var(--line);

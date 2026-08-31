@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { brl } from "@/components/financeiro/Certeza";
+import { useOcultarValores } from "@/components/time/ocultar-valores";
 import {
   CLASSE,
   ROTULO,
@@ -88,6 +88,7 @@ function IconeSeta() {
 
 export function Recebiveis() {
   const { dado, erro, carregando } = useRecebiveis();
+  const { ocultar, valor } = useOcultarValores();
   const [ocultas, setOcultas] = useState<Set<string>>(new Set());
   const [mostrarPrevisao, setMostrarPrevisao] = useState(false);
   const [foco, setFoco] = useState<FocoPlot>(null);
@@ -174,8 +175,8 @@ export function Recebiveis() {
   const descricaoGrafico = meses
     .map(
       (m) =>
-        `${mesCurto(m.mes)}: ${brl(m.totalCents)} (${Object.entries(m.porNatureza)
-          .map(([n, v]) => `${ROTULO[n] ?? n} ${brl(v)}`)
+        `${mesCurto(m.mes)}: ${valor(m.totalCents, Object.keys(m.porNatureza).every((n) => n === "reembolso"))} (${Object.entries(m.porNatureza)
+          .map(([n, v]) => `${ROTULO[n] ?? n} ${valor(v, n === "reembolso")}`)
           .join(", ")})`
     )
     .join("; ");
@@ -235,11 +236,14 @@ export function Recebiveis() {
       <div className="time-faixa">
         <article className="time-faixa-item time-faixa-destaque">
           <strong className="time-faixa-valor">
-            {brl(ultimoRemun > 0 ? ultimoRemun : (ultimoMesRec?.totalCents ?? 0))}
+            {valor(
+              ultimoRemun > 0 ? ultimoRemun : (ultimoMesRec?.totalCents ?? 0),
+              ultimoRemun === 0 && ultimoReemb > 0
+            )}
           </strong>
           {ultimoMesRec && ultimoReemb > 0 && ultimoRemun > 0 ? (
             <span className="time-faixa-nota time-nota-reemb">
-              + {brl(ultimoReemb)}
+              + {valor(ultimoReemb, true)}
             </span>
           ) : (
             <small className="time-faixa-nota">
@@ -252,11 +256,14 @@ export function Recebiveis() {
         </article>
         <article className="time-faixa-item time-faixa-previsto">
           <strong className="time-faixa-valor">
-            {brl(remProximoMes > 0 ? remProximoMes : previstoProximoMes)}
+            {valor(
+              remProximoMes > 0 ? remProximoMes : previstoProximoMes,
+              remProximoMes === 0 && reembProximoMes > 0
+            )}
           </strong>
           {proximoMes && reembProximoMes > 0 && remProximoMes > 0 ? (
             <span className="time-faixa-nota time-nota-reemb">
-              + {brl(reembProximoMes)}
+              + {valor(reembProximoMes, true)}
             </span>
           ) : (
             <small className="time-faixa-nota">previsto</small>
@@ -271,13 +278,13 @@ export function Recebiveis() {
               <div className="time-faixa-par">
                 <div className="time-faixa-par-item">
                   <strong className="time-faixa-valor time-valor-reemb">
-                    {brl(reembolsosFuturosCents)}
+                    {valor(reembolsosFuturosCents, true)}
                   </strong>
                   <span className="time-faixa-rotulo">Reembolso</span>
                 </div>
                 <div className="time-faixa-par-item">
                   <strong className="time-faixa-valor time-valor-comissao">
-                    + {brl(totalComissaoFutura)}
+                    + {valor(totalComissaoFutura)}
                   </strong>
                   <span className="time-faixa-rotulo">Comissão</span>
                 </div>
@@ -285,7 +292,7 @@ export function Recebiveis() {
             ) : totalComissaoFutura > 0 ? (
               <>
                 <strong className="time-faixa-valor time-valor-comissao">
-                  {brl(totalComissaoFutura)}
+                  {valor(totalComissaoFutura)}
                 </strong>
                 <small className="time-faixa-nota">à receber</small>
                 <span className="time-faixa-rotulo">Comissão futura</span>
@@ -293,7 +300,7 @@ export function Recebiveis() {
             ) : (
               <>
                 <strong className="time-faixa-valor time-valor-reemb">
-                  {brl(reembolsosFuturosCents)}
+                  {valor(reembolsosFuturosCents, true)}
                 </strong>
                 <small className="time-faixa-nota">à receber</small>
                 <span className="time-faixa-rotulo">Reembolso total</span>
@@ -302,7 +309,7 @@ export function Recebiveis() {
           </a>
         ) : (
           <article className="time-faixa-item">
-            <strong className="time-faixa-valor">{brl(dado.totalCents)}</strong>
+            <strong className="time-faixa-valor">{valor(dado.totalCents)}</strong>
             <small className="time-faixa-nota">nada em aberto</small>
             <span className="time-faixa-rotulo">Em 2026</span>
           </article>
@@ -322,6 +329,7 @@ export function Recebiveis() {
           onFoco={setFoco}
           rolagem={mostrarPrevisao && mesesPrevistos.length > 0}
           ariaDescricao={descricaoGrafico}
+          ocultarValores={ocultar}
           cabeca={
             previsaoMeses.length > 0 ? (
               <div className="rec-plot-cabeca rec-plot-cabeca-acoes">
@@ -355,7 +363,7 @@ export function Recebiveis() {
               <span className="rec-secao-cabeca-direita">
                 {totalPrevisto > 0 ? (
                   <span className="rec-secao-total">
-                    <strong>{brl(totalPrevisto)}</strong>
+                    <strong>{valor(totalPrevisto)}</strong>
                     <small>{proximoMes ? mesNome(proximoMes.mes) : "previsto"}</small>
                   </span>
                 ) : null}
@@ -373,7 +381,7 @@ export function Recebiveis() {
                     <small>Salário base 2026</small>
                   </span>
                   <b className="rec-nat-valor">
-                    <span>{brl(proximoMes.salarioCents)}</span>
+                    <span>{valor(proximoMes.salarioCents)}</span>
                     <small className="rec-nat-sub">{nomeMesTitulo(proximoMes.mes)}</small>
                   </b>
                 </div>
@@ -388,7 +396,7 @@ export function Recebiveis() {
                     <small>Recorrente 2026</small>
                   </span>
                   <b className="rec-nat-valor">
-                    <span>{brl(proximoMes.prolaboreCents)}</span>
+                    <span>{valor(proximoMes.prolaboreCents)}</span>
                     <small className="rec-nat-sub">{nomeMesTitulo(proximoMes.mes)}</small>
                   </b>
                 </div>
@@ -396,7 +404,7 @@ export function Recebiveis() {
             ) : null}
             {totalComissaoFutura > 0 || comissaoProximoMes > 0 ? (
               <li>
-                <details className="rec-nat-prev" open>
+                <details className="rec-nat-prev">
                   <summary className="rec-nat-linha">
                     <i className={`rec-ponto ${CLASSE.comissao}`} aria-hidden />
                     <span className="rec-nat-nome">
@@ -404,13 +412,13 @@ export function Recebiveis() {
                       {totalComissaoFutura > 0 ? (
                         <small>
                           {totalComissaoFutura > comissaoProximoMes
-                            ? `total declarado ${brl(totalComissaoFutura)}`
-                            : `total em aberto ${brl(totalComissaoFutura)}`}
+                            ? `total declarado ${valor(totalComissaoFutura)}`
+                            : `total em aberto ${valor(totalComissaoFutura)}`}
                         </small>
                       ) : null}
                     </span>
                     <b className="rec-nat-valor">
-                      <span>{brl(comissaoProximoMes > 0 ? comissaoProximoMes : totalComissaoFutura)}</span>
+                      <span>{valor(comissaoProximoMes > 0 ? comissaoProximoMes : totalComissaoFutura)}</span>
                       {proximoMes ? (
                         <small className="rec-nat-sub">{nomeMesTitulo(proximoMes.mes)}</small>
                       ) : null}
@@ -441,7 +449,7 @@ export function Recebiveis() {
                             ) : null}
                           </span>
                         </span>
-                        <span className="rec-aberto-valor">{brl(it.valorCents)}</span>
+                        <span className="rec-aberto-valor">{valor(it.valorCents)}</span>
                       </li>
                     ))}
                   </ul>
@@ -452,7 +460,7 @@ export function Recebiveis() {
                         .map((p) => (
                           <li key={p.mes}>
                             <span className="rec-prev-mes">{nomeMesTitulo(p.mes)}</span>
-                            <b>{brl(p.comissaoCents)}</b>
+                            <b>{valor(p.comissaoCents)}</b>
                           </li>
                         ))}
                     </ul>
@@ -469,14 +477,14 @@ export function Recebiveis() {
                       Reembolso
                       {totalReembolsoPrevisto > 0 ? (
                         <small>
-                          total em aberto {brl(totalReembolsoPrevisto)}
+                          total em aberto {valor(totalReembolsoPrevisto, true)}
                         </small>
                       ) : (
                         <small>aprovado, ainda não pago</small>
                       )}
                     </span>
                     <b className="rec-nat-valor">
-                      <span>{brl(reembProximoMes > 0 ? reembProximoMes : totalReembolsoPrevisto)}</span>
+                      <span>{valor(reembProximoMes > 0 ? reembProximoMes : totalReembolsoPrevisto, true)}</span>
                       {proximoMes ? (
                         <small className="rec-nat-sub">{nomeMesTitulo(proximoMes.mes)}</small>
                       ) : null}
@@ -492,11 +500,11 @@ export function Recebiveis() {
                             {nomeDoItem(a.descricao, a.slug)}
                             <span className="rec-aberto-parc">
                               {a.parcelasTotal > 1
-                                ? `parcela ${a.parcela} de ${a.parcelasTotal} · saldo ${brl(a.saldoCents)} (faltam ${plural(a.parcelasRestantes, "parcela", "parcelas")})`
-                                : `parcela única · saldo ${brl(a.saldoCents)}`}
+                                ? `parcela ${a.parcela} de ${a.parcelasTotal} · saldo ${valor(a.saldoCents, true)} (faltam ${plural(a.parcelasRestantes, "parcela", "parcelas")})`
+                                : `parcela única · saldo ${valor(a.saldoCents, true)}`}
                             </span>
                           </span>
-                          <span className="rec-aberto-valor">{brl(a.valorParcelaCents)}</span>
+                          <span className="rec-aberto-valor">{valor(a.valorParcelaCents, true)}</span>
                         </li>
                       ))}
                   </ul>
@@ -507,7 +515,7 @@ export function Recebiveis() {
                         .map((p) => (
                           <li key={p.mes}>
                             <span className="rec-prev-mes">{nomeMesTitulo(p.mes)}</span>
-                            <b>{brl(p.reembolsoCents)}</b>
+                            <b>{valor(p.reembolsoCents, true)}</b>
                           </li>
                         ))}
                     </ul>
@@ -527,7 +535,7 @@ export function Recebiveis() {
             <h2>Histórico de Recebíveis</h2>
             <span className="rec-secao-cabeca-direita">
               <span className="rec-secao-total">
-                <strong>{brl(dado.totalCents)}</strong>
+                <strong>{valor(dado.totalCents)}</strong>
                 <small>acumulado</small>
               </span>
               <IconeSeta />
@@ -544,7 +552,7 @@ export function Recebiveis() {
                 <span className="rec-mes-titulo">{nomeMesTitulo(m.mes)}</span>
                 <span className="rec-mes-cabeca-direita">
                   <span className="rec-mes-total-bloco">
-                    <strong>{brl(m.totalCents)}</strong>
+                    <strong>{valor(m.totalCents, Object.keys(m.porNatureza).every((n) => n === "reembolso"))}</strong>
                     <small>{plural(doMes.length, "Pix", "Pix")}</small>
                   </span>
                   <IconeSeta />
@@ -601,7 +609,7 @@ export function Recebiveis() {
                           {ROTULO[nat] ?? nat}
                           {reemb ? <small>competência {nomeMesTitulo(reemb.competencia)}</small> : null}
                         </span>
-                        <b className="rec-nat-valor">{brl(v)}</b>
+                        <b className="rec-nat-valor">{valor(v, nat === "reembolso")}</b>
                         {temDetalhe ? <IconeSeta /> : null}
                       </>
                     );
@@ -612,7 +620,7 @@ export function Recebiveis() {
                             <summary className="rec-nat-linha">{cabeca}</summary>
                             {nat === "salario" && dado.salarioBase && v < dado.salarioBase.valorCents ? (
                               <p className="rec-nat-nota">
-                                Neste mês caiu menos que a base contratada de {brl(dado.salarioBase.valorCents)}.
+                                Neste mês caiu menos que a base contratada de {valor(dado.salarioBase.valorCents)}.
                               </p>
                             ) : null}
                             {reemb ? (
@@ -627,7 +635,7 @@ export function Recebiveis() {
                                         </span>
                                       ) : null}
                                     </span>
-                                    <span className="rec-reemb-valor">{brl(it.valorCents)}</span>
+                                    <span className="rec-reemb-valor">{valor(it.valorCents, true)}</span>
                                   </li>
                                 ))}
                               </ul>

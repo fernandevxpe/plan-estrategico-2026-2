@@ -2,7 +2,7 @@
 
 import { type PointerEvent, type ReactNode, type RefObject, useEffect, useRef } from "react";
 
-import { brl } from "@/components/financeiro/Certeza";
+import { formatarValorOcultavel } from "@/components/time/ocultar-valores";
 import {
   CLASSE,
   ROTULO,
@@ -243,7 +243,8 @@ export function RecebiveisPlot({
   cabeca,
   trilhoRef,
   rolagem = false,
-  ariaDescricao
+  ariaDescricao,
+  ocultarValores = false
 }: {
   dado: DadoRecebiveis;
   colunas: ColunaPlot[];
@@ -256,7 +257,9 @@ export function RecebiveisPlot({
   trilhoRef?: RefObject<HTMLDivElement | null>;
   rolagem?: boolean;
   ariaDescricao: string;
+  ocultarValores?: boolean;
 }) {
+  const fmt = (cents: number, livre = false) => formatarValorOcultavel(cents, ocultarValores, livre);
   const trilhoLocal = useRef<HTMLDivElement | null>(null);
   const trilho = trilhoRef ?? trilhoLocal;
 
@@ -305,9 +308,9 @@ export function RecebiveisPlot({
                     : "rec-col"
               }
               aria-pressed={foco?.mes === m.mes}
-              aria-label={`${nomeMesTitulo(m.mes)}: ${brl(m.totalCents)}${m.previsto ? " (previsto)" : ""}${Object.entries(m.porNatureza)
+              aria-label={`${nomeMesTitulo(m.mes)}: ${fmt(m.totalCents, Object.keys(m.porNatureza).every((n) => n === "reembolso"))}${m.previsto ? " (previsto)" : ""}${Object.entries(m.porNatureza)
                 .sort((a, b) => b[1] - a[1])
-                .map(([nat, v]) => ` · ${ROTULO[nat] ?? nat} ${brl(v)}`)
+                .map(([nat, v]) => ` · ${ROTULO[nat] ?? nat} ${fmt(v, nat === "reembolso")}`)
                 .join("")}`}
               onClick={() => focarMes(m.mes)}
             >
@@ -341,7 +344,7 @@ export function RecebiveisPlot({
               {nomeMesTitulo(colFoco.mes)}
               {colFoco.previsto ? " · previsto" : ""}
             </strong>
-            <b>{brl(colFoco.totalCents)}</b>
+            <b>{fmt(colFoco.totalCents, Object.keys(colFoco.porNatureza).every((n) => n === "reembolso"))}</b>
           </div>
           {gruposFoco.length === 0 ? (
             <p className="rec-plot-dica-vazio">Nada neste mês nas naturezas ligadas.</p>
@@ -354,7 +357,7 @@ export function RecebiveisPlot({
                       <summary className="rec-plot-dica-nat">
                         <i className={`rec-ponto ${CLASSE[g.natureza] ?? "nat-encargo"}`} aria-hidden />
                         <span>{g.rotulo}</span>
-                        <b>{brl(g.totalCents)}</b>
+                        <b>{fmt(g.totalCents, g.natureza === "reembolso")}</b>
                         <svg className="rec-seta" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
                           <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
@@ -366,7 +369,7 @@ export function RecebiveisPlot({
                               {it.nome}
                               {it.detalhe ? <small>{it.detalhe}</small> : null}
                             </span>
-                            <b>{brl(it.valorCents)}</b>
+                            <b>{fmt(it.valorCents, g.natureza === "reembolso")}</b>
                           </li>
                         ))}
                       </ul>
@@ -375,7 +378,7 @@ export function RecebiveisPlot({
                     <div className="rec-plot-dica-nat">
                       <i className={`rec-ponto ${CLASSE[g.natureza] ?? "nat-encargo"}`} aria-hidden />
                       <span>{g.rotulo}</span>
-                      <b>{brl(g.totalCents)}</b>
+                      <b>{fmt(g.totalCents, g.natureza === "reembolso")}</b>
                     </div>
                   )}
                 </li>

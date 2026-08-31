@@ -18,6 +18,7 @@ import {
   useRecebiveis
 } from "@/components/time/recebiveis-dado";
 import { PixQr } from "@/components/time/PixQr";
+import { useOcultarValores } from "@/components/time/ocultar-valores";
 import { BotaoTema } from "@/components/layout/ThemeToggle";
 import { SeloCamada, brl } from "@/components/financeiro/Certeza";
 
@@ -1378,6 +1379,7 @@ function TelaComissoesVisao() {
   const [clienteFiltro, setClienteFiltro] = useState<string | null>(null);
   const [mesFiltro, setMesFiltro] = useState<string | null>(null);
   const [ordem, setOrdem] = useState<"mes" | "valor">("mes");
+  const { valor: fmt } = useOcultarValores();
 
   useEffect(() => {
     void (async () => {
@@ -1477,28 +1479,28 @@ function TelaComissoesVisao() {
       <section className="reemb-destaques" aria-label={`Comissões de ${mesNome(`${mesIndicador}-01`)}`}>
         <article className="reemb-destaque-card">
           <span className="reemb-kpi-rotulo">Total do mês</span>
-          <strong className="reemb-kpi-valor">{brl(kpiTotal)}</strong>
+          <strong className="reemb-kpi-valor">{fmt(kpiTotal)}</strong>
           <span className="reemb-kpi-detalhe">
             {MES_CURTO(mesIndicador)} · {kpiN} {kpiN === 1 ? "lançamento" : "lançamentos"}
           </span>
         </article>
         <article className="reemb-destaque-card">
           <span className="reemb-kpi-rotulo">Consultoria</span>
-          <strong className="reemb-kpi-valor">{brl(kpiConsultoria)}</strong>
+          <strong className="reemb-kpi-valor">{fmt(kpiConsultoria)}</strong>
           <span className="reemb-kpi-detalhe">
             {kpiTotal > 0 ? `${Math.round((kpiConsultoria / kpiTotal) * 100)}% do mês` : "—"}
           </span>
         </article>
         <article className="reemb-destaque-card">
           <span className="reemb-kpi-rotulo">Obras</span>
-          <strong className="reemb-kpi-valor">{brl(kpiObras)}</strong>
+          <strong className="reemb-kpi-valor">{fmt(kpiObras)}</strong>
           <span className="reemb-kpi-detalhe">
             {kpiTotal > 0 ? `${Math.round((kpiObras / kpiTotal) * 100)}% do mês` : "—"}
           </span>
         </article>
         <article className="reemb-destaque-card">
           <span className="reemb-kpi-rotulo">Outros</span>
-          <strong className="reemb-kpi-valor">{brl(kpiOutros)}</strong>
+          <strong className="reemb-kpi-valor">{fmt(kpiOutros)}</strong>
           <span className="reemb-kpi-detalhe">lotes, gestão, diárias e demais</span>
         </article>
       </section>
@@ -1516,7 +1518,7 @@ function TelaComissoesVisao() {
                     className={`rec-col${col.previsto ? " rec-col-previsto" : ""}${ativo ? " ativa" : ""}`}
                     aria-pressed={ativo}
                     onClick={() => setMesFiltro(ativo ? null : col.mes)}
-                    title={`${col.nomeMes}: ${brl(col.valorCents)}${col.previsto ? " (previsto)" : " (competência fechada)"}`}
+                    title={`${col.nomeMes}: ${fmt(col.valorCents)}${col.previsto ? " (previsto)" : " (competência fechada)"}`}
                   >
                     <span className="rec-col-area">
                       <span
@@ -1539,7 +1541,7 @@ function TelaComissoesVisao() {
                   {colFoco.nomeMes}
                   {colFoco.previsto ? " · previsto" : " · fechado"}
                 </strong>
-                <b>{brl(colFoco.valorCents)}</b>
+                <b>{fmt(colFoco.valorCents)}</b>
               </div>
               <p className="rec-plot-dica-nota">
                 Filtrando comissões de {colFoco.nomeMes}. Toque novamente no mês para limpar.
@@ -1583,11 +1585,11 @@ function TelaComissoesVisao() {
                   </div>
                   <div className="reemb-cartao-valores">
                     <span className="reemb-cartao-subrotulo">Total</span>
-                    <strong className="reemb-cartao-val-gasto">{brl(t.totalCents)}</strong>
+                    <strong className="reemb-cartao-val-gasto">{fmt(t.totalCents)}</strong>
                     {t.aReceberCents > 0 ? (
                       <>
                         <span className="reemb-cartao-subrotulo">A receber</span>
-                        <strong className="reemb-cartao-val-rec">{brl(t.aReceberCents)}</strong>
+                        <strong className="reemb-cartao-val-rec">{fmt(t.aReceberCents)}</strong>
                       </>
                     ) : null}
                   </div>
@@ -1697,7 +1699,7 @@ function TelaComissoesVisao() {
                     onClick={() => setMesFiltro(mesFiltro === c.mes ? null : c.mes)}
                     title={`${c.nomeMes}${c.previsto ? " · previsto" : " · fechado"}`}
                   >
-                    {MES_CURTO(c.mes)} · {brl(c.valorCents)}
+                    {MES_CURTO(c.mes)} · {fmt(c.valorCents)}
                   </button>
                 ))}
             </div>
@@ -1707,7 +1709,7 @@ function TelaComissoesVisao() {
         {temFiltro || mesFiltro ? (
           <p className="time-sub" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <span>
-              {ordenados.length} {ordenados.length === 1 ? "lançamento" : "lançamentos"} · {brl(totalFiltrado)}
+              {ordenados.length} {ordenados.length === 1 ? "lançamento" : "lançamentos"} · {fmt(totalFiltrado)}
             </span>
             <button type="button" className="reemb-filtro-limpar-btn" onClick={limparTudo}>
               Limpar tudo ×
@@ -1729,7 +1731,7 @@ function TelaComissoesVisao() {
                 {filtroQuando === "areceber" ? " a receber" : filtroQuando === "recebido" ? " fechados" : ""}
               </span>
               <span className="reemb-sumario-total">
-                Total <strong>{brl(totalFiltrado)}</strong>
+                Total <strong>{fmt(totalFiltrado)}</strong>
               </span>
             </div>
 
@@ -1743,7 +1745,7 @@ function TelaComissoesVisao() {
                         <div className="reemb-item-principal">
                           <div className="reemb-item-topo-linha">
                             <span className="reemb-item-titulo">{i.descricao}</span>
-                            <span className="reemb-item-valor">{brl(i.valorCents)}</span>
+                            <span className="reemb-item-valor">{fmt(i.valorCents)}</span>
                           </div>
                           <div className="reemb-item-sub-linha">
                             <span>{MES_CURTO(i.competencia)}</span>
@@ -3263,8 +3265,7 @@ function LogoBandeira({ bandeira }: { bandeira: string | null | undefined }) {
   }
   if (b === "mastercard") {
     return (
-      <svg className="time-cartao-brand-svg" viewBox="0 0 48 30" width="30" height="19" role="img" aria-label="Mastercard">
-        <rect width="48" height="30" rx="3" fill="#18181b" />
+      <svg className="time-cartao-brand-svg time-cartao-brand-livre" viewBox="0 0 48 30" width="30" height="19" role="img" aria-label="Mastercard">
         <circle cx="19" cy="15" r="8" fill="#eb001b" />
         <circle cx="29" cy="15" r="8" fill="#f79e1b" />
         <path d="M24 8.5 A8 8 0 0 1 24 21.5 A8 8 0 0 1 24 8.5 Z" fill="#ff5f00" />
@@ -3363,6 +3364,7 @@ function TelaPerfil({
   const [salvandoCartao, setSalvandoCartao] = useState(false);
   const [editandoConta, setEditandoConta] = useState(false);
   const [tema, setTema] = useState<"claro" | "escuro">("claro");
+  const { ocultar, setOcultar, valor } = useOcultarValores();
 
   useEffect(() => {
     const pegarTema = () => {
@@ -3787,6 +3789,20 @@ function TelaPerfil({
         </div>
       </div>
 
+      <div className="time-perfil-tema-seletor-linha">
+        <span className="time-perfil-tema-rotulo">Ocultar valores</span>
+        <button
+          type="button"
+          className="time-perfil-ocultar-switch"
+          role="switch"
+          aria-checked={ocultar}
+          aria-label={ocultar ? "Mostrar valores de salário e recebíveis" : "Ocultar valores de salário e recebíveis"}
+          onClick={() => setOcultar(!ocultar)}
+        >
+          <i aria-hidden />
+        </button>
+      </div>
+
       {/* 1. SEUS DADOS */}
       {dadosCompletos && !editandoDados ? (
         <section className="time-secao time-perfil-secao-dobravel">
@@ -3909,15 +3925,15 @@ function TelaPerfil({
         <section className="time-secao time-perfil-secao-dobravel">
           <details className="rec-secao-dobravel" open>
             <summary className="rec-secao-cabeca">
-              <div className="time-perfil-fin-titulo-grupo">
-                <span className="time-perfil-fin-super">Previsão de recebimento</span>
-                <h2 className="time-perfil-fin-mes">
+              <div>
+                <h2>Previsão de recebimento</h2>
+                <small style={{ color: "var(--muted)", fontSize: "11px", display: "block", marginTop: "2px" }}>
                   {resumoRec.mes ? nomeMesRec(resumoRec.mes) : "Próximo mês"}
-                </h2>
+                </small>
               </div>
               <span className="rec-secao-cabeca-direita">
                 <div className="time-perfil-fin-total-bloco">
-                  <strong className="time-perfil-fin-total-val">{brl(resumoRec.total)}</strong>
+                  <strong className="time-perfil-fin-total-val">{valor(resumoRec.total)}</strong>
                   <small className="time-perfil-fin-subrotulo">total previsto</small>
                 </div>
                 <IconeSetaPerfil />
@@ -3934,13 +3950,13 @@ function TelaPerfil({
                   ["Reembolso", resumoRec.reembolso, "nat-reembolso"]
                 ] as [string, number, string][])
                   .filter(([, v]) => v > 0)
-                  .map(([rotulo, valor, classe]) => (
+                  .map(([rotulo, cents, classe]) => (
                     <li key={rotulo} className="time-perfil-fin-item">
                       <div className="time-perfil-fin-item-esq">
                         <i className={`rec-ponto ${classe}`} aria-hidden />
                         <span>{rotulo}</span>
                       </div>
-                      <b>{brl(valor)}</b>
+                      <b>{valor(cents, rotulo === "Reembolso")}</b>
                     </li>
                   ))}
               </ul>
@@ -3951,7 +3967,7 @@ function TelaPerfil({
                   {resumoRec.aberto > 0 ? (
                     <div className="time-perfil-fin-aberto-card">
                       <span className="time-perfil-fin-aberto-rotulo">Reembolso em aberto</span>
-                      <strong className="time-perfil-fin-aberto-val reemb-cor">{brl(resumoRec.aberto)}</strong>
+                      <strong className="time-perfil-fin-aberto-val reemb-cor">{valor(resumoRec.aberto, true)}</strong>
                       <small className="time-perfil-fin-aberto-nota">total de parcelas a receber</small>
                     </div>
                   ) : null}
@@ -3959,7 +3975,7 @@ function TelaPerfil({
                   {(resumoRec.comissaoFutura ?? 0) > 0 ? (
                     <div className="time-perfil-fin-aberto-card">
                       <span className="time-perfil-fin-aberto-rotulo">Comissão futura</span>
-                      <strong className="time-perfil-fin-aberto-val comissao-cor">{brl(resumoRec.comissaoFutura)}</strong>
+                      <strong className="time-perfil-fin-aberto-val comissao-cor">{valor(resumoRec.comissaoFutura)}</strong>
                       <small className="time-perfil-fin-aberto-nota">total declarado em aberto</small>
                     </div>
                   ) : null}
@@ -4284,9 +4300,6 @@ function TelaPerfil({
                       <div className="time-perfil-cartao-mini-topo">
                         <div className="time-perfil-cartao-topo-esq">
                           <LogoBanco apelido={c.apelido} />
-                          <div className="time-perfil-cartao-chip-box">
-                            <IconeChipCartao />
-                          </div>
                         </div>
                         <div className="time-perfil-cartao-brand-box">
                           <LogoBandeira bandeira={c.bandeira} />
@@ -4294,10 +4307,15 @@ function TelaPerfil({
                       </div>
 
                       <div className="time-perfil-cartao-mini-corpo">
-                        <span className="time-perfil-cartao-final">•••• {c.final}</span>
-                        <span className="time-perfil-cartao-apelido" title={c.apelido ?? undefined}>
-                          {c.apelido || "Cartão pessoal"}
-                        </span>
+                        <div className="time-perfil-cartao-chip-box">
+                          <IconeChipCartao />
+                        </div>
+                        <div className="time-perfil-cartao-corpo-txt">
+                          <span className="time-perfil-cartao-final">•••• {c.final}</span>
+                          <span className="time-perfil-cartao-apelido" title={c.apelido ?? undefined}>
+                            {c.apelido || "Cartão pessoal"}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="time-perfil-cartao-mini-rodape">
@@ -4357,6 +4375,7 @@ function TelaPerfil({
 // ---------------------------------------------------------------------------
 
 function Inicio({ envios }: { envios: Envio[] }) {
+  const { valor } = useOcultarValores();
   /*
    * O INÍCIO É O ÍNDICE DO APP — a barra inferior saiu.
    *
@@ -4433,11 +4452,14 @@ function Inicio({ envios }: { envios: Envio[] }) {
           <Link href="/time/recebiveis" className="time-faixa-item time-faixa-destaque" id="guia-recebido">
             <span className="time-faixa-topo">Recebido</span>
             <strong className="time-faixa-valor">
-              {brl(recUltimoRemun > 0 ? recUltimoRemun : (ultimoMes?.totalCents ?? 0))}
+              {valor(
+                recUltimoRemun > 0 ? recUltimoRemun : (ultimoMes?.totalCents ?? 0),
+                recUltimoRemun === 0 && recUltimoReemb > 0
+              )}
             </strong>
             {ultimoMes && recUltimoReemb > 0 && recUltimoRemun > 0 ? (
               <span className="time-faixa-nota time-nota-reemb">
-                + {brl(recUltimoReemb)}
+                + {valor(recUltimoReemb, true)}
               </span>
             ) : null}
             <span className="time-faixa-rotulo">{mesUltimoNome}</span>
@@ -4449,15 +4471,18 @@ function Inicio({ envios }: { envios: Envio[] }) {
           >
             <span className="time-faixa-topo">A receber</span>
             <strong className="time-faixa-valor">
-              {brl(remunProxTotal > 0 ? remunProxTotal : (totalProxMes > 0 ? totalProxMes : (saldoReembTotalAberto > 0 ? saldoReembTotalAberto : (rec?.totalCents ?? 0))))}
+              {valor(
+                remunProxTotal > 0 ? remunProxTotal : (totalProxMes > 0 ? totalProxMes : (saldoReembTotalAberto > 0 ? saldoReembTotalAberto : (rec?.totalCents ?? 0))),
+                remunProxTotal === 0 && (reembProx > 0 || saldoReembTotalAberto > 0)
+              )}
             </strong>
             {proxMes && reembProx > 0 && remunProxTotal > 0 ? (
               <span className="time-faixa-nota time-nota-reemb">
-                + {brl(reembProx)}
+                + {valor(reembProx, true)}
               </span>
             ) : (proxMes && remunProxTotal > 0 && saldoReembTotalAberto > 0 ? (
               <span className="time-faixa-nota time-nota-reemb">
-                + {brl(saldoReembTotalAberto)}
+                + {valor(saldoReembTotalAberto, true)}
               </span>
             ) : null)}
             <span className="time-faixa-rotulo">
@@ -4581,9 +4606,35 @@ function Inicio({ envios }: { envios: Envio[] }) {
   );
 }
 
-/** Compras e pedidos registrados pela pessoa — tela dedicada, não um expandível no Início. */
+/**
+ * Compras e pedidos da pessoa.
+ *
+ * Não usa `.time-atalho`: aquele casco é de menu (ícone 36px + texto de
+ * atalho). Aqui a pergunta é "o que eu registrei, quanto e em que estado",
+ * o mesmo recorte da lista de reembolso.
+ */
 function MinhasCompras({ envios }: { envios: Envio[] }) {
-  const compras = envios.filter((e) => e.origem === "custo" || e.origem === "compra");
+  const compras = useMemo(
+    () => envios.filter((e) => e.origem === "custo" || e.origem === "compra"),
+    [envios]
+  );
+  const [periodo, setPeriodo] = useState("tudo");
+  const [ordem, setOrdem] = useState<"recente" | "valor_desc" | "valor_asc">("recente");
+
+  const filtradas = useMemo(() => {
+    const lista = compras.filter((e) => envioNoPeriodo(e, periodo));
+    return [...lista].sort((a, b) => {
+      if (ordem === "valor_desc") return (b.valorCents ?? -1) - (a.valorCents ?? -1);
+      if (ordem === "valor_asc") return (a.valorCents ?? Infinity) - (b.valorCents ?? Infinity);
+      const da = dataDoEnvio(a);
+      const db = dataDoEnvio(b);
+      return db.localeCompare(da) || b.criadoEm.localeCompare(a.criadoEm);
+    });
+  }, [compras, periodo, ordem]);
+
+  const totalCents = filtradas.reduce((a, e) => a + (e.valorCents ?? 0), 0);
+  const nAguardando = filtradas.filter((e) => e.statusExtrato === "aguardando").length;
+  const nRegistrado = filtradas.filter((e) => e.statusExtrato === "registrado").length;
 
   return (
     <div className="time-tela-padrao">
@@ -4607,47 +4658,79 @@ function MinhasCompras({ envios }: { envios: Envio[] }) {
         </div>
       ) : (
         <>
-          <p className="time-sub time-compras-resumo">
-            {compras.length === 1 ? "1 registro" : `${compras.length} registros`}
-          </p>
-          <ul className="time-compras-pagina">
-            {compras.map((c) => (
-              <li key={`${c.origem}-${c.origemId}`}>
-                <Link
-                  href={`/time/envios#envio-${c.origem}-${c.origemId}`}
-                  className="time-atalho"
-                >
-                  <span className="time-atalho-icone" aria-hidden>
-                    <IconeAtalho tipo={c.origem === "compra" ? "compra" : "custo"} />
-                  </span>
-                  <span className="time-atalho-texto">
-                    <strong>{c.titulo}</strong>
-                    <span>
-                      {c.code} · {ESTADO_ROTULO[c.estado]?.texto ?? c.estado}
-                      {c.dataRef ? ` · ${c.dataRef.slice(8, 10)}/${c.dataRef.slice(5, 7)}` : ""}
-                    </span>
-                  </span>
-                  <b className="time-compras-pagina-valor">
-                    {c.valorCents !== null ? brl(c.valorCents) : "—"}
-                  </b>
-                  <svg
-                    className="time-atalho-seta"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                  >
-                    <path d="M9 6l6 6-6 6" />
-                  </svg>
-                </Link>
-              </li>
+          <section className="reemb-destaques" aria-label="Resumo das compras">
+            <article className="reemb-destaque-card">
+              <span className="reemb-kpi-rotulo">Total</span>
+              <strong className="reemb-kpi-valor">{brl(totalCents)}</strong>
+              <span className="reemb-kpi-detalhe">
+                {filtradas.length} {filtradas.length === 1 ? "registro" : "registros"}
+              </span>
+            </article>
+            <article className="reemb-destaque-card">
+              <span className="reemb-kpi-rotulo">Aguardando</span>
+              <strong className="reemb-kpi-valor">{nAguardando}</strong>
+              <span className="reemb-kpi-detalhe">
+                {nRegistrado} {nRegistrado === 1 ? "registrada" : "registradas"}
+              </span>
+            </article>
+          </section>
+
+          <div className="reemb-filtro-chips" role="group" aria-label="Período">
+            {FILTRO_PERIODO_OPCOES.map(([v, r]) => (
+              <button
+                key={v}
+                type="button"
+                className={`reemb-chip ${periodo === v ? "ativo" : ""}`}
+                aria-pressed={periodo === v}
+                onClick={() => setPeriodo(v)}
+              >
+                {r}
+              </button>
             ))}
-          </ul>
+          </div>
+          <div className="reemb-filtro-chips" role="group" aria-label="Ordenar">
+            {(
+              [
+                ["recente", "Mais recentes"],
+                ["valor_desc", "Maior valor"],
+                ["valor_asc", "Menor valor"]
+              ] as const
+            ).map(([v, r]) => (
+              <button
+                key={v}
+                type="button"
+                className={`reemb-chip ${ordem === v ? "ativo" : ""}`}
+                aria-pressed={ordem === v}
+                onClick={() => setOrdem(v)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+
+          {filtradas.length === 0 ? (
+            <p className="time-sub envios-vazio">Nada neste período. Troque o filtro ou registre outra compra.</p>
+          ) : (
+            <ul className="compras-lista">
+              {filtradas.map((c) => (
+                <li key={`${c.origem}-${c.origemId}`}>
+                  <Link href={`/time/envios#envio-${c.origem}-${c.origemId}`} className="compras-item">
+                    <div className="compras-item-topo">
+                      <strong className="compras-item-titulo">{c.titulo}</strong>
+                      <b className="compras-item-valor">{c.valorCents !== null ? brl(c.valorCents) : "—"}</b>
+                    </div>
+                    <div className="compras-item-meta">
+                      <span>{formatDataEnvio(c)}</span>
+                      {c.code ? <span>{c.code}</span> : null}
+                      <span className={`envios-status envios-status-${c.statusExtrato}`}>
+                        {ESTADO_ROTULO[c.estado]?.texto ?? STATUS_EXTRATO_ROTULO[c.statusExtrato]}
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
           <p className="time-sub time-rodape">
             <Link href="/time/custo">Registrar outra compra →</Link>
           </p>
@@ -7153,9 +7236,9 @@ function IconeExpandir({ aberto }: { aberto: boolean }) {
 
 const FILTRO_PERIODO_OPCOES: [string, string][] = [
   ["tudo", "Tudo"],
-  ["7d", "7 dias"],
-  ["30d", "30 dias"],
-  ["90d", "90 dias"]
+  ["hoje", "Hoje"],
+  ["7d", "Semana"],
+  ["mes", "Mês"]
 ];
 
 function rotuloFiltroTipo(v: string) {
@@ -7202,6 +7285,25 @@ function dataDoEnvio(e: Envio) {
 function formatDataEnvio(e: Envio) {
   const [a, m, dia] = dataDoEnvio(e).split("-");
   return `${dia}/${m}/${a.slice(2)}`;
+}
+
+/** Compara YYYY-MM-DD como string — o mesmo cuidado de `dataDoEnvio`. */
+function dataNoPeriodo(dataIso: string, periodo: string) {
+  if (periodo === "tudo") return true;
+  const d = dataIso.slice(0, 10);
+  const hoje = HOJE();
+  if (periodo === "hoje") return d === hoje;
+  if (periodo === "mes") return d.slice(0, 7) === hoje.slice(0, 7);
+  const dias = periodo === "7d" ? 7 : periodo === "30d" ? 30 : periodo === "90d" ? 90 : null;
+  if (dias === null) return true;
+  const dt = new Date();
+  dt.setDate(dt.getDate() - dias);
+  const limite = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  return d >= limite;
+}
+
+function envioNoPeriodo(e: Envio, periodo: string) {
+  return dataNoPeriodo(dataDoEnvio(e), periodo);
 }
 
 function TelaItemGasto({
@@ -8126,13 +8228,17 @@ function ItemParteReembolso({ p }: { p: DetalheEnvio["partes"][number] }) {
   return (
     <li className={`envios-produto${listaAberta ? " envios-produto-aberto" : ""}${emAtraso ? " envios-produto-atraso" : ""}`}>
       <Link href={hrefItem} className="envios-produto-linha" title="Abrir item">
-        <span className="envios-produto-nome">{tituloBase}</span>
-        <span className={`envios-produto-cat${p.categoriaRotulo ? "" : " envios-produto-cat-falta"}`}>
-          {p.categoriaRotulo ?? "Sem cat."}
+        <span className="envios-produto-topo">
+          <span className="envios-produto-nome">{tituloBase}</span>
+          <span className="envios-produto-valor">{brl(p.valorCents)}</span>
         </span>
-        <span className="envios-produto-valor">{brl(p.valorCents)}</span>
-        <span className={`envios-produto-situacao envios-produto-situacao-${situacaoParcela}`}>
-          {situacaoRotulo}
+        <span className="envios-produto-meta">
+          <span className={`envios-produto-cat${p.categoriaRotulo ? "" : " envios-produto-cat-falta"}`}>
+            {p.categoriaRotulo ?? "Sem categoria"}
+          </span>
+          <span className={`envios-produto-situacao envios-produto-situacao-${situacaoParcela}`}>
+            {situacaoRotulo}
+          </span>
         </span>
       </Link>
 
@@ -8282,55 +8388,27 @@ function LinhaExtrato({
   onToggle?: () => void;
 }) {
   const tipo = ORIGEM_ROTULO[e.origem] ?? e.origem;
-  const meta = metaEnvio(e);
   const faltaComprovante = e.origem === "reembolso" && e.itens > 0 && e.itensComAnexo < e.itens;
   const qtdItens = Math.max(e.itens, e.itensPreview.length);
-  const chips = e.itensPreview.slice(0, 4);
-  const resto = Math.max(0, qtdItens - chips.length);
-  const temMini = qtdItens > 0 && !compacta;
+
+  const dataCurta = formatDataEnvio(e).slice(0, 5);
+  const meta = [
+    dataCurta,
+    tipo,
+    qtdItens > 1 ? `${qtdItens} itens` : null,
+    faltaComprovante ? "sem comprovante" : null,
+    STATUS_EXTRATO_ROTULO[e.statusExtrato]
+  ].filter(Boolean);
 
   const corpo = (
     <>
-      <div className="envios-cel envios-cel-data-linha">
-        <span className="envios-cel-data" data-label="Data">
-          {formatDataEnvio(e)}
-        </span>
-        {temMini ? (
-          <span className="envios-mini-acao">
-            <span className="envios-mini-qtd">
-              {qtdItens} {qtdItens === 1 ? "item" : "itens"}
-            </span>
-            <IconeExpandir aberto={Boolean(aberto)} />
-          </span>
-        ) : null}
-      </div>
-      <span className="envios-cel envios-cel-tipo" data-label="Tipo">
-        {tipo}
-      </span>
-      <div className="envios-cel envios-cel-item" data-label="Item">
+      <div className="envios-linha-topo">
         <strong className="envios-titulo">{e.titulo}</strong>
-        <span className={`envios-meta${faltaComprovante ? " time-falta" : ""}`}>{meta}</span>
+        <span className="envios-cel-valor">{e.valorCents === null ? "—" : brl(e.valorCents)}</span>
       </div>
-      <span className="envios-cel envios-cel-valor" data-label="Valor">
-        {e.valorCents === null ? "—" : brl(e.valorCents)}
-      </span>
-      <span className="envios-cel envios-cel-status" data-label="Status">
-        <span className={`envios-status envios-status-${e.statusExtrato}`}>{STATUS_EXTRATO_ROTULO[e.statusExtrato]}</span>
-      </span>
-      {temMini && !aberto && chips.length > 0 ? (
-        <div className="envios-mini-chips">
-          {chips.map((m, i) => (
-            <span
-              key={`${m.titulo}-${i}`}
-              className={`envios-mini-chip${m.temComprovante ? " envios-mini-ok" : ""}`}
-              title={m.titulo}
-            >
-              {m.titulo.replace(/\s+\d+\/\d+.*$/, "").trim().slice(0, 14) || m.titulo.slice(0, 14)}
-            </span>
-          ))}
-          {resto > 0 ? <span className="envios-mini-mais">+{resto}</span> : null}
-        </div>
-      ) : null}
+      <p className="envios-linha-meta">
+        {meta.join(" · ")}
+      </p>
       {e.resposta ? (
         <div className="envios-resposta">
           <strong>{e.decididoPor ?? "financeiro"}:</strong> {e.resposta}
@@ -8346,14 +8424,18 @@ function LinhaExtrato({
   }
 
   return (
-    <article className={`envios-linha${aberto ? " envios-linha-aberta" : ""}${temMini ? " envios-linha-com-mini" : ""}`}>
+    <article className={`envios-linha${aberto ? " envios-linha-aberta" : ""}`}>
       <button type="button" className="envios-linha-botao" onClick={onToggle} aria-expanded={aberto}>
         {corpo}
-        {!temMini ? (
-          <span className="envios-linha-chevron" aria-hidden>
-            <IconeExpandir aberto={Boolean(aberto)} />
-          </span>
-        ) : null}
+        <svg className="envios-linha-chevron" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path
+            d={aberto ? "M4 10L8 6L12 10" : "M4 6L8 10L12 6"}
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </button>
     </article>
   );
@@ -8495,6 +8577,7 @@ function bandasDoMes(
 }
 
 function ListaRecebidos() {
+  const { valor } = useOcultarValores();
   const { dado, erro, carregando } = useRecebiveis();
   const [busca, setBusca] = useState("");
   const [naturezas, setNaturezas] = useState<Set<string>>(new Set());
@@ -8525,19 +8608,10 @@ function ListaRecebidos() {
     const t = semAcento(busca.trim());
     const min = valorMin ? centavosDoTexto(valorMin) : null;
     const max = valorMax ? centavosDoTexto(valorMax) : null;
-    const limite =
-      periodo === "7d" || periodo === "30d" || periodo === "90d"
-        ? (() => {
-            const d = new Date();
-            d.setDate(d.getDate() - Number(periodo.replace("d", "")));
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-          })()
-        : null;
-
     const lista = todasBandas.filter((b) => {
       if (naturezas.size > 0 && !naturezas.has(b.natureza)) return false;
       const dataRef = b.pix?.data ?? `${b.mes}-01`;
-      if (limite && dataRef < limite) return false;
+      if (!dataNoPeriodo(dataRef, periodo)) return false;
       if (min !== null && b.valorCents < min) return false;
       if (max !== null && b.valorCents > max) return false;
       if (!t) return true;
@@ -8749,7 +8823,7 @@ function ListaRecebidos() {
       ) : (
         <>
           <p className="hist-rec-total">
-            <strong>{brl(totalFiltrado)}</strong>
+            <strong>{valor(totalFiltrado, filtradas.every((b) => b.natureza === "reembolso"))}</strong>
             <span>
               {qtdFiltros > 0
                 ? `em ${filtradas.length} parte${filtradas.length === 1 ? "" : "s"} filtrada${filtradas.length === 1 ? "" : "s"}`
@@ -8768,7 +8842,7 @@ function ListaRecebidos() {
               <section key={g.mes} className="hist-rec-mes">
                 <h3>
                   {nomeMesRec(g.mes).charAt(0).toUpperCase() + nomeMesRec(g.mes).slice(1)}
-                  <b>{brl(g.cents)}</b>
+                  <b>{valor(g.cents, g.bandas.every((b) => b.natureza === "reembolso"))}</b>
                 </h3>
                 <ul className="hist-rec-bandas">
                   {g.bandas.map((b) => (
@@ -8782,7 +8856,7 @@ function ListaRecebidos() {
                           </span>
                         ) : null}
                       </span>
-                      <span className="hist-rec-banda-valor">{brl(b.valorCents)}</span>
+                      <span className="hist-rec-banda-valor">{valor(b.valorCents, b.natureza === "reembolso")}</span>
                     </li>
                   ))}
                 </ul>
@@ -8800,7 +8874,7 @@ function ListaRecebidos() {
                       {b.pix ? ` · ${b.pix.conta}` : ""}
                     </span>
                   </span>
-                  <span className="hist-rec-banda-valor">{brl(b.valorCents)}</span>
+                  <span className="hist-rec-banda-valor">{valor(b.valorCents, b.natureza === "reembolso")}</span>
                 </li>
               ))}
             </ul>
@@ -8839,20 +8913,11 @@ function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?:
      * do filtro dependendo do fuso do aparelho. Duas strings ISO comparam por
      * ordem alfabética e são o mesmo dia em qualquer lugar.
      */
-    const limite =
-      periodo === "7d" || periodo === "30d" || periodo === "90d"
-        ? (() => {
-            const d = new Date();
-            d.setDate(d.getDate() - Number(periodo.replace("d", "")));
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-          })()
-        : null;
-
     let lista = envios.filter((e) => {
       if (grupoFiltro && e.grupoChave !== grupoFiltro) return false;
       if (tipo && e.origem !== tipo) return false;
       if (estadoFiltro && e.statusExtrato !== estadoFiltro) return false;
-      if (limite && dataDoEnvio(e) < limite) return false;
+      if (!envioNoPeriodo(e, periodo)) return false;
       if (min !== null && (e.valorCents === null || e.valorCents < min)) return false;
       if (max !== null && (e.valorCents === null || e.valorCents > max)) return false;
       if (!t) return true;
@@ -9212,14 +9277,7 @@ function ListaEnvios({ envios, compacta = false }: { envios: Envio[]; compacta?:
       {filtrados.length === 0 ? (
         <p className="time-sub envios-vazio">Nada com esses filtros. Tente outro termo ou limpe a busca.</p>
       ) : (
-        <div className="envios-tabela" role="table" aria-label="Extrato de envios">
-          <div className="envios-tabela-cabeca" role="row">
-            <span role="columnheader">Data</span>
-            <span role="columnheader">Tipo</span>
-            <span role="columnheader">Item</span>
-            <span role="columnheader">Valor</span>
-            <span role="columnheader">Status</span>
-          </div>
+        <div className="envios-tabela" role="list" aria-label="Extrato de envios">
           {filtrados.map((e) => {
             const k = chaveEnvio(e);
             const abertoLinha = aberto === k;

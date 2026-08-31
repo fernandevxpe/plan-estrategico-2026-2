@@ -123,6 +123,26 @@ export function chaveCusto(counterpartyId: number | null, categoryId: number): s
   return `${counterpartyId ?? 0}:${categoryId}`;
 }
 
+/**
+ * O banco rotula o mesmo DAS de três jeitos (Receita Federal, DAS-SIMPLES
+ * NACIONAL, PIX sem favorecido). O grão da matriz é contraparte × categoria,
+ * então viram três linhas para um único tributo 7.01.
+ */
+export function chaveAgrupamentoCusto(item: {
+  categoriaCode: string;
+  counterpartyId: number | null;
+  categoryId: number;
+}): string {
+  if (item.categoriaCode === "7.01") return "grupo:7.01";
+  return chaveCusto(item.counterpartyId, item.categoryId);
+}
+
+export function nomeAgrupadoCusto(itens: { nome: string; categoriaCode: string; categoriaNome: string }[]): string {
+  const das = itens.find((i) => i.categoriaCode === "7.01");
+  if (das) return das.categoriaNome;
+  return itens[0]?.nome ?? "";
+}
+
 /** 6.% é gente; 4.01 é comissão paga a vendedor, também gente. */
 export function categoriaEGente(code: string | null): boolean {
   if (!code) return false;
@@ -130,10 +150,24 @@ export function categoriaEGente(code: string | null): boolean {
 }
 
 /**
- * Predicado SQL: a contraparte está ligada a alguém do roster, confirmada.
- * É o MESMO JOIN que Pessoas usa no grão (`fin_person_counterparty` +
- * `status = 'confirmado'`). Qualquer outro critério voltaria a contar o PIX
- * de Kevin em Marketing aqui e lá.
+ * Rita (0168): papel Limpeza, 4.03, R$ 6.150 em 2026. O dono tirou da folha —
+ * é faxina do escritório, bloco de aluguel/água, 50/50 consultoria-obras na
+ * linha. Sem esta guarda o PIX dela somaria em Pessoas E em Custo da empresa.
+ */
+export const PAPEL_SERVICO_DA_CASA = "Limpeza";
+
+export function sqlPessoaNaoEServicoDaCasa(aliasPessoa: string): string {
+  if (!/^[a-z_][a-z0-9_]*$/.test(aliasPessoa)) {
+    throw new Error(`sqlPessoaNaoEServicoDaCasa: alias recusado (${aliasPessoa})`);
+  }
+  return `coalesce(${aliasPessoa}.role, '') <> '${PAPEL_SERVICO_DA_CASA}'`;
+}
+
+/**
+ * Predicado SQL: a contraparte está ligada a alguém do roster, confirmada,
+ * e não é serviço da casa (faxina). É o MESMO JOIN que Pessoas usa no grão.
+ * Contar Kevin em Marketing aqui e lá somaria duas vezes; Rita é a exceção
+ * explícita — serviço, não folha.
  *
  * `aliasId` é a coluna de counterparty_id (ex.: `t.counterparty_id`).
  */
@@ -143,6 +177,8 @@ export function sqlContraparteEPessoa(aliasId: string): string {
   }
   return (
     `EXISTS (SELECT 1 FROM fin_person_counterparty l ` +
-    `WHERE l.counterparty_id = ${aliasId} AND l.status = 'confirmado')`
+    `JOIN fin_person _pe ON _pe.id = l.person_id ` +
+    `WHERE l.counterparty_id = ${aliasId} AND l.status = 'confirmado' ` +
+    `AND ${sqlPessoaNaoEServicoDaCasa("_pe")})`
   );
 }

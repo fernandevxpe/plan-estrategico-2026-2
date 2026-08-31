@@ -16,11 +16,13 @@ import { ChevronRight, CircleDashed, Cpu, Hammer, House, Layers, Search, X } fro
 import { buscarCustos, passaBusca, type HitBusca } from "@/lib/financeiro/custo-empresa-busca";
 
 import {
+  chaveAgrupamentoCusto,
   chaveCusto,
   CLASSES,
   COR_CLASSE,
   COR_TIME,
   destinosTime,
+  nomeAgrupadoCusto,
   ORDEM_TIME,
   ROTULO_CLASSE,
   ROTULO_TIME,
@@ -28,10 +30,11 @@ import {
 } from "@/lib/financeiro/custo-empresa-eixos";
 import {
   PARTES,
-  SUBPARTES,
   parteDaSubparte,
   rotuloSubparte,
   subparteCustoDe,
+  subparteExibida,
+  subpartesVisiveis,
   type ParteCusto,
   type SubparteCusto
 } from "@/lib/financeiro/custo-empresa-partes";
@@ -44,7 +47,7 @@ import {
   type FatiaCusto
 } from "@/lib/financeiro/repartir-custo-area";
 
-import { CelulaAreasCusto, CelulaTimeCusto, patchCusto } from "./FinCustoEmpresaCelulas";
+import { CelulaAreasCusto, CelulaTimeCusto, patchCustoVarios } from "./FinCustoEmpresaCelulas";
 import { catalogoAreasEmpresa, corAreaEmpresa } from "./FinPessoaEditor";
 import { FinPessoasCustoGraficos } from "./FinPessoasCustoGraficos";
 import { FinSecaoColapsavel } from "./FinSecaoColapsavel";
@@ -75,8 +78,9 @@ function alternarGrupo(set: Dispatch<SetStateAction<Ativos>>, chave: string, tod
 }
 
 function textoBloco(sub: SubparteCusto): string {
-  const parte = PARTES.find((p) => p.slug === parteDaSubparte(sub));
-  return `${rotuloSubparte(sub)} ${parte?.nome ?? ""}`;
+  const visivel = subparteExibida(sub);
+  const parte = PARTES.find((p) => p.slug === parteDaSubparte(visivel));
+  return `${rotuloSubparte(visivel)} ${parte?.nome ?? ""}`;
 }
 
 function grupoEstreito(ativos: Ativos, todos: readonly string[]) {
@@ -229,6 +233,45 @@ function somarMeses(porMes: Record<string, number>, meses: string[]) {
   return s;
 }
 
+function fundirLinhas(linhas: Linha[], nMeses: number): Linha[] {
+  const grupos = new Map<string, Linha[]>();
+  for (const l of linhas) {
+    const k = `${chaveAgrupamentoCusto(l.item)}:${l.subparte}`;
+    const arr = grupos.get(k) ?? [];
+    arr.push(l);
+    grupos.set(k, arr);
+  }
+  const saida: Linha[] = [];
+  for (const [chaveGrupo, membros] of grupos) {
+    if (membros.length === 1) {
+      saida.push({ ...membros[0], membros: [membros[0].item] });
+      continue;
+    }
+    membros.sort((a, b) => b.totalCents - a.totalCents);
+    const porMes: Record<string, number> = {};
+    let totalCents = 0;
+    const itens: ItemCusto[] = [];
+    for (const m of membros) {
+      totalCents += m.totalCents;
+      itens.push(m.item);
+      for (const [mes, cents] of Object.entries(m.porMes)) {
+        porMes[mes] = (porMes[mes] ?? 0) + cents;
+      }
+    }
+    const cabeca = membros[0];
+    saida.push({
+      chave: chaveGrupo,
+      item: { ...cabeca.item, nome: nomeAgrupadoCusto(itens) },
+      porMes,
+      totalCents,
+      mediaCents: Math.round(totalCents / nMeses),
+      subparte: cabeca.subparte,
+      membros: itens
+    });
+  }
+  return saida.sort((a, b) => b.totalCents - a.totalCents);
+}
+
 type Linha = {
   item: ItemCusto;
   chave: string;
@@ -236,6 +279,8 @@ type Linha = {
   totalCents: number;
   mediaCents: number;
   subparte: SubparteCusto;
+  /** Pares reais atrás de uma linha agrupada (DAS 7.01). */
+  membros: ItemCusto[];
 };
 
 const ICONE_PARTE: Record<ParteCusto, typeof House> = {
@@ -372,8 +417,8 @@ function TabelaMatriz({
                     </span>
                     {mostrarCadastro ? (
                       <div className="fin-pessoas-matriz-cadastro" onClick={(e) => e.stopPropagation()}>
-                        <CelulaTimeCusto item={linha.item} times={times} />
-                        <CelulaAreasCusto item={linha.item} areas={areas} />
+                        <CelulaTimeCusto item={linha.item} times={times} tambem={linha.membros} />
+                        <CelulaAreasCusto item={linha.item} areas={areas} tambem={linha.membros} />
                       </div>
                     ) : null}
                   </div>
@@ -476,8 +521,6 @@ export function FinCustosEmpresaMatriz({
       const item = itemPorChave.get(chave);
       if (!item) continue;
       const subparte = blocosManuais[chave] ?? item.bloco ?? subparteCustoDe(item);
-      if (termoBusca && !passaBusca({ chave, nome: item.nome, categoriaCode: item.categoriaCode, categoriaNome: item.categoriaNome, subparte, blocoTexto: textoBloco(subparte) }, busca))
-        continue;
       if (
         grupoEstreito(timesAtivos, timesDisponiveis) &&
         !destinosTime(item.time).some((d) => estaLigado(timesAtivos, d.slug))
@@ -498,10 +541,25 @@ export function FinCustosEmpresaMatriz({
         porMes,
         totalCents,
         mediaCents: Math.round(totalCents / n),
-        subparte
+        subparte,
+        membros: [item]
       });
     }
-    return lista.sort((a, b) => b.totalCents - a.totalCents);
+    const fundidas = fundirLinhas(lista, n);
+    if (!termoBusca) return fundidas;
+    return fundidas.filter((l) =>
+      passaBusca(
+        {
+          chave: l.chave,
+          nome: l.item.nome,
+          categoriaCode: l.item.categoriaCode,
+          categoriaNome: l.item.categoriaNome,
+          subparte: subparteExibida(l.subparte),
+          blocoTexto: `${textoBloco(l.subparte)} ${l.membros.map((m) => m.nome).join(" ")}`.trim()
+        },
+        busca
+      )
+    );
   }, [
     dados.celulas,
     itemPorChave,
@@ -593,9 +651,13 @@ export function FinCustosEmpresaMatriz({
 
   const blocos = useMemo(() => {
     return PARTES.map((parte) => {
-      const daParte = linhas.filter((l) => parteDaSubparte(l.subparte) === parte.slug);
-      const subs = SUBPARTES.filter((s) => s.parte === parte.slug)
-        .map((s) => ({ ...s, linhas: daParte.filter((l) => l.subparte === s.slug) }))
+      const daParte = linhas.filter((l) => parteDaSubparte(subparteExibida(l.subparte)) === parte.slug);
+      const subs = subpartesVisiveis()
+        .filter((s) => s.parte === parte.slug)
+        .map((s) => ({
+          ...s,
+          linhas: daParte.filter((l) => subparteExibida(l.subparte) === s.slug)
+        }))
         .filter((s) => s.linhas.length > 0);
       const totalCents = daParte.reduce((s, l) => s + l.totalCents, 0);
       return { ...parte, linhas: daParte, subs, totalCents };
@@ -630,7 +692,8 @@ export function FinCustosEmpresaMatriz({
         porMes,
         totalCents,
         mediaCents: Math.round(totalCents / n),
-        subparte: "financeiro"
+        subparte: "financeiro",
+        membros: []
       });
     }
     return lista.sort((a, b) => b.totalCents - a.totalCents);
@@ -644,8 +707,8 @@ export function FinCustosEmpresaMatriz({
           nome: l.item.nome,
           categoriaCode: l.item.categoriaCode,
           categoriaNome: l.item.categoriaNome,
-          subparte: l.subparte,
-          blocoTexto: textoBloco(l.subparte)
+          subparte: subparteExibida(l.subparte),
+          blocoTexto: `${textoBloco(l.subparte)} ${l.membros.map((m) => m.nome).join(" ")}`.trim()
         })),
         busca
       ),
@@ -691,11 +754,15 @@ export function FinCustosEmpresaMatriz({
     setEmVooMover(true);
     try {
       for (const l of alvos) {
-        await patchCusto(l.item, { bloco: destino });
+        const itens = l.membros.length ? l.membros : [l.item];
+        await patchCustoVarios(itens, { bloco: destino });
       }
       setBlocosManuais((antes) => {
         const prox = { ...antes };
-        for (const l of alvos) prox[l.chave] = destino;
+        for (const l of alvos) {
+          const itens = l.membros.length ? l.membros : [l.item];
+          for (const i of itens) prox[chaveCusto(i.counterpartyId, i.categoryId)] = destino;
+        }
         return prox;
       });
       setSelecionadas(new Set());
@@ -731,7 +798,7 @@ export function FinCustosEmpresaMatriz({
             { titulo: "Por área da empresa", fatias: porArea, corDe: (slug) => corAreaEmpresa(slug) },
             { titulo: "Por classe", fatias: porClasse, corDe: (slug) => COR_CLASSE[slug as ClasseCusto] ?? "var(--muted)" }
           ]}
-          nota="Time e área são cadastro: o que você marca na linha abaixo. Classe (operacional / máquinas) sai do plano de contas. Gente fica fora — Pessoas já conta."
+          nota="Time e área são cadastro: o que você marca na linha abaixo. Classe (operacional / máquinas) sai do plano de contas. Gente fica em Pessoas — limpeza (Rita) é serviço da casa e entra aqui."
           ultimoMesLabel={ultimoMes ? monthKeyLabel(ultimoMes) : "—"}
           mediaLabel={`Média de ${meses.length} meses`}
           opcoesComparativo={opcoesComparativo}
@@ -784,11 +851,13 @@ export function FinCustosEmpresaMatriz({
                 <option value="">escolher bloco…</option>
                 {PARTES.map((p) => (
                   <optgroup key={p.slug} label={p.nome}>
-                    {SUBPARTES.filter((s) => s.parte === p.slug).map((s) => (
-                      <option key={s.slug} value={s.slug}>
-                        {s.nome}
-                      </option>
-                    ))}
+                    {subpartesVisiveis()
+                      .filter((s) => s.parte === p.slug)
+                      .map((s) => (
+                        <option key={s.slug} value={s.slug}>
+                          {s.nome}
+                        </option>
+                      ))}
                   </optgroup>
                 ))}
               </select>

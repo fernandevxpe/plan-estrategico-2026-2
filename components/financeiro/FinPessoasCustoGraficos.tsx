@@ -446,7 +446,8 @@ function Donut({
             nameKey="nome"
             innerRadius={40}
             outerRadius={64}
-            paddingAngle={dados.length > 8 ? 1 : 2}
+            paddingAngle={0}
+            stroke="none"
             label={(props) => <RotuloFatia {...props} minimo={minimo} />}
             labelLine={(props) => <LinhaFatia {...props} minimo={minimo} />}
           >

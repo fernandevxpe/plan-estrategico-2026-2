@@ -1,7 +1,7 @@
 // Prova dos blocos da matriz (padrão × obras × organizar).
 // Roda com: node scripts/test-custo-empresa-partes.ts
 
-import { parteCustoDe, subparteCustoDe, type ItemParaParte } from "../lib/financeiro/custo-empresa-partes.ts";
+import { parteCustoDe, subparteCustoDe, subparteExibida, subpartesVisiveis, type ItemParaParte } from "../lib/financeiro/custo-empresa-partes.ts";
 
 let falhas = 0;
 let provas = 0;
@@ -32,9 +32,9 @@ ok(
 ok(parteCustoDe(item({ nome: "Ancora Imobiliária", categoriaCode: "5.01" })) === "padrao", "aluguel vive em padrão");
 ok(subparteCustoDe(item({ nome: "Receita Federal", categoriaCode: "7.01" })) === "impostos", "DAS é imposto");
 ok(subparteCustoDe(item({ nome: "PREF MUN RECIFE", categoriaCode: "7.02" })) === "impostos", "ISS é imposto");
-ok(subparteCustoDe(item({ nome: "Compesa", categoriaCode: "5.02" })) === "utilidades", "água");
-ok(subparteCustoDe(item({ nome: "Neoenergia Pernambuco", categoriaCode: "5.02" })) === "utilidades", "energia");
-ok(subparteCustoDe(item({ nome: "Claro", categoriaCode: "5.02" })) === "utilidades", "internet");
+ok(subparteCustoDe(item({ nome: "Compesa", categoriaCode: "5.02" })) === "aluguel", "água mora com aluguel");
+ok(subparteCustoDe(item({ nome: "Neoenergia Pernambuco", categoriaCode: "5.02" })) === "aluguel", "energia mora com aluguel");
+ok(subparteCustoDe(item({ nome: "Claro", categoriaCode: "5.02" })) === "aluguel", "internet mora com aluguel");
 ok(subparteCustoDe(item({ nome: "EMBRASUL IND ELETRONICA LTDA", categoriaCode: "8.01" })) === "embrasul", "Embrasul");
 ok(subparteCustoDe(item({ nome: "Lyra M2m Ltda", categoriaCode: "5.03" })) === "embrasul", "Lyra anda com a medição");
 ok(subparteCustoDe(item({ nome: "Flyer On Assessoria De Marketing Digital Ltda", categoriaCode: "5.05" })) === "flyeron", "tráfego");
@@ -46,6 +46,8 @@ ok(subparteCustoDe(item({ nome: "Elaine Barbosa Neves De Lima", categoriaCode: "
 ok(subparteCustoDe(item({ nome: "4 TABELI DE PROTESTO DE RECIFE", categoriaCode: "4.02" })) === "material_obras", "cartório de protesto é obras");
 ok(parteCustoDe(item({ nome: "4 TABELI DE PROTESTO DE RECIFE", categoriaCode: "4.02" })) === "obras", "tabelionato vive em custos de obras");
 ok(subparteCustoDe(item({ nome: "Asaas IP S.A.", categoriaCode: "4.05" })) === "financeiro", "Asaas");
+ok(subparteCustoDe(item({ nome: "Rita Pereira Da Silva", categoriaCode: "4.03" })) === "aluguel", "Rita limpeza é escritório, não obras");
+ok(parteCustoDe(item({ nome: "Rita Pereira Da Silva", categoriaCode: "4.03" })) === "padrao", "Rita vive em custos padrão");
 ok(subparteCustoDe(item({ nome: "Conselho Regional De Engenharia E Agronomia", categoriaCode: "5.10" })) === "taxas", "CREA");
 ok(subparteCustoDe(item({ nome: "Hostgator", categoriaCode: "5.03" })) === "tecnologia", "Hostgator é casa, não Lyra");
 
@@ -72,6 +74,19 @@ ok(parteCustoDe(item({ nome: "KGMLAN", categoriaCode: "5.99" })) === "organizar"
 ok(
   parteCustoDe(item({ nome: "EMBRASUL IND ELETRONICA LTDA", categoriaCode: "8.01", time: "consultoria" })) === "padrao",
   "Embrasul não cai em consultoria — o dono citou como custo da casa"
+);
+ok(subparteExibida("utilidades") === "aluguel", "override antigo de utilidades some no bloco unificado");
+ok(
+  !subpartesVisiveis().some((s) => s.slug === "utilidades"),
+  "utilidades não aparece como bloco próprio"
+);
+ok(
+  subpartesVisiveis().some((s) => s.slug === "aluguel" && /água/.test(s.nome)),
+  "rótulo unificado traz água"
+);
+ok(
+  subparteCustoDe(item({ nome: "Compesa", categoriaCode: "5.02", bloco: "utilidades" })) === "utilidades",
+  "override gravado utilidades continua válido"
 );
 
 console.log(`\n${provas - falhas}/${provas} provas`);

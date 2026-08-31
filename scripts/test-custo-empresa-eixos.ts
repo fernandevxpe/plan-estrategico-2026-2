@@ -5,10 +5,13 @@
 
 import {
   categoriaEGente,
+  chaveAgrupamentoCusto,
   chaveCusto,
   classeDe,
   destinosTime,
+  nomeAgrupadoCusto,
   sqlContraparteEPessoa,
+  sqlPessoaNaoEServicoDaCasa,
   timeDe,
   timeValido
 } from "../lib/financeiro/custo-empresa-eixos.ts";
@@ -71,6 +74,27 @@ ok(classeDe("4.03") === "operacional", "terceirização não é máquina");
 console.log("\n=== Chave do item ===");
 ok(chaveCusto(12, 3) === "12:3", "contraparte × categoria");
 ok(chaveCusto(null, 3) === "0:3", "sem favorecido não colide com id 0 real");
+ok(
+  chaveAgrupamentoCusto({ categoriaCode: "7.01", counterpartyId: 10, categoryId: 7 }) ===
+    chaveAgrupamentoCusto({ categoriaCode: "7.01", counterpartyId: null, categoryId: 7 }),
+  "Receita Federal e PIX sem favorecido no 7.01 são a mesma linha"
+);
+ok(
+  chaveAgrupamentoCusto({ categoriaCode: "7.01", counterpartyId: 1, categoryId: 7 }) !==
+    chaveAgrupamentoCusto({ categoriaCode: "7.02", counterpartyId: 1, categoryId: 8 }),
+  "ISS 7.02 não some no DAS"
+);
+ok(
+  chaveAgrupamentoCusto({ categoriaCode: "5.01", counterpartyId: 12, categoryId: 3 }) === "12:3",
+  "aluguel continua no grão contraparte × categoria"
+);
+ok(
+  nomeAgrupadoCusto([
+    { nome: "RECEITA FEDERAL", categoriaCode: "7.01", categoriaNome: "SIMPLES NACIONAL (DAS)" },
+    { nome: "Sem favorecido", categoriaCode: "7.01", categoriaNome: "SIMPLES NACIONAL (DAS)" }
+  ]) === "SIMPLES NACIONAL (DAS)",
+  "linha agrupada usa o nome da categoria, não o rótulo do banco"
+);
 
 console.log("\n=== Gente pelo plano de contas ===");
 ok(categoriaEGente("6.01") === true, "salário é gente");
@@ -82,6 +106,7 @@ console.log("\n=== Predicado SQL da contraparte ===");
   const sql = sqlContraparteEPessoa("t.counterparty_id");
   ok(sql.includes("fin_person_counterparty"), "usa a mesma tabela de Pessoas");
   ok(sql.includes("status = 'confirmado'"), "só ligação confirmada");
+  ok(sql.includes("Limpeza"), "faxina da casa não conta como gente");
   let recusou = false;
   try {
     sqlContraparteEPessoa("1; drop table fin_person");
@@ -89,6 +114,13 @@ console.log("\n=== Predicado SQL da contraparte ===");
     recusou = true;
   }
   ok(recusou, "alias estranho não entra no SQL");
+  let recusouPapel = false;
+  try {
+    sqlPessoaNaoEServicoDaCasa("p; drop table fin_person");
+  } catch {
+    recusouPapel = true;
+  }
+  ok(recusouPapel, "alias de papel estranho não entra no SQL");
 }
 
 console.log(`\n${provas - falhas}/${provas} provas`);

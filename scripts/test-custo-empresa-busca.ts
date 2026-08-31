@@ -16,11 +16,11 @@ function ok(condicao: boolean, o_que: string) {
 }
 
 const itens: ItemBuscavel[] = [
-  { chave: "1:1", nome: "Ancora Imobiliária", categoriaCode: "5.01", categoriaNome: "Aluguel e condomínio", subparte: "aluguel", blocoTexto: "Aluguel Custos padrão" },
-  { chave: "2:2", nome: "Receita Federal", categoriaCode: "7.01", categoriaNome: "DAS", subparte: "impostos", blocoTexto: "Impostos Custos padrão" },
+  { chave: "1:1", nome: "Ancora Imobiliária", categoriaCode: "5.01", categoriaNome: "Aluguel e condomínio", subparte: "aluguel", blocoTexto: "Aluguel, água, energia e internet Custos padrão" },
+  { chave: "2:2", nome: "SIMPLES NACIONAL (DAS)", categoriaCode: "7.01", categoriaNome: "SIMPLES NACIONAL (DAS)", subparte: "impostos", blocoTexto: "Impostos Custos padrão RECEITA FEDERAL SEM FAVORECIDO DAS-SIMPLES NACIONAL" },
   { chave: "3:3", nome: "Flyer On Assessoria", categoriaCode: "5.05", categoriaNome: "Marketing", subparte: "flyeron", blocoTexto: "Marketing e Tráfego Custos padrão" },
   { chave: "4:4", nome: "DIMENSIONAL BRASIL", categoriaCode: "4.02", categoriaNome: "Material de obras", subparte: "material_obras", blocoTexto: "Material Custos de obras" },
-  { chave: "5:5", nome: "Compesa", categoriaCode: "5.02", categoriaNome: "Água e esgoto", subparte: "utilidades", blocoTexto: "Água energia e internet Custos padrão" }
+  { chave: "5:5", nome: "Compesa", categoriaCode: "5.02", categoriaNome: "Água e esgoto", subparte: "aluguel", blocoTexto: "Aluguel, água, energia e internet Custos padrão" }
 ];
 
 console.log("\n=== Acento, prefixo e categoria ===");
@@ -29,8 +29,9 @@ ok(passaBusca(itens[0], "âncora"), "acento não impede");
 ok(passaBusca(itens[0], "5.01"), "código da categoria");
 ok(passaBusca(itens[0], "501"), "código sem ponto");
 ok(passaBusca(itens[0], "aluguel"), "nome do bloco onde mora");
+ok(passaBusca(itens[4], "aluguel"), "Compesa agora mora no bloco unificado");
 ok(!passaBusca(itens[0], "embrasul"), "não casa bloco alheio");
-ok(passaBusca(itens[4], "agua"), "água casa Compesa via categoria");
+ok(passaBusca(itens[4], "agua"), "água casa Compesa via bloco unificado");
 
 console.log("\n=== Ranking aponta o bloco ===");
 const ancora = buscarCustos(itens, "anco");
@@ -39,6 +40,7 @@ ok(ancora[0]?.blocoTexto.includes("Aluguel"), "hit traz o bloco");
 
 const imposto = buscarCustos(itens, "imposto");
 ok(imposto.some((h) => h.chave === "2:2"), "imposto acha Receita Federal no bloco Impostos");
+ok(passaBusca(itens[1], "receita federal"), "nome antigo do DAS ainda acha a linha agrupada");
 
 const obras = buscarCustos(itens, "obras material");
 ok(obras[0]?.chave === "4:4", "dois tokens AND: obras + material → Dimensional");

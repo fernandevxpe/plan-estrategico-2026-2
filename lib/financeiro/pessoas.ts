@@ -2,12 +2,13 @@ import "server-only";
 
 import { isFinanceConfigured, query } from "./db";
 import { monthKeyLabel } from "./format";
+import { sqlPessoaNaoEServicoDaCasa } from "./custo-empresa-eixos";
 
 /**
  * Custo com pessoas: quanto cada uma custa, de qual conta saiu, e quanto do
  * custo de gente esta tela NÃO consegue atribuir a ninguém.
  *
- * Cinco decisões sustentam todo número deste arquivo. Nenhuma é óbvia lendo os
+ * Seis decisões sustentam todo número deste arquivo. Nenhuma é óbvia lendo os
  * tipos, e cada uma corrigiu um erro que já existiu na planilha do dono:
  *
  * 1. "GENTE" É A LIGAÇÃO PESSOA↔CONTRAPARTE, NUNCA A CATEGORIA 6.01.
@@ -50,6 +51,10 @@ import { monthKeyLabel } from "./format";
  *    mil nos meses vizinhos) porque R$ 50.949,07 de PIX para gente do roster
  *    entraram sem contraparte. Quem olhasse só o total concluiria que a folha
  *    caiu 64% em abril. Por isso `cobertura` volta junto com os totais.
+ *
+ * 6. LIMPEZA NÃO É FOLHA. Rita (papel Limpeza, 4.03, R$ 6.150 em 2026) está
+ *    no roster porque o PIX tem CPF, mas o dono classificou como serviço do
+ *    escritório. Entra em Custo da empresa; somar aqui E lá conta duas vezes.
  *
  * O que este arquivo NÃO tenta fazer: dizer se um PIX de R$ 5.000 foi fixo ou
  * comissão. O extrato não sabe — 100% dos lançamentos de gente do Inter estão
@@ -669,6 +674,7 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
              JOIN fin_entity e ON e.id = p.entity_id
              ${JOIN_CATEGORIA_PADRAO}
             WHERE e.slug = $1
+              AND ${sqlPessoaNaoEServicoDaCasa("p")}
             ORDER BY p.name`,
           [ENTITY]
         ),
@@ -728,6 +734,7 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
              JOIN fin_entity e ON e.id = t.entity_id
              JOIN fin_account a ON a.id = t.account_id
              JOIN fin_person_counterparty l ON l.counterparty_id = t.counterparty_id AND l.status = 'confirmado'
+             JOIN fin_person pserv ON pserv.id = l.person_id AND ${sqlPessoaNaoEServicoDaCasa("pserv")}
              LEFT JOIN fin_category cat ON cat.id = t.category_id
             WHERE e.slug = $1 AND ${GUARDAS_SAIDA}
             GROUP BY 1, 2, 3, 4`,
@@ -841,7 +848,8 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
                JOIN fin_person_counterparty l ON l.person_id = p.id AND l.status = 'confirmado'
                JOIN fin_counterparty c ON c.id = l.counterparty_id
                JOIN fin_entity e ON e.id = p.entity_id
-              WHERE e.slug = $1 AND length(c.normalized_name) >= 12),
+              WHERE e.slug = $1 AND length(c.normalized_name) >= 12
+                AND ${sqlPessoaNaoEServicoDaCasa("p")}),
            -- DISTINCT por (pessoa, transação) antes de somar.
            --
            -- O CTE "chave" produz uma linha por CONTRAPARTE, e seis pessoas do time
@@ -930,6 +938,7 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
              FROM fin_transaction t
              JOIN fin_entity e ON e.id = t.entity_id
              JOIN fin_person_counterparty l ON l.counterparty_id = t.counterparty_id AND l.status = 'confirmado'
+             JOIN fin_person pserv ON pserv.id = l.person_id AND ${sqlPessoaNaoEServicoDaCasa("pserv")}
              LEFT JOIN fin_category cat ON cat.id = t.category_id
             WHERE e.slug = $1 AND ${GUARDAS_SAIDA}
             GROUP BY 1, 2, 3

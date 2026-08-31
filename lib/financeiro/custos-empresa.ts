@@ -7,6 +7,9 @@ import { subparteValida, type SubparteCusto } from "./custo-empresa-partes";
 /**
  * CUSTO DA EMPRESA — tudo que sai e não é pessoa.
  *
+ * Exceção: papel Limpeza (Rita). Está no roster porque o PIX tem CPF, mas é
+ * faxina do escritório — entra aqui, some de Pessoas, para não contar duas vezes.
+ *
  * O grão é o da matriz de Pessoas, trocando pessoa por (contraparte ×
  * categoria): KPI, linha, célula e rodapé somam `celulas`. Time e área da
  * empresa são cadastro em `fin_custo_empresa`, gravados na própria linha.

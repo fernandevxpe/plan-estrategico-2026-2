@@ -2,8 +2,8 @@
  * Blocos da matriz de Custo da empresa.
  *
  * Uma tabela com 115 linhas não dá para conversar: aluguel some no meio de
- * PIX de material. O dono listou o que é CASA (aluguel, imposto, água,
- * energia, internet, Embrasul, Flyeron, jurídico, contabilidade) e o que é
+ * PIX de material. O dono listou o que é CASA (imposto; aluguel + água +
+ * energia + internet + limpeza; Embrasul, Flyeron, jurídico, contabilidade) e o que é
  * OBRAS (o grosso dos pagamentos). O restante fica em "A organizar".
  *
  * A regra é nome + categoria + área já marcada — não inventa time. Cartão e
@@ -35,7 +35,7 @@ export const PARTES: { slug: ParteCusto; nome: string; dica: string }[] = [
   {
     slug: "padrao",
     nome: "Custos padrão",
-    dica: "A casa: aluguel, imposto, água, energia, internet, Embrasul, marketing, jurídico e contabilidade."
+    dica: "A casa: imposto, aluguel/água/energia/internet/limpeza, Embrasul, marketing, jurídico e contabilidade."
   },
   {
     slug: "obras",
@@ -54,11 +54,13 @@ export const PARTES: { slug: ParteCusto; nome: string; dica: string }[] = [
   }
 ];
 
-export const SUBPARTES: { slug: SubparteCusto; parte: ParteCusto; nome: string }[] = [
-  { slug: "aluguel", parte: "padrao", nome: "Aluguel" },
+export const SUBPARTES: { slug: SubparteCusto; parte: ParteCusto; nome: string; aliasDe?: SubparteCusto }[] = [
   { slug: "impostos", parte: "padrao", nome: "Impostos" },
-  { slug: "utilidades", parte: "padrao", nome: "Água, energia e internet" },
-  { slug: "embrasul", parte: "padrao", nome: "Embrasul e medição" },
+  { slug: "aluguel", parte: "padrao", nome: "Aluguel, água, energia e internet" },
+  // 5.01 e 5.02 são contas diferentes no plano; na casa é o mesmo teto.
+  // O slug fica válido (CHECK da 0184 + override já gravado) e some da tela.
+  { slug: "utilidades", parte: "padrao", nome: "Água, energia e internet", aliasDe: "aluguel" },
+  { slug: "embrasul", parte: "padrao", nome: "Materiais, Máquinas e Equipamentos" },
   { slug: "flyeron", parte: "padrao", nome: "Marketing e Tráfego" },
   { slug: "juridico_contabil", parte: "padrao", nome: "Jurídico e contabilidade" },
   { slug: "taxas", parte: "padrao", nome: "Taxas e conselhos" },
@@ -81,6 +83,15 @@ export function rotuloSubparte(slug: SubparteCusto): string {
 
 export function parteDaSubparte(slug: SubparteCusto): ParteCusto {
   return SUB_POR_SLUG.get(slug)?.parte ?? "organizar";
+}
+
+/** Override antigo `utilidades` aparece no bloco unificado de aluguel. */
+export function subparteExibida(slug: SubparteCusto): SubparteCusto {
+  return SUB_POR_SLUG.get(slug)?.aliasDe ?? slug;
+}
+
+export function subpartesVisiveis() {
+  return SUBPARTES.filter((s) => !s.aliasDe);
 }
 
 function norm(texto: string): string {
@@ -113,15 +124,18 @@ export function subparteCustoDe(item: ItemParaParte): SubparteCusto {
   const code = item.categoriaCode;
   const areas = new Set(item.areasEmpresa.map((a) => a.slug));
 
-  if (code === "5.01" || /ancora/.test(nome)) return "aluguel";
+  if (
+    code === "5.01" ||
+    code === "5.02" ||
+    /ancora|compesa|neoenergia|celpe|claro|algar|companhia ene/.test(nome)
+  ) {
+    return "aluguel";
+  }
+  // Rita: 4.03 no plano (terceirização), faxina do escritório na casa.
+  // Sem isto ela cai em Custos de obras · Terceirização.
+  if ((/rita/.test(nome) && code === "4.03") || areas.has("limpeza")) return "aluguel";
   if (code.startsWith("7.") || areas.has("impostos") || /(receita federal|simples nacional|das-simples|pref mun|municipio do recife)/.test(nome)) {
     return "impostos";
-  }
-  if (
-    code === "5.02" ||
-    /compesa|neoenergia|celpe|claro|algar|companhia ene/.test(nome)
-  ) {
-    return "utilidades";
   }
   if (/embrasul|embraflex|lyra/.test(nome)) return "embrasul";
   if (/flyer|kevin/.test(nome) || code === "5.05") return "flyeron";

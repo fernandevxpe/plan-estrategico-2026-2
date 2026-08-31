@@ -72,6 +72,24 @@ try {
   ok(semGente < comGente, "série sem pessoa é menor", `${semGente} < ${comGente}`);
   ok(Number(serie[0].itens) > 10, "a matriz tem um item por (contraparte × categoria)", `${serie[0].itens} itens`);
 
+  const { rows: ritaEmpresa } = await pool.query<{ n: number; cents: string }>(
+    `SELECT count(DISTINCT (t.counterparty_id, t.category_id))::int AS n,
+            COALESCE(SUM(-t.amount_cents), 0)::bigint AS cents
+       FROM fin_transaction t
+       JOIN fin_category c ON c.id = t.category_id
+       JOIN fin_entity e ON e.id = t.entity_id AND e.slug = 'xpe'
+       JOIN fin_counterparty cp ON cp.id = t.counterparty_id
+      WHERE t.amount_cents < 0
+        AND t.posted_on >= date_trunc('year', now() AT TIME ZONE 'America/Sao_Paulo')::date
+        AND c.code NOT LIKE '6.%'
+        AND c.code <> '4.01'
+        AND c.code NOT LIKE '9.%'
+        AND NOT ${SQL_PESSOA_T}
+        AND cp.name ILIKE '%rita pereira%'`
+  );
+  ok(Number(ritaEmpresa[0].n) >= 1, "Rita limpeza entra na série da empresa", `${ritaEmpresa[0].n} item(ns)`);
+  ok(Number(ritaEmpresa[0].cents) > 0, "Rita limpeza tem valor na empresa", `${ritaEmpresa[0].cents} cents`);
+
   const { rows: ancora } = await pool.query<{ counterparty_id: number; category_id: number }>(
     `SELECT t.counterparty_id, t.category_id
        FROM fin_transaction t

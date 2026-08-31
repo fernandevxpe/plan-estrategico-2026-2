@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
-import { TIMES, type TimeCusto } from "@/lib/financeiro/custo-empresa-eixos";
+import { TIMES, chaveCusto, type TimeCusto } from "@/lib/financeiro/custo-empresa-eixos";
 import type { ItemCusto, Opcao } from "@/lib/financeiro/custos-empresa";
 import { urlDaOrigem } from "@/lib/url-origem";
 
@@ -27,9 +27,30 @@ async function patchCusto(
   if (!resposta.ok) throw new Error(resultado.error ?? "não salvou");
 }
 
-export { patchCusto };
+export { patchCusto, patchCustoVarios };
 
-export function CelulaTimeCusto({ item, times }: { item: ItemCusto; times: Opcao[] }) {
+async function patchCustoVarios(
+  itens: Pick<ItemCusto, "counterpartyId" | "categoryId">[],
+  corpo: { area?: string | null; areasEmpresa?: string[]; bloco?: string | null }
+) {
+  const vistos = new Set<string>();
+  for (const i of itens) {
+    const k = chaveCusto(i.counterpartyId, i.categoryId);
+    if (vistos.has(k)) continue;
+    vistos.add(k);
+    await patchCusto(i, corpo);
+  }
+}
+
+export function CelulaTimeCusto({
+  item,
+  times,
+  tambem = []
+}: {
+  item: ItemCusto;
+  times: Opcao[];
+  tambem?: ItemCusto[];
+}) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [emVoo, setEmVoo] = useState(false);
@@ -44,7 +65,7 @@ export function CelulaTimeCusto({ item, times }: { item: ItemCusto; times: Opcao
     setErro(null);
     setEmVoo(true);
     try {
-      await patchCusto(item, { area: slug || null });
+      await patchCustoVarios([item, ...tambem], { area: slug || null });
       startTransition(() => router.refresh());
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : "não salvou");
@@ -74,7 +95,15 @@ export function CelulaTimeCusto({ item, times }: { item: ItemCusto; times: Opcao
   );
 }
 
-export function CelulaAreasCusto({ item, areas }: { item: ItemCusto; areas: Opcao[] }) {
+export function CelulaAreasCusto({
+  item,
+  areas,
+  tambem = []
+}: {
+  item: ItemCusto;
+  areas: Opcao[];
+  tambem?: ItemCusto[];
+}) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [aberto, setAberto] = useState(false);
@@ -121,7 +150,7 @@ export function CelulaAreasCusto({ item, areas }: { item: ItemCusto; areas: Opca
     setErro(null);
     setEmVoo(true);
     try {
-      await patchCusto(item, { areasEmpresa: proximos });
+      await patchCustoVarios([item, ...tambem], { areasEmpresa: proximos });
       startTransition(() => router.refresh());
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : "não salvou");

@@ -1,11 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarRange, Layers } from "lucide-react";
 
+import type { ContasAPagar } from "@/lib/financeiro/contas-a-pagar";
+import type { AbaCustos } from "@/lib/financeiro/custo-empresa-abas";
 import type { CustosEmpresa } from "@/lib/financeiro/custos-empresa";
 import { brlCents, monthKeyLabel } from "@/lib/financeiro/format";
 
+import { FinContasAPagar } from "./FinContasAPagar";
 import { FinCustosEmpresaMatriz } from "./FinCustosEmpresaMatriz";
 import { DeltaCusto, KpiAnalise, crescimentoDe, type SparkPonto } from "./FinKpiAnalise";
 import { FinSecaoColapsavel } from "./FinSecaoColapsavel";
@@ -27,20 +31,75 @@ const ATALHOS = [
 
 type Atalho = (typeof ATALHOS)[number]["slug"];
 
-export function FinCustosEmpresa({ dados }: { dados: CustosEmpresa }) {
+export function FinCustosEmpresa({
+  dados,
+  contas,
+  aba
+}: {
+  dados: CustosEmpresa;
+  contas: ContasAPagar;
+  aba: AbaCustos;
+}) {
+  const router = useRouter();
   const [mesDe, setMesDe] = useState(dados.meses[0] ?? "");
   const [mesAte, setMesAte] = useState(dados.meses[dados.meses.length - 1] ?? "");
 
-  if (!dados.disponivel) {
-    return (
-      <section className="card fin-empty">
-        <h2 className="card-title">Custo da empresa indisponível</h2>
-        <p>Sem conexão com o banco do financeiro, ou nenhum lançamento categorizado no período.</p>
-      </section>
-    );
+  // O `<em>` de cada aba mostra o número dela. É o motivo de a página carregar
+  // as duas fontes juntas: uma aba que só sabe o próprio total obriga a clicar
+  // para descobrir se vale a pena clicar (a razão está escrita igual em
+  // app/financeiro/contas/page.tsx:25).
+  const totalMatrizCents = useMemo(() => dados.celulas.reduce((s, c) => s + c.cents, 0), [dados.celulas]);
+  const totalAPagarCents = useMemo(
+    () => contas.linhas.reduce((s, l) => (l.entraNoTotal ? s + l.valorCents : s), 0),
+    [contas.linhas]
+  );
+
+  // A aba vive na querystring para o link ser colável — mesma convenção de
+  // FinPayables.tsx:126-129. `mes` cai fora ao voltar para a matriz: ele é
+  // recorte de contas a pagar e não significa nada do outro lado.
+  function trocarAba(proxima: AbaCustos) {
+    router.replace(proxima === "matriz" ? "/financeiro/custos-empresa" : `/financeiro/custos-empresa?aba=${proxima}`, {
+      scroll: false
+    });
   }
 
-  return <ConteudoCustos dados={dados} mesDe={mesDe} mesAte={mesAte} setMesDe={setMesDe} setMesAte={setMesAte} />;
+  return (
+    <>
+      <nav className="fin-subtabs" aria-label="Visões do custo da empresa">
+        <button
+          type="button"
+          className={aba === "matriz" ? "fin-subtab active" : "fin-subtab"}
+          onClick={() => trocarAba("matriz")}
+        >
+          Matriz de custo
+          <em>{dados.disponivel ? brlCents(totalMatrizCents) : "indisponível"}</em>
+        </button>
+        <button
+          type="button"
+          className={aba === "contas-a-pagar" ? "fin-subtab active" : "fin-subtab"}
+          onClick={() => trocarAba("contas-a-pagar")}
+        >
+          Contas a pagar
+          <em>
+            {contas.disponivel
+              ? `${brlCents(totalAPagarCents)} · ${monthKeyLabel(contas.competencia)}`
+              : "indisponível"}
+          </em>
+        </button>
+      </nav>
+
+      {aba === "contas-a-pagar" ? (
+        <FinContasAPagar dados={contas} />
+      ) : !dados.disponivel ? (
+        <section className="card fin-empty">
+          <h2 className="card-title">Custo da empresa indisponível</h2>
+          <p>Sem conexão com o banco do financeiro, ou nenhum lançamento categorizado no período.</p>
+        </section>
+      ) : (
+        <ConteudoCustos dados={dados} mesDe={mesDe} mesAte={mesAte} setMesDe={setMesDe} setMesAte={setMesAte} />
+      )}
+    </>
+  );
 }
 
 function ConteudoCustos({

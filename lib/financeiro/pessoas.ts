@@ -3,6 +3,7 @@ import "server-only";
 import { isFinanceConfigured, query } from "./db";
 import { monthKeyLabel } from "./format";
 import { sqlPessoaNaoEServicoDaCasa } from "./custo-empresa-eixos";
+import { SQL_PREVISAO_CADASTRO } from "./previsao-cadastro";
 
 /**
  * Custo com pessoas: quanto cada uma custa, de qual conta saiu, e quanto do
@@ -389,6 +390,17 @@ export type BandaRemuneracao = {
  * `fin_pessoa_comissao_declarada`, parcelas abertas de reembolso). Não é a
  * mediana observada de `fin_folha_previsao_v`.
  */
+/**
+ * O mês seguinte, no fuso de São Paulo — o mesmo que
+ * `date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') + 1 month`
+ * produzia quando o cálculo morava dentro do SQL.
+ */
+function mesSeguinteEmSaoPaulo(): string {
+  const agora = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const proximo = new Date(agora.getFullYear(), agora.getMonth() + 1, 1);
+  return `${proximo.getFullYear()}-${String(proximo.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export type PrevisaoCadastro = {
   personId: number;
   /** Primeiro dia do mês previsto, no mesmo formato das bandas (`YYYY-MM-01`). */
@@ -946,11 +958,19 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
           [ENTITY]
         ),
 
-        // Previsão do mês seguinte pelos cadastros — a mesma base do perfil.
-        // Salário e pró-labore: vigência mais recente. Comissão: competência do
-        // mês previsto (soma se houver várias, 0167). Reembolso: próxima parcela
-        // de cada série ainda aberta (`fin_reembolso_saldo_unificado_v`, 0179:
-        // planilha E pedidos do app).
+        // Previsão do mês seguinte pelos cadastros.
+        //
+        // O SQL NÃO MORA MAIS AQUI. Ele é `SQL_PREVISAO_CADASTRO`, em
+        // `lib/financeiro/previsao-cadastro.ts`, e a aba de Contas a pagar usa
+        // exatamente o mesmo — por decisão do dono em 31/08/2026: "custo com
+        // pessoas e custos da empresa deve ser a exata mesma base de dados".
+        //
+        // Duas cópias divergiam no primeiro ajuste, e já estavam divergindo:
+        // esta consulta pegava a vigência mais recente sem olhar data, então um
+        // reajuste cadastrado para outubro entraria já em setembro. O módulo
+        // resolve a vigência PARA O MÊS PEDIDO, que é a regra que o app da
+        // pessoa segue desde 29/08 (`vigenteEm`, time.ts:2116). Medido hoje: 0
+        // linhas com vigência futura, então nenhum número muda agora.
         query<{
           person_id: number;
           mes: string;
@@ -958,54 +978,7 @@ export async function getCustoPessoas(): Promise<CustoPessoas> {
           prolabore_cents: number;
           comissao_cents: number;
           reembolso_cents: number;
-        }>(
-          `WITH mes AS (
-             SELECT (date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo')
-                       + interval '1 month')::date AS mes_previsto
-           ),
-           sal AS (
-             SELECT DISTINCT ON (person_id) person_id, valor_cents
-               FROM fin_pessoa_salario_base
-              ORDER BY person_id, vigente_desde DESC
-           ),
-           pro AS (
-             SELECT DISTINCT ON (person_id) person_id, valor_cents
-               FROM fin_pessoa_prolabore_esperado
-              ORDER BY person_id, vigente_desde DESC
-           ),
-           com AS (
-             SELECT cd.person_id, SUM(cd.valor_cents)::bigint AS valor_cents
-               FROM fin_pessoa_comissao_declarada cd
-               CROSS JOIN mes
-              WHERE cd.competencia = mes.mes_previsto
-              GROUP BY cd.person_id
-           ),
-           ree AS (
-             SELECT person_id, SUM(valor_parcela_cents)::bigint AS valor_cents
-               FROM fin_reembolso_saldo_unificado_v
-              WHERE NOT quitado AND parcelas_restantes >= 1
-              GROUP BY person_id
-           )
-           SELECT p.id AS person_id,
-                  to_char(mes.mes_previsto, 'YYYY-MM-01') AS mes,
-                  COALESCE(sal.valor_cents, 0)::bigint AS salario_cents,
-                  COALESCE(pro.valor_cents, 0)::bigint AS prolabore_cents,
-                  COALESCE(com.valor_cents, 0)::bigint AS comissao_cents,
-                  COALESCE(ree.valor_cents, 0)::bigint AS reembolso_cents
-             FROM fin_person p
-             JOIN fin_entity e ON e.id = p.entity_id
-             CROSS JOIN mes
-             LEFT JOIN sal ON sal.person_id = p.id
-             LEFT JOIN pro ON pro.person_id = p.id
-             LEFT JOIN com ON com.person_id = p.id
-             LEFT JOIN ree ON ree.person_id = p.id
-            WHERE e.slug = $1
-              AND (COALESCE(sal.valor_cents, 0)
-                 + COALESCE(pro.valor_cents, 0)
-                 + COALESCE(com.valor_cents, 0)
-                 + COALESCE(ree.valor_cents, 0)) > 0`,
-          [ENTITY]
-        )
+        }>(SQL_PREVISAO_CADASTRO, [ENTITY, mesSeguinteEmSaoPaulo()])
       ]);
 
     // ── Roster com as contrapartes penduradas ──────────────────────────────

@@ -232,6 +232,40 @@ Funcionando em produção:
 
 Aberto, em ordem de tamanho:
 
+000. **A folha PROJETADA é 5x a folha PAGA, e ela alimenta todo o caixa
+     previsto.** Medido em 31/08/2026 com `npm run diag:folha-previsao`:
+
+     | | |
+     |---|---|
+     | `fin_folha_previsao_v` soma (28 pessoas) | **R$ 441.556,81/mês** |
+     | 6.x que realmente saiu, jan–ago/2026 | R$ 62.394 a R$ 105.455/mês |
+     | `pagar_folha` na agenda | R$ 439.556,81 — **idêntico em todos os meses**, de set/26 a ago/27 |
+
+     O valor congelado mês após mês já denuncia: não é projeção, é uma
+     constante. A origem está na própria view — `fixo_base` diz *"aba 'Via de
+     Pagamento' da planilha de comissionamento 2026"* e `fixo_confianca` diz
+     `contratado`, com `meses_pagos = 6`. Pessoa a pessoa:
+
+     | pessoa | `fixo_cents` projetado | média/mês real (6.x) |
+     |---|---|---|
+     | Jonildo | R$ 55.700,00 | R$ 9.196,22 |
+     | Gabriel | R$ 41.200,00 | R$ 9.143,16 |
+     | Fernando | R$ 34.000,00 | R$ 5.447,10 |
+     | Decézaris | R$ 36.000,00 | R$ 4.786,81 |
+
+     Ou seja: **o número da planilha não é mensal**, e está sendo usado como
+     se fosse. Isso infla a saída prevista em ~R$ 350 mil/mês em
+     `fin_previsao_evento_v`, `fin_agenda_dia_v`, `fin_agenda_resumo_dia_v`,
+     no fluxo de caixa e na aba Contas a pagar.
+
+     **NÃO corrigido de propósito.** Consertar é migration nova sobre a 0077,
+     e muda número que a casa reporta — inclusive o runway. Precisa do dono
+     dizendo o que a coluna da planilha significa (salário anual? semestre?
+     total do contrato?), porque a resposta decide o divisor. É o mesmo
+     motivo pelo qual a 02ed49b removeu código morto em vez de reordenar duas
+     linhas: reclassificar o trabalho do dono por conta própria é pior que
+     deixar o erro visível e escrito.
+
 00. **Sócio não tem 6.01 no ledger, e por isso o app não mostra o salário dele.**
 
     O Fernando tem salário (perto do mínimo) E pró-labore. Os 8 meses dele têm
@@ -249,6 +283,21 @@ Aberto, em ordem de tamanho:
     Enquanto isso não acontece, a view devolve tudo como `prolabore`. Foi
     decisão explícita: inventar a divisão do salário de alguém é pior que não
     mostrá-la.
+
+    > **DESATUALIZADO desde 31/08/2026 — leia antes de confiar no parágrafo
+    > acima.** Isto descreve a `fin_time_remuneracao_mes_v` da 0163. Ela foi
+    > redefinida SEIS vezes; a que vale é a da **0171**. Desde a **0164** — do
+    > dia seguinte — a view LÊ `fin_pessoa_salario_base` num `LEFT JOIN LATERAL`
+    > com `vigente_desde <= mes` e subtrai o salário base do pró-labore. A
+    > pós-condição da 0171 prova: o Fernando tem R$ 12.693,09 em `salario` na
+    > view apesar de zero lançamentos em 6.01.
+    >
+    > A banda não precisou de ninguém recategorizar nada — precisou de uma
+    > tabela de cadastro. Este item ficou aqui, corrigido em vez de apagado,
+    > porque ele já induziu ao erro: em 31/08 eu li a 0163, concluí que a view
+    > não separava salário de sócio, e escrevi a explicação errada para um
+    > sintoma real (o Belo sem banda de salário em agosto — que na verdade é a
+    > vigência dele, cadastrada em 29/08, não alcançando `2026-08-01`).
 
     Há um padrão sugestivo no dado — R$ 1.621,00 cai em TODOS os 8 meses do
     Fernando, e o resto completa para valores redondos (4.000, 4.400, 5.000).

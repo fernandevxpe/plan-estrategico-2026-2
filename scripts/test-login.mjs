@@ -1011,10 +1011,31 @@ try {
     await db.query(`DELETE FROM fin_notificacao WHERE person_id = $1 AND criado_em > now() - interval '10 minutes'`, [
       cobaia.id
     ]).catch(() => {});
+    /*
+     * O item DERIVADO não se apaga — e este DELETE nunca funcionou.
+     *
+     * `fin_custo_previsto_apagar_guarda()` (0100:322) levanta exceção para
+     * `origem = 'derivado'`, que é o que o envio do time produz. O `.catch(()
+     * => {})` que estava aqui engolia a exceção em silêncio, e o DELETE de
+     * `fin_time_envio` logo abaixo apagava a origem — deixando o item órfão
+     * para sempre, porque a subconsulta acima nunca mais casaria.
+     *
+     * Medido em 31/08/2026: 48 órfãos, R$ 12.859,20, criados em 22 e 23/08.
+     * Eram 100% do que a tela de Contas a pagar tinha para mostrar em agosto.
+     *
+     * O caminho certo é o que o próprio guarda manda: ignorar com motivo. E
+     * casa por DESCRIÇÃO, não por subconsulta na origem, para continuar
+     * funcionando mesmo se a ordem de remoção mudar.
+     */
     await db.query(
-      `DELETE FROM fin_custo_previsto WHERE origem_ref IN (
-         SELECT 'fin_time_envio:' || id FROM fin_time_envio
-          WHERE person_id = $1 AND titulo LIKE 'teste automatizado —%')`, [cobaia.id]).catch(() => {});
+      `UPDATE fin_custo_previsto
+          SET estado = 'ignorado',
+              ignorado_motivo = 'resíduo de test-login.mjs',
+              updated_at = now()
+        WHERE descricao LIKE 'teste automatizado —%' AND estado <> 'ignorado'`);
+    await db.query(
+      `DELETE FROM fin_custo_previsto
+        WHERE descricao LIKE 'teste automatizado —%' AND origem = 'manual'`);
     await db.query(
       `DELETE FROM fin_purchase_request_link WHERE purchase_request_id IN (
          SELECT id FROM fin_purchase_request WHERE requested_person_id = $1 AND title LIKE 'teste automatizado —%')`,

@@ -147,11 +147,47 @@ try {
 
   console.log(`\n✓ gravado. ${rowCount} sessão(ões) anterior(es) encerrada(s).`);
   if (!doAmbiente) {
-    console.log('\n  ┌─────────────────────────────────────────────');
-    console.log(`  │  senha de entrega:  ${senha}`);
-    console.log('  └─────────────────────────────────────────────');
-    console.log('  Ela não será mostrada de novo. Entregue por um canal fora do terminal,');
-    console.log('  e a pessoa troca no primeiro acesso.');
+    /*
+     * SEM MOLDURA E SEM RECUO — e isso não é estética.
+     *
+     * A senha vinha dentro de uma caixa (`│ senha de entrega: ...`) e a mensagem
+     * indentada. Quem copia arrasta o `│`, os espaços e as bordas junto, e tem de
+     * limpar à mão antes de colar no WhatsApp. Uma senha sorteada de 14
+     * caracteres limpa errado vira "senha inválida" para quem está do outro lado,
+     * e ninguém desconfia da moldura.
+     *
+     * Então: a senha sozinha numa linha, sem prefixo, para dar duplo clique. E a
+     * mensagem colada na margem, pronta para selecionar de ponta a ponta.
+     */
+    const primeiro = String(pessoa.name).trim().split(/\s+/)[0];
+    const destino = email ?? pessoa.email ?? '(defina o e-mail)';
+
+    console.log('\n────────────────────────────────────────────────────────────');
+    console.log('SENHA — mande em mensagem separada. Não aparece de novo.');
+    console.log('');
+    console.log(senha);
+    console.log('');
+    console.log('────────────────────────────────────────────────────────────');
+    console.log('MENSAGEM — selecione daqui até a linha final:');
+    console.log('');
+    console.log(`Oi ${primeiro}! Criei seu acesso ao app da XPE — é onde você vê o que tem a receber e manda nota de compra e reembolso, direto do celular.
+
+Link: https://plataforma-gestao.xpeconsultoria.com/time
+E-mail: ${destino}
+Senha: mando na próxima mensagem
+
+📱 INSTALE NO CELULAR para ficar no acesso rápido:
+• iPhone (Safari): botão Compartilhar → "Adicionar à Tela de Início"
+• Android (Chrome): menu ⋮ → "Instalar app"
+Ele abre em tela cheia, com o nome XPE, como qualquer outro aplicativo.
+
+✅ POR FAVOR, COMPLETE SEU CADASTRO no app, em Perfil:
+• a CHAVE PIX — é por ela que os pagamentos saem, confirme se está certa
+• sua DATA DE ANIVERSÁRIO
+
+A senha da primeira entrada é provisória: o app pede para você trocar por uma sua.`);
+    console.log('');
+    console.log('────────────────────────────────────────────────────────────');
   }
 } catch (erro) {
   await client.query('ROLLBACK').catch(() => {});

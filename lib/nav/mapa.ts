@@ -117,7 +117,21 @@ export const FINANCEIRO_GRUPOS: Grupo[] = [
       // Leitura, não catálogo: a série mês a mês do que sai e NÃO é pessoa, na
       // mesma casca de "Custo com pessoas". Gente (folha, comissão, PIX de quem
       // está no roster), DAS e conta a pagar ficam fora do total.
+      //
+      // Tem uma segunda aba, `?aba=contas-a-pagar`, que vira a mesma leitura
+      // para a frente: o que sai NESTE mês, nos mesmos blocos, e de onde se
+      // programa o pagamento. Não entra no menu como rota própria porque a URL
+      // é a mesma — `rotaAtiva` compara pathname, e um href com querystring
+      // ficaria aceso o tempo todo.
       { href: "/financeiro/custos-empresa", label: "Custo da empresa" },
+      // Depois de "Custo da empresa" porque é a continuação dela: a aba
+      // `?aba=contas-a-pagar` daquela tela é de onde a ordem SAI, e esta é onde
+      // ela é acompanhada até o dinheiro sair de fato. O nome é "Aprovações" e
+      // não "Pagamentos" por uma razão que a tela inteira sustenta: aqui nada
+      // paga — a plataforma entrega a ordem ao Inter e a aprovação é humana, no
+      // aplicativo do banco (0075: "aguardando_autorizacao é onde o produto
+      // termina o seu trabalho").
+      { href: "/financeiro/aprovacoes", label: "Aprovações" },
       // "Cartões", não "Cartão de crédito": uma das três linhas é pré-paga, e
       // chamar o grupo pelo crédito excluiria justamente a que não é. Fica em
       // PAGAR porque é onde a pergunta nasce — "quanto sai por cartão" —, e ao

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { baixarBlob, graficoParaPng, nomeDeArquivo } from "@/lib/exportar/grafico-png";
+
 /**
  * Moldura reutilizável para qualquer gráfico Recharts: tela cheia, zoom,
  * baixar como PNG, compartilhar. Nenhum dos 26 gráficos da plataforma tinha
@@ -52,60 +54,33 @@ export function ChartFrame({ titulo, children }: { titulo: string; children: Rea
     setZoom(1);
   }
 
+  /*
+   * O desenho do PNG mora em `lib/exportar/grafico-png.ts`, não mais aqui.
+   *
+   * A versão que ficava neste arquivo tinha dois furos, os dois invisíveis até
+   * alguém abrir a imagem baixada:
+   *
+   * 1. A LEGENDA NÃO ENTRAVA. `<Legend>` do recharts não é SVG — é uma `<ul>`
+   *    de HTML em `.recharts-legend-wrapper`, irmã do `<svg>`. O
+   *    `querySelector("svg")` daqui a deixava de fora, e os 8 arquivos que usam
+   *    legenda baixavam um gráfico com as séries coloridas e nada dizendo qual
+   *    era qual.
+   * 2. COR VINDA DE CSS SUMIA. O SVG serializado vira documento isolado dentro
+   *    do `<img>` e não enxerga `app/globals.css`. `chartTheme` é hex literal e
+   *    sobrevivia; `.fin-cartao-an` (globals.css:25150), `.fin-cartao-topo-faixa`
+   *    (:22258) e `.funnel-stage-chart` (:3110) pintam por classe e saíam sem
+   *    cor — junto com todo `color-mix()`, usado em 136 lugares do CSS.
+   *
+   * Compartilhar o módulo é o que faz o conserto valer para os 19 arquivos que
+   * usam esta moldura de uma vez, e para o painel de exportar da tela também.
+   */
   async function pegarPng(): Promise<Blob | null> {
-    const svg = svgHostRef.current?.querySelector("svg");
-    if (!svg) return null;
-
-    const clone = svg.cloneNode(true) as SVGSVGElement;
-    const largura = svg.clientWidth || 800;
-    const altura = svg.clientHeight || 420;
-    clone.setAttribute("width", String(largura));
-    clone.setAttribute("height", String(altura));
-    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-
-    const corFundo = getComputedStyle(document.documentElement).getPropertyValue("--card").trim() || "#ffffff";
-    const fundo = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    fundo.setAttribute("width", "100%");
-    fundo.setAttribute("height", "100%");
-    fundo.setAttribute("fill", corFundo || "#ffffff");
-    clone.insertBefore(fundo, clone.firstChild);
-
-    const svgTexto = new XMLSerializer().serializeToString(clone);
-    const svgBlob = new Blob([svgTexto], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-
-    try {
-      const img = new Image();
-      const escala = 2; // exporta em 2x pra não sair borrado numa apresentação
-      const carregada = new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = reject;
-      });
-      img.src = url;
-      await carregada;
-
-      const canvas = document.createElement("canvas");
-      canvas.width = largura * escala;
-      canvas.height = altura * escala;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return null;
-      ctx.scale(escala, escala);
-      ctx.drawImage(img, 0, 0, largura, altura);
-
-      return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    if (!svgHostRef.current) return null;
+    return await graficoParaPng(svgHostRef.current);
   }
 
   function nomeArquivo() {
-    const slug = titulo
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-    return `${slug || "grafico"}.png`;
+    return nomeDeArquivo(titulo, "png");
   }
 
   async function baixarPng() {
@@ -114,12 +89,7 @@ export function ChartFrame({ titulo, children }: { titulo: string; children: Rea
       setStatus("não achei o gráfico pra exportar");
       return;
     }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = nomeArquivo();
-    a.click();
-    URL.revokeObjectURL(url);
+    baixarBlob(blob, nomeArquivo());
   }
 
   async function compartilhar() {

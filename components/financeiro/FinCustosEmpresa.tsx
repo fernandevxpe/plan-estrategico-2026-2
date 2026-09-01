@@ -7,7 +7,10 @@ import { CalendarRange, FileDown, Layers } from "lucide-react";
 import type { ContasAPagar } from "@/lib/financeiro/contas-a-pagar";
 import type { AbaCustos } from "@/lib/financeiro/custo-empresa-abas";
 import type { CustosEmpresa } from "@/lib/financeiro/custos-empresa";
+import { baixarBlob, nomeDeArquivo } from "@/lib/exportar/grafico-png";
+import { blobDePdf, pdfDaPagina } from "@/lib/exportar/pagina";
 import { brlCents, monthKeyLabel } from "@/lib/financeiro/format";
+import { varrerPagina } from "@/lib/exportar/alvos";
 
 import { FinContasAPagar } from "./FinContasAPagar";
 import { FinCustosEmpresaMatriz } from "./FinCustosEmpresaMatriz";
@@ -45,20 +48,58 @@ export function FinCustosEmpresa({
   const [mesAte, setMesAte] = useState(dados.meses[dados.meses.length - 1] ?? "");
 
   /*
-   * PDF = diálogo nativo, no clique. Adiar `window.print()` (setTimeout /
-   * setState) perde o gesto do usuário: o Chromium trava no "Preparando…" e
-   * `afterprint` nunca dispara. Expandir todos os pedaços antes somava um
-   * DOM enorme no mesmo frame — a tela de set/26 já passa de 2.000px.
+   * PDF = ARQUIVO GERADO, não diálogo de impressão.
+   *
+   * O que havia aqui era `window.print()` no clique, e o comentário antigo já
+   * registrava a derrota: "o Chromium trava no 'Preparando…' e `afterprint`
+   * nunca dispara". A tentativa de contornar adiando a chamada perdia o gesto
+   * do usuário, e não adiar travava — não havia terceira saída dentro da
+   * impressão nativa.
+   *
+   * CORREÇÃO DE 01/09/2026, no mesmo dia: eu tinha escrito aqui que a causa era
+   * o reflow — `@media print` levando `.fin-layout` de `grid` para `block` e
+   * `.fin-table-wrap` de `overflow: auto` para `visible` numa árvore enorme.
+   * MEDI, e não é isso. Com o Chrome headless sobre o app local
+   * (`Emulation.setEmulatedMedia` em `print`, depois forçando layout):
+   *
+   * | tela | nós | reflow em tela | reflow em impressão |
+   * |---|---|---|---|
+   * | `custos-empresa?aba=contas-a-pagar` | 2.393 | 134ms | **0ms** |
+   * | `financeiro/caixa` | 861 | 32ms | 115ms |
+   * | `financeiro/pessoas` | 3.581 | 164ms | 0ms |
+   *
+   * O reflow de impressão é mais BARATO que o de tela. A explicação que sobra
+   * está fora do que essa medição alcança — a pré-visualização do Chromium
+   * sobre a árvore VIVA, com React montado, `ResponsiveContainer` remedindo os
+   * gráficos a cada mudança de caixa e elementos fixos no caminho. Deixo o
+   * número escrito em vez de apagar a hipótese: ela já me fez propor o conserto
+   * errado uma vez.
+   *
+   * Agora o dado é lido da tela e escrito num PDF de verdade
+   * (`lib/exportar/`), que baixa como arquivo. Some o diálogo, some o reflow, e
+   * o recorte que sai é exatamente o que está filtrado na tela — inclusive os
+   * chips de ciclo, área e eixo, que só existem no estado do React.
    */
-  function exportarPdf() {
-    const antes = document.title;
+  const [exportando, setExportando] = useState(false);
+
+  async function exportarPdf() {
     const recorte =
       aba === "contas-a-pagar"
         ? `Contas a pagar — ${monthKeyLabel(contas.competencia)}`
         : "Matriz de custo da empresa";
-    document.title = `${recorte} · XPE`;
-    window.print();
-    document.title = antes;
+    setExportando(true);
+    // Um quadro antes de trabalhar: sem ele o React não chega a pintar
+    // "gerando…" e a tela parece travada — o mesmo sintoma que a impressão
+    // nativa dava, e que não pode voltar por outra porta.
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    try {
+      const bytes = await pdfDaPagina(varrerPagina());
+      baixarBlob(blobDePdf(bytes), nomeDeArquivo(recorte, "pdf"));
+    } catch (erro) {
+      console.error("exportar custo da empresa:", erro);
+    } finally {
+      setExportando(false);
+    }
   }
 
   // O `<em>` de cada aba mostra o número dela. É o motivo de a página carregar
@@ -109,10 +150,11 @@ export function FinCustosEmpresa({
           type="button"
           className="fin-btn-ghost fin-print-btn"
           onClick={exportarPdf}
-          title="Abre o diálogo de impressão — escolha Salvar como PDF"
+          disabled={exportando}
+          title="Baixa esta tela em PDF, com o recorte que está filtrado agora"
         >
           <FileDown size={15} strokeWidth={2.2} aria-hidden />
-          Exportar PDF
+          {exportando ? "Gerando…" : "Exportar PDF"}
         </button>
       </nav>
 

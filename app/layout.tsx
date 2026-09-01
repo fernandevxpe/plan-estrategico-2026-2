@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Sora } from "next/font/google";
 
 import "./globals.css";
+import { BotaoExportar } from "@/components/exportar/BotaoExportar";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export const metadata: Metadata = {
@@ -76,6 +77,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
+        {/* Fora do `AppShell`, junto do botão de tema e pelo mesmo motivo: as 59
+            telas — e o app do time, que tem casco próprio — ganham exportação
+            sem nenhuma delas precisar incluir coisa alguma. */}
+        <BotaoExportar />
         <ThemeToggle />
       </body>
     </html>

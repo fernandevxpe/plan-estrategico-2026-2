@@ -27723,3 +27723,118 @@ details.fin-cartao-ressalvas > ul {
   .fin-apr-dev-confirmar { width: 100%; }
   .fin-apr-dev-total { margin-left: 0; width: 100%; }
 }
+
+/* ── Exportar ──────────────────────────────────────────────────────────────
+   O botão mora acima do de tema, na mesma coluna flutuante e pelo mesmo
+   motivo escrito lá (`components/layout/ThemeToggle.tsx`): montado uma vez em
+   `app/layout.tsx`, nenhuma das 59 telas precisa lembrar de incluí-lo, e ele
+   não some numa tela nova.
+
+   `bottom: 70px` = 18 do tema + 42 de altura dele + 10 de respiro. No celular
+   a conta muda porque o botão de tema encolhe para 38px em 640px.
+   ------------------------------------------------------------------------- */
+.exportar-flutuante {
+  position: fixed;
+  right: 18px;
+  bottom: 70px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 21px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--purple-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-strong);
+  transition: box-shadow .15s ease, transform .15s ease;
+}
+.exportar-flutuante:hover {
+  box-shadow: 0 0 0 1px var(--neon-purple), 0 0 24px var(--glow-purple), var(--shadow-strong);
+  transform: translateY(-1px);
+}
+.exportar-flutuante:focus-visible { outline: 2px solid var(--neon-purple); outline-offset: 2px; }
+
+.exportar-painel {
+  position: fixed;
+  right: 18px;
+  bottom: 122px;
+  z-index: 61;
+  width: min(390px, calc(100vw - 36px));
+  max-height: min(62vh, 560px);
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: var(--shadow-strong);
+}
+.exportar-painel-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.exportar-painel-topo strong { display: block; font-size: 14px; color: var(--ink); }
+.exportar-painel-topo span { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.exportar-painel-topo button {
+  flex: none; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+  border-radius: 7px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); cursor: pointer;
+}
+.exportar-painel-topo button:hover { color: var(--ink); border-color: var(--purple); }
+
+.exportar-tudo {
+  display: flex; align-items: center; gap: 9px; width: 100%; margin-bottom: 10px;
+  padding: 11px 12px; border-radius: 10px; border: 1px solid var(--purple);
+  background: var(--surface-2); color: var(--purple-text);
+  font-family: inherit; font-size: 13px; font-weight: 650; text-align: left; cursor: pointer;
+}
+.exportar-tudo:hover { box-shadow: var(--shadow); }
+.exportar-tudo em { display: block; font-style: normal; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 1px; }
+
+.exportar-aviso, .exportar-vazio {
+  margin: 0 0 10px; padding: 9px 11px; border-radius: 9px;
+  background: var(--surface-2); color: var(--muted); font-size: 11.5px; line-height: 1.5;
+}
+.exportar-vazio { margin-bottom: 0; }
+
+.exportar-lista { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.exportar-lista li {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 8px; border-radius: 8px;
+}
+.exportar-lista li:hover { background: var(--surface-2); }
+.exportar-item-nome { display: flex; align-items: flex-start; gap: 7px; min-width: 0; font-size: 12.5px; color: var(--ink); }
+.exportar-item-nome > svg { flex: none; margin-top: 2px; color: var(--muted); }
+.exportar-item-nome > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exportar-item-nome em { display: block; font-style: normal; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.exportar-item-acoes { flex: none; display: flex; gap: 5px; }
+.exportar-item-acoes button {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 9px; border-radius: 7px; border: 1px solid var(--line);
+  background: var(--card); color: var(--muted);
+  font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.exportar-item-acoes button:hover { border-color: var(--purple); color: var(--purple-text); }
+
+.exportar-estado { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
+.exportar-estado-erro { color: var(--neon-pink-ink); }
+
+@media (max-width: 640px) {
+  .exportar-flutuante { right: 12px; bottom: 58px; height: 38px; padding: 0 12px; font-size: 12.5px; }
+  .exportar-flutuante-rotulo { display: none; }
+  .exportar-flutuante { padding: 0; width: 38px; justify-content: center; border-radius: 50%; }
+  .exportar-painel { right: 12px; left: 12px; width: auto; bottom: 104px; }
+}
+
+/* O botão de exportar não entra no PDF que ele mesmo gera. */
+@media print {
+  .exportar-flutuante, .exportar-painel { display: none !important; }
+}
+
+/* A impressão é a saída alternativa, não a principal: mesma forma do botão de
+   cima, tinta mais discreta. Quem chega aqui querendo "o PDF" acha o do dado
+   primeiro, e quem quer a tela no papel acha logo abaixo. */
+.exportar-imprimir { border-color: var(--line); color: var(--ink); }
+.exportar-imprimir:hover { border-color: var(--purple); color: var(--purple-text); }

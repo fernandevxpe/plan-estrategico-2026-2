@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import { brl } from "@/components/financeiro/Certeza";
 import type { ComissaoDeclaradaLinha, ProlaboreEsperadoLinha, SalarioBaseLinha } from "@/lib/financeiro/pessoa-perfil";
+import { pacoteFiltroDaOrigem, type PacoteFiltroComissao } from "@/lib/financeiro/contas-a-pagar-eixos";
+import { monthKeyLabel } from "@/lib/financeiro/format";
 import { urlDaOrigem } from "@/lib/url-origem";
 
 function mascaraDinheiro(bruto: string): string {
@@ -57,7 +59,10 @@ function ChipRemuneracao({
   // Comissão não — várias no mesmo mês somam, e o que o botão faz é LANÇAR
   // mais uma. Com o lápis de "Editar" nos três, a ação de acrescentar
   // comissão não tinha nome em lugar nenhum da tela.
-  acao = "editar"
+  acao = "editar",
+  historicoNoChip = true,
+  historicoAberto: controlado,
+  onHistoricoChange
 }: {
   rotulo: string;
   valor: ReactNode;
@@ -68,9 +73,22 @@ function ChipRemuneracao({
   onEditar: () => void;
   formulario?: ReactNode;
   acao?: "editar" | "lancar";
+  /**
+   * false = o pai desenha o histórico ABAIXO da grade. Sem isso o chip
+   * estica a linha inteira (salário e pró-labore iam a 745px junto).
+   */
+  historicoNoChip?: boolean;
+  historicoAberto?: boolean;
+  onHistoricoChange?: (aberto: boolean) => void;
 }) {
-  const [histAberto, setHistAberto] = useState(false);
+  const [interno, setInterno] = useState(false);
+  const histAberto = controlado ?? interno;
   const temHistorico = Boolean(historico);
+
+  function setHist(v: boolean) {
+    if (controlado === undefined) setInterno(v);
+    onHistoricoChange?.(v);
+  }
 
   return (
     <article className="pp-chip" style={cor ? { ["--pp-chip-cor" as string]: cor } : undefined}>
@@ -94,7 +112,7 @@ function ChipRemuneracao({
             <button
               type="button"
               className="pp-btn-icone"
-              onClick={() => setHistAberto((v) => !v)}
+              onClick={() => setHist(!histAberto)}
               aria-expanded={histAberto}
               aria-label={histAberto ? "Ocultar histórico" : "Ver histórico"}
               title="Histórico"
@@ -105,7 +123,7 @@ function ChipRemuneracao({
         </div>
       </div>
       {editando && formulario ? <div className="pp-chip-form">{formulario}</div> : null}
-      {histAberto && historico ? <div className="pp-chip-hist">{historico}</div> : null}
+      {histAberto && historicoNoChip && historico ? <div className="pp-chip-hist">{historico}</div> : null}
     </article>
   );
 }
@@ -294,13 +312,19 @@ export function FinComissaoForm({
   temSalarioBase,
   comissaoAtual,
   historico = [],
-  onSalvo
+  onSalvo,
+  historicoNoChip = true,
+  historicoAberto,
+  onHistoricoChange
 }: {
   personId: number;
   temSalarioBase: boolean;
   comissaoAtual: ComissaoDeclaradaLinha | null;
   historico?: ComissaoDeclaradaLinha[];
   onSalvo?: () => void;
+  historicoNoChip?: boolean;
+  historicoAberto?: boolean;
+  onHistoricoChange?: (aberto: boolean) => void;
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -349,6 +373,9 @@ export function FinComissaoForm({
       editando={aberto}
       acao="lancar"
       onEditar={() => setAberto((v) => !v)}
+      historicoNoChip={historicoNoChip}
+      historicoAberto={historicoAberto}
+      onHistoricoChange={onHistoricoChange}
       historico={historico.length > 0 ? <HistoricoComissao historico={historico} /> : null}
       formulario={
         <form className="pp-remuneracao-form" onSubmit={salvar}>
@@ -451,9 +478,145 @@ export function HistoricoComissao({ historico }: { historico: ComissaoDeclaradaL
       colunas={["Mês", "Valor", "Descrição"]}
       linhas={historico.map((h) => ({
         id: h.id,
-        cells: [h.competencia, brl(h.valorCents), h.descricao || h.nota || "—"]
+        cells: [
+          h.competencia,
+          brl(h.valorCents),
+          <>
+            {h.descricao || h.nota || "—"}
+            {h.tipoNome ? <span className="fin-tag">{h.tipoNome}</span> : null}
+          </>
+        ]
       }))}
     />
+  );
+}
+
+const PACOTES_PAINEL: { id: "todas" | PacoteFiltroComissao; rotulo: string }[] = [
+  { id: "todas", rotulo: "Todas" },
+  { id: "consultoria", rotulo: "Consultoria" },
+  { id: "obras", rotulo: "Obras" },
+  { id: "outras", rotulo: "Outras" }
+];
+
+function mesCurtoYm(m: string) {
+  const [ano, mes] = m.split("-");
+  return `${mes}/${ano.slice(2)}`;
+}
+
+/**
+ * Detalhe da comissão ABAIXO dos chips. A tabela no chip de 182px espremia
+ * 20 linhas e esticava salário e pró-labore na mesma altura da grade.
+ */
+export function PainelDetalheComissao({
+  historico,
+  mesAtual
+}: {
+  historico: ComissaoDeclaradaLinha[];
+  mesAtual?: string;
+}) {
+  const [pacote, setPacote] = useState<"todas" | PacoteFiltroComissao>("todas");
+  const hoje = mesAtual ?? new Date().toISOString().slice(0, 7);
+
+  const visivel = useMemo(
+    () =>
+      historico.filter((h) => pacote === "todas" || pacoteFiltroDaOrigem(h.tipoSlug) === pacote),
+    [historico, pacote]
+  );
+
+  const soma = useMemo(() => {
+    const out = { todas: 0, consultoria: 0, obras: 0, outras: 0, aReceber: 0 };
+    for (const h of historico) {
+      const p = pacoteFiltroDaOrigem(h.tipoSlug);
+      out[p] += h.valorCents;
+      out.todas += h.valorCents;
+    }
+    for (const h of visivel) {
+      if (h.competencia >= hoje) out.aReceber += h.valorCents;
+    }
+    return out;
+  }, [historico, visivel, hoje]);
+
+  const porMes = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const h of visivel) mapa.set(h.competencia, (mapa.get(h.competencia) ?? 0) + h.valorCents);
+    return [...mapa.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [visivel]);
+  const teto = Math.max(1, ...porMes.map(([, v]) => v));
+
+  if (historico.length === 0) return <p className="pp-vazio">Nenhuma comissão declarada.</p>;
+
+  return (
+    <div className="pp-chip-painel">
+      <div className="pp-chip-painel-topo">
+        <h3>Comissão — lançamentos e projeção</h3>
+        <a href="/financeiro/comissoes" className="pp-link">
+          tela completa
+        </a>
+      </div>
+
+      <div className="fin-com-pacotes pp-chip-painel-kpis" role="group" aria-label="Origem da comissão">
+        {PACOTES_PAINEL.map((p) => {
+          const ativo = pacote === p.id;
+          const cents = soma[p.id];
+          return (
+            <button
+              key={p.id}
+              type="button"
+              className={`fin-com-pacote${ativo ? " ativo" : ""}`}
+              aria-pressed={ativo}
+              onClick={() => setPacote(p.id)}
+            >
+              <span className="fin-kpi-label">{p.rotulo}</span>
+              <strong className="fin-kpi-value">{brl(cents)}</strong>
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="pp-resumo-linha">
+        <strong>{brl(soma.aReceber)}</strong> a receber deste mês em diante neste recorte · {visivel.length}{" "}
+        {visivel.length === 1 ? "lançamento" : "lançamentos"}
+      </p>
+
+      {porMes.length > 0 ? (
+        <div className="pp-historico pp-historico-compacto" role="img" aria-label="Comissão mês a mês">
+          {porMes.map(([mes, cents]) => (
+            <div key={mes} className={"pp-mes" + (mes > hoje ? " pp-mes-previsao" : "")}>
+              <span className="pp-mes-valor">{brl(cents)}</span>
+              <span className="pp-coluna" style={{ height: `${Math.max(4, (cents / teto) * 100)}%` }}>
+                <i style={{ height: "100%", background: "var(--nat-comissao, var(--purple))" }} />
+              </span>
+              <span className="pp-mes-rotulo">{mesCurtoYm(mes)}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="pp-chip-painel-tabela">
+        <table className="pp-tabela pp-tabela-compacta">
+          <thead>
+            <tr>
+              <th scope="col">Mês</th>
+              <th scope="col">Origem</th>
+              <th scope="col">Descrição</th>
+              <th scope="col" className="num">
+                Valor
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {visivel.map((h) => (
+              <tr key={h.id} className={h.competencia > hoje ? "pp-mes-previsao" : undefined}>
+                <td>{monthKeyLabel(h.competencia)}</td>
+                <td>{h.tipoNome ?? "sem tipo"}</td>
+                <td>{h.descricao || h.nota || "—"}</td>
+                <td className="num">{brl(h.valorCents)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

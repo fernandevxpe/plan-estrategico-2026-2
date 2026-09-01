@@ -2,19 +2,21 @@ import "server-only";
 
 import {
   certezaDe,
+  chaveFavorito,
   grupoDaCamada,
   impedimentoDe,
   mascararChave,
   naoConfirmadaDe,
   naturezaDe,
+  pedacosDaComissao,
   CAMADA_COMPOSICAO,
   ordemDaNatureza,
-  NATUREZA_DA_VIEW,
   type Certeza,
   type GrupoContas,
-  type ImpedimentoPagar
+  type ImpedimentoPagar,
+  type PedacoComissao
 } from "./contas-a-pagar-eixos";
-import { chaveCusto, timeDe, type TimeCusto } from "./custo-empresa-eixos";
+import { chaveCusto, timeDaPessoa, timeDe, type TimeCusto } from "./custo-empresa-eixos";
 import {
   parteDaSubparte,
   subparteCustoDe,
@@ -24,7 +26,15 @@ import {
   type SubparteCusto
 } from "./custo-empresa-partes";
 import { isFinanceConfigured, query } from "./db";
-import { bandasDe, getPrevisaoCadastro } from "./previsao-cadastro";
+import { listarAnexosPorChave, listarFavoritos, type AnexoCobranca } from "./conta-cobranca";
+import {
+  bandasParaPagar,
+  getPrevisaoCadastro,
+  listarPedacosComissao,
+  rotuloDaBanda,
+  ROTULO_PACOTE,
+  type PacoteComissao
+} from "./previsao-cadastro";
 
 /**
  * CONTAS A PAGAR — o mês inteiro que vai sair, arrumado pelos blocos de Custo
@@ -190,6 +200,19 @@ export type ContaAPagar = {
   pixMascarado: string | null;
   impedimento: ImpedimentoPagar;
   ordem: OrdemExistente | null;
+  /**
+   * Estrela da CONTRAPARTE, não da linha. Ancora marcada em setembro continua
+   * marcada em outubro. Ver `chaveFavorito` em contas-a-pagar-eixos.
+   */
+  favorito: boolean;
+  /** Boleto e NF-e DESTE mês. Vazio = ainda não anexou. */
+  anexos: AnexoCobranca[];
+  /**
+   * Lançamentos que somam esta linha, só em comissão do cadastro. Vazio = não
+   * há o que detalhar (salário, agenda, um único item). Não são obrigações:
+   * o PIX continua sendo a linha, não cada pedaço.
+   */
+  pedacos: PedacoComissao[];
 };
 
 export type ContasAPagar = {
@@ -392,25 +415,34 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
     const mesCorrente = hojeRows[0]?.mes ?? competencia;
     const competenciaPassada = competencia < mesCorrente;
 
-    const previsaoCadastro = competenciaPassada ? [] : await getPrevisaoCadastro(ENTITY, competencia);
+    const [previsaoCadastro, folhaRealizadaRows, pedacosMes] = await Promise.all([
+      competenciaPassada ? Promise.resolve([] as Awaited<ReturnType<typeof getPrevisaoCadastro>>) : getPrevisaoCadastro(ENTITY, competencia),
+      competenciaPassada
+        ? query<Record<string, unknown>>(
+            `SELECT p.id                      AS person_id,
+                    p.name                    AS pessoa,
+                    p.counterparty_id,
+                    v.natureza,
+                    v.valor_cents,
+                    to_char(v.mes, 'YYYY-MM') AS mes_molde
+               FROM fin_time_remuneracao_mes_v v
+               JOIN fin_entity e ON e.id = v.entity_id AND e.slug = $1
+               JOIN fin_person p ON p.id = v.person_id
+              WHERE v.mes = to_date($2, 'YYYY-MM')
+                AND v.valor_cents > 0
+              ORDER BY p.name, v.natureza`,
+            [ENTITY, competencia]
+          ).catch(() => [] as Record<string, unknown>[])
+        : Promise.resolve([] as Record<string, unknown>[]),
+      listarPedacosComissao(ENTITY, competencia)
+    ]);
 
-    const folhaRealizadaRows = competenciaPassada
-      ? await query<Record<string, unknown>>(
-          `SELECT p.id                      AS person_id,
-                  p.name                    AS pessoa,
-                  p.counterparty_id,
-                  v.natureza,
-                  v.valor_cents,
-                  to_char(v.mes, 'YYYY-MM') AS mes_molde
-             FROM fin_time_remuneracao_mes_v v
-             JOIN fin_entity e ON e.id = v.entity_id AND e.slug = $1
-             JOIN fin_person p ON p.id = v.person_id
-            WHERE v.mes = to_date($2, 'YYYY-MM')
-              AND v.valor_cents > 0
-            ORDER BY p.name, v.natureza`,
-          [ENTITY, competencia]
-        ).catch(() => [] as Record<string, unknown>[])
-      : [];
+    const pedacosPorPessoa = new Map<number, PedacoComissao[]>();
+    for (const p of pedacosMes) {
+      const lista = pedacosPorPessoa.get(p.personId) ?? [];
+      lista.push(p);
+      pedacosPorPessoa.set(p.personId, lista);
+    }
 
     /*
      * A coordenada de pagamento da pessoa — POR QUALQUER CONTRAPARTE DELA.
@@ -454,6 +486,16 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
       [ENTITY]
     ).catch(() => [] as Record<string, unknown>[]);
     const payeePorPessoa = new Map(payeeRows.map((r) => [Number(r.person_id), r]));
+
+    const timePessoaRows = await query<{ id: number; area: string | null; default_nucleo: string | null }>(
+      `SELECT p.id, p.area, p.default_nucleo
+         FROM fin_person p
+         JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $1`,
+      [ENTITY]
+    ).catch(() => [] as { id: number; area: string | null; default_nucleo: string | null }[]);
+    const timePorPessoa = new Map(
+      timePessoaRows.map((r) => [Number(r.id), timeDaPessoa(r.area, r.default_nucleo)])
+    );
 
     const areasPorItem = new Map<string, Opcao[]>();
     for (const r of areasItemRows) {
@@ -564,7 +606,10 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
                 pagoCents: Number(r.ordem_pago_cents ?? 0),
                 pagoEm: r.ordem_pago_em == null ? null : String(r.ordem_pago_em),
                 endToEndId: r.ordem_e2e == null ? null : String(r.ordem_e2e)
-              }
+              },
+        favorito: false,
+        anexos: [],
+        pedacos: []
       };
     });
 
@@ -599,28 +644,56 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
       pessoa: string;
       counterpartyId: number | null;
       natureza: string;
+      pacote: PacoteComissao | null;
       cents: number;
+      /**
+       * Ordem antiga na chave `…:comissao` (sem pacote). A linha continua
+       * UM PIX — senão o pago fica órfão e as partes novas nascem pagáveis.
+       * O rótulo ainda pode mostrar o pacote quando só há um.
+       */
+      chaveSemPacote?: boolean;
+      detalhePacotes?: { pacote: PacoteComissao; cents: number }[];
     };
 
-    const bandas: Banda[] = competenciaPassada
+    function chaveDaBanda(b: Banda): string {
+      if (b.chaveSemPacote) {
+        return `${competencia}|fin_person:${b.personId}:${b.natureza}`;
+      }
+      if (b.natureza === "comissao" && b.pacote) {
+        return `${competencia}|fin_person:${b.personId}:comissao:${b.pacote}`;
+      }
+      return `${competencia}|fin_person:${b.personId}:${b.natureza}`;
+    }
+
+    let bandas: Banda[] = competenciaPassada
       ? folhaRealizadaRows.map((r) => ({
           personId: Number(r.person_id),
           pessoa: String(r.pessoa ?? ""),
           counterpartyId: r.counterparty_id == null ? null : Number(r.counterparty_id),
           natureza: String(r.natureza),
+          pacote: null,
           cents: Number(r.valor_cents ?? 0)
         }))
       : previsaoCadastro.flatMap((p) =>
-          bandasDe(p).map((b) => ({
+          bandasParaPagar(p).map((b) => ({
             personId: p.personId,
             pessoa: p.pessoa,
             counterpartyId: p.counterpartyId,
             natureza: b.natureza,
+            pacote: b.pacote,
             cents: b.cents
           }))
         );
 
-    const chavesFolha = bandas.map((b) => `${competencia}|fin_person:${b.personId}:${b.natureza}`);
+    const chavesNovas = bandas.map(chaveDaBanda);
+    const chavesVelhasComissao = [
+      ...new Set(
+        bandas
+          .filter((b) => b.natureza === "comissao")
+          .map((b) => `${competencia}|fin_person:${b.personId}:comissao`)
+      )
+    ];
+    const chavesFolha = [...new Set([...chavesNovas, ...chavesVelhasComissao])];
     if (chavesFolha.length > 0) {
       const ordensRows = await query<Record<string, unknown>>(
         `SELECT pr.source_id, pr.id, pr.code, pr.status, pr.scheduled_for::text AS scheduled_for,
@@ -651,9 +724,65 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
       }
     }
 
+    /*
+     * ORDEM ANTIGA NA CHAVE SEM PACOTE.
+     *
+     * Até aqui a comissão de alguém era UM PIX (`…:comissao`). Quebrar em
+     * obras/consultoria muda a chave — e uma ordem já gravada na chave velha
+     * ficaria órfã enquanto as linhas novas nasceriam pagáveis de novo. Se a
+     * chave antiga tem ordem neste mês, esta pessoa continua com UM pacote só.
+     */
+    if (!competenciaPassada) {
+      const comOrdemAntiga = new Set<number>();
+      for (const chave of ordensPorChave.keys()) {
+        const m = /\|fin_person:(\d+):comissao$/.exec(chave);
+        if (m) comOrdemAntiga.add(Number(m[1]));
+      }
+      if (comOrdemAntiga.size > 0) {
+        const porPessoa = new Map<number, Banda[]>();
+        for (const b of bandas) {
+          const lista = porPessoa.get(b.personId) ?? [];
+          lista.push(b);
+          porPessoa.set(b.personId, lista);
+        }
+        bandas = [...porPessoa.values()].flatMap((lista) => {
+          const id = lista[0]?.personId;
+          if (id == null || !comOrdemAntiga.has(id)) return lista;
+          const comissoes = lista.filter((b) => b.natureza === "comissao");
+          if (!comissoes.length) return lista;
+          const umSo = comissoes.length === 1 ? comissoes[0] : null;
+          return [
+            ...lista.filter((b) => b.natureza !== "comissao"),
+            {
+              ...(umSo ?? comissoes[0]),
+              chaveSemPacote: true,
+              pacote: umSo?.pacote ?? null,
+              cents: comissoes.reduce((s, c) => s + c.cents, 0),
+              detalhePacotes:
+                comissoes.length > 1
+                  ? comissoes.flatMap((c) =>
+                      c.pacote && c.cents > 0 ? [{ pacote: c.pacote, cents: c.cents }] : []
+                    )
+                  : undefined
+            }
+          ];
+        });
+      }
+    }
+
     const linhasFolha: ContaAPagar[] = bandas.map((b) => {
-      const chaveDedupe = `${competencia}|fin_person:${b.personId}:${b.natureza}`;
-      const rotulo = NATUREZA_DA_VIEW[b.natureza] ?? b.natureza;
+      const chaveDedupe = chaveDaBanda(b);
+      const rotulo = rotuloDaBanda({ natureza: b.natureza, pacote: b.pacote });
+      const detalhe =
+        b.natureza === "comissao" && b.detalhePacotes && b.detalhePacotes.length > 1
+          ? b.detalhePacotes.map((d) => `${ROTULO_PACOTE[d.pacote]} ${brl(d.cents)}`).join(" · ")
+          : null;
+      const parte =
+        b.pacote === "obras" || b.pacote === "consultoria" ? b.pacote : null;
+      const origemRef =
+        b.natureza === "comissao" && b.pacote
+          ? `fin_person:${b.personId}:comissao:${b.pacote}`
+          : `fin_person:${b.personId}:${b.natureza}`;
       // Mês fechado é história: o dinheiro saiu, e a tela não pode oferecer
       // "programar" um pagamento de julho.
       const realizadoEm = competenciaPassada ? `${competencia}-01` : null;
@@ -672,10 +801,10 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
         competencia,
         tempo: competenciaPassada ? "passado" : "futuro",
         diasAFrente: 0,
-        procedencia: "item",
+        procedencia: "item" as const,
         estado: null,
         camada: CAMADA_COMPOSICAO,
-        descricao: `${b.pessoa} — ${rotulo}`,
+        descricao: detalhe ?? `${b.pessoa} — ${rotulo}`,
         counterpartyId: counterpartyDaOrdem,
         contraparte: b.pessoa,
         categoryId: null,
@@ -688,18 +817,18 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
         vencido: null,
         // Cadastro declarado é firme; ledger fechado também. Não há degrau de
         // incerteza aqui — o que havia era o molde, e ele saiu.
-        certeza: "firme",
+        certeza: "firme" as const,
         origemTabela: "fin_person",
         origemId: b.personId,
-        origemRef: `fin_person:${b.personId}:${b.natureza}`,
+        origemRef,
         entraNoTotal: true,
         motivoNaoSoma: null,
         naoConfirmada: false,
-        grupo: "folha",
+        grupo: "folha" as const,
         natureza: rotulo,
-        parte: null,
+        parte,
         subparte: null,
-        time: "sem_time",
+        time: timePorPessoa.get(b.personId) ?? "sem_time",
         areasEmpresa: [],
         payeeAccountId,
         pixTipo: pa?.pix_address_key_type == null ? null : String(pa.pix_address_key_type),
@@ -715,7 +844,10 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
           payeeAccountId,
           valorCents: b.cents
         }),
-        ordem: ordensPorChave.get(chaveDedupe) ?? null
+        ordem: ordensPorChave.get(chaveDedupe) ?? null,
+        favorito: false,
+        anexos: [],
+        pedacos: pedacosDaComissao(b.natureza, b.pacote, pedacosPorPessoa.get(b.personId) ?? [])
       };
     });
 
@@ -734,15 +866,17 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
               entraNoTotal: false,
               naoConfirmada: false,
               impedimento: "duplicada" as ImpedimentoPagar,
-              motivoNaoSoma: `a folha desta tela vem do cadastro de cada pessoa (cadastro de ${
-                competencia
-              }, ${brl(linhasFolha.reduce((s, x) => s + x.valorCents, 0))} no mes). Esta linha e a mesma gente por outro caminho (${
-                l.camada
-              }, ${brl(l.valorCents)}) e somaria em dobro`
+              motivoNaoSoma: `já no cadastro da folha · ${brl(l.valorCents)}`
             })),
-            ...semFolhaAgregada
+            ...semFolhaAgregada.map((l) =>
+              l.grupo === "folha" && l.impedimento === "duplicada"
+                ? { ...l, motivoNaoSoma: `já no cadastro da folha · ${brl(l.valorCents)}` }
+                : l
+            )
           ]
         : linhas;
+
+    const linhasComCobranca = await colarCobranca(linhasFinais);
 
     const meses = mesesRows.map((r) => r.mes);
 
@@ -751,7 +885,7 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
       meses: meses.includes(competencia) ? meses : [...meses, competencia].sort(),
       competencia,
       hoje,
-      linhas: linhasFinais,
+      linhas: linhasComCobranca,
       areasEmpresa: areasCatRows,
       folhaMolde: linhasFolha.length > 0 ? competencia : null,
       ressalva: linhasFinais.length === 0 ? "nenhuma saída prevista nesta competência" : null
@@ -759,5 +893,31 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
   } catch (error) {
     console.error("[financeiro] contas a pagar indisponível:", error);
     return vazio(pedida ?? "", "a consulta falhou — ver log do servidor");
+  }
+}
+
+/**
+ * Favorito e anexos colam DEPOIS da agenda, para a consulta pesada não depender
+ * da 0185. Tabela ausente (migration ainda não rodou) devolve a lista nua —
+ * a tela continua pagável, só sem estrela nem boleto.
+ */
+async function colarCobranca(linhas: ContaAPagar[]): Promise<ContaAPagar[]> {
+  if (linhas.length === 0) return linhas;
+  try {
+    const [favoritos, anexos] = await Promise.all([
+      listarFavoritos(),
+      listarAnexosPorChave(linhas.map((l) => l.chaveDedupe))
+    ]);
+    return linhas.map((l) => {
+      const chave = chaveFavorito(l);
+      return {
+        ...l,
+        favorito: chave ? favoritos.has(chave) : false,
+        anexos: anexos.get(l.chaveDedupe) ?? []
+      };
+    });
+  } catch (error) {
+    console.error("[financeiro] cobranca indisponível:", error);
+    return linhas;
   }
 }

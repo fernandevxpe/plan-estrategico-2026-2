@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarRange, Layers } from "lucide-react";
+import { CalendarRange, FileDown, Layers } from "lucide-react";
 
 import type { ContasAPagar } from "@/lib/financeiro/contas-a-pagar";
 import type { AbaCustos } from "@/lib/financeiro/custo-empresa-abas";
@@ -44,6 +44,23 @@ export function FinCustosEmpresa({
   const [mesDe, setMesDe] = useState(dados.meses[0] ?? "");
   const [mesAte, setMesAte] = useState(dados.meses[dados.meses.length - 1] ?? "");
 
+  /*
+   * PDF = diálogo nativo, no clique. Adiar `window.print()` (setTimeout /
+   * setState) perde o gesto do usuário: o Chromium trava no "Preparando…" e
+   * `afterprint` nunca dispara. Expandir todos os pedaços antes somava um
+   * DOM enorme no mesmo frame — a tela de set/26 já passa de 2.000px.
+   */
+  function exportarPdf() {
+    const antes = document.title;
+    const recorte =
+      aba === "contas-a-pagar"
+        ? `Contas a pagar — ${monthKeyLabel(contas.competencia)}`
+        : "Matriz de custo da empresa";
+    document.title = `${recorte} · XPE`;
+    window.print();
+    document.title = antes;
+  }
+
   // O `<em>` de cada aba mostra o número dela. É o motivo de a página carregar
   // as duas fontes juntas: uma aba que só sabe o próprio total obriga a clicar
   // para descobrir se vale a pena clicar (a razão está escrita igual em
@@ -65,6 +82,12 @@ export function FinCustosEmpresa({
 
   return (
     <>
+      <p className="fin-print-cab">
+        {aba === "contas-a-pagar"
+          ? `Contas a pagar · ${monthKeyLabel(contas.competencia)}`
+          : "Matriz de custo da empresa"}
+        {contas.hoje ? ` · gerado em ${contas.hoje.split("-").reverse().join("/")}` : ""}
+      </p>
       <nav className="fin-subtabs" aria-label="Visões do custo da empresa">
         <button
           type="button"
@@ -80,11 +103,16 @@ export function FinCustosEmpresa({
           onClick={() => trocarAba("contas-a-pagar")}
         >
           Contas a pagar
-          <em>
-            {contas.disponivel
-              ? `${brlCents(totalAPagarCents)} · ${monthKeyLabel(contas.competencia)}`
-              : "indisponível"}
-          </em>
+          <em>{contas.disponivel ? brlCents(totalAPagarCents) : "indisponível"}</em>
+        </button>
+        <button
+          type="button"
+          className="fin-btn-ghost fin-print-btn"
+          onClick={exportarPdf}
+          title="Abre o diálogo de impressão — escolha Salvar como PDF"
+        >
+          <FileDown size={15} strokeWidth={2.2} aria-hidden />
+          Exportar PDF
         </button>
       </nav>
 

@@ -271,6 +271,10 @@ export const GUARDAS_SAIDA = `
  * (0170). Marketing no campo velho não é time — é departamento — e quem ainda
  * tem esse slug no `fin_person.area` lê como outros até alguém gravar o novo.
  * Cadastro sem área (Leon, Tiago) continua sem_time.
+ *
+ * Espelho JS: `timeDaPessoa` em `custo-empresa-eixos.ts`. As duas têm de
+ * dizer a mesma coisa — o filtro de Contas a pagar lê a função, a matriz
+ * de Pessoas lê este CASE.
  */
 const TIME_SQL = `
   CASE

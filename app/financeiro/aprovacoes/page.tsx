@@ -29,6 +29,7 @@ export default async function AprovacoesPage() {
     <AppShell>
       <div className="page-header">
         <h1>Aprovações</h1>
+        <p>A plataforma entrega a ordem. Quem aprova — e quem paga — é você, no app do Inter.</p>
       </div>
       <FinShell>
         <FinAprovacoes dados={dados} />

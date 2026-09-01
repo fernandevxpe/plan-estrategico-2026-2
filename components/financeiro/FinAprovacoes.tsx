@@ -1,26 +1,36 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Ban,
   CheckCircle2,
+  ChevronRight,
   CircleAlert,
   CirclePause,
   Clock,
   FileText,
+  RefreshCw,
+  Search,
   Send,
-  ShieldCheck,
-  Undo2
+  Undo2,
+  Wallet,
+  X
 } from "lucide-react";
 
+import {
+  coberturaDoDia,
+  ordemEhHoje,
+  ROTULO_TIPO,
+  type SaldoConta,
+  type SaldoInter,
+  type TipoOrdem
+} from "@/lib/financeiro/aprovacoes-caixa";
 import type { Aprovacoes, EstadoCiclo, OrdemAprovacao } from "@/lib/financeiro/aprovacoes";
 import { brlCents, brlPrecise, dateLabel } from "@/lib/financeiro/format";
 import { urlDaOrigem } from "@/lib/url-origem";
 
-import { KpiAnalise } from "./FinKpiAnalise";
-import { FinSecaoColapsavel } from "./FinSecaoColapsavel";
 
 /**
  * APROVAÇÕES — o que foi para o Inter e ainda espera um dedo humano.
@@ -37,14 +47,12 @@ import { FinSecaoColapsavel } from "./FinSecaoColapsavel";
  * máquina local. Como o banco é o MESMO, essas ordens aparecem aqui para quem
  * tem a credencial, e é daqui que elas saem.
  *
- * O aviso do topo é permanente e não colapsa. Ele não é decoração de
- * onboarding: é a garantia do produto, escrita também no schema da 0075 e no
- * cabeçalho de `pagar-programar.ts`. Uma tela chamada "Aprovações" que não
- * dissesse isso ensinaria exatamente a leitura errada — "a plataforma aprovou,
- * então está pago". O botão de envio herda a mesma disciplina: ele se chama
- * "Enviar ao Inter para aprovação", nunca "Pagar", porque o que ele faz é
- * parar em `aguardando_autorizacao` e devolver a decisão para uma pessoa no
- * aplicativo do banco.
+ * O cartão gigante do topo saiu em 01/09/2026. A garantia ("nada aqui paga")
+ * mora no subtítulo da página e no botão — que continua se chamando "Enviar ao
+ * Inter para aprovação", nunca "Pagar". O espaço que o cartão ocupava agora
+ * mostra o saldo do Inter e o que falta para cobrir o que vence hoje: em
+ * 01/09 o banco apagou 10 ordens por falta de caixa, e um parágrafo de
+ * onboarding não evitou isso.
  *
  * O SEGUNDO bloco também deixou de ser só leitura, no mesmo 01/09/2026. Das 39
  * ordens programadas, 27 ficaram pagas, 2 em rascunho e 10 presas em
@@ -149,36 +157,37 @@ type Bloco = {
 const BLOCOS: Bloco[] = [
   {
     estado: "nao_enviada",
-    titulo: "Ainda não foi ao banco",
-    explicacao:
-      "O que já foi selecionado para pagar e ainda não foi entregue ao Inter — inclusive por outra pessoa, em outra máquina. A ordem em rascunho É a seleção registrada: ela espera aqui até alguém com a credencial de pagamento enviá-la. Marque e envie abaixo; o envio para na aprovação, não paga.",
-    rotuloKpi: "Não foi ao banco",
+    titulo: "Rascunho",
+    explicacao: "Selecionado, ainda não foi ao Inter. O envio para na aprovação — não paga.",
+    rotuloKpi: "Rascunho",
     icone: FileText
   },
   {
     estado: "aguardando",
-    titulo: "Aguardando sua aprovação no app do Inter",
-    explicacao:
-      "A ordem foi entregue ao banco. Daqui em diante nada muda sozinho: só a sua aprovação no aplicativo do Inter faz o dinheiro sair. Se você abrir o aplicativo e a ordem não estiver mais lá, marque-a e devolva para a fila — a obrigação continua devida, o que morreu foi a ordem.",
-    rotuloKpi: "Esperando você",
+    titulo: "No app do Inter",
+    explicacao: "Entregue ao banco. O dinheiro só sai quando você aprovar no aplicativo.",
+    rotuloKpi: "No app",
     icone: Clock
   },
   {
     estado: "paga",
     titulo: "Paga",
-    explicacao:
-      "Saída registrada em fin_payment_execution — o que já aconteceu na conta, com data que não pode ser futura.",
+    explicacao: "Saída confirmada no extrato — o que já aconteceu na conta.",
     rotuloKpi: "Paga",
     icone: CheckCircle2
   },
   {
     estado: "encerrada",
-    titulo: "Encerrada sem pagar",
-    explicacao: "Rejeitada, cancelada ou devolvida. Fica registrada porque some do caixa previsto.",
-    rotuloKpi: "Encerrada sem pagar",
+    titulo: "Encerrada",
+    explicacao: "Rejeitada, cancelada ou devolvida. Some do caixa previsto.",
+    rotuloKpi: "Encerrada",
     icone: Ban
   }
 ];
+
+const ROTA_SALDO = "/api/financeiro/aprovacoes/saldo";
+/** Uma chamada a cada 45s: o Inter limita ~10/min, e 45s é 1,3/min. */
+const POLL_SALDO_MS = 60_000;
 
 /**
  * O selo diz o `status` cru da 0075, não o do bloco.
@@ -247,7 +256,105 @@ async function dormir(ms: number, cancelado: () => boolean): Promise<void> {
   }
 }
 
+function somaHoje(ordens: OrdemAprovacao[], hoje: string): number {
+  return ordens.reduce((s, o) => s + (ordemEhHoje(o.scheduledFor, hoje) ? o.valorCents : 0), 0);
+}
+
+type CorpoSaldo = SaldoInter & { asaas?: SaldoConta; nubank?: SaldoConta; error?: string };
+
+function contaOuNula(c: SaldoConta | null | undefined): SaldoConta | null {
+  return c && c.disponivelCents !== null ? c : null;
+}
+
+function useSaldos(inicial: {
+  inter: SaldoInter | null;
+  asaas: SaldoConta | null;
+  nubank: SaldoConta | null;
+}) {
+  const [saldo, setSaldo] = useState<SaldoInter | null>(inicial.inter);
+  const [asaas, setAsaas] = useState<SaldoConta | null>(inicial.asaas);
+  const [nubank, setNubank] = useState<SaldoConta | null>(inicial.nubank);
+  const [atualizando, setAtualizando] = useState(false);
+
+  const atualizar = useCallback(async () => {
+    setAtualizando(true);
+    try {
+      const resposta = await fetch(urlDaOrigem(ROTA_SALDO), { cache: "no-store" });
+      const corpo = (await resposta.json().catch(() => null)) as CorpoSaldo | null;
+      if (!corpo) return;
+      // Inter só atualiza no 200: um 503 do banco não pode apagar o número
+      // que o SSR já mostrou. Asaas/Nubank vêm do ledger e chegam mesmo
+      // quando o Inter falha — vale aplicar.
+      if (resposta.ok && "disponivelCents" in corpo) setSaldo(corpo);
+      if (corpo.asaas) setAsaas(contaOuNula(corpo.asaas));
+      if (corpo.nubank) setNubank(contaOuNula(corpo.nubank));
+    } catch {
+      // Mantém o que já está na tela — ledger ou o último ao vivo. Sumir o
+      // número porque o poll falhou é pior do que ele ficar 45s velho.
+    } finally {
+      setAtualizando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void atualizar();
+    let timer: ReturnType<typeof setInterval> | null = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      void atualizar();
+    }, POLL_SALDO_MS);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [atualizar]);
+
+  return { saldo, asaas, nubank, atualizando, atualizar };
+}
+
+function useFiltro(ordens: OrdemAprovacao[]) {
+  const [busca, setBusca] = useState("");
+  const [tipo, setTipo] = useState<TipoOrdem | null>(null);
+
+  const tipos = useMemo(() => {
+    const mapa = new Map<TipoOrdem, { n: number; cents: number }>();
+    for (const o of ordens) {
+      const atual = mapa.get(o.tipo) ?? { n: 0, cents: 0 };
+      atual.n += 1;
+      atual.cents += o.valorCents;
+      mapa.set(o.tipo, atual);
+    }
+    return [...mapa.entries()]
+      .sort((a, b) => b[1].n - a[1].n)
+      .map(([slug, v]) => ({ slug, ...v }));
+  }, [ordens]);
+
+  const visiveis = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return ordens.filter((o) => {
+      if (tipo && o.tipo !== tipo) return false;
+      if (!q) return true;
+      return (
+        o.favorecido.toLowerCase().includes(q) ||
+        o.descricao.toLowerCase().includes(q) ||
+        o.code.toLowerCase().includes(q)
+      );
+    });
+  }, [ordens, busca, tipo]);
+
+  const filtrando = Boolean(busca.trim() || tipo);
+  const limpar = useCallback(() => {
+    setBusca("");
+    setTipo(null);
+  }, []);
+
+  return { busca, setBusca, tipo, setTipo, tipos, visiveis, filtrando, limpar };
+}
+
 export function FinAprovacoes({ dados }: { dados: Aprovacoes }) {
+  const { saldo, asaas, nubank, atualizando, atualizar } = useSaldos({
+    inter: dados.saldoInter,
+    asaas: dados.saldoAsaas,
+    nubank: dados.saldoNubank
+  });
   const porEstado = useMemo(() => {
     const mapa = new Map<EstadoCiclo, OrdemAprovacao[]>();
     for (const bloco of BLOCOS) mapa.set(bloco.estado, []);
@@ -258,11 +365,44 @@ export function FinAprovacoes({ dados }: { dados: Aprovacoes }) {
   }, [dados.ordens]);
 
   const esquecidas = useMemo(() => dados.ordens.filter((o) => o.esquecida), [dados.ordens]);
+  const aguardando = porEstado.get("aguardando") ?? [];
+  const rascunho = porEstado.get("nao_enviada") ?? [];
+  const hojeNoAppCents = somaHoje(aguardando, dados.hoje);
+  const hojeRascunhoCents = somaHoje(rascunho, dados.hoje);
+  const noAppCents = aguardando.reduce((s, o) => s + o.valorCents, 0);
+  const rascunhoCents = rascunho.reduce((s, o) => s + o.valorCents, 0);
+  const coberturaHoje = coberturaDoDia(
+    saldo?.disponivelCents ?? null,
+    hojeNoAppCents + hojeRascunhoCents
+  );
+  const coberturaApp = coberturaDoDia(saldo?.disponivelCents ?? null, hojeNoAppCents);
+  const coberturaNoApp = coberturaDoDia(saldo?.disponivelCents ?? null, noAppCents);
+
+  const [popupAbertura, setPopupAbertura] = useState(false);
+  const mostrouRef = useRef(false);
+  useEffect(() => {
+    if (mostrouRef.current || !coberturaApp || coberturaApp.cabe) return;
+    const chave = `fin-apr-caixa-${dados.hoje}`;
+    try {
+      if (sessionStorage.getItem(chave)) return;
+    } catch {
+      /* sessionStorage pode estar bloqueado; o popup ainda vale uma vez. */
+    }
+    mostrouRef.current = true;
+    setPopupAbertura(true);
+  }, [coberturaApp, dados.hoje]);
+
+  const fecharPopupAbertura = useCallback(() => {
+    setPopupAbertura(false);
+    try {
+      sessionStorage.setItem(`fin-apr-caixa-${dados.hoje}`, "1");
+    } catch {
+      /* sem persistência o popup só não volta neste render */
+    }
+  }, [dados.hoje]);
 
   return (
     <>
-      <Aviso esquecidas={esquecidas.length} />
-
       {!dados.disponivel ? (
         <section className="card fin-empty">
           <h2 className="card-title">Aprovações indisponível</h2>
@@ -279,41 +419,24 @@ export function FinAprovacoes({ dados }: { dados: Aprovacoes }) {
         </section>
       ) : (
         <>
-          <section className="fin-pessoas-kpis" aria-label="Ordens por estado do ciclo">
-            <div className="fin-pessoas-kpi-faixa">
-              {BLOCOS.map((bloco) => {
-                const lista = porEstado.get(bloco.estado) ?? [];
-                const cents = lista.reduce((s, o) => s + o.valorCents, 0);
-                return (
-                  <KpiAnalise
-                    key={bloco.estado}
-                    destaque={bloco.estado === "aguardando"}
-                    rotulo={bloco.rotuloKpi}
-                    valor={brlCents(cents)}
-                    delta={
-                      <p className="fin-delta neutro">
-                        {lista.length} {lista.length === 1 ? "ordem" : "ordens"}
-                      </p>
-                    }
-                    extra={
-                      bloco.estado === "aguardando" && esquecidas.length > 0 ? (
-                        <p className="fin-pessoas-kpi-extra fin-apr-kpi-alerta">
-                          {esquecidas.length} parada{esquecidas.length === 1 ? "" : "s"} há 2 dias ou
-                          mais
-                        </p>
-                      ) : undefined
-                    }
-                    /* Sem sparkline: o estado do ciclo é uma foto de agora, não
-                       uma série. Inventar meses aqui seria enfeite com forma de
-                       dado. `SparkArea` já devolve null para menos de 2 pontos. */
-                    pontos={[]}
-                    crescimento={null}
-                    ariaSpark={bloco.rotuloKpi}
-                  />
-                );
-              })}
-            </div>
-          </section>
+          <FaixaSaldo
+            saldo={saldo}
+            asaas={asaas}
+            nubank={nubank}
+            atualizando={atualizando}
+            onAtualizar={() => void atualizar()}
+            cobertura={coberturaNoApp}
+            coberturaHoje={coberturaHoje}
+            noAppCents={noAppCents}
+            rascunhoCents={rascunhoCents}
+            hojeNoAppCents={hojeNoAppCents}
+            esquecidas={esquecidas.length}
+          />
+
+          <FaixaCiclo
+            porEstado={porEstado}
+            esquecidas={esquecidas.length}
+          />
 
           {BLOCOS.filter((b) => b.estado !== "encerrada").map((bloco) =>
             bloco.estado === "nao_enviada" ? (
@@ -321,50 +444,176 @@ export function FinAprovacoes({ dados }: { dados: Aprovacoes }) {
                 key={bloco.estado}
                 bloco={bloco}
                 ordens={porEstado.get(bloco.estado) ?? []}
+                hoje={dados.hoje}
+                saldoCents={saldo?.disponivelCents ?? null}
+                jaNoAppCents={noAppCents}
+                jaNoAppHojeCents={hojeNoAppCents}
               />
             ) : bloco.estado === "aguardando" ? (
               <BlocoAguardando
                 key={bloco.estado}
                 bloco={bloco}
                 ordens={porEstado.get(bloco.estado) ?? []}
+                hoje={dados.hoje}
+                saldoCents={saldo?.disponivelCents ?? null}
               />
             ) : (
               <BlocoAberto
                 key={bloco.estado}
                 bloco={bloco}
                 ordens={porEstado.get(bloco.estado) ?? []}
+                hoje={dados.hoje}
               />
             )
           )}
 
-          <BlocoEncerrado ordens={porEstado.get("encerrada") ?? []} />
+          <BlocoEncerrado ordens={porEstado.get("encerrada") ?? []} hoje={dados.hoje} />
 
           <p className="fin-apr-rodape">
-            Posição de {dateLabel(dados.hoje)}. Daqui a tela entrega ordens ao Inter — e para nisso.
-            Nenhum botão desta página aprova, autoriza ou paga.
+            Posição de {dateLabel(dados.hoje)}. Nenhum botão desta página aprova, autoriza ou paga.
           </p>
         </>
       )}
+
+      {popupAbertura && coberturaApp && !coberturaApp.cabe ? (
+        <PopupCaixa
+          cobertura={coberturaApp}
+          contexto="aprovar"
+          onFechar={fecharPopupAbertura}
+        />
+      ) : null}
     </>
   );
 }
 
-function Aviso({ esquecidas }: { esquecidas: number }) {
+function somaSaldos(...valores: Array<number | null | undefined>): number | null {
+  const nums = valores.filter((v): v is number => v != null && Number.isFinite(v));
+  return nums.length === 0 ? null : nums.reduce((s, v) => s + v, 0);
+}
+
+function MiniSaldo({ rotulo, conta }: { rotulo: string; conta: SaldoConta | null }) {
+  const cents = conta?.disponivelCents ?? null;
+  const meta =
+    conta?.fonte === "asaas"
+      ? "ao vivo"
+      : conta?.lastroAte
+        ? `extrato ${conta.lastroAte}`
+        : null;
   return (
-    <section className="card fin-apr-aviso" aria-label="Como funciona a aprovação">
-      <span className="fin-apr-aviso-icone" aria-hidden>
-        <ShieldCheck size={20} strokeWidth={2.1} />
-      </span>
-      <div>
-        <h2 className="card-title">Nada aqui paga.</h2>
-        <p>
-          A plataforma cria a ordem e a entrega ao Inter; <strong>quem aprova é você, no aplicativo
-          do banco.</strong> Nenhum estado depois de &ldquo;aguardando aprovação&rdquo; muda sozinho.
+    <div className="fin-apr-saldo-mini">
+      <p className="fin-apr-saldo-rot">{rotulo}</p>
+      <p className="fin-apr-saldo-valor">{cents === null ? "—" : brlPrecise(cents)}</p>
+      {meta ? <p className="fin-apr-saldo-mini-meta">{meta}</p> : null}
+    </div>
+  );
+}
+
+function FaixaSaldo({
+  saldo,
+  asaas,
+  nubank,
+  atualizando,
+  onAtualizar,
+  cobertura,
+  coberturaHoje,
+  noAppCents,
+  rascunhoCents,
+  hojeNoAppCents,
+  esquecidas
+}: {
+  saldo: SaldoInter | null;
+  asaas: SaldoConta | null;
+  nubank: SaldoConta | null;
+  atualizando: boolean;
+  onAtualizar: () => void;
+  cobertura: ReturnType<typeof coberturaDoDia>;
+  coberturaHoje: ReturnType<typeof coberturaDoDia>;
+  noAppCents: number;
+  rascunhoCents: number;
+  hojeNoAppCents: number;
+  esquecidas: number;
+}) {
+  const cents = saldo?.disponivelCents ?? null;
+  const total = somaSaldos(cents, asaas?.disponivelCents, nubank?.disponivelCents);
+  const fonte =
+    saldo?.fonte === "inter"
+      ? "ao vivo no Inter"
+      : saldo?.fonte === "ledger"
+        ? saldo.lastroAte
+          ? `último extrato ${saldo.lastroAte}`
+          : "saldo do ledger"
+        : "sem leitura";
+
+  return (
+    <section className="fin-apr-saldo" aria-label="Saldos das contas">
+      <div className="fin-apr-saldo-lado">
+        <div className="fin-apr-saldo-contas">
+          <div className="fin-apr-saldo-inter">
+            <p className="fin-apr-saldo-rot">
+              <Wallet size={15} strokeWidth={2.2} aria-hidden />
+              Inter · disponível
+            </p>
+            <p className="fin-apr-saldo-valor">{cents === null ? "—" : brlPrecise(cents)}</p>
+            <p className="fin-apr-saldo-meta">
+              {fonte}
+              {saldo?.bloqueadoCents ? ` · ${brlPrecise(saldo.bloqueadoCents)} bloqueado` : ""}
+              <button
+                type="button"
+                className="fin-apr-saldo-att"
+                onClick={onAtualizar}
+                disabled={atualizando}
+              >
+                <RefreshCw size={12} strokeWidth={2.3} aria-hidden className={atualizando ? "gira" : undefined} />
+                {atualizando ? "atualizando" : "atualizar"}
+              </button>
+            </p>
+            {saldo?.ressalva ? <p className="fin-apr-saldo-ressalva">{saldo.ressalva}</p> : null}
+          </div>
+          <div className="fin-apr-saldo-outros">
+            <MiniSaldo rotulo="Asaas" conta={asaas} />
+            <MiniSaldo rotulo="Nubank" conta={nubank} />
+          </div>
+        </div>
+        <p className="fin-apr-saldo-total">
+          <span>Saldo total</span>
+          <strong>{total === null ? "—" : brlPrecise(total)}</strong>
         </p>
+      </div>
+      <div className="fin-apr-saldo-hoje">
+        <p className="fin-apr-saldo-rot">Para pagar no Inter</p>
+        <dl>
+          <div>
+            <dt>No app</dt>
+            <dd>{brlCents(noAppCents)}</dd>
+          </div>
+          <div>
+            <dt>Em rascunho</dt>
+            <dd>{brlCents(rascunhoCents)}</dd>
+          </div>
+          <div>
+            <dt>{cobertura && !cobertura.cabe ? "Falta no Inter" : "Sobra no caixa"}</dt>
+            <dd className={cobertura && !cobertura.cabe ? "falta" : "cabe"}>
+              {cobertura
+                ? cobertura.cabe
+                  ? brlCents(cobertura.sobraCents)
+                  : brlPrecise(cobertura.faltaCents)
+                : "—"}
+            </dd>
+          </div>
+        </dl>
+        {cobertura && !cobertura.cabe ? (
+          <p className="fin-apr-saldo-alerta">
+            Adicione {brlPrecise(cobertura.faltaCents)} no Inter antes de aprovar no app — em 01/09 o
+            banco apagou o que ficou sem saldo.
+            {hojeNoAppCents > 0 && coberturaHoje && !coberturaHoje.cabe
+              ? ` Disso, ${brlPrecise(hojeNoAppCents)} vence hoje.`
+              : ""}
+          </p>
+        ) : null}
         {esquecidas > 0 ? (
-          <p className="fin-apr-aviso-alerta">
-            {esquecidas} ordem{esquecidas === 1 ? "" : "s"} espera{esquecidas === 1 ? "" : "m"} há 2
-            dias ou mais. Ordem esquecida no aplicativo é dinheiro que não saiu e ninguém percebeu.
+          <p className="fin-apr-saldo-alerta suave">
+            {esquecidas} ordem{esquecidas === 1 ? "" : "s"} parada{esquecidas === 1 ? "" : "s"} há 2
+            dias ou mais no aplicativo.
           </p>
         ) : null}
       </div>
@@ -372,45 +621,267 @@ function Aviso({ esquecidas }: { esquecidas: number }) {
   );
 }
 
-/**
- * O bloco sem ação. Sobrou só "Paga": os outros dois têm escrita e componente
- * próprio, e o `principal` que este componente aplicava ao bloco "aguardando"
- * mudou de casa junto com ele. Deixá-lo aqui seria um ramo que nunca executa.
- */
-function BlocoAberto({ bloco, ordens }: { bloco: Bloco; ordens: OrdemAprovacao[] }) {
-  const cents = ordens.reduce((s, o) => s + o.valorCents, 0);
+function FaixaCiclo({
+  porEstado,
+  esquecidas
+}: {
+  porEstado: Map<EstadoCiclo, OrdemAprovacao[]>;
+  esquecidas: number;
+}) {
   return (
-    <section className="card fin-apr-bloco" aria-label={bloco.titulo}>
-      <CabecalhoBloco bloco={bloco} ordens={ordens.length} cents={cents} />
-      <Tabela ordens={ordens} estado={bloco.estado} />
+    <nav className="fin-apr-ciclo" aria-label="Ciclo das ordens">
+      {BLOCOS.map((bloco, i) => {
+        const lista = porEstado.get(bloco.estado) ?? [];
+        const cents = lista.reduce((s, o) => s + o.valorCents, 0);
+        const Icone = bloco.icone;
+        return (
+          <a
+            key={bloco.estado}
+            href={`#fin-apr-${bloco.estado}`}
+            className={`fin-apr-ciclo-item${bloco.estado === "aguardando" ? " agora" : ""}`}
+          >
+            {i > 0 ? <span className="fin-apr-ciclo-seta" aria-hidden /> : null}
+            <span className="fin-apr-ciclo-ico" aria-hidden>
+              <Icone size={15} strokeWidth={2.1} />
+            </span>
+            <span className="fin-apr-ciclo-rot">{bloco.rotuloKpi}</span>
+            <strong>{brlCents(cents)}</strong>
+            <span className="fin-apr-ciclo-n">
+              {plural(lista.length, "ordem", "ordens")}
+              {bloco.estado === "aguardando" && esquecidas > 0
+                ? ` · ${esquecidas} parada${esquecidas === 1 ? "" : "s"}`
+                : ""}
+            </span>
+          </a>
+        );
+      })}
+    </nav>
+  );
+}
+
+function PopupCaixa({
+  cobertura,
+  contexto,
+  onFechar,
+  onContinuar
+}: {
+  cobertura: NonNullable<ReturnType<typeof coberturaDoDia>>;
+  contexto: "enviar" | "aprovar";
+  onFechar: () => void;
+  onContinuar?: () => void;
+}) {
+  return (
+    <div className="fin-apr-pop-overlay" role="presentation" onClick={onFechar}>
+      <div
+        className="fin-apr-pop"
+        role="dialog"
+        aria-labelledby="fin-apr-pop-titulo"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="fin-apr-pop-cab">
+          <h2 id="fin-apr-pop-titulo">
+            <AlertTriangle size={18} strokeWidth={2.2} aria-hidden />
+            Falta {brlPrecise(cobertura.faltaCents)} no Inter
+          </h2>
+          <button type="button" className="fin-apr-pop-x" onClick={onFechar} aria-label="Fechar">
+            <X size={16} strokeWidth={2.2} />
+          </button>
+        </header>
+        <div className="fin-apr-pop-corpo">
+          <p>
+            {contexto === "enviar"
+              ? "O que você está enviando hoje, somado ao que já espera no aplicativo, passa do saldo disponível."
+              : "O que já está no aplicativo para hoje passa do saldo disponível."}{" "}
+            O Inter apaga ordem sem saldo — medido em 01/09, 10 ordens sumiram assim.
+          </p>
+          <dl className="fin-apr-pop-conta">
+            <div>
+              <dt>Disponível no Inter</dt>
+              <dd>{brlPrecise(cobertura.saldoCents)}</dd>
+            </div>
+            <div>
+              <dt>A pagar hoje</dt>
+              <dd>{brlPrecise(cobertura.hojeCents)}</dd>
+            </div>
+            <div className="falta">
+              <dt>Falta adicionar</dt>
+              <dd>{brlPrecise(cobertura.faltaCents)}</dd>
+            </div>
+          </dl>
+          <p className="fin-apr-pop-rec">
+            Transfira {brlPrecise(cobertura.faltaCents)} para o Inter{" "}
+            <strong>antes de aprovar no aplicativo</strong>.
+          </p>
+        </div>
+        <footer className="fin-apr-pop-acoes">
+          <button type="button" className="fin-btn-primary" onClick={onFechar}>
+            Entendi — vou adicionar
+          </button>
+          {onContinuar ? (
+            <button type="button" className="fin-btn-ghost" onClick={onContinuar}>
+              Enviar mesmo assim
+            </button>
+          ) : null}
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Os quatro blocos compartilham o MESMO cabeçalho: título à esquerda, total à
+ * direita, seta para compactar. O de Pessoas (`FinSecaoColapsavel`) põe o
+ * valor na linha do título e some com o total — aqui o número é o que se
+ * compara, então ele fica à direita em todos, abertos ou fechados.
+ */
+function BlocoColapsavel({
+  bloco,
+  n,
+  cents,
+  abertoPadrao,
+  principal,
+  children
+}: {
+  bloco: Bloco;
+  n: number;
+  cents: number;
+  abertoPadrao: boolean;
+  principal?: boolean;
+  children: React.ReactNode;
+}) {
+  const [aberto, setAberto] = useState(abertoPadrao);
+  const Icone = bloco.icone;
+  return (
+    <section
+      id={`fin-apr-${bloco.estado}`}
+      className={`card fin-apr-bloco${principal ? " principal" : ""}${aberto ? " aberto" : ""}`}
+      aria-label={bloco.titulo}
+    >
+      <button
+        type="button"
+        className="fin-apr-cab"
+        aria-expanded={aberto}
+        onClick={() => setAberto((v) => !v)}
+      >
+        <span className="fin-apr-cab-lado">
+          <span className="fin-apr-cab-icone" aria-hidden>
+            <Icone size={16} strokeWidth={2.1} />
+          </span>
+          <span className="fin-apr-cab-txt">
+            <span className="card-title">{bloco.titulo}</span>
+            {aberto ? <span className="fin-apr-explicacao">{bloco.explicacao}</span> : null}
+          </span>
+        </span>
+        <span className="fin-apr-cab-total">
+          <strong>{brlPrecise(cents)}</strong>
+          <span>{plural(n, "ordem", "ordens")}</span>
+        </span>
+        <ChevronRight
+          size={16}
+          strokeWidth={2.2}
+          className={`fin-apr-cab-seta${aberto ? " fin-chevron-aberto" : ""}`}
+          aria-hidden
+        />
+      </button>
+      {aberto ? <div className="fin-apr-bloco-corpo">{children}</div> : null}
     </section>
   );
 }
 
-function CabecalhoBloco({
+function BlocoAberto({
   bloco,
   ordens,
-  cents
+  hoje
 }: {
   bloco: Bloco;
-  ordens: number;
-  cents: number;
+  ordens: OrdemAprovacao[];
+  hoje: string;
 }) {
-  const Icone = bloco.icone;
+  const cents = ordens.reduce((s, o) => s + o.valorCents, 0);
   return (
-    <header className="fin-apr-cab">
-      <span className="fin-apr-cab-icone" aria-hidden>
-        <Icone size={16} strokeWidth={2.1} />
-      </span>
-      <div>
-        <h2 className="card-title">{bloco.titulo}</h2>
-        <p className="fin-apr-explicacao">{bloco.explicacao}</p>
+    <BlocoColapsavel bloco={bloco} n={ordens.length} cents={cents} abertoPadrao={false}>
+      <Tabela ordens={ordens} estado={bloco.estado} hoje={hoje} />
+    </BlocoColapsavel>
+  );
+}
+
+function FiltrosBloco({
+  filtro,
+  nTotal,
+  centsVisiveis,
+  nMarcadas = 0,
+  centsMarcadas = 0,
+  rotuloMarcadas = "Selecionado"
+}: {
+  filtro: ReturnType<typeof useFiltro>;
+  nTotal: number;
+  centsVisiveis: number;
+  nMarcadas?: number;
+  centsMarcadas?: number;
+  rotuloMarcadas?: string;
+}) {
+  if (nTotal === 0) return null;
+  const mostraResumo = filtro.filtrando || nMarcadas > 0;
+  return (
+    <div className={`fin-apr-filtro${mostraResumo ? " com-resumo" : ""}`} aria-label="Filtrar ordens">
+      <div className="fin-apr-filtro-linha">
+        <label className="fin-apr-filtro-busca">
+          <Search size={14} strokeWidth={2.2} aria-hidden />
+          <input
+            type="search"
+            value={filtro.busca}
+            onChange={(e) => filtro.setBusca(e.target.value)}
+            placeholder="Buscar pessoa, descrição ou ordem…"
+          />
+        </label>
+        {filtro.tipos.length > 1 ? (
+          <div className="fin-apr-filtro-tipos" role="group" aria-label="Filtrar por tipo">
+            {filtro.tipos.map((t) => (
+              <button
+                key={t.slug}
+                type="button"
+                className={`fin-apr-chip${filtro.tipo === t.slug ? " ativo" : ""}`}
+                aria-pressed={filtro.tipo === t.slug}
+                onClick={() => filtro.setTipo(filtro.tipo === t.slug ? null : t.slug)}
+              >
+                {ROTULO_TIPO[t.slug]}
+                <em>{t.n}</em>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
-      <p className="fin-apr-cab-total">
-        <strong>{brlCents(cents)}</strong>
-        <span>{plural(ordens, "ordem", "ordens")}</span>
-      </p>
-    </header>
+      {mostraResumo ? (
+        <div className="fin-apr-filtro-resumo" role="status">
+          {filtro.filtrando ? (
+            <p className="fin-apr-filtro-dado">
+              <span>Nesta busca</span>
+              <strong>{brlPrecise(centsVisiveis)}</strong>
+              <em>
+                {filtro.visiveis.length} de {nTotal}
+              </em>
+            </p>
+          ) : null}
+          {nMarcadas > 0 ? (
+            <p className="fin-apr-filtro-dado marcado">
+              <span>{rotuloMarcadas}</span>
+              <strong>{brlPrecise(centsMarcadas)}</strong>
+              <em>{plural(nMarcadas, "ordem", "ordens")}</em>
+            </p>
+          ) : filtro.filtrando ? (
+            <p className="fin-apr-filtro-dado vazio">
+              <span>Marque para montar o total</span>
+              <strong>—</strong>
+            </p>
+          ) : null}
+          {filtro.filtrando ? (
+            <button type="button" className="fin-apr-filtro-limpar" onClick={filtro.limpar}>
+              limpar busca
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -513,7 +984,21 @@ function useSelecao(elegiveis: OrdemAprovacao[]) {
  * aqui aprova nem confirma pagamento — a rota termina em
  * `aguardando_autorizacao` e é onde o produto acaba.
  */
-function BlocoParaEnviar({ bloco, ordens }: { bloco: Bloco; ordens: OrdemAprovacao[] }) {
+function BlocoParaEnviar({
+  bloco,
+  ordens,
+  hoje,
+  saldoCents,
+  jaNoAppCents,
+  jaNoAppHojeCents
+}: {
+  bloco: Bloco;
+  ordens: OrdemAprovacao[];
+  hoje: string;
+  saldoCents: number | null;
+  jaNoAppCents: number;
+  jaNoAppHojeCents: number;
+}) {
   const router = useRouter();
   const [emVoo, setEmVoo] = useState(false);
   const [parando, setParando] = useState(false);
@@ -527,9 +1012,23 @@ function BlocoParaEnviar({ bloco, ordens }: { bloco: Bloco; ordens: OrdemAprovac
   const pararRef = useRef(false);
 
   const cents = ordens.reduce((s, o) => s + o.valorCents, 0);
-  const enviaveis = useMemo(() => ordens.filter((o) => STATUS_QUE_SAEM.has(o.status)), [ordens]);
+  const filtro = useFiltro(ordens);
+  const enviaveis = useMemo(
+    () => filtro.visiveis.filter((o) => STATUS_QUE_SAEM.has(o.status)),
+    [filtro.visiveis]
+  );
   const selecao = useSelecao(enviaveis);
   const { escolhidas, totalCents: totalEscolhido, limpar } = selecao;
+  const [confirmarCaixa, setConfirmarCaixa] = useState<OrdemAprovacao[] | null>(null);
+
+  const coberturaSelecao = coberturaDoDia(
+    saldoCents,
+    jaNoAppCents + escolhidas.reduce((s, o) => s + o.valorCents, 0)
+  );
+  const coberturaSelecaoHoje = coberturaDoDia(
+    saldoCents,
+    jaNoAppHojeCents + somaHoje(escolhidas, hoje)
+  );
 
   const enviarFila = useCallback(
     async (fila: OrdemAprovacao[]) => {
@@ -628,34 +1127,62 @@ function BlocoParaEnviar({ bloco, ordens }: { bloco: Bloco; ordens: OrdemAprovac
     [emVoo, limpar, router]
   );
 
+  const pedirEnvio = (fila: OrdemAprovacao[]) => {
+    const doHoje = coberturaDoDia(saldoCents, jaNoAppHojeCents + somaHoje(fila, hoje));
+    const doTotal = coberturaDoDia(
+      saldoCents,
+      jaNoAppCents + fila.reduce((s, o) => s + o.valorCents, 0)
+    );
+    // Popup só no mesmo dia — é quando o Inter debita e apaga o que não cabe.
+    // O aviso na barra cobre o resto (lote marcado para amanhã).
+    if ((doHoje && !doHoje.cabe) || (doTotal && !doTotal.cabe && somaHoje(fila, hoje) > 0)) {
+      setConfirmarCaixa(fila);
+      return;
+    }
+    void enviarFila(fila);
+  };
+
   const restantes = progresso ? progresso.total - progresso.posicao - 1 : 0;
   const feitas = progresso ? progresso.posicao + (progresso.esperando ? 0 : 1) : 0;
   const pct = progresso ? Math.round((feitas / progresso.total) * 100) : 0;
 
   return (
-    <section className="card fin-apr-bloco" aria-label={bloco.titulo}>
-      <CabecalhoBloco bloco={bloco} ordens={ordens.length} cents={cents} />
+    <BlocoColapsavel bloco={bloco} n={ordens.length} cents={cents} abertoPadrao>
+      <FiltrosBloco
+        filtro={filtro}
+        nTotal={ordens.length}
+        centsVisiveis={filtro.visiveis.reduce((s, o) => s + o.valorCents, 0)}
+        nMarcadas={escolhidas.length}
+        centsMarcadas={totalEscolhido}
+        rotuloMarcadas="Para enviar"
+      />
 
       {enviaveis.length > 0 ? (
-        <div className="fin-apr-acoes">
+        <div className={`fin-apr-acoes${(coberturaSelecao && !coberturaSelecao.cabe) || (coberturaSelecaoHoje && !coberturaSelecaoHoje.cabe) ? " alerta" : ""}`}>
           <button
             type="button"
             className="fin-btn-primary"
             disabled={emVoo || escolhidas.length === 0}
-            onClick={() => void enviarFila(escolhidas)}
+            onClick={() => pedirEnvio(escolhidas)}
           >
             <Send size={15} strokeWidth={2.2} aria-hidden />
             Enviar ao Inter para aprovação
             {escolhidas.length > 0
-              ? ` · ${plural(escolhidas.length, "ordem", "ordens")} · ${brlCents(totalEscolhido)}`
+              ? ` · ${plural(escolhidas.length, "ordem", "ordens")} · ${brlPrecise(totalEscolhido)}`
               : ""}
           </button>
-          {/* O aviso do topo repetido onde o dedo está: um aviso que só existe
-              no alto da página não está na tela no instante do clique. */}
           <span className="fin-apr-acoes-nota">
-            Uma ordem por vez, {ESPERA_ROTULO} entre elas — o Inter limita ~10 chamadas por minuto.
-            O envio para em &ldquo;aguardando sua aprovação&rdquo;: <strong>quem paga é você, no
-            aplicativo do banco.</strong>
+            {coberturaSelecao && !coberturaSelecao.cabe ? (
+              <>
+                Falta <strong>{brlPrecise(coberturaSelecao.faltaCents)}</strong> no Inter para o que
+                já está no app + o que você marcou. Adicione antes de aprovar.
+              </>
+            ) : (
+              <>
+                Uma ordem por vez, {ESPERA_ROTULO} entre elas. O envio para no app:{" "}
+                <strong>quem aprova é você.</strong>
+              </>
+            )}
           </span>
         </div>
       ) : null}
@@ -714,14 +1241,38 @@ function BlocoParaEnviar({ bloco, ordens }: { bloco: Bloco; ordens: OrdemAprovac
         <PainelResultado
           resultado={resultado}
           emVoo={emVoo}
-          onReenviar={(fila) => void enviarFila(fila)}
+          onReenviar={(fila) => pedirEnvio(fila)}
           onFechar={() => setResultado(null)}
         />
       ) : null}
 
+      {confirmarCaixa
+        ? (() => {
+            const cob =
+              coberturaDoDia(saldoCents, jaNoAppHojeCents + somaHoje(confirmarCaixa, hoje)) ??
+              coberturaDoDia(
+                saldoCents,
+                jaNoAppCents + confirmarCaixa.reduce((s, o) => s + o.valorCents, 0)
+              );
+            return cob && !cob.cabe ? (
+              <PopupCaixa
+                cobertura={cob}
+                contexto="enviar"
+                onFechar={() => setConfirmarCaixa(null)}
+                onContinuar={() => {
+                  const fila = confirmarCaixa;
+                  setConfirmarCaixa(null);
+                  void enviarFila(fila);
+                }}
+              />
+            ) : null;
+          })()
+        : null}
+
       <Tabela
-        ordens={ordens}
+        ordens={filtro.visiveis}
         estado={bloco.estado}
+        hoje={hoje}
         selecao={{
           marcadas: selecao.marcadas,
           elegiveis: enviaveis.length,
@@ -739,7 +1290,7 @@ function BlocoParaEnviar({ bloco, ordens }: { bloco: Bloco; ordens: OrdemAprovac
           alternarTodas: selecao.alternarTodas
         }}
       />
-    </section>
+    </BlocoColapsavel>
   );
 }
 
@@ -921,11 +1472,23 @@ type ResultadoDevolucao = {
  * autoriza, paga ou cancela — cancelar diria que a dívida acabou, e ela não
  * acabou; o que morreu foi a ordem.
  */
-function BlocoAguardando({ bloco, ordens }: { bloco: Bloco; ordens: OrdemAprovacao[] }) {
+function BlocoAguardando({
+  bloco,
+  ordens,
+  hoje,
+  saldoCents
+}: {
+  bloco: Bloco;
+  ordens: OrdemAprovacao[];
+  hoje: string;
+  saldoCents: number | null;
+}) {
   const router = useRouter();
   const cents = ordens.reduce((s, o) => s + o.valorCents, 0);
-  const devolviveis = useMemo(() => ordens.filter(podeVoltarParaFila), [ordens]);
+  const filtro = useFiltro(ordens);
+  const devolviveis = useMemo(() => filtro.visiveis.filter(podeVoltarParaFila), [filtro.visiveis]);
   const selecao = useSelecao(devolviveis);
+  const coberturaHoje = coberturaDoDia(saldoCents, somaHoje(ordens, hoje));
   const { escolhidas, totalCents, limpar } = selecao;
 
   const [confirmando, setConfirmando] = useState(false);
@@ -1000,8 +1563,25 @@ function BlocoAguardando({ bloco, ordens }: { bloco: Bloco; ordens: OrdemAprovac
   }, [emVoo, escolhidas, limpar, motivoCurto, motivoLimpo, router]);
 
   return (
-    <section className="card fin-apr-bloco principal" aria-label={bloco.titulo}>
-      <CabecalhoBloco bloco={bloco} ordens={ordens.length} cents={cents} />
+    <BlocoColapsavel bloco={bloco} n={ordens.length} cents={cents} abertoPadrao principal>
+      <FiltrosBloco
+        filtro={filtro}
+        nTotal={ordens.length}
+        centsVisiveis={filtro.visiveis.reduce((s, o) => s + o.valorCents, 0)}
+        nMarcadas={escolhidas.length}
+        centsMarcadas={totalCents}
+        rotuloMarcadas="Para devolver"
+      />
+
+      {coberturaHoje && !coberturaHoje.cabe ? (
+        <p className="fin-apr-caixa-aviso" role="status">
+          <AlertTriangle size={15} strokeWidth={2.2} aria-hidden />
+          <span>
+            Falta <strong>{brlPrecise(coberturaHoje.faltaCents)}</strong> no Inter para o que está
+            no app hoje. Adicione antes de aprovar — o banco apaga o que fica sem saldo.
+          </span>
+        </p>
+      ) : null}
 
       {devolviveis.length === 0 ? null : confirmando ? (
         /* PASSO 2. O total à vista, a frase de risco e o motivo — nesta ordem,
@@ -1097,10 +1677,8 @@ function BlocoAguardando({ bloco, ordens }: { bloco: Bloco; ordens: OrdemAprovac
               NÃO consulta o banco — a credencial de pagamento não tem endpoint
               de consulta. O que ela grava é o que você afirma ter visto. */}
           <span className="fin-apr-dev-nota">
-            A plataforma não sabe o que houve no banco: a credencial não consulta pagamento.{" "}
-            <strong>Quem abre o aplicativo é você</strong> — marque o que não está mais lá.
-            Devolver não cancela nada: a obrigação continua devida e a ordem volta para
-            &ldquo;ainda não foi ao banco&rdquo;, com o mesmo código.
+            A plataforma não consulta o banco. <strong>Abra o app</strong> e marque o que não
+            está mais lá. Devolver não cancela a dívida — a ordem volta para rascunho.
           </span>
           {erro ? <p className="fin-apr-dev-erro">{erro}</p> : null}
         </div>
@@ -1111,8 +1689,9 @@ function BlocoAguardando({ bloco, ordens }: { bloco: Bloco; ordens: OrdemAprovac
       ) : null}
 
       <Tabela
-        ordens={ordens}
+        ordens={filtro.visiveis}
         estado={bloco.estado}
+        hoje={hoje}
         selecao={{
           marcadas: selecao.marcadas,
           elegiveis: devolviveis.length,
@@ -1131,7 +1710,7 @@ function BlocoAguardando({ bloco, ordens }: { bloco: Bloco; ordens: OrdemAprovac
           alternarTodas: selecao.alternarTodas
         }}
       />
-    </section>
+    </BlocoColapsavel>
   );
 }
 
@@ -1222,19 +1801,13 @@ function PainelDevolucao({
  * o caixa de hoje. Fica na tela porque uma ordem que sumiu sem explicação é
  * pior que uma linha a mais.
  */
-function BlocoEncerrado({ ordens }: { ordens: OrdemAprovacao[] }) {
+function BlocoEncerrado({ ordens, hoje }: { ordens: OrdemAprovacao[]; hoje: string }) {
   const bloco = BLOCOS[3];
   const cents = ordens.reduce((s, o) => s + o.valorCents, 0);
   return (
-    <FinSecaoColapsavel
-      className="fin-apr-encerradas"
-      titulo={bloco.titulo}
-      icone={bloco.icone}
-      meta={`${ordens.length} ${ordens.length === 1 ? "ordem" : "ordens"} · ${brlCents(cents)}`}
-    >
-      <p className="fin-apr-explicacao">{bloco.explicacao}</p>
-      <Tabela ordens={ordens} estado="encerrada" />
-    </FinSecaoColapsavel>
+    <BlocoColapsavel bloco={bloco} n={ordens.length} cents={cents} abertoPadrao={false}>
+      <Tabela ordens={ordens} estado="encerrada" hoje={hoje} />
+    </BlocoColapsavel>
   );
 }
 
@@ -1264,11 +1837,13 @@ type Selecao = {
 function Tabela({
   ordens,
   estado,
-  selecao
+  selecao,
+  hoje
 }: {
   ordens: OrdemAprovacao[];
   estado: EstadoCiclo;
   selecao?: Selecao;
+  hoje: string;
 }) {
   if (ordens.length === 0) {
     return <p className="fin-empty-row">Nenhuma ordem neste estado.</p>;
@@ -1313,9 +1888,15 @@ function Tabela({
           {ordens.map((o) => {
             const podeIr = selecao ? selecao.aceita(o) : false;
             const marcada = selecao ? selecao.marcadas.has(o.id) : false;
+            const programadaHoje = ordemEhHoje(o.scheduledFor, hoje);
+            const programadaAtrasada = Boolean(
+              o.scheduledFor && hoje && o.scheduledFor < hoje && estado !== "paga"
+            );
             const classes = [
               o.esquecida ? "fin-apr-esquecida" : "",
-              marcada ? "fin-apr-marcada" : ""
+              marcada ? "fin-apr-marcada" : "",
+              programadaHoje ? "fin-apr-hoje" : "",
+              programadaAtrasada ? "fin-apr-atrasada" : ""
             ]
               .filter(Boolean)
               .join(" ");
@@ -1353,6 +1934,7 @@ function Tabela({
                 </td>
                 <td className="fin-apr-fav">
                   <span>{o.favorecido}</span>
+                  <span className="fin-apr-tipo">{ROTULO_TIPO[o.tipo]}</span>
                   {o.chaveMascarada ? (
                     <span
                       className="fin-apr-chave"
@@ -1376,7 +1958,18 @@ function Tabela({
                     e é NOT NULL na 0075. Colapsar as duas num `??` faria uma
                     ordem sem data marcada parecer marcada para o vencimento. */}
                 <td className="fin-apr-datas">
-                  <span>{dateLabel(o.scheduledFor)}</span>
+                  <span
+                    className={
+                      programadaHoje
+                        ? "fin-apr-data-hoje"
+                        : programadaAtrasada
+                          ? "fin-apr-data-atraso"
+                          : undefined
+                    }
+                  >
+                    {dateLabel(o.scheduledFor)}
+                    {programadaHoje ? <em>hoje</em> : null}
+                  </span>
                   <span className="fin-apr-venc">venc. {dateLabel(o.dueDate)}</span>
                 </td>
                 <td className={o.esquecida ? "num fin-apr-dias alerta" : "num fin-apr-dias"}>

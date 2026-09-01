@@ -12,7 +12,20 @@ import {
   montarCronograma,
   rotuloParcela
 } from "@/lib/financeiro/comissao-cronograma";
+import {
+  pacoteFiltroDaOrigem,
+  type PacoteFiltroComissao
+} from "@/lib/financeiro/contas-a-pagar-eixos";
 import { brlCents, brlPrecise, monthKeyLabel } from "@/lib/financeiro/format";
+
+type RecortePacote = "todas" | PacoteFiltroComissao;
+
+const PACOTES_TELA: { id: RecortePacote; rotulo: string }[] = [
+  { id: "todas", rotulo: "Todas" },
+  { id: "consultoria", rotulo: "Consultoria" },
+  { id: "obras", rotulo: "Obras" },
+  { id: "outras", rotulo: "Outras" }
+];
 
 const ROTULO_VINCULO: Record<string, string> = {
   socio_adm: "sócio adm.",
@@ -62,6 +75,7 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
   const [pendente, startTransition] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [pessoaFiltro, setPessoaFiltro] = useState<number | "">("");
+  const [pacoteFiltro, setPacoteFiltro] = useState<RecortePacote>("todas");
   const [somenteAtivos, setSomenteAtivos] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [aberta, setAberta] = useState<number | null>(null);
@@ -71,15 +85,43 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
     [dados.pessoas, somenteAtivos]
   );
 
+  const itensNoRecorte = useMemo(() => {
+    return dados.itens.filter((i) => {
+      if (pessoaFiltro !== "" && i.personId !== pessoaFiltro) return false;
+      if (pacoteFiltro !== "todas" && pacoteFiltroDaOrigem(i.tipoSlug) !== pacoteFiltro) return false;
+      return true;
+    });
+  }, [dados.itens, pessoaFiltro, pacoteFiltro]);
+
+  const somaPacote = useMemo(() => {
+    const base = dados.itens.filter((i) => pessoaFiltro === "" || i.personId === pessoaFiltro);
+    const out: Record<RecortePacote, { cents: number; n: number }> = {
+      todas: { cents: 0, n: 0 },
+      consultoria: { cents: 0, n: 0 },
+      obras: { cents: 0, n: 0 },
+      outras: { cents: 0, n: 0 }
+    };
+    for (const i of base) {
+      // O número do cadastro: compromisso deste mês em diante, o mesmo que
+      // o KPI "A receber". Filtrar obras e ainda somar o passado misturaria
+      // o que já saiu com o que ainda vai cair.
+      if (i.competencia < dados.mesAtual) continue;
+      const p = pacoteFiltroDaOrigem(i.tipoSlug);
+      out[p].cents += i.valorCents;
+      out[p].n += 1;
+      out.todas.cents += i.valorCents;
+      out.todas.n += 1;
+    }
+    return out;
+  }, [dados.itens, dados.mesAtual, pessoaFiltro]);
+
   const mesesVisiveis = useMemo(() => {
     const ate = dados.mesSeguinte;
     const base = dados.meses.filter((m) => m <= ate);
-    const comValor = new Set(
-      dados.itens.filter((i) => !pessoaFiltro || i.personId === pessoaFiltro).map((i) => i.competencia)
-    );
+    const comValor = new Set(itensNoRecorte.map((i) => i.competencia));
     const primeiro = base.findIndex((m) => comValor.has(m) || m === dados.mesAtual || m === dados.mesSeguinte);
     return primeiro <= 0 ? base : base.slice(Math.min(primeiro, Math.max(0, base.length - 8)));
-  }, [dados.meses, dados.itens, dados.mesAtual, dados.mesSeguinte, pessoaFiltro]);
+  }, [dados.meses, itensNoRecorte, dados.mesAtual, dados.mesSeguinte]);
 
   const linhas = useMemo(() => {
     const mapa = new Map<
@@ -98,8 +140,7 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
         itens: []
       });
     }
-    for (const item of dados.itens) {
-      if (pessoaFiltro !== "" && item.personId !== pessoaFiltro) continue;
+    for (const item of itensNoRecorte) {
       if (!mapa.has(item.personId)) continue;
       if (!mesesVisiveis.includes(item.competencia) && item.competencia !== dados.mesSeguinte) continue;
       const linha = mapa.get(item.personId)!;
@@ -110,7 +151,7 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
     return [...mapa.values()]
       .filter((l) => l.total > 0 || l.itens.length > 0 || pessoaFiltro !== "")
       .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, "pt-BR"));
-  }, [pessoasAtivas, dados.itens, dados.mesAtual, dados.mesSeguinte, pessoaFiltro, mesesVisiveis]);
+  }, [pessoasAtivas, itensNoRecorte, dados.mesAtual, dados.mesSeguinte, pessoaFiltro, mesesVisiveis]);
 
   const totalPorMes = useMemo(() => {
     const mapa: Record<string, number> = {};
@@ -122,20 +163,29 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
 
   const totalGeral = linhas.reduce((s, l) => s + l.total, 0);
   const projetado = linhas.reduce((s, l) => s + (l.porMes[dados.mesSeguinte] ?? 0), 0);
+  const aReceberFiltrado = itensNoRecorte
+    .filter((i) => i.competencia >= dados.mesAtual)
+    .reduce((s, i) => s + i.valorCents, 0);
+  const mesesAReceber = useMemo(() => {
+    const porMes: Record<string, number> = {};
+    for (const i of itensNoRecorte) {
+      if (i.competencia < dados.mesAtual) continue;
+      porMes[i.competencia] = (porMes[i.competencia] ?? 0) + i.valorCents;
+    }
+    return Object.keys(porMes)
+      .filter((m) => porMes[m] > 0)
+      .sort();
+  }, [itensNoRecorte, dados.mesAtual]);
 
-  const mesesAReceber = useMemo(
-    () => Object.keys(dados.aReceberPorMes).filter((m) => dados.aReceberPorMes[m] > 0).sort(),
-    [dados.aReceberPorMes]
+  const seriesNoRecorte = useMemo(
+    () =>
+      dados.series.filter((s) => {
+        if (pessoaFiltro !== "" && s.personId !== pessoaFiltro) return false;
+        if (pacoteFiltro !== "todas" && pacoteFiltroDaOrigem(s.tipoSlug) !== pacoteFiltro) return false;
+        return true;
+      }),
+    [dados.series, pessoaFiltro, pacoteFiltro]
   );
-
-  const porTipo = useMemo(() => {
-    const nomePorSlug = new Map(dados.tipos.map((t) => [t.slug, t.nome]));
-    return Object.entries(dados.totalPorTipo)
-      .filter(([, cents]) => cents !== 0)
-      .map(([slug, cents]) => ({ slug, nome: nomePorSlug.get(slug) ?? "Sem tipo", cents }))
-      .sort((a, b) => b.cents - a.cents);
-  }, [dados.totalPorTipo, dados.tipos]);
-  const somaTipos = porTipo.reduce((s, t) => s + t.cents, 0);
 
   async function enviar(url: string, metodo: string, corpo?: unknown) {
     setErro(null);
@@ -170,12 +220,46 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
         </div>
       ) : null}
 
+      <section className="card" aria-label="Filtro por origem da comissão">
+        <h2 className="card-title">Por origem do cadastro</h2>
+        <p className="fin-card-hint">
+          Soma do que está lançado deste mês em diante. Consultoria e obras são os dois PIX; o resto (diárias, lotes,
+          gestão, sem tipo) cai em Outras. O recorte vale para os totais, a matriz e as séries.
+        </p>
+        <div className="fin-com-pacotes" role="group" aria-label="Origem da comissão">
+          {PACOTES_TELA.map((p) => {
+            const ativo = pacoteFiltro === p.id;
+            const soma = somaPacote[p.id];
+            const pct =
+              p.id !== "todas" && somaPacote.todas.cents > 0
+                ? Math.round((soma.cents / somaPacote.todas.cents) * 100)
+                : null;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                className={`fin-com-pacote${ativo ? " ativo" : ""}`}
+                aria-pressed={ativo}
+                onClick={() => setPacoteFiltro(p.id)}
+              >
+                <span className="fin-kpi-label">{p.rotulo}</span>
+                <strong className="fin-kpi-value">{brlCents(soma.cents)}</strong>
+                <span className="fin-kpi-hint">
+                  {soma.n} {soma.n === 1 ? "lançamento" : "lançamentos"}
+                  {pct != null ? ` · ${pct}%` : ""}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="fin-kpi-row" aria-label="Indicadores de comissão">
         <article className="fin-kpi-card">
           {/* O número que o cadastro existe para produzir: compromisso lançado
               que ainda não saiu do caixa, incluindo a cauda das parcelas. */}
           <p className="fin-kpi-label">A receber (deste mês em diante)</p>
-          <p className="fin-kpi-value">{brlCents(dados.aReceberCents)}</p>
+          <p className="fin-kpi-value">{brlCents(aReceberFiltrado)}</p>
           <p className="fin-kpi-hint">
             {mesesAReceber.length
               ? `distribuído em ${mesesAReceber.length} ${mesesAReceber.length === 1 ? "mês" : "meses"}, até ${monthKeyLabel(mesesAReceber[mesesAReceber.length - 1])}`
@@ -194,55 +278,12 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
         </article>
         <article className="fin-kpi-card">
           <p className="fin-kpi-label">Séries parceladas</p>
-          <p className="fin-kpi-value">{dados.series.length}</p>
+          <p className="fin-kpi-value">{seriesNoRecorte.length}</p>
           <p className="fin-kpi-hint">
-            {brlPrecise(dados.series.reduce((s, x) => s + x.projetadoRestanteCents, 0))} ainda a cair
+            {brlPrecise(seriesNoRecorte.reduce((s, x) => s + x.projetadoRestanteCents, 0))} ainda a cair
           </p>
         </article>
       </section>
-
-      {porTipo.length ? (
-        <section className="card">
-          <h2 className="card-title">Por tipo de comissão</h2>
-          <p className="fin-card-hint">
-            Tudo que está lançado na janela da matriz, somado por natureza. “Sem tipo” é o que foi cadastrado antes de o
-            tipo existir — não é erro, é lacuna.
-          </p>
-          <div className="fin-matrix-wrap">
-            <table className="fin-table">
-              <thead>
-                <tr>
-                  <th scope="col">Tipo</th>
-                  <th scope="col" className="num">
-                    Total
-                  </th>
-                  <th scope="col" className="num">
-                    % do total
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {porTipo.map((t) => (
-                  <tr key={t.slug}>
-                    <th scope="row">{t.nome}</th>
-                    <td className="num fin-table-money">{brlPrecise(t.cents)}</td>
-                    <td className="num">{somaTipos ? `${Math.round((t.cents / somaTipos) * 100)}%` : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th scope="row">Total</th>
-                  <td className="num fin-table-money">
-                    <strong>{brlPrecise(somaTipos)}</strong>
-                  </td>
-                  <td />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </section>
-      ) : null}
 
       <div className="fin-contas-acoes" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
         <button type="button" className="fin-btn-primary" onClick={() => setMostrarForm((v) => !v)}>
@@ -286,7 +327,7 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
       <section className="card">
         <h2 className="card-title">Comissão por pessoa, mês a mês</h2>
         <p className="fin-card-hint">
-          Cada célula soma todas as comissões daquele mês (várias descrições). A coluna{" "}
+          Cada célula soma as comissões daquele mês neste recorte. A coluna{" "}
           {monthKeyLabel(dados.mesSeguinte)} é projetada — já lançada, ainda não no caixa. ▸ abre o detalhe.
         </p>
 
@@ -400,7 +441,7 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
         </div>
       </section>
 
-      {dados.series.length ? (
+      {seriesNoRecorte.length ? (
         <section className="card">
           <h2 className="card-title">Séries parceladas</h2>
           <p className="fin-card-hint">Excluir a série remove todas as parcelas de uma vez.</p>
@@ -417,9 +458,7 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
                 </tr>
               </thead>
               <tbody>
-                {dados.series
-                  .filter((s) => pessoaFiltro === "" || s.personId === pessoaFiltro)
-                  .map((s) => (
+                {seriesNoRecorte.map((s) => (
                     <tr key={s.id}>
                       <td>{s.pessoa}</td>
                       <td>

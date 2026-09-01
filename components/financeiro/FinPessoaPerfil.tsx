@@ -9,7 +9,8 @@ import {
   FinCalculadoraRemuneracao,
   FinComissaoForm,
   FinProlaboreEsperadoForm,
-  FinSalarioBaseForm
+  FinSalarioBaseForm,
+  PainelDetalheComissao
 } from "@/components/financeiro/FinRemuneracaoForms";
 import type { PerfilPessoa } from "@/lib/financeiro/pessoa-perfil";
 
@@ -117,6 +118,7 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
   const [detalhesAbertos, setDetalhesAbertos] = useState(false);
   const [mostrarPix, setMostrarPix] = useState(false);
   const [reembolsosAbertos, setReembolsosAbertos] = useState(true);
+  const [comissaoHistAberto, setComissaoHistAberto] = useState(false);
 
   const c = perfil.conta;
   const proxMes = competenciaProxima();
@@ -360,11 +362,16 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
                     valorCents: comissaoProximaSoma,
                     competencia: proxMes,
                     descricao: "soma do mês",
-                    nota: null
+                    nota: null,
+                    tipoSlug: null,
+                    tipoNome: null
                   }
                 : perfil.comissaoDeclarada[0] ?? null
             }
             historico={perfil.comissaoDeclarada}
+            historicoNoChip={false}
+            historicoAberto={comissaoHistAberto}
+            onHistoricoChange={setComissaoHistAberto}
           />
           <article className="pp-chip" style={{ ["--pp-chip-cor" as string]: "var(--nat-reembolso)" }}>
             <div className="pp-chip-topo">
@@ -395,6 +402,10 @@ export function FinPessoaPerfil({ perfil }: { perfil: PerfilPessoa }) {
             compacto
           />
         </div>
+
+        {comissaoHistAberto ? (
+          <PainelDetalheComissao historico={perfil.comissaoDeclarada} />
+        ) : null}
 
         {perfil.porMes.length > 0 ? (
           <FinAjusteMesForm personId={perfil.id} meses={[...perfil.porMes].reverse().map((m) => m.mes)} />

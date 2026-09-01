@@ -2,6 +2,12 @@ import "server-only";
 
 import { mascararChave } from "./contas-a-pagar-eixos";
 import { isFinanceConfigured, query } from "./db";
+import type { SaldoConta, SaldoInter, TipoOrdem } from "./aprovacoes-caixa";
+import { consultarSaldoAsaas } from "./asaas-saldo";
+import { saldoInterDoLedger, saldosAsaasNubankDoLedger } from "./inter-saldo";
+
+export type { SaldoConta, SaldoInter, TipoOrdem } from "./aprovacoes-caixa";
+export { ROTULO_TIPO } from "./aprovacoes-caixa";
 
 /**
  * APROVAÇÕES — o que foi entregue ao Inter e ainda espera um dedo humano.
@@ -165,6 +171,12 @@ export type OrdemAprovacao = {
   execucoes: number;
   /** Aguardando há mais de `DIAS_PARA_ALERTA` dias e sem execução registrada. */
   esquecida: boolean;
+  /**
+   * De onde a ordem nasceu. O filtro da tela lê isto, não o `source` cru:
+   * `manual` e `importacao` sem ponteiro caem no mesmo saco, e o ponteiro
+   * (reembolso, documento, recorrente) vence o source quando os dois existem.
+   */
+  tipo: TipoOrdem;
 };
 
 export type Aprovacoes = {
@@ -173,10 +185,43 @@ export type Aprovacoes = {
   ressalva: string | null;
   hoje: string;
   ordens: OrdemAprovacao[];
+  /** Saldo da conta `inter` no ledger — a tela troca pelo ao vivo depois. */
+  saldoInter: SaldoInter | null;
+  saldoAsaas: SaldoConta | null;
+  saldoNubank: SaldoConta | null;
 };
 
 function vazio(ressalva: string | null): Aprovacoes {
-  return { disponivel: false, ressalva, hoje: "", ordens: [] };
+  return {
+    disponivel: false,
+    ressalva,
+    hoje: "",
+    ordens: [],
+    saldoInter: null,
+    saldoAsaas: null,
+    saldoNubank: null
+  };
+}
+
+function tipoDe(r: {
+  source: string | null;
+  eh_compra: boolean;
+  eh_documento: boolean;
+  eh_recorrente: boolean;
+  eh_reembolso: boolean;
+  eh_fatura: boolean;
+}): TipoOrdem {
+  // O ponteiro vence o `source`: uma ordem `source=manual` com
+  // `reimbursement_id` É reembolso. O source descreve quem digitou; o
+  // ponteiro descreve o que é.
+  if (r.eh_reembolso) return "reembolso";
+  if (r.eh_recorrente) return "recorrente";
+  if (r.eh_documento) return "documento";
+  if (r.eh_fatura) return "fatura";
+  if (r.eh_compra) return "compra";
+  if (r.source === "app_time") return "time";
+  if (r.source === "importacao") return "importacao";
+  return "manual";
 }
 
 type LinhaBanco = {
@@ -204,6 +249,12 @@ type LinhaBanco = {
   exec_transaction_id: string | null;
   exec_conciliada_em: string | null;
   execucoes: number | null;
+  source: string | null;
+  eh_compra: boolean;
+  eh_documento: boolean;
+  eh_recorrente: boolean;
+  eh_reembolso: boolean;
+  eh_fatura: boolean;
 };
 
 /**
@@ -240,7 +291,7 @@ export async function getAprovacoes(): Promise<Aprovacoes> {
     )[0]?.tem;
     if (!existe) return vazio("a fila de pagamento (0075) não existe neste banco");
 
-    const [hojeRows, linhas] = await Promise.all([
+    const [hojeRows, linhas, saldoInter, saldoAsaas, outros] = await Promise.all([
       query<{ hoje: string }>(
         `SELECT to_char(now() AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') AS hoje`
       ),
@@ -284,7 +335,13 @@ export async function getAprovacoes(): Promise<Aprovacoes> {
                 ex.transaction_id::text               AS exec_transaction_id,
                 to_char(ex.reconciled_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD')
                                                       AS exec_conciliada_em,
-                coalesce(ex.n, 0)::int                AS execucoes
+                coalesce(ex.n, 0)::int                AS execucoes,
+                p.source,
+                (p.purchase_request_id IS NOT NULL) AS eh_compra,
+                (p.document_id IS NOT NULL)         AS eh_documento,
+                (p.recurring_id IS NOT NULL)        AS eh_recorrente,
+                (p.reimbursement_id IS NOT NULL)    AS eh_reembolso,
+                (p.card_bill_id IS NOT NULL)        AS eh_fatura
            FROM fin_payment_request p
            JOIN fin_entity e       ON e.id = p.entity_id AND e.slug = $1
            JOIN fin_counterparty c ON c.id = p.counterparty_id
@@ -317,7 +374,10 @@ export async function getAprovacoes(): Promise<Aprovacoes> {
               LIMIT 1
            ) ex ON TRUE`,
         [ENTIDADE]
-      )
+      ),
+      saldoInterDoLedger(),
+      consultarSaldoAsaas(),
+      saldosAsaasNubankDoLedger()
     ]);
 
     const ordens: OrdemAprovacao[] = linhas.map((r) => {
@@ -352,7 +412,8 @@ export async function getAprovacoes(): Promise<Aprovacoes> {
         codigoSolicitacao: codigoSolicitacaoDe(r.tags, r.notes),
         execucao,
         execucoes: Number(r.execucoes ?? 0),
-        esquecida: estado === "aguardando" && execucao === null && (dias ?? 0) >= DIAS_PARA_ALERTA
+        esquecida: estado === "aguardando" && execucao === null && (dias ?? 0) >= DIAS_PARA_ALERTA,
+        tipo: tipoDe(r)
       };
     });
 
@@ -365,7 +426,10 @@ export async function getAprovacoes(): Promise<Aprovacoes> {
       disponivel: true,
       ressalva: ordens.length === 0 ? "nenhuma ordem de pagamento na fila" : null,
       hoje: hojeRows[0]?.hoje ?? "",
-      ordens
+      ordens,
+      saldoInter: saldoInter.disponivelCents === null ? null : saldoInter,
+      saldoAsaas: saldoAsaas.disponivelCents === null ? null : saldoAsaas,
+      saldoNubank: outros.nubank.disponivelCents === null ? null : outros.nubank
     };
   } catch (error) {
     console.error("[financeiro] aprovações indisponível:", error);

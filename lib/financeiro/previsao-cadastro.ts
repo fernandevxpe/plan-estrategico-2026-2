@@ -1,6 +1,23 @@
 import "server-only";
 
 import { query } from "./db";
+import {
+  ORDEM_PACOTE,
+  pacoteDaComissao,
+  type PacoteComissao,
+  type PedacoComissao
+} from "./contas-a-pagar-eixos";
+
+export {
+  ORDEM_PACOTE,
+  PACOTE_DO_TIPO,
+  ROTULO_PACOTE,
+  pacoteDaComissao,
+  pedacosDaComissao,
+  rotuloDaBanda,
+  type PacoteComissao,
+  type PedacoComissao
+} from "./contas-a-pagar-eixos";
 
 /**
  * O QUE CADA PESSOA VAI RECEBER NUM MÊS, PELO CADASTRO — uma fonte só.
@@ -69,6 +86,8 @@ export type PrevisaoPessoaMes = {
   salarioCents: number;
   prolaboreCents: number;
   comissaoCents: number;
+  /** Comissão do mês quebrada pela origem. Soma = `comissaoCents`. */
+  comissaoPacotes: { pacote: PacoteComissao; cents: number }[];
   reembolsoCents: number;
   totalCents: number;
 };
@@ -132,23 +151,60 @@ export const SQL_PREVISAO_CADASTRO = `
 
 /** A previsão de um mês ('YYYY-MM') para todas as pessoas com cadastro. */
 export async function getPrevisaoCadastro(entitySlug: string, mes: string): Promise<PrevisaoPessoaMes[]> {
-  const rows = await query<Record<string, unknown>>(SQL_PREVISAO_CADASTRO, [entitySlug, mes]).catch(
-    () => [] as Record<string, unknown>[]
-  );
+  const [rows, pacoteRows] = await Promise.all([
+    query<Record<string, unknown>>(SQL_PREVISAO_CADASTRO, [entitySlug, mes]).catch(
+      () => [] as Record<string, unknown>[]
+    ),
+    /*
+     * SQL_PREVISAO_CADASTRO soma comissão num número só — é o que Pessoas
+     * precisa. Aqui a tela de pagamento precisa do CORTE: um PIX de obras e
+     * outro de consultoria. A origem é `tipo_slug` (0178); NULL vira pacote
+     * `outras`, nunca chutado para obras ou consultoria.
+     */
+    query<{ person_id: number; tipo_slug: string | null; valor_cents: number }>(
+      `SELECT cd.person_id, cd.tipo_slug, SUM(cd.valor_cents)::bigint AS valor_cents
+         FROM fin_pessoa_comissao_declarada cd
+         JOIN fin_person p ON p.id = cd.person_id
+         JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $1
+        WHERE cd.competencia = to_date($2, 'YYYY-MM')
+        GROUP BY cd.person_id, cd.tipo_slug`,
+      [entitySlug, mes]
+    ).catch(() => [] as { person_id: number; tipo_slug: string | null; valor_cents: number }[])
+  ]);
+
+  const pacotesPorPessoa = new Map<number, Map<PacoteComissao, number>>();
+  for (const r of pacoteRows) {
+    const id = Number(r.person_id);
+    const pacote = pacoteDaComissao(r.tipo_slug);
+    const porPessoa = pacotesPorPessoa.get(id) ?? new Map<PacoteComissao, number>();
+    porPessoa.set(pacote, (porPessoa.get(pacote) ?? 0) + Number(r.valor_cents ?? 0));
+    pacotesPorPessoa.set(id, porPessoa);
+  }
 
   return rows.map((r) => {
     const salarioCents = Number(r.salario_cents ?? 0);
     const prolaboreCents = Number(r.prolabore_cents ?? 0);
     const comissaoCents = Number(r.comissao_cents ?? 0);
     const reembolsoCents = Number(r.reembolso_cents ?? 0);
+    const personId = Number(r.person_id);
+    const porPacote = pacotesPorPessoa.get(personId);
+    const comissaoPacotes: { pacote: PacoteComissao; cents: number }[] = porPacote
+      ? ORDEM_PACOTE.filter((p) => (porPacote.get(p) ?? 0) > 0).map((p) => ({
+          pacote: p,
+          cents: porPacote.get(p) ?? 0
+        }))
+      : comissaoCents > 0
+        ? [{ pacote: "outras" as const, cents: comissaoCents }]
+        : [];
     return {
-      personId: Number(r.person_id),
+      personId,
       pessoa: String(r.pessoa ?? ""),
       counterpartyId: r.counterparty_id == null ? null : Number(r.counterparty_id),
       mes: String(r.mes),
       salarioCents,
       prolaboreCents,
       comissaoCents,
+      comissaoPacotes,
       reembolsoCents,
       totalCents: salarioCents + prolaboreCents + comissaoCents + reembolsoCents
     };
@@ -165,4 +221,92 @@ export function bandasDe(p: PrevisaoPessoaMes): { natureza: NaturezaCadastro; ce
       { natureza: "reembolso" as const, cents: p.reembolsoCents }
     ] satisfies { natureza: NaturezaCadastro; cents: number }[]
   ).filter((b) => b.cents > 0);
+}
+
+export type BandaPagamento = {
+  natureza: NaturezaCadastro;
+  /** Só em comissão. Null = um PIX só (mês passado, ou ordem antiga na chave sem pacote). */
+  pacote: PacoteComissao | null;
+  cents: number;
+};
+
+/**
+ * O que vira LINHA na tela de contas a pagar.
+ *
+ * `bandasDe` continua com uma comissão só: Pessoas soma um número. Aqui cada
+ * pacote é um PIX — a chave `fin_person:id:comissao:obras` é outra obrigação,
+ * e a conferência bate origem a origem. Sem tipo declarado, cai em `outras`.
+ */
+export function bandasParaPagar(p: PrevisaoPessoaMes): BandaPagamento[] {
+  const out: BandaPagamento[] = [];
+  if (p.salarioCents > 0) out.push({ natureza: "salario", pacote: null, cents: p.salarioCents });
+  if (p.prolaboreCents > 0) out.push({ natureza: "prolabore", pacote: null, cents: p.prolaboreCents });
+  if (p.comissaoPacotes.length > 0) {
+    for (const c of p.comissaoPacotes) {
+      if (c.cents > 0) out.push({ natureza: "comissao", pacote: c.pacote, cents: c.cents });
+    }
+  } else if (p.comissaoCents > 0) {
+    out.push({ natureza: "comissao", pacote: null, cents: p.comissaoCents });
+  }
+  if (p.reembolsoCents > 0) out.push({ natureza: "reembolso", pacote: null, cents: p.reembolsoCents });
+  return out;
+}
+
+/**
+ * Os lançamentos crus do mês, pessoa a pessoa. A tela de pagar precisa deles
+ * para o expandir — a soma por `tipo_slug` acima não tem descrição, cliente
+ * nem parcela. Não vira linha de pagamento: a chave continua
+ * `fin_person:id:comissao:{pacote}`.
+ */
+export async function listarPedacosComissao(
+  entitySlug: string,
+  mes: string
+): Promise<PedacoComissao[]> {
+  const rows = await query<{
+    id: number;
+    person_id: number;
+    tipo_slug: string | null;
+    descricao: string;
+    cliente: string | null;
+    valor_cents: number;
+    parcela: number | null;
+    parcelas_total: number | null;
+    serie_id: number | null;
+    tipo_nome: string | null;
+    eh_entrada: boolean;
+  }>(
+    `SELECT cd.id,
+            cd.person_id,
+            cd.tipo_slug,
+            cd.descricao,
+            cd.cliente,
+            cd.valor_cents,
+            cd.parcela,
+            cd.parcelas_total,
+            cd.serie_id,
+            t.nome AS tipo_nome,
+            (COALESCE(s.entrada_cents, 0) > 0 AND cd.parcela = 1) AS eh_entrada
+       FROM fin_pessoa_comissao_declarada cd
+       JOIN fin_person p ON p.id = cd.person_id
+       JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $1
+       LEFT JOIN fin_comissao_tipo t ON t.slug = cd.tipo_slug
+       LEFT JOIN fin_pessoa_comissao_serie s ON s.id = cd.serie_id
+      WHERE cd.competencia = to_date($2, 'YYYY-MM')
+      ORDER BY cd.person_id, lower(cd.descricao), cd.parcela NULLS FIRST, cd.id`,
+    [entitySlug, mes]
+  ).catch(() => []);
+
+  return rows.map((r) => ({
+    id: Number(r.id),
+    personId: Number(r.person_id),
+    pacote: pacoteDaComissao(r.tipo_slug),
+    descricao: String(r.descricao ?? ""),
+    cliente: r.cliente == null || String(r.cliente).trim() === "" ? null : String(r.cliente),
+    tipoNome: r.tipo_nome == null ? null : String(r.tipo_nome),
+    parcela: r.parcela == null ? null : Number(r.parcela),
+    parcelasTotal: r.parcelas_total == null ? null : Number(r.parcelas_total),
+    serieId: r.serie_id == null ? null : Number(r.serie_id),
+    ehEntrada: Boolean(r.eh_entrada),
+    valorCents: Number(r.valor_cents ?? 0)
+  }));
 }

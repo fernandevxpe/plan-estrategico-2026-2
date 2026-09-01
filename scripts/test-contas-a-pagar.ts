@@ -16,7 +16,11 @@ import {
   ordemDaNatureza,
   CAMADA_COMPOSICAO,
   NATUREZAS_DA_FOLHA,
-  NATUREZA_DA_VIEW
+  NATUREZA_DA_VIEW,
+  pacoteDaComissao,
+  pacoteFiltroDaOrigem,
+  pedacosDaComissao,
+  rotuloDaBanda
 } from "../lib/financeiro/contas-a-pagar-eixos.ts";
 
 let falhas = 0;
@@ -186,6 +190,59 @@ ok(certezaDe("firme") === "firme", "firme passa");
 ok(certezaDe("atrasado") === "atrasado", "atrasado passa");
 ok(certezaDe("estimado") === "indeterminado", "estimado cai em indeterminado");
 ok(certezaDe(null) === "indeterminado", "null não vira firme");
+
+console.log("\n=== Comissão quebra por origem, e sem tipo não vira obras ===");
+ok(pacoteDaComissao("vendas_consultoria") === "consultoria", "vendas_consultoria → consultoria");
+ok(pacoteDaComissao("vendas_obras") === "obras", "vendas_obras → obras");
+ok(pacoteDaComissao("diarias_servico") === "diarias", "diárias ficam pacote próprio");
+ok(pacoteDaComissao("gestao") === "gestao", "gestão não mistura com obras");
+ok(pacoteDaComissao(null) === "outras", "sem tipo não é chutado para obras nem consultoria");
+ok(pacoteDaComissao("tipo_que_nao_existe") === "outras", "slug desconhecido também cai em outras");
+ok(pacoteFiltroDaOrigem("vendas_consultoria") === "consultoria", "filtro: consultoria");
+ok(pacoteFiltroDaOrigem("vendas_obras") === "obras", "filtro: obras");
+ok(pacoteFiltroDaOrigem("gestao") === "outras", "gestão no recorte Outras da tela");
+ok(pacoteFiltroDaOrigem("diarias_servico") === "outras", "diária no recorte Outras da tela");
+ok(pacoteFiltroDaOrigem(null) === "outras", "sem tipo no recorte Outras");
+ok(
+  rotuloDaBanda({ natureza: "comissao", pacote: "obras" }) === "Comissão · obras",
+  "rótulo da linha de obras"
+);
+ok(
+  rotuloDaBanda({ natureza: "comissao", pacote: "consultoria" }) === "Comissão · consultoria",
+  "rótulo da linha de consultoria"
+);
+ok(
+  rotuloDaBanda({ natureza: "comissao", pacote: null }) === "Comissão",
+  "um PIX só (ordem antiga) continua dizendo Comissão"
+);
+
+console.log("\n=== Pedaços explicam o PIX, não viram outro PIX ===");
+{
+  const obras = {
+    id: 1,
+    personId: 9,
+    pacote: "obras" as const,
+    descricao: "Edf. Lajedo",
+    cliente: null,
+    tipoNome: "Vendas de Obras",
+    parcela: 2,
+    parcelasTotal: 2,
+    serieId: 10,
+    ehEntrada: false,
+    valorCents: 100_00
+  };
+  const consultoria = { ...obras, id: 2, pacote: "consultoria" as const, descricao: "Contrato X" };
+  ok(pedacosDaComissao("salario", null, [obras]).length === 0, "salário não ganha pedaço de comissão");
+  ok(pedacosDaComissao("comissao", "obras", [obras, consultoria]).length === 1, "pacote obras filtra só obras");
+  ok(
+    pedacosDaComissao("comissao", "obras", [obras, consultoria])[0]?.id === 1,
+    "o pedaço filtrado é o de obras"
+  );
+  ok(
+    pedacosDaComissao("comissao", null, [obras, consultoria]).length === 2,
+    "chave antiga (sem pacote) mostra todos os lançamentos"
+  );
+}
 
 console.log(`\n${provas - falhas}/${provas} provas`);
 if (falhas) process.exit(1);

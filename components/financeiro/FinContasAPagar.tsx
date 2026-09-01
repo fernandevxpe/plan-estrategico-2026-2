@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 // O MESMO número que o servidor usa entre um pagamento e o seguinte. Duplicá-lo
@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import { INTERVALO_ENTRE_PAGAMENTOS_MS } from "@/lib/financeiro/inter-ritmo";
 import {
   Building2,
-  CalendarCheck,
   CalendarClock,
   ChevronRight,
   CircleCheck,
@@ -41,8 +40,13 @@ import {
   GRUPOS,
   MOTIVO_IMPEDIMENTO,
   NATUREZA_DA_VIEW,
+  ROTULO_PACOTE,
+  diasEntre,
+  estadoDoCiclo,
   ordemDaNatureza,
-  type GrupoContas
+  type EstadoCiclo,
+  type GrupoContas,
+  type PedacoComissao
 } from "@/lib/financeiro/contas-a-pagar-eixos";
 import {
   PARTES,
@@ -51,10 +55,17 @@ import {
   type ParteCusto
 } from "@/lib/financeiro/custo-empresa-partes";
 import { brlCents, brlPrecise, dateLabel, monthKeyLabel, shortDateLabel } from "@/lib/financeiro/format";
+import { rotuloParcela } from "@/lib/financeiro/comissao-cronograma";
+import {
+  ROTULO_TIME,
+  TIMES,
+  areaDaConta,
+  type TimeCusto
+} from "@/lib/financeiro/custo-empresa-eixos";
 import { urlDaOrigem } from "@/lib/url-origem";
 
 import { SeloCamada } from "./Certeza";
-import { KpiAnalise } from "./FinKpiAnalise";
+import { FinCapFila } from "./FinCapFila";
 
 /**
  * CONTAS A PAGAR — o mês inteiro que sai, nos blocos do Custo da empresa.
@@ -181,30 +192,10 @@ const ROTULO_ORDEM: Record<string, string> = {
  * PIX é fila de cadastro e não sai do lugar sozinha; "não confirmada" é fila
  * de decisão e o dono resolve no clique. Quando as duas valem para a mesma
  * linha, a que bloqueia é a que precisa ser dita.
+ *
+ * A função mora em `contas-a-pagar-eixos` para a fila de previstos e esta
+ * tabela lerem o MESMO estado.
  */
-type EstadoCiclo =
-  | "paga"
-  | "aguardando"
-  | "programada"
-  | "em_curso"
-  | "falta_cadastro"
-  | "a_confirmar"
-  | "pronta";
-
-function estadoDoCiclo(l: ContaAPagar): EstadoCiclo {
-  const o = l.ordem;
-  if (o) {
-    if (o.pagoCents > 0) return "paga";
-    if (o.status === "aguardando_autorizacao") return "aguardando";
-    if (o.status === "rascunho") return "programada";
-    return "em_curso";
-  }
-  if (l.impedimento !== null) return "falta_cadastro";
-  // `!entraNoTotal` com impedimento nulo é sempre `naoConfirmada`: a outra
-  // metade do "não soma" (duplicada) já é impedimento e saiu acima.
-  if (!l.entraNoTotal) return "a_confirmar";
-  return "pronta";
-}
 
 /**
  * Os chips de ciclo, na ordem em que o trabalho anda: o que dá para fazer
@@ -237,7 +228,7 @@ const CICLO: { slug: EstadoCiclo; nome: string; sempre: boolean; dica: string }[
   },
   {
     slug: "aguardando",
-    nome: "Aguardando aprovação",
+    nome: "Enviado",
     sempre: true,
     dica: "entregue ao Inter — nada sai enquanto você não aprovar no aplicativo do banco"
   },
@@ -274,11 +265,49 @@ const CICLO: { slug: EstadoCiclo; nome: string; sempre: boolean; dica: string }[
  */
 const SEM_EIXO = "Sem natureza";
 
+/** Já saiu da fila desta tela: pago, enviado ou só registrado. */
+const FECHADOS = new Set<EstadoCiclo>(["paga", "aguardando", "programada", "em_curso"]);
+
+/**
+ * Áreas que o chip mostra mesmo em zero. Consultoria, obras, os dois e
+ * administrativo são o recorte que o dono pediu; Outros e Sem time só
+ * aparecem quando o mês tem linha neles — senão a barra ensina um vocabulário
+ * que esta competência não usa.
+ */
+const AREAS_SEMPRE: TimeCusto[] = ["consultoria", "obras", "consultoria_obras", "administrativo"];
+
+function rotuloNatureza(l: ContaAPagar): string {
+  if (!l.natureza) return l.categoriaNome ?? SEM_EIXO;
+  if (l.natureza === "Comissão" && l.parte && l.parte !== "padrao" && l.parte !== "organizar") {
+    return l.parte === "obras" ? "Comissão · obras" : l.parte === "consultoria" ? "Comissão · consultoria" : l.natureza;
+  }
+  return l.natureza;
+}
+
+function rotuloParcelaPedaco(p: PedacoComissao): string {
+  if (p.parcela != null && p.parcelasTotal != null) {
+    return rotuloParcela({
+      parcela: p.parcela,
+      parcelasTotal: p.parcelasTotal,
+      ehEntrada: p.ehEntrada
+    });
+  }
+  return "à vista";
+}
+
+function resumoPedaco(p: PedacoComissao): string {
+  const bits = [p.descricao];
+  if (p.cliente) bits.push(p.cliente);
+  const parc = rotuloParcelaPedaco(p);
+  if (parc !== "à vista") bits.push(parc);
+  return bits.join(" · ");
+}
+
 /** Quantos chips de natureza/categoria cabem antes do "ver todos". */
 const LIMITE_CHIPS = 12;
 
 function eixoDaLinha(l: ContaAPagar): string {
-  return l.natureza ?? l.categoriaNome ?? SEM_EIXO;
+  return rotuloNatureza(l);
 }
 
 /**
@@ -301,6 +330,12 @@ const ORDEM_DO_ROTULO: Record<string, number> = (() => {
   for (const [slug, rotulo] of Object.entries(NATUREZA_DA_VIEW)) mapa[rotulo] = ordemDaNatureza(slug);
   mapa["Encargos"] = ordemDaNatureza("encargo_beneficio");
   mapa["Benefícios"] = ordemDaNatureza("encargo_beneficio");
+  mapa["Comissão · obras"] = ordemDaNatureza("comissao");
+  mapa["Comissão · consultoria"] = ordemDaNatureza("comissao");
+  mapa["Comissão · diárias"] = ordemDaNatureza("comissao");
+  mapa["Comissão · lotes"] = ordemDaNatureza("comissao");
+  mapa["Comissão · gestão"] = ordemDaNatureza("comissao");
+  mapa["Comissão · outras"] = ordemDaNatureza("comissao");
   return mapa;
 })();
 
@@ -376,12 +411,6 @@ function ordenarChips(chips: Chip[]): Chip[] {
 }
 
 /** Diferença em dias entre duas datas ISO, sem passar por fuso. */
-function diasEntre(de: string, ate: string): number {
-  const [a1, m1, d1] = de.slice(0, 10).split("-").map(Number);
-  const [a2, m2, d2] = ate.slice(0, 10).split("-").map(Number);
-  return Math.round((Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86_400_000);
-}
-
 function somarDias(iso: string, dias: number): string {
   const [a, m, d] = iso.slice(0, 10).split("-").map(Number);
   return new Date(Date.UTC(a, m - 1, d + dias)).toISOString().slice(0, 10);
@@ -626,7 +655,10 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
      é um gesto que o dono descreveu, e "só o que está pronta" cruza com ele. */
   const [eixosFiltrados, setEixosFiltrados] = useState<Set<string>>(new Set());
   const [ciclosFiltrados, setCiclosFiltrados] = useState<Set<EstadoCiclo>>(new Set());
+  const [areasFiltradas, setAreasFiltradas] = useState<Set<TimeCusto>>(new Set());
   const [verTodosEixos, setVerTodosEixos] = useState(false);
+  /** Pago / enviado some da lista até o dono pedir. A fila desta tela é o pendente. */
+  const [soPendente, setSoPendente] = useState(true);
 
   /*
    * `chaveDedupe` identifica a OBRIGAÇÃO, e a linha perdedora do dedupe pode
@@ -649,16 +681,19 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
    */
   const porGrupoTudo = useMemo(() => agruparPorGrupo(linhas), [linhas]);
 
-  const filtroAtivo = eixosFiltrados.size > 0 || ciclosFiltrados.size > 0;
+  const filtroAtivo = eixosFiltrados.size > 0 || ciclosFiltrados.size > 0 || areasFiltradas.size > 0;
 
   const visiveis = useMemo(
     () =>
-      linhas.filter(
-        (l) =>
-          (eixosFiltrados.size === 0 || eixosFiltrados.has(eixoDaLinha(l))) &&
-          (ciclosFiltrados.size === 0 || ciclosFiltrados.has(estadoDoCiclo(l)))
-      ),
-    [linhas, eixosFiltrados, ciclosFiltrados]
+      linhas.filter((l) => {
+        const estado = estadoDoCiclo(l);
+        if (soPendente && FECHADOS.has(estado) && ciclosFiltrados.size === 0) return false;
+        if (eixosFiltrados.size > 0 && !eixosFiltrados.has(eixoDaLinha(l))) return false;
+        if (ciclosFiltrados.size > 0 && !ciclosFiltrados.has(estado)) return false;
+        if (areasFiltradas.size > 0 && !areasFiltradas.has(areaDaConta(l))) return false;
+        return true;
+      }),
+    [linhas, eixosFiltrados, ciclosFiltrados, areasFiltradas, soPendente]
   );
 
   const porGrupo = useMemo(() => agruparPorGrupo(visiveis), [visiveis]);
@@ -702,6 +737,27 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
     );
   }, [linhas]);
 
+  const chipsArea = useMemo(() => {
+    const contagem = new Map<TimeCusto, { n: number; cents: number }>();
+    for (const l of linhas) {
+      const a = areaDaConta(l);
+      const atual = contagem.get(a) ?? { n: 0, cents: 0 };
+      contagem.set(a, {
+        n: atual.n + 1,
+        cents: atual.cents + (l.impedimento === "duplicada" ? 0 : l.valorCents)
+      });
+    }
+    const ordem: TimeCusto[] = [...TIMES.map((t) => t.slug), "sem_time"];
+    return ordem
+      .map((slug) => ({
+        slug,
+        nome: ROTULO_TIME[slug],
+        sempre: AREAS_SEMPRE.includes(slug),
+        ...(contagem.get(slug) ?? { n: 0, cents: 0 })
+      }))
+      .filter((c) => c.sempre || c.n > 0);
+  }, [linhas]);
+
   const visiveisCents = somarSemDuplicata(visiveis);
 
   const empresaCents = somarNoTotal(porGrupoTudo.get("empresa") ?? []);
@@ -717,7 +773,6 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
    */
   const duplicadas = linhas.filter((l) => l.impedimento === "duplicada");
   const aConfirmar = linhas.filter((l) => l.naoConfirmada);
-  const duplicadasCents = somarSe(linhas, (l) => l.impedimento === "duplicada");
   const aConfirmarCents = somarSe(linhas, (l) => l.naoConfirmada);
 
   const elegiveis = useMemo(() => linhas.filter(podeProgramar), [linhas]);
@@ -769,7 +824,8 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
      nomes e reticências: o rótulo de um checkbox não é lugar de lista longa. */
   const nomesDoFiltro = [
     ...eixosFiltrados,
-    ...[...ciclosFiltrados].map((s) => CICLO.find((c) => c.slug === s)?.nome ?? s)
+    ...[...ciclosFiltrados].map((s) => CICLO.find((c) => c.slug === s)?.nome ?? s),
+    ...[...areasFiltradas].map((s) => ROTULO_TIME[s])
   ];
   const resumoFiltro =
     nomesDoFiltro.length > 3
@@ -850,7 +906,17 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
   }
 
   function alternarCiclo(slug: EstadoCiclo) {
+    if (FECHADOS.has(slug)) setSoPendente(false);
     setCiclosFiltrados((atual) => {
+      const proxima = new Set(atual);
+      if (proxima.has(slug)) proxima.delete(slug);
+      else proxima.add(slug);
+      return proxima;
+    });
+  }
+
+  function alternarArea(slug: TimeCusto) {
+    setAreasFiltradas((atual) => {
       const proxima = new Set(atual);
       if (proxima.has(slug)) proxima.delete(slug);
       else proxima.add(slug);
@@ -861,6 +927,7 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
   function limparFiltros() {
     setEixosFiltrados(new Set());
     setCiclosFiltrados(new Set());
+    setAreasFiltradas(new Set());
   }
 
   /**
@@ -1110,77 +1177,104 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
 
   return (
     <>
-      <header className="fin-cap-topo">
-        <label className="fin-cap-mes">
-          <span>Competência</span>
-          {/* Trocar de mês no meio do envio recarrega a tela e mata o laço com
-              ordens pela metade. Enquanto o envio roda, o mês fica onde está. */}
-          <select
-            className="fin-select"
-            value={dados.competencia}
-            disabled={emVoo}
-            onChange={(e) => trocarMes(e.target.value)}
-          >
-            {dados.meses.map((mes) => (
-              <option key={mes} value={mes}>
-                {monthKeyLabel(mes)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <CaixaTudo
-          ids={elegiveisVisiveis.map((l) => l.id)}
-          selecionadas={selecionadas}
-          onAlternar={alternarVarias}
-          rotulo={
-            filtroAtivo
-              ? `Selecionar tudo de ${resumoFiltro} (${elegiveisVisiveis.length})`
-              : `Selecionar tudo (${elegiveisVisiveis.length})`
-          }
-          dica={
-            filtroAtivo
-              ? `Marca só o que está visível no filtro e pode virar ordem — ${elegiveisVisiveis.length} de ${visiveis.length} linhas.`
-              : "Marca todas as linhas que podem virar ordem de pagamento — o resto fica de fora."
-          }
-        />
-        <p className="fin-cap-topo-resumo">
-          {filtroAtivo ? (
-            <>
-              {visiveis.length} de {linhas.length} {linhas.length === 1 ? "linha" : "linhas"}
-            </>
-          ) : (
-            <>
-              {linhas.length} {linhas.length === 1 ? "linha" : "linhas"}
-            </>
-          )}{" "}
-          · hoje é {shortDateLabel(dados.hoje)}
-        </p>
-      </header>
-
-      <p className="fin-cap-aviso" role="note">
-        <ShieldAlert size={18} strokeWidth={2.2} aria-hidden />
-        <span>
-          <b>Programar aqui NÃO paga.</b> A ordem fica registrada e a aprovação é feita por você no
-          aplicativo do Banco Inter.
-        </span>
-      </p>
-
-      {/*
-        A BARRA DE FILTRO E A DATA, ANTES DA SELEÇÃO.
-        ---------------------------------------------------------------------
-        O pedido do dono, em 31/08/2026: "quero poder selecionar, configurar o
-        dia de agendamento do pagamento" e "que na categoria tenha os filtros
-        para facilitar pagar por exemplo todos reembolsos primeiro, depois
-        todos salários, depois todas comissões".
-
-        As duas coisas moram na MESMA barra porque são um gesto só: escolher a
-        data, filtrar a fatia, marcar tudo, pagar. A data ficava escondida
-        dentro da barra de ação, que só nasce depois da primeira seleção — ou
-        seja, ela só aparecia depois da hora em que decidir a data ainda era
-        barato.
-      */}
       {linhas.length > 0 ? (
-        <section className="fin-cap-filtros" aria-label="Filtros e data de agendamento">
+        <section className="fin-cap-comando" aria-label="Resumo de contas a pagar">
+          <div className="fin-cap-numeros">
+            <div>
+              <span>Empresa</span>
+              <b>{brlCents(empresaCents)}</b>
+            </div>
+            <div>
+              <span>Pessoas e caixa</span>
+              <b>{brlCents(foraCents)}</b>
+            </div>
+            <div className="fin-cap-numeros-total">
+              <span>{filtroAtivo ? "Sai no mês" : "Total"}</span>
+              <b>{brlPrecise(empresaCents + foraCents)}</b>
+            </div>
+            {filtroAtivo ? (
+              <div className="fin-cap-numeros-recorte">
+                <span>Neste recorte</span>
+                <b>{brlPrecise(visiveisCents)}</b>
+              </div>
+            ) : null}
+            <div className={escolhidas.length ? "fin-cap-numeros-sel ativo" : "fin-cap-numeros-sel"}>
+              <span>
+                Selecionado
+                {escolhidas.length ? ` · ${escolhidas.length}` : ""}
+              </span>
+              <b>{escolhidas.length ? brlPrecise(totalEscolhidoCents) : "—"}</b>
+            </div>
+          </div>
+          <label className="fin-cap-mes">
+            <span>Mês</span>
+            <select
+              className="fin-select"
+              value={dados.competencia}
+              disabled={emVoo}
+              onChange={(e) => trocarMes(e.target.value)}
+            >
+              {dados.meses.map((mes) => (
+                <option key={mes} value={mes}>
+                  {monthKeyLabel(mes)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="fin-cap-topo-resumo">
+            {visiveis.length === linhas.length
+              ? `${linhas.length} contas`
+              : `${visiveis.length} de ${linhas.length}`}
+            {aConfirmar.length ? ` · ${aConfirmar.length} a confirmar` : ""}
+            {" · "}
+            {shortDateLabel(dados.hoje)}
+          </p>
+          <div className="fin-cap-comando-lado">
+            <button
+              type="button"
+              className={`fin-cap-chip${soPendente ? " ativo" : ""}`}
+              aria-pressed={soPendente}
+              disabled={emVoo}
+              onClick={() => {
+                setSoPendente(true);
+                setCiclosFiltrados(new Set());
+              }}
+            >
+              Só pendente
+            </button>
+            <button
+              type="button"
+              className={`fin-cap-chip${!soPendente && ciclosFiltrados.size === 0 ? " ativo" : ""}`}
+              aria-pressed={!soPendente && ciclosFiltrados.size === 0}
+              disabled={emVoo}
+              onClick={() => {
+                setSoPendente(false);
+                setCiclosFiltrados(new Set());
+              }}
+            >
+              Tudo
+            </button>
+            <CaixaTudo
+              ids={elegiveisVisiveis.map((l) => l.id)}
+              selecionadas={selecionadas}
+              onAlternar={alternarVarias}
+              rotulo={
+                filtroAtivo
+                  ? `Marcar visíveis (${elegiveisVisiveis.length})`
+                  : `Marcar prontas (${elegiveisVisiveis.length})`
+              }
+              dica={
+                filtroAtivo
+                  ? `Marca só o que está visível e pode virar ordem — ${elegiveisVisiveis.length} de ${visiveis.length}.`
+                  : "Marca as linhas que podem virar ordem de pagamento."
+              }
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {linhas.length > 0 ? (
+        <section className="fin-cap-filtros" aria-label="Filtros">
           <div className="fin-cap-filtro-linha">
             <span className="fin-cap-filtro-rot">
               <ListFilter size={13} strokeWidth={2.3} aria-hidden />
@@ -1206,12 +1300,53 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
                 );
               })}
             </div>
+            <p className="fin-cap-legenda" aria-label="Estágios">
+              <span>
+                <i className="fin-cap-marca pendente" aria-hidden />
+                Pendente
+              </span>
+              <span>
+                <i className="fin-cap-marca enviado" aria-hidden />
+                Enviado
+              </span>
+              <span>
+                <i className="fin-cap-marca pago" aria-hidden />
+                Pago
+              </span>
+            </p>
           </div>
 
           <div className="fin-cap-filtro-linha">
             <span className="fin-cap-filtro-rot">
               <ListFilter size={13} strokeWidth={2.3} aria-hidden />
-              Natureza e categoria
+              Área
+            </span>
+            <div className="fin-cap-chips" role="group" aria-label="Filtrar por área">
+              {chipsArea.map((c) => {
+                const ativo = areasFiltradas.has(c.slug);
+                return (
+                  <button
+                    key={c.slug}
+                    type="button"
+                    className={`fin-cap-chip${ativo ? " ativo" : ""}`}
+                    aria-pressed={ativo}
+                    disabled={c.n === 0 || emVoo}
+                    title={`${c.nome}${c.n ? ` · ${c.n} ${c.n === 1 ? "linha" : "linhas"} · ${brlPrecise(c.cents)}` : " — nenhuma nesta competência"}`}
+                    onClick={() => alternarArea(c.slug)}
+                  >
+                    <b>{c.nome}</b>
+                    <span className="fin-cap-chip-n">({c.n})</span>
+                    {c.n > 0 ? <span className="fin-cap-chip-total">{brlCents(c.cents)}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="fin-cap-filtro-linha">
+            <span className="fin-cap-filtro-rot">
+              <ListFilter size={13} strokeWidth={2.3} aria-hidden />
+              Natureza
             </span>
             <div className="fin-cap-chips" role="group" aria-label="Filtrar por natureza ou categoria">
               {eixosMostrados.map((c) => {
@@ -1253,64 +1388,6 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
             </div>
           </div>
 
-          <div className="fin-cap-filtro-linha fin-cap-agenda">
-            <label className="fin-cap-agenda-data">
-              <span className="fin-cap-filtro-rot">
-                <CalendarCheck size={13} strokeWidth={2.3} aria-hidden />
-                Agendar para
-              </span>
-              <input
-                type="date"
-                className="fin-input fin-cap-data"
-                value={quando}
-                min={dados.hoje || undefined}
-                disabled={emVoo}
-                onChange={(e) => setQuando(e.target.value)}
-              />
-            </label>
-            <div className="fin-cap-chips" role="group" aria-label="Atalhos de data">
-              {atalhosDeData.map((a) => (
-                <button
-                  key={a.rotulo}
-                  type="button"
-                  className={quando === a.data ? "fin-cap-chip ativo" : "fin-cap-chip"}
-                  disabled={emVoo}
-                  title={dateLabel(a.data)}
-                  onClick={() => setQuando(a.data)}
-                >
-                  {a.rotulo}
-                </button>
-              ))}
-            </div>
-            {/* O QUE VAI ACONTECER, POR EXTENSO. "12 pagamentos serão agendados
-                para 05/09/2026" é a frase que a pessoa confere antes do clique
-                — a data no input está em formato do navegador e a contagem só
-                existia dentro do botão. */}
-            <p className={dataNoPassado ? "fin-cap-agenda-frase erro" : "fin-cap-agenda-frase"}>
-              {dataNoPassado ? (
-                <>
-                  <b>{dateLabel(quando)} já passou.</b> O agendamento tem de ser hoje (
-                  {dateLabel(dados.hoje)}) ou à frente.
-                </>
-              ) : !quando ? (
-                <>Escolha a data do agendamento.</>
-              ) : escolhidas.length ? (
-                <>
-                  <b>
-                    {escolhidas.length}{" "}
-                    {escolhidas.length === 1 ? "pagamento será agendado" : "pagamentos serão agendados"}
-                  </b>{" "}
-                  para <b>{dateLabel(quando)}</b> · {brlPrecise(totalEscolhidoCents)}
-                </>
-              ) : (
-                <>
-                  Nada marcado ainda — o que você marcar será agendado para{" "}
-                  <b>{dateLabel(quando)}</b>.
-                </>
-              )}
-            </p>
-          </div>
-
           {filtroAtivo ? (
             <p className="fin-cap-filtro-ativo" role="status">
               <b>{visiveis.length}</b> de {linhas.length} linhas · <b>{brlCents(visiveisCents)}</b> ·{" "}
@@ -1338,80 +1415,6 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
         </p>
       ) : null}
 
-      <section className="fin-pessoas-kpis" aria-label="Indicadores de contas a pagar">
-        <div className="fin-pessoas-kpi-faixa">
-          <KpiAnalise
-            destaque
-            rotulo="Custo da empresa"
-            valor={brlCents(empresaCents)}
-            delta={
-              <p className="fin-delta neutro">
-                {(porGrupoTudo.get("empresa") ?? []).length}{" "}
-                {(porGrupoTudo.get("empresa") ?? []).length === 1 ? "linha" : "linhas"} ·{" "}
-                {monthKeyLabel(dados.competencia)}
-              </p>
-            }
-            extra={
-              <p className="fin-pessoas-kpi-extra">Os mesmos blocos da matriz, olhando para frente.</p>
-            }
-            pontos={[]}
-            crescimento={null}
-            ariaSpark="Custo da empresa a pagar no mês"
-          />
-          <KpiAnalise
-            rotulo="Fora do custo da empresa"
-            valor={brlCents(foraCents)}
-            delta={
-              <p className="fin-delta neutro">
-                folha, DAS e fatura de cartão <span>não somam com o custo</span>
-              </p>
-            }
-            extra={
-              <p className="fin-pessoas-kpi-extra">
-                Já contadas em <a className="pp-link" href="/financeiro/pessoas">Pessoas</a>,{" "}
-                <a className="pp-link" href="/financeiro/mei">MEI</a> e{" "}
-                <a className="pp-link" href="/financeiro/cartoes">Cartões</a>. Aqui só porque saem do
-                caixa.
-              </p>
-            }
-            pontos={[]}
-            crescimento={null}
-            ariaSpark="Saídas contadas em outras telas"
-          />
-          <KpiAnalise
-            rotulo="Total que sai no mês"
-            valor={brlCents(empresaCents + foraCents)}
-            delta={<p className="fin-delta neutro">caixa, não custo</p>}
-            extra={
-              <p className="fin-pessoas-kpi-extra">
-                A soma dos dois acima. É o que deixa a conta em{" "}
-                {monthKeyLabel(dados.competencia)}.
-                {aConfirmar.length ? (
-                  <>
-                    {" "}
-                    Fora daqui: {aConfirmar.length}{" "}
-                    {aConfirmar.length === 1 ? "linha" : "linhas"} de{" "}
-                    {brlCents(aConfirmarCents)} <b>a confirmar</b> — conta de verdade que
-                    ninguém está contando.
-                  </>
-                ) : null}
-                {duplicadas.length ? (
-                  <>
-                    {" "}
-                    E {duplicadas.length} {duplicadas.length === 1 ? "duplicata" : "duplicatas"}{" "}
-                    de {brlCents(duplicadasCents)} cujo compromisso outra linha desta tela já
-                    conta.
-                  </>
-                ) : null}
-              </p>
-            }
-            pontos={[]}
-            crescimento={null}
-            ariaSpark="Total de caixa do mês"
-          />
-        </div>
-      </section>
-
       {escolhidas.length ? (
         <div className="fin-custo-mover fin-cap-barra" role="region" aria-label="Realizar pagamento">
           <b>
@@ -1434,6 +1437,20 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
               onChange={(e) => setQuando(e.target.value)}
             />
           </label>
+          <div className="fin-cap-chips" role="group" aria-label="Atalhos de data">
+            {atalhosDeData.map((a) => (
+              <button
+                key={a.rotulo}
+                type="button"
+                className={quando === a.data ? "fin-cap-chip ativo" : "fin-cap-chip"}
+                disabled={emVoo}
+                title={dateLabel(a.data)}
+                onClick={() => setQuando(a.data)}
+              >
+                {a.rotulo}
+              </button>
+            ))}
+          </div>
           {escolhidasOcultas > 0 ? (
             <span className="fin-cap-barra-ocultas" title="o filtro esconde parte do que está marcado — elas continuam no envio">
               {escolhidasOcultas} fora do filtro
@@ -1585,6 +1602,9 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
         if (!doGrupo.length) return null;
         const Icone = ICONE_GRUPO[meta.slug];
         const idsElegiveis = doGrupo.filter(podeProgramar).map((l) => l.id);
+        const totalGrupoCents = somarNoTotal(doGrupo);
+        const selGrupo = doGrupo.filter((l) => selecionadas.has(l.id));
+        const selGrupoCents = selGrupo.reduce((s, l) => s + l.valorCents, 0);
 
         return (
           <section key={meta.slug} className="fin-custo-parte">
@@ -1610,10 +1630,22 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
                     </a>
                   ) : null}
                 </h2>
-                <p className="fin-custo-parte-dica">
-                  {meta.dica} · {doGrupo.length} {doGrupo.length === 1 ? "linha" : "linhas"} ·{" "}
-                  {brlPrecise(somarNoTotal(doGrupo))}
-                </p>
+                <p className="fin-custo-parte-dica">{meta.dica}</p>
+              </div>
+              <div className="fin-cap-grupo-somas">
+                <div>
+                  <span>
+                    Total · {doGrupo.length} {doGrupo.length === 1 ? "linha" : "linhas"}
+                  </span>
+                  <b>{brlPrecise(totalGrupoCents)}</b>
+                </div>
+                <div className={selGrupo.length ? "fin-cap-grupo-sel ativo" : "fin-cap-grupo-sel"}>
+                  <span>
+                    Selecionado
+                    {selGrupo.length ? ` · ${selGrupo.length}` : ""}
+                  </span>
+                  <b>{selGrupo.length ? brlPrecise(selGrupoCents) : "—"}</b>
+                </div>
               </div>
               <CaixaTudo
                 ids={idsElegiveis}
@@ -1624,12 +1656,13 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
               />
             </header>
 
-            {meta.slug === "empresa" ? (
-              <BlocosDaMatriz
+            {meta.slug === "empresa" || meta.slug === "das" ? (
+              <FinCapFila
                 linhas={doGrupo}
                 hoje={dados.hoje}
                 selecionadas={selecionadas}
                 onAlternar={alternarUma}
+                onAtualizar={() => router.refresh()}
               />
             ) : meta.slug === "folha" ? (
               <BlocoPessoas
@@ -2219,19 +2252,10 @@ function BlocoPessoas({
   }, [linhas]);
 
   const molde = folhaMolde && folhaMolde !== competencia ? folhaMolde : null;
+  const [fechadas, setFechadas] = useState<Set<string>>(new Set());
 
   return (
     <>
-      <p className="fin-cap-pessoas-nota" role="note">
-        <Users size={16} strokeWidth={2.2} aria-hidden />
-        <span>
-          <b>Cada parte marcada vira um PIX separado no Inter.</b> Marcar as quatro partes de
-          uma pessoa programa quatro ordens — salário, pró-labore, comissão, reembolso — e
-          nada é somado no envio. É o que faz a conferência bater parte a parte contra o
-          extrato depois. Escolha a quem pagar e quais itens.
-        </span>
-      </p>
-
       {/*
         MOLDE NÃO É FECHAMENTO, E A TELA TEM DE DIZER QUAL É.
         `fin_time_remuneracao_mes_v` só conhece o passado — ela lê
@@ -2256,11 +2280,20 @@ function BlocoPessoas({
           cabecalho: (
             <CabecalhoPessoa
               pessoa={p}
+              aberto={!fechadas.has(p.chave)}
               selecionadas={selecionadas}
               onAlternarVarias={onAlternarVarias}
+              onToggle={() =>
+                setFechadas((atual) => {
+                  const proxima = new Set(atual);
+                  if (proxima.has(p.chave)) proxima.delete(p.chave);
+                  else proxima.add(p.chave);
+                  return proxima;
+                })
+              }
             />
           ),
-          linhas: p.linhas
+          linhas: fechadas.has(p.chave) ? [] : p.linhas
         }))}
         hoje={hoje}
         selecionadas={selecionadas}
@@ -2302,43 +2335,55 @@ function BlocoPessoas({
  */
 function CabecalhoPessoa({
   pessoa,
+  aberto,
   selecionadas,
-  onAlternarVarias
+  onAlternarVarias,
+  onToggle
 }: {
   pessoa: Pessoa;
+  aberto: boolean;
   selecionadas: Set<string>;
   onAlternarVarias: (ids: string[], marcar: boolean) => void;
+  onToggle: () => void;
 }) {
-  const partes: string[] = [];
-  if (pessoa.partes > 0) {
-    partes.push(`${pessoa.partes} ${pessoa.partes === 1 ? "parte" : "partes"}`);
-  } else {
-    partes.push(`${pessoa.linhas.length} ${pessoa.linhas.length === 1 ? "linha" : "linhas"}`);
-  }
-  // O total do mês da pessoa é o que SOMA. Quando é zero e há algo a confirmar,
-  // um "R$ 0,00" ao lado do nome de alguém que tem conta no mês diria a coisa
-  // errada — a parcela a confirmar já carrega o número logo ao lado.
-  if (pessoa.somaCents > 0 || pessoa.aConfirmarCents === 0) partes.push(brlPrecise(pessoa.somaCents));
-  if (pessoa.aConfirmarCents > 0) partes.push(`${brlPrecise(pessoa.aConfirmarCents)} a confirmar`);
+  const pagas = pessoa.linhas.filter((l) => estadoDoCiclo(l) === "paga");
+  const enviadas = pessoa.linhas.filter((l) => {
+    const e = estadoDoCiclo(l);
+    return e === "programada" || e === "aguardando" || e === "em_curso";
+  });
+  const n = pessoa.linhas.length;
+  const resumo =
+    pagas.length === n && n > 0
+      ? "pago"
+      : enviadas.length > 0
+        ? `${pagas.length + enviadas.length} de ${n} em curso`
+        : `${n} ${n === 1 ? "conta" : "contas"}`;
 
   return (
     <>
       <td className="fin-cap-col-sel">
-        <CaixaMarcar
-          ids={pessoa.idsElegiveis}
-          selecionadas={selecionadas}
-          onAlternar={onAlternarVarias}
-          titulo={
-            pessoa.idsElegiveis.length
-              ? `Marca as ${pessoa.idsElegiveis.length} partes de ${pessoa.nome} — cada uma vira um PIX`
-              : "nenhuma parte desta pessoa pode virar ordem"
-          }
-          rotulo={`Selecionar todas as partes de ${pessoa.nome}`}
-        />
+        {pessoa.idsElegiveis.length > 0 ? (
+          <CaixaMarcar
+            ids={pessoa.idsElegiveis}
+            selecionadas={selecionadas}
+            onAlternar={onAlternarVarias}
+            titulo={`Marca as ${pessoa.idsElegiveis.length} partes pendentes de ${pessoa.nome}`}
+            rotulo={`Selecionar as partes pendentes de ${pessoa.nome}`}
+          />
+        ) : null}
       </td>
       <td className="fin-cap-pessoa-cel" colSpan={6}>
-        <span className="fin-cap-pessoa-nome">{pessoa.nome}</span>
-        <span className="fin-cap-pessoa-meta">{partes.join(" · ")}</span>
+        <button type="button" className="fin-cap-pessoa-toggle" onClick={onToggle} aria-expanded={aberto}>
+          <ChevronRight
+            size={16}
+            strokeWidth={2.2}
+            className={aberto ? "fin-chevron-aberto" : undefined}
+            aria-hidden
+          />
+          <span className="fin-cap-pessoa-nome">{pessoa.nome}</span>
+          <span className="fin-cap-pessoa-valor">{brlPrecise(pessoa.somaCents || pessoa.aConfirmarCents)}</span>
+          <span className="fin-cap-pessoa-meta">{resumo}</span>
+        </button>
       </td>
     </>
   );
@@ -2480,6 +2525,14 @@ function Situacao({ linha, hoje }: { linha: LinhaCap; hoje: string }) {
   const estado = estadoDoCiclo(linha);
   const o = linha.ordem;
 
+  if (estado === "paga" && !o) {
+    return (
+      <span className="fin-cap-selo fin-cap-selo-paga" title="saiu no extrato — Inter, Nubank ou Asaas">
+        {linha.realizadoEm ? `Pago em ${shortDateLabel(linha.realizadoEm)}` : "Pago no extrato"}
+      </span>
+    );
+  }
+
   if (o && estado === "paga") {
     return (
       <>
@@ -2556,6 +2609,16 @@ function Situacao({ linha, hoje }: { linha: LinhaCap; hoje: string }) {
   }
 
   if (estado === "falta_cadastro") {
+    if (linha.impedimento === "duplicada") {
+      return (
+        <span
+          className="fin-cap-selo fin-cap-selo-falta"
+          title={linha.motivoNaoSoma ?? MOTIVO_IMPEDIMENTO.duplicada}
+        >
+          já no cadastro
+        </span>
+      );
+    }
     return (
       <>
         <span
@@ -2652,6 +2715,16 @@ function TabelaContas({
    */
   dentroDePessoa?: boolean;
 }) {
+  const [abertas, setAbertas] = useState<Set<string>>(() => new Set());
+  function alternarPedacos(id: string) {
+    setAbertas((atual) => {
+      const proxima = new Set(atual);
+      if (proxima.has(id)) proxima.delete(id);
+      else proxima.add(id);
+      return proxima;
+    });
+  }
+
   return (
     <div className="fin-table-wrap">
       <table className="fin-table fin-cap-tabela">
@@ -2685,55 +2758,56 @@ function TabelaContas({
                * linhas de R$ 40.044,75 em set/26 (Ancora, Compesa, Neoenergia,
                * Claro, Embrasul, Localiza) apareciam como duplicata.
                */
-              const paga = Boolean(l.ordem && l.ordem.pagoCents > 0);
+              const estado = estadoDoCiclo(l);
+              const paga = estado === "paga";
               const classes = [
                 l.vencido && !l.realizadoEm && !paga ? "fin-cap-vencida" : "",
                 !l.entraNoTotal && !l.naoConfirmada ? "fin-cap-fora" : "",
                 l.naoConfirmada && !paga ? "fin-cap-aconfirmar" : "",
-                // O que já saiu do caixa não é fila de ninguém: a barra verde
-                // vence a âmbar de "a confirmar" e a vermelha de "vencido".
                 paga ? "fin-cap-paga" : "",
+                estado === "aguardando" || estado === "programada" || estado === "em_curso"
+                  ? "fin-cap-enviada"
+                  : "",
                 marcada ? "fin-cap-marcada" : ""
               ]
                 .filter(Boolean)
                 .join(" ");
+              const pedacos = l.pedacos ?? [];
+              const nPedacos = pedacos.length;
+              const detalha = nPedacos > 1;
+              const pedacosAbertos = detalha && abertas.has(l.id);
+              const misturaPacotes = new Set(pedacos.map((p) => p.pacote)).size > 1;
 
               return (
+                <Fragment key={l.id}>
                 <tr
-                  key={l.id}
                   className={classes || undefined}
                   // A linha que não soma continua legível, com o motivo à mão —
                   // ela é dado, não ruído: some da soma, nunca da tela.
                   title={l.entraNoTotal ? undefined : l.motivoNaoSoma ?? "não entra no total do mês"}
                 >
                   <td className="fin-cap-col-sel">
-                    {l.ordem ? (
-                      // Já tem ordem: o checkbox some e o code/status ocupam a
-                      // coluna de situação. Deixar a caixa marcada e desligada
-                      // sugeriria que o clique de agora foi o que a criou.
+                    {paga || l.ordem ? (
                       <span
-                        className="fin-cap-ordem-marca"
-                        title={`ordem ${l.ordem.code} já registrada`}
+                        className={`fin-cap-marca ${paga ? "pago" : "enviado"}`}
+                        title={
+                          paga
+                            ? "pago"
+                            : l.ordem
+                              ? `ordem ${l.ordem.code} — ${ROTULO_ORDEM[l.ordem.status] ?? l.ordem.status}`
+                              : "enviado"
+                        }
                         aria-hidden
-                      >
-                        ✓
-                      </span>
-                    ) : (
+                      />
+                    ) : elegivel ? (
                       <input
                         type="checkbox"
                         checked={marcada}
-                        disabled={!elegivel}
                         aria-label={`Selecionar ${l.contraparte ?? l.descricao}`}
-                        title={
-                          elegivel
-                            ? "vira ordem de pagamento"
-                            : l.impedimento
-                              ? MOTIVO_IMPEDIMENTO[l.impedimento]
-                              : "não pode ser programada"
-                        }
+                        title="vira ordem de pagamento"
                         onChange={() => onAlternar(l.id)}
                       />
-                    )}
+                    ) : null}
                   </td>
                   <td className="fin-cap-dia">
                     {shortDateLabel(l.dia)}
@@ -2750,27 +2824,61 @@ function TabelaContas({
                         inclusive fora do bloco Pessoas, porque o contrato também
                         a preenche a partir da categoria 6.x. */}
                     {dentroDePessoa && l.natureza ? (
-                      <span className="fin-cap-nome fin-cap-nome-natureza">{l.natureza}</span>
-                    ) : (
-                      <span className="fin-cap-nome">
-                        {l.contraparte ?? "sem favorecido"}
-                        {l.natureza ? (
-                          <span
-                            className="fin-cap-natureza"
-                            title="natureza do pagamento — cada uma marcada vira um PIX próprio"
+                      <span className="fin-cap-nome-linha">
+                        <span className="fin-cap-nome fin-cap-nome-natureza">{rotuloNatureza(l)}</span>
+                        {detalha ? (
+                          <button
+                            type="button"
+                            className="fin-cap-pedacos-toggle"
+                            aria-expanded={pedacosAbertos}
+                            aria-controls={`pedacos-${l.id}`}
+                            onClick={() => alternarPedacos(l.id)}
                           >
-                            {l.natureza}
-                          </span>
+                            <ChevronRight
+                              size={14}
+                              strokeWidth={2.2}
+                              className={pedacosAbertos ? "fin-chevron-aberto" : undefined}
+                              aria-hidden
+                            />
+                            {nPedacos} lançamentos
+                          </button>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="fin-cap-nome-linha">
+                        <span className="fin-cap-nome">
+                          {l.contraparte ?? "sem favorecido"}
+                          {l.natureza ? (
+                            <span className="fin-cap-natureza">{rotuloNatureza(l)}</span>
+                          ) : null}
+                        </span>
+                        {detalha ? (
+                          <button
+                            type="button"
+                            className="fin-cap-pedacos-toggle"
+                            aria-expanded={pedacosAbertos}
+                            aria-controls={`pedacos-${l.id}`}
+                            onClick={() => alternarPedacos(l.id)}
+                          >
+                            <ChevronRight
+                              size={14}
+                              strokeWidth={2.2}
+                              className={pedacosAbertos ? "fin-chevron-aberto" : undefined}
+                              aria-hidden
+                            />
+                            {nPedacos} lançamentos
+                          </button>
                         ) : null}
                       </span>
                     )}
-                    {/* "Gabriel — Comissão" é exatamente o nome mais a natureza,
-                        e as duas já estão na tela quando a linha está sob a
-                        pessoa. Só repete quando diz algo novo. */}
-                    {dentroDePessoa && l.descricao === `${l.contraparte} — ${l.natureza}` ? null : (
+                    {nPedacos === 1 && pedacos[0] ? (
+                      <span className="fin-cap-sub">{resumoPedaco(pedacos[0])}</span>
+                    ) : dentroDePessoa &&
+                      (l.descricao === `${l.contraparte} — ${l.natureza}` ||
+                        l.descricao === `${l.contraparte} — ${rotuloNatureza(l)}`) ? null : (
                       <span className="fin-cap-sub">{l.descricao}</span>
                     )}
-                    {leitura ? (
+                    {!dentroDePessoa && leitura ? (
                       <span
                         className="fin-cap-leitura"
                         data-leitura={leitura}
@@ -2779,26 +2887,25 @@ function TabelaContas({
                         {ROTULO_LEITURA[leitura]}
                       </span>
                     ) : null}
-                    {l.pixMascarado ? (
+                    {!dentroDePessoa && l.pixMascarado ? (
                       <span className="fin-cap-pix">
                         PIX {l.pixTipo?.toLowerCase() ?? "chave"} {l.pixMascarado}
                       </span>
                     ) : null}
                   </td>
                   <td>
-                    {l.categoriaCode ? (
+                    {dentroDePessoa &&
+                    (!l.categoriaNome || l.categoriaNome === l.natureza || l.categoriaNome === rotuloNatureza(l)) ? (
+                      <span className="fin-zero">—</span>
+                    ) : l.categoriaCode ? (
                       <>
                         <span className="fin-cap-cat-code">{l.categoriaCode}</span>{" "}
                         {l.categoriaNome ?? ""}
                       </>
                     ) : l.categoriaNome ? (
-                      // A composição da folha não tem código de categoria — ela
-                      // não vem do plano de contas, vem do cadastro da pessoa —
-                      // mas tem nome. Dizer "sem categoria" em cada parte de cada
-                      // pessoa seria uma fila de trabalho inventada.
                       l.categoriaNome
                     ) : (
-                      <span className="fin-zero">sem categoria</span>
+                      <span className="fin-zero">—</span>
                     )}
                   </td>
                   <td>
@@ -2809,6 +2916,49 @@ function TabelaContas({
                     <Situacao linha={l} hoje={hoje} />
                   </td>
                 </tr>
+                {pedacosAbertos ? (
+                  <tr className="fin-cap-pedacos">
+                    <td className="fin-cap-col-sel" />
+                    <td colSpan={6}>
+                      <table className="fin-cap-pedacos-tabela" id={`pedacos-${l.id}`}>
+                        <thead>
+                          <tr>
+                            <th scope="col">Lançamento</th>
+                            <th scope="col">Cliente</th>
+                            {misturaPacotes ? <th scope="col">Origem</th> : null}
+                            <th scope="col">Parcela</th>
+                            <th scope="col" className="num">
+                              Valor
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pedacos.map((p) => (
+                            <tr key={p.id}>
+                              <td>
+                                {p.descricao}
+                                {p.tipoNome && !misturaPacotes ? (
+                                  <span className="fin-cap-pedacos-tipo">{p.tipoNome}</span>
+                                ) : null}
+                              </td>
+                              <td>{p.cliente ?? <span className="fin-zero">—</span>}</td>
+                              {misturaPacotes ? <td>{ROTULO_PACOTE[p.pacote]}</td> : null}
+                              <td>{rotuloParcelaPedaco(p)}</td>
+                              <td className="num fin-table-money">{brlPrecise(p.valorCents)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td colSpan={misturaPacotes ? 4 : 3}>Total deste PIX</td>
+                            <td className="num fin-table-money">{brlPrecise(l.valorCents)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </td>
+                  </tr>
+                ) : null}
+                </Fragment>
               );
             })}
           </tbody>

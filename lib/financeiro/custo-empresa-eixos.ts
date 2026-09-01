@@ -79,6 +79,40 @@ export function timeDe(gravado: string | null): TimeCusto {
   return "sem_time";
 }
 
+/**
+ * Time da PESSOA, a partir de `fin_person.area` (e o núcleo como rede).
+ *
+ * É o mesmo CASE de `TIME_SQL` em `pessoas.ts`. Duas cópias porque aquele
+ * arquivo interpola SQL e este classifica linha a linha no JS — um corte que
+ * existe em dois idiomas. Se um mudar sem o outro, a matriz de Pessoas e o
+ * filtro de Contas a pagar discordam de quem é "obras".
+ *
+ * Software/hardware → consultoria (0170). Marketing no campo velho → outros.
+ * Cadastro vazio → sem_time, nunca chutado para obras.
+ */
+export function timeDaPessoa(area: string | null | undefined, defaultNucleo?: string | null): TimeCusto {
+  const a = (area ?? "").trim().toLowerCase();
+  if (a === "hardware" || a === "software") return "consultoria";
+  if (a === "consultoria" || a === "obras" || a === "administrativo" || a === "outros") return a;
+  if (a) return "outros";
+  const n = (defaultNucleo ?? "").trim().toLowerCase();
+  if (n === "obras" || n === "consultoria") return n;
+  return "sem_time";
+}
+
+/**
+ * Área desta CONTA na tela de pagar — um chip, uma linha.
+ *
+ * Pacote de comissão (obras/consultoria) vence o time da pessoa: o PIX de
+ * obras do Gabriel é obras mesmo se o cadastro dele for sócio sem time.
+ * `consultoria_obras` (os dois) fica chip próprio, não aparece nos dois
+ * lados — "mostrar só os da mesma área" é recorte exclusivo.
+ */
+export function areaDaConta(l: { parte?: string | null; time: TimeCusto }): TimeCusto {
+  if (l.parte === "obras" || l.parte === "consultoria") return l.parte;
+  return l.time;
+}
+
 export function timeValido(valor: string | null): valor is Exclude<TimeCusto, "sem_time"> {
   return Boolean(valor && TIMES_SET.has(valor));
 }

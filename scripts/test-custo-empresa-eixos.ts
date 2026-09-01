@@ -12,6 +12,8 @@ import {
   nomeAgrupadoCusto,
   sqlContraparteEPessoa,
   sqlPessoaNaoEServicoDaCasa,
+  timeDaPessoa,
+  areaDaConta,
   timeDe,
   timeValido
 } from "../lib/financeiro/custo-empresa-eixos.ts";
@@ -122,6 +124,22 @@ console.log("\n=== Predicado SQL da contraparte ===");
   }
   ok(recusouPapel, "alias de papel estranho não entra no SQL");
 }
+
+console.log("\n=== Time da pessoa (espelho do TIME_SQL) ===");
+ok(timeDaPessoa("obras") === "obras", "obras no cadastro");
+ok(timeDaPessoa("consultoria") === "consultoria", "consultoria no cadastro");
+ok(timeDaPessoa("software") === "consultoria", "software virou consultoria");
+ok(timeDaPessoa("marketing") === "outros", "marketing velho não é time");
+ok(timeDaPessoa(null) === "sem_time", "sem área não chuta obras");
+ok(timeDaPessoa(null, "obras") === "obras", "núcleo obras cobre cadastro vazio");
+ok(timeDaPessoa("consultoria", "obras") === "consultoria", "área gravada vence o núcleo");
+
+console.log("\n=== Área da conta (filtro exclusivo) ===");
+ok(areaDaConta({ parte: "obras", time: "consultoria" }) === "obras", "pacote de comissão vence o time da pessoa");
+ok(areaDaConta({ parte: "consultoria", time: "sem_time" }) === "consultoria", "consultoria no pacote");
+ok(areaDaConta({ parte: null, time: "administrativo" }) === "administrativo", "custo classificado na matriz");
+ok(areaDaConta({ parte: "padrao", time: "consultoria_obras" }) === "consultoria_obras", "os dois é chip próprio");
+ok(areaDaConta({ parte: null, time: "sem_time" }) === "sem_time", "sem classificação fica pendência");
 
 console.log(`\n${provas - falhas}/${provas} provas`);
 if (falhas) process.exit(1);

@@ -77,6 +77,54 @@ try {
     throw e;
   }
 
+  // ---------------------------------------------- saldo Inter (só leitura)
+  /*
+   * A tela de aprovações consulta esta rota a cada 45s. Sem um GET que a
+   * chame, o TypeScript limpo deixaria um SELECT quebrado ir para produção —
+   * a mesma falha do cadastro de cartão (AGENTS.md §4). Não cria pagamento.
+   */
+  {
+    const r = await fetch(BASE + '/api/financeiro/aprovacoes/saldo');
+    let json = null;
+    try {
+      json = await r.json();
+    } catch {
+      json = null;
+    }
+    afirma(
+      r.status === 200 || r.status === 503,
+      'GET /api/financeiro/aprovacoes/saldo responde',
+      `HTTP ${r.status}`
+    );
+    if (r.status === 200) {
+      afirma(
+        typeof json?.disponivelCents === 'number',
+        'saldo vem em centavos',
+        String(json.disponivelCents)
+      );
+      afirma(
+        json.fonte === 'inter' || json.fonte === 'ledger',
+        'fonte do saldo está dita',
+        json.fonte
+      );
+      afirma(
+        json.asaas && typeof json.asaas.disponivelCents === 'number',
+        'Asaas vem em centavos (ao vivo ou ledger)',
+        `${json.asaas.disponivelCents} fonte=${json.asaas.fonte}`
+      );
+      afirma(
+        json.asaas.fonte === 'asaas' || json.asaas.fonte === 'ledger',
+        'fonte do Asaas está dita',
+        json.asaas.fonte
+      );
+      afirma(
+        json.nubank && (json.nubank.disponivelCents === null || typeof json.nubank.disponivelCents === 'number'),
+        'Nubank vem do ledger no mesmo GET',
+        String(json.nubank?.disponivelCents)
+      );
+    }
+  }
+
   // ------------------------------------------------------------------ cobaias
   entityId = (await pool.query(`SELECT id FROM fin_entity WHERE slug = 'xpe'`)).rows[0]?.id;
   afirma(Boolean(entityId), 'entidade xpe existe');
@@ -342,6 +390,76 @@ try {
       ])
     ).rows[0]?.status;
     afirma(depoisDoPut === 'rascunho', 'envio que falha NÃO muda o status', depoisDoPut);
+  }
+
+  // ---------------------------------------------- cobranca (boleto / NF-e)
+  /*
+   * AGENTS.md §4: rota nova precisa de um teste que a CHAME. Sem isto o INSERT
+   * da 0185 passaria semanas quebrado com o TypeScript limpo — o mesmo defeito
+   * do cadastro de cartão. Não chama Haiku: o XML da NF-e é extração exata.
+   */
+  {
+    const chaveCobranca = `${MARCA}|cobranca`;
+    const chaveFav = `nome:${MARCA}`;
+    const patch = await chamar(
+      '/api/financeiro/contas-a-pagar/cobranca',
+      { chaveFavorito: chaveFav, favorito: true },
+      'PATCH'
+    );
+    afirma(
+      patch.status === 200 || patch.status === 503,
+      'PATCH favorito responde',
+      `HTTP ${patch.status}`
+    );
+    if (patch.status === 200) {
+      afirma(patch.json?.favorito === true, 'favorito gravado', String(patch.json?.favorito));
+    }
+
+    const xml =
+      '<?xml version="1.0"?>' +
+      '<NFe><infNFe Id="NFe35240111111111111111550010000000011234567890">' +
+      '<ide><dhEmi>2026-09-01T10:00:00-03:00</dhEmi><nNF>1</nNF><serie>1</serie></ide>' +
+      '<emit><CNPJ>11111111111111</CNPJ><xNome>Fornecedor Teste Cap</xNome></emit>' +
+      '<total><ICMSTot><vNF>10.50</vNF></ICMSTot></total>' +
+      '</infNFe></NFe>';
+    const fd = new FormData();
+    fd.set('chaveDedupe', chaveCobranca);
+    fd.set('kind', 'nota_fiscal');
+    fd.set('arquivo', new Blob([xml], { type: 'text/xml' }), 'nota.xml');
+    const post = await fetch(BASE + '/api/financeiro/contas-a-pagar/cobranca', { method: 'POST', body: fd });
+    let postJson = null;
+    try {
+      postJson = await post.json();
+    } catch {
+      postJson = null;
+    }
+    afirma(post.status === 200 || post.status === 503, 'POST NF-e responde', `HTTP ${post.status}`);
+    if (post.status === 200) {
+      afirma(postJson?.anexo?.kind === 'nota_fiscal', 'anexo é NF-e', postJson?.anexo?.kind);
+      afirma(
+        postJson?.leitura?.valorLidoCents === 1050,
+        'XML leu R$ 10,50 — sem chute',
+        String(postJson?.leitura?.valorLidoCents)
+      );
+      const storage = postJson?.anexo?.storageKey;
+      if (storage) {
+        const get = await fetch(
+          BASE + '/api/financeiro/contas-a-pagar/cobranca/anexo/' + storage.split('/').map(encodeURIComponent).join('/')
+        );
+        afirma(get.status === 200, 'GET anexo devolve o arquivo', `HTTP ${get.status}`);
+      }
+    }
+
+    const del = await chamar(
+      '/api/financeiro/contas-a-pagar/cobranca',
+      { chaveDedupe: chaveCobranca, kind: 'nota_fiscal' },
+      'DELETE'
+    );
+    afirma(del.status === 200 || del.status === 503, 'DELETE anexo responde', `HTTP ${del.status}`);
+
+    // Limpa o que este bloco criou, mesmo se o POST tiver falhado no meio.
+    await pool.query(`DELETE FROM fin_conta_cobranca WHERE chave_dedupe = $1`, [chaveCobranca]).catch(() => {});
+    await pool.query(`DELETE FROM fin_conta_favorito WHERE chave = $1`, [chaveFav]).catch(() => {});
   }
 } catch (e) {
   nok('execução', e.message);

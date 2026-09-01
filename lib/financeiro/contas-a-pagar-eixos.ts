@@ -235,6 +235,103 @@ export const NATUREZA_DA_VIEW: Record<string, string> = {
   reembolso: "Reembolso"
 };
 
+/**
+ * De onde veio a comissão. Os dois pacotes que o dono paga separado são
+ * consultoria e obras (`vendas_consultoria` / `vendas_obras` em
+ * `fin_comissao_tipo`, 0178). O resto — diárias, lotes, gestão, sem tipo —
+ * aparece como parte própria se tiver valor, nunca misturado nos dois
+ * principais.
+ *
+ * NULL e slug desconhecido caem em `outras`. Carimbar obras ou consultoria
+ * num lançamento sem tipo seria inventar a origem — a 0178 deixou as linhas
+ * antigas NULL de propósito.
+ */
+export type PacoteComissao = "consultoria" | "obras" | "diarias" | "lotes" | "gestao" | "outras";
+
+export const PACOTE_DO_TIPO: Record<string, PacoteComissao> = {
+  vendas_consultoria: "consultoria",
+  vendas_obras: "obras",
+  diarias_servico: "diarias",
+  vendas_lotes: "lotes",
+  gestao: "gestao",
+  outros: "outras"
+};
+
+export const ROTULO_PACOTE: Record<PacoteComissao, string> = {
+  consultoria: "consultoria",
+  obras: "obras",
+  diarias: "diárias",
+  lotes: "lotes",
+  gestao: "gestão",
+  outras: "outras"
+};
+
+export const ORDEM_PACOTE: PacoteComissao[] = [
+  "consultoria",
+  "obras",
+  "diarias",
+  "lotes",
+  "gestao",
+  "outras"
+];
+
+export function pacoteDaComissao(tipoSlug: string | null | undefined): PacoteComissao {
+  if (!tipoSlug) return "outras";
+  return PACOTE_DO_TIPO[tipoSlug] ?? "outras";
+}
+
+/**
+ * Um lançamento de `fin_pessoa_comissao_declarada` neste mês. A linha de
+ * contas a pagar CONTINUA UM PIX por pacote — estes pedaços só explicam de
+ * onde o total veio. Virar obrigação cada um reabriria o PIX em dobro.
+ */
+export type PedacoComissao = {
+  id: number;
+  personId: number;
+  pacote: PacoteComissao;
+  descricao: string;
+  cliente: string | null;
+  tipoNome: string | null;
+  parcela: number | null;
+  parcelasTotal: number | null;
+  serieId: number | null;
+  ehEntrada: boolean;
+  valorCents: number;
+};
+
+/**
+ * Pedaços que batem nesta banda. Pacote null (mês passado, ou ordem antiga
+ * na chave sem corte) leva todos; com pacote, só os daquela origem.
+ */
+export function pedacosDaComissao(
+  natureza: string,
+  pacote: PacoteComissao | null,
+  todos: PedacoComissao[]
+): PedacoComissao[] {
+  if (natureza !== "comissao") return [];
+  if (!pacote) return todos;
+  return todos.filter((p) => p.pacote === pacote);
+}
+
+/**
+ * Os três recortes da tela de Comissões. Consultoria e obras são os PIX que o
+ * dono paga separado; diárias, lotes, gestão e sem tipo caem juntos em
+ * `outras` — somá-los nos dois principais era o número único que a tela
+ * mostrava.
+ */
+export type PacoteFiltroComissao = "consultoria" | "obras" | "outras";
+
+export function pacoteFiltroDaOrigem(tipoSlug: string | null | undefined): PacoteFiltroComissao {
+  const p = pacoteDaComissao(tipoSlug);
+  return p === "consultoria" || p === "obras" ? p : "outras";
+}
+
+export function rotuloDaBanda(b: { natureza: string; pacote: PacoteComissao | null }): string {
+  const base = NATUREZA_DA_VIEW[b.natureza] ?? b.natureza;
+  if (b.natureza === "comissao" && b.pacote) return `Comissão · ${ROTULO_PACOTE[b.pacote]}`;
+  return base;
+}
+
 /** Posição na ordem de pagamento. Natureza nova cai no fim, não some. */
 export function ordemDaNatureza(natureza: string): number {
   const i = (NATUREZAS_DA_FOLHA as readonly string[]).indexOf(natureza);
@@ -330,4 +427,115 @@ export function naoConfirmadaDe(l: {
   outraLinhaConta: boolean;
 }): boolean {
   return !l.realizadoEm && !l.entraNoTotal && !l.outraLinhaConta;
+}
+
+/** Saiu do caixa — Inter, Nubank ou Asaas. O extrato vence o status da ordem. */
+export function jaSaiuDoCaixa(l: {
+  ordem: { pagoCents: number } | null;
+  impedimento: ImpedimentoPagar;
+  realizadoEm: string | null;
+  realizadoCents: number;
+}): boolean {
+  if (l.ordem && l.ordem.pagoCents > 0) return true;
+  if (l.impedimento === "ja_realizado") return true;
+  return Boolean(l.realizadoEm && l.realizadoCents > 0);
+}
+
+export type EstadoCiclo =
+  | "paga"
+  | "aguardando"
+  | "programada"
+  | "em_curso"
+  | "falta_cadastro"
+  | "a_confirmar"
+  | "pronta";
+
+export function estadoDoCiclo(l: {
+  ordem: { status: string; pagoCents: number } | null;
+  impedimento: ImpedimentoPagar;
+  entraNoTotal: boolean;
+  realizadoEm: string | null;
+  realizadoCents: number;
+}): EstadoCiclo {
+  if (jaSaiuDoCaixa(l)) return "paga";
+  const o = l.ordem;
+  if (o) {
+    if (o.status === "aguardando_autorizacao") return "aguardando";
+    if (o.status === "rascunho") return "programada";
+    return "em_curso";
+  }
+  if (l.impedimento !== null) return "falta_cadastro";
+  if (!l.entraNoTotal) return "a_confirmar";
+  return "pronta";
+}
+
+/**
+ * Identidade do FAVORITO. É a contraparte, não a linha do mês.
+ *
+ * Ancora continua estrela em outubro: o boleto é do mês (`chave_dedupe`), o
+ * "eu sempre pago isto" é do fornecedor. Sem `counterparty_id` cai no nome
+ * normalizado — homônimo funde, e é o custo de não ter cadastro.
+ */
+export function chaveFavorito(l: {
+  counterpartyId: number | null;
+  contraparte: string | null;
+}): string | null {
+  if (l.counterpartyId != null) return `cp:${l.counterpartyId}`;
+  const nome = (l.contraparte ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  return nome ? `nome:${nome}` : null;
+}
+
+export type FaixaPrazo = "atrasada" | "hoje" | "semana" | "mes" | "depois";
+
+/** Dias civis entre duas datas ISO (`YYYY-MM-DD`). Sem fuso — data pura. */
+export function diasEntre(de: string, ate: string): number {
+  const [a1, m1, d1] = de.slice(0, 10).split("-").map(Number);
+  const [a2, m2, d2] = ate.slice(0, 10).split("-").map(Number);
+  return Math.round((Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86_400_000);
+}
+
+export function faixaPrazo(dia: string, hoje: string, vencido: boolean | null): FaixaPrazo {
+  if (vencido || dia.slice(0, 10) < hoje.slice(0, 10)) return "atrasada";
+  if (dia.slice(0, 10) === hoje.slice(0, 10)) return "hoje";
+  const n = diasEntre(hoje, dia);
+  if (n <= 7) return "semana";
+  if (dia.slice(0, 7) === hoje.slice(0, 7)) return "mes";
+  return "depois";
+}
+
+/**
+ * "em 4 dias" / "1 dia de atraso". É o número que a pessoa usa para decidir
+ * se pega o boleto hoje ou na sexta.
+ */
+export function rotuloPrazo(dia: string, hoje: string, vencido: boolean | null): string {
+  const n = diasEntre(hoje.slice(0, 10), dia.slice(0, 10));
+  if (vencido || n < 0) {
+    const atraso = Math.abs(n);
+    if (atraso === 0) return "venceu hoje";
+    return atraso === 1 ? "1 dia de atraso" : `${atraso} dias de atraso`;
+  }
+  if (n === 0) return "vence hoje";
+  if (n === 1) return "vence amanhã";
+  return `em ${n} dias`;
+}
+
+export type MetodoPagamento = "pix" | "boleto" | "cartao" | "indefinido";
+
+/** Os dois documentos que a fila de previstos pede. */
+export type KindCobranca = "boleto" | "nota_fiscal";
+
+/**
+ * Como esta conta SAI, pelo que a linha já sabe — nunca pelo que a gente
+ * gostaria que soubesse. Cartão vence fatura; PIX cadastrado vence boleto
+ * na hora de pagar; boleto anexado só aparece quando o arquivo está lá.
+ */
+export function metodoDaLinha(l: {
+  grupo: GrupoContas;
+  pixMascarado: string | null;
+  anexos: { kind: string }[];
+}): MetodoPagamento {
+  if (l.grupo === "cartao") return "cartao";
+  if ((l.anexos ?? []).some((a) => a.kind === "boleto")) return "boleto";
+  if (l.pixMascarado) return "pix";
+  return "indefinido";
 }

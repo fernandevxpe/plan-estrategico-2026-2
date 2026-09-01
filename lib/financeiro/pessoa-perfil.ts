@@ -104,6 +104,8 @@ export type ComissaoDeclaradaLinha = {
   competencia: string;
   descricao: string;
   nota: string | null;
+  tipoSlug: string | null;
+  tipoNome: string | null;
 };
 
 /**
@@ -259,9 +261,21 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
          FROM fin_pessoa_prolabore_esperado WHERE person_id = $1 ORDER BY vigente_desde DESC`,
       [personId]
     ).catch(() => []),
-    query<{ id: number; valor_cents: string; competencia: string; descricao: string; nota: string | null }>(
-      `SELECT id, valor_cents, to_char(competencia, 'YYYY-MM') AS competencia, descricao, nota
-         FROM fin_pessoa_comissao_declarada WHERE person_id = $1 ORDER BY competencia DESC, id DESC`,
+    query<{
+      id: number;
+      valor_cents: string;
+      competencia: string;
+      descricao: string;
+      nota: string | null;
+      tipo_slug: string | null;
+      tipo_nome: string | null;
+    }>(
+      `SELECT cd.id, cd.valor_cents, to_char(cd.competencia, 'YYYY-MM') AS competencia,
+              cd.descricao, cd.nota, cd.tipo_slug, t.nome AS tipo_nome
+         FROM fin_pessoa_comissao_declarada cd
+         LEFT JOIN fin_comissao_tipo t ON t.slug = cd.tipo_slug
+        WHERE cd.person_id = $1
+        ORDER BY cd.competencia DESC, cd.id DESC`,
       [personId]
     ),
     query<{ id: number; mes: string; status: string; total_cents: string; cadastrado_em: string }>(
@@ -441,7 +455,9 @@ export async function getPerfilPessoa(personId: number): Promise<PerfilPessoa | 
       valorCents: Number(c.valor_cents),
       competencia: c.competencia,
       descricao: c.descricao,
-      nota: c.nota
+      nota: c.nota,
+      tipoSlug: c.tipo_slug,
+      tipoNome: c.tipo_nome
     }))
   };
 }

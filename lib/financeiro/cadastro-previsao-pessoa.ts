@@ -152,18 +152,22 @@ export async function getCadastroPrevisaoPessoa(
       competencia: string;
       descricao: string;
       nota: string | null;
+      tipo_slug: string | null;
+      tipo_nome: string | null;
       serie_id: number | null;
       parcela: number | null;
       parcelas_total: number | null;
     }>(
-      `SELECT id, valor_cents,
-              to_char(competencia, 'YYYY-MM-DD') AS competencia,
-              descricao, nota, serie_id, parcela, parcelas_total
-         FROM fin_pessoa_comissao_declarada
-        WHERE person_id = $1
-          AND competencia >= $2::date
-          AND competencia < ($2::date + interval '1 month')
-        ORDER BY id`,
+      `SELECT cd.id, cd.valor_cents,
+              to_char(cd.competencia, 'YYYY-MM-DD') AS competencia,
+              cd.descricao, cd.nota, cd.tipo_slug, t.nome AS tipo_nome,
+              cd.serie_id, cd.parcela, cd.parcelas_total
+         FROM fin_pessoa_comissao_declarada cd
+         LEFT JOIN fin_comissao_tipo t ON t.slug = cd.tipo_slug
+        WHERE cd.person_id = $1
+          AND cd.competencia >= $2::date
+          AND cd.competencia < ($2::date + interval '1 month')
+        ORDER BY cd.id`,
       [personId, mesPrevisto]
     )
   ]);
@@ -174,6 +178,8 @@ export async function getCadastroPrevisaoPessoa(
     competencia: c.competencia,
     descricao: c.descricao,
     nota: c.nota,
+    tipoSlug: c.tipo_slug,
+    tipoNome: c.tipo_nome,
     parcela: c.parcela !== null ? Number(c.parcela) : null,
     parcelasTotal: c.parcelas_total !== null ? Number(c.parcelas_total) : null,
     serieId: c.serie_id !== null ? Number(c.serie_id) : null

@@ -13,6 +13,7 @@ type Props = {
   abertoPadrao?: boolean;
   className?: string;
   ariaLabel?: string;
+  id?: string;
   children: ReactNode;
 };
 
@@ -28,12 +29,14 @@ export function FinSecaoColapsavel({
   abertoPadrao = false,
   className = "",
   ariaLabel,
+  id,
   children
 }: Props) {
   const [aberto, setAberto] = useState(abertoPadrao);
 
   return (
     <section
+      id={id}
       className={`card fin-secao-colapsavel${aberto ? " aberta" : ""}${className ? ` ${className}` : ""}${cabExtra ? " com-extra" : ""}`}
       aria-label={ariaLabel ?? titulo}
     >

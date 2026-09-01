@@ -84,19 +84,29 @@ import { resolve } from "node:path";
  *
  *   HOST_INTER          VERIFICADO — o sync de extrato usa este host todo dia.
  *   CAMINHO_TOKEN       VERIFICADO — mesmo endpoint do cliente de leitura.
- *   CAMINHO_PIX         VERIFICADO em 31/08/2026, e os dois palpites anteriores
- *                       estavam errados. `node scripts/check-inter.mjs
- *                       --escopos --pagamento` fez um GET em três candidatos,
- *                       com o token real:
+ *   CAMINHO_PIX         `/banking/v2/pix`, e a história de como se chegou aqui
+ *                       vale mais que a conclusão — porque a sonda MENTIU.
  *
- *                         401  GET /banking/v2/pix            token recusado
- *                         401  GET /pix/v2/pix                token recusado
- *                         405  GET /banking/v2/pagamento/pix  ← esta
+ *                       Um GET com o token real deu, em 31/08/2026:
  *
- *                       405 é "método não permitido": a rota EXISTE e o token
- *                       É ACEITO — ela só não responde a GET, porque espera
- *                       POST. É a prova mais forte que se consegue sem criar
- *                       um pagamento.
+ *                         401  GET /banking/v2/pix
+ *                         401  GET /pix/v2/pix
+ *                         405  GET /banking/v2/pagamento/pix
+ *
+ *                       Li o 405 como "a rota existe e espera POST" e troquei o
+ *                       caminho. O POST seguinte levou 405 TAMBÉM — aquele
+ *                       caminho não aceita nem GET nem POST.
+ *
+ *                       O 401 em `/banking/v2/pix` era outra coisa: GET ali é
+ *                       CONSULTAR pagamento, e consulta pede `pix.read`, que
+ *                       esta credencial não tem. Este servidor checa autorização
+ *                       ANTES do método; o outro checa método antes. Um GET não
+ *                       distingue os dois casos, e foi por isso que a sonda não
+ *                       serviu para escolher caminho de POST.
+ *
+ *                       Fica registrado: para rota de ESCRITA, GET só prova
+ *                       ausência (404). Nem 401 nem 405 provam presença.
+ *
  *   ESCOPO_PIX_ESCRITA  VERIFICADO em 31/08/2026. A permissão marcada no
  *                       Internet Banking foi "Receber e enviar pagamentos via
  *                       Pix", e a sonda mostrou o que ela concede:
@@ -120,7 +130,7 @@ import { resolve } from "node:path";
  */
 const HOST_INTER = "cdpj.partners.bancointer.com.br";
 const CAMINHO_TOKEN = "/oauth/v2/token";
-const CAMINHO_PIX = "/banking/v2/pagamento/pix";
+const CAMINHO_PIX = "/banking/v2/pix";
 const ESCOPO_PIX_ESCRITA = "pix.write";
 const HEADER_IDEMPOTENCIA = "x-id-idempotente";
 const HEADER_CONTA = "x-conta-corrente";

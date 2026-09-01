@@ -181,6 +181,55 @@ try {
   ).rows[0].n;
   afirma(nenhuma === 0, 'nada foi gravado para o recusado');
 
+  // ------------------------------- 3b. a folha: origem SEM coluna de FK
+  /*
+   * Este caso existe porque o primeiro teste real falhou nele, em 31/08/2026: a
+   * comissão de R$ 10,00 do Fernando voltou "origemTabela fin_person
+   * desconhecida". O `tsc` estava limpo — a lista de origens aceitas é dado, não
+   * tipo. É o AGENTS.md §4 de novo.
+   *
+   * `fin_person` não tem coluna de ponteiro na 0075, e não deve ter: o vínculo
+   * mora em `source_id`. O que se prova aqui é que a ordem NASCE mesmo assim.
+   */
+  const chaveFolha = `${MARCA}|fin_person`;
+  const folha = await chamar('/api/financeiro/contas-a-pagar/programar', {
+    scheduledFor: quando,
+    metodo: 'pix',
+    alvos: [
+      {
+        ...alvo(contraparteComChave, chaveFolha),
+        origemTabela: 'fin_person',
+        origemId: 4,
+        descricao: `Comissão de teste ${MARCA}`
+      }
+    ]
+  });
+  afirma(
+    folha.json?.criadas?.length === 1,
+    'linha de folha (origemTabela=fin_person) VIRA ordem',
+    JSON.stringify(folha.json?.recusadas ?? []).slice(0, 140)
+  );
+  const daFolha = (
+    await pool.query(
+      `SELECT source, source_id, document_id, recurring_id, card_bill_id,
+              reimbursement_id, purchase_request_id
+         FROM fin_payment_request WHERE entity_id = $1 AND source_id = $2`,
+      [entityId, chaveFolha]
+    )
+  ).rows[0];
+  afirma(Boolean(daFolha), 'a ordem da folha existe no banco');
+  afirma(daFolha?.source === 'manual', "source é 'manual' (o CHECK da 0075 não tem 'folha')", daFolha?.source);
+  afirma(daFolha?.source_id === chaveFolha, 'o vínculo com a pessoa vive em source_id', daFolha?.source_id);
+  // fin_payment_origem_unica aceita ZERO origens — é o que sustenta este caso.
+  const ponteiros = [
+    daFolha?.document_id,
+    daFolha?.recurring_id,
+    daFolha?.card_bill_id,
+    daFolha?.reimbursement_id,
+    daFolha?.purchase_request_id
+  ].filter((v) => v != null);
+  afirma(ponteiros.length === 0, 'nenhum ponteiro de origem foi gravado', `${ponteiros.length}`);
+
   // ------------------------------------------------------- 4. corpo inválido
   const quatro = await chamar('/api/financeiro/contas-a-pagar/programar', {
     scheduledFor: quando,
@@ -197,24 +246,45 @@ try {
   });
   afirma(cinco.status >= 400 && cinco.status < 500, 'data vazia é recusada pelo cliente', `HTTP ${cinco.status}`);
 
-  // -------------------------------------- 5. envio ao Inter está mesmo travado
-  const seis = await chamar(
-    '/api/financeiro/contas-a-pagar/programar',
-    { id: um.json?.criadas?.[0]?.id },
-    'PUT'
-  );
-  afirma(
-    seis.status !== 200,
-    'PUT não conclui sem a credencial de pagamento — nada foi ao banco',
-    `HTTP ${seis.status} ${String(seis.json?.error ?? '').slice(0, 120)}`
-  );
-  const depoisDoPut = (
-    await pool.query(`SELECT status FROM fin_payment_request WHERE entity_id = $1 AND source_id = $2`, [
-      entityId,
-      chaveA
-    ])
-  ).rows[0]?.status;
-  afirma(depoisDoPut === 'rascunho', 'envio que falha NÃO muda o status', depoisDoPut);
+  // -------------------------------------- 5. envio ao Inter
+  /*
+   * ESTE PASSO SÓ RODA COM A IGNIÇÃO DESLIGADA — e a razão é dinheiro.
+   *
+   * Ele foi escrito quando `INTER_PAGAMENTO_LOCAL` estava desligada: o `PUT`
+   * batia numa trava e voltava 503, provando que o envio não acontece sem
+   * credencial. Inofensivo.
+   *
+   * Com a ignição LIGADA o mesmo `PUT` deixa de ser teste e vira um PIX de
+   * R$ 123,45 para a chave de teste `00000000000191`. Em 31/08/2026 ele chegou
+   * a sair e só não pagou nada porque o caminho do endpoint estava errado
+   * (405). Contar com isso seria contar com sorte.
+   *
+   * Então: ignição ligada, este passo é PULADO, alto e claro. O envio real se
+   * testa pela tela, com valor pequeno e para si mesmo — nunca por script, que
+   * roda sem ninguém olhando.
+   */
+  const ignicao = process.env.INTER_PAGAMENTO_LOCAL === '1';
+  if (ignicao) {
+    console.log('  ⏭  envio ao Inter PULADO — INTER_PAGAMENTO_LOCAL=1 e este passo mandaria PIX de verdade');
+  } else {
+    const seis = await chamar(
+      '/api/financeiro/contas-a-pagar/programar',
+      { id: um.json?.criadas?.[0]?.id },
+      'PUT'
+    );
+    afirma(
+      seis.status !== 200,
+      'PUT não conclui sem a credencial de pagamento — nada foi ao banco',
+      `HTTP ${seis.status} ${String(seis.json?.error ?? '').slice(0, 120)}`
+    );
+    const depoisDoPut = (
+      await pool.query(`SELECT status FROM fin_payment_request WHERE entity_id = $1 AND source_id = $2`, [
+        entityId,
+        chaveA
+      ])
+    ).rows[0]?.status;
+    afirma(depoisDoPut === 'rascunho', 'envio que falha NÃO muda o status', depoisDoPut);
+  }
 } catch (e) {
   nok('execução', e.message);
 } finally {

@@ -99,12 +99,32 @@ export type ResultadoProgramacao = {
  * lição da 0045 e da 0057. Por isso este mapa é 1-para-1 e a coluna sai daqui,
  * de uma lista fechada — nunca de string do chamador interpolada em SQL.
  */
-const ORIGENS: Record<string, { source: string; coluna: string }> = {
+/*
+ * `coluna: null` NÃO é origem desconhecida — é origem SEM COLUNA DE FK.
+ *
+ * A 0075 dá cinco ponteiros de origem (`document_id`, `recurring_id`,
+ * `card_bill_id`, `reimbursement_id`, `purchase_request_id`) e nenhum para
+ * PESSOA. Isso não é lacuna: `fin_payment_request.requested_person_id` responde
+ * "quem pediu", e a folha precisa de "quem recebe" — que já está em
+ * `counterparty_id`. O CHECK `fin_payment_origem_unica` diz "no máximo UMA", e
+ * zero é válido.
+ *
+ * Recusar `fin_person` custou o primeiro teste real (31/08/2026): a comissão de
+ * R$ 10,00 do Fernando voltou como "origemTabela desconhecida". O vínculo com a
+ * obrigação — que era a razão de recusar origem desconhecida — não se perde
+ * aqui: `source_id` guarda a chave inteira (`2026-09|fin_person:4:comissao`), e
+ * é ela que o índice único usa para impedir a segunda ordem.
+ */
+const ORIGENS: Record<string, { source: string; coluna: string | null }> = {
   fin_document: { source: "documento", coluna: "document_id" },
   fin_recurring: { source: "recorrente", coluna: "recurring_id" },
   fin_card_bill: { source: "fatura_cartao", coluna: "card_bill_id" },
   fin_reimbursement: { source: "reembolso", coluna: "reimbursement_id" },
-  fin_purchase_request: { source: "compra", coluna: "purchase_request_id" }
+  fin_purchase_request: { source: "compra", coluna: "purchase_request_id" },
+  // A folha, banda a banda. `source` é 'manual' porque o CHECK da 0075 não tem
+  // 'folha' — e acrescentar valor a CHECK exige migration, que muda produção
+  // para ganhar um rótulo. A chave em `source_id` já diz o que é.
+  fin_person: { source: "manual", coluna: null }
 };
 
 const METODOS = new Set(["pix", "ted", "boleto"]);
@@ -324,7 +344,9 @@ export async function programarPagamentos(
         ];
         // `code` e `description_norm` NÃO entram: são preenchidos por gatilho
         // (fin_pagamento_codigo e fin_payment_request_norm, 0075:668-703).
-        if (origem) campos.push({ coluna: origem.coluna, valor: alvo.origemId });
+        // Só empurra o ponteiro quando a origem TEM coluna. `fin_person` não tem,
+        // e o CHECK fin_payment_origem_unica aceita zero origens de propósito.
+        if (origem?.coluna) campos.push({ coluna: origem.coluna, valor: alvo.origemId });
 
         const colunas = campos.map((campo) => campo.coluna).join(", ");
         const marcadores = campos.map((campo, i) => `$${i + 1}${campo.cast ?? ""}`).join(", ");

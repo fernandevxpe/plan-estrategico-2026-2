@@ -376,6 +376,88 @@ export async function programarPagamentos(
               WHERE entity_id = $1 AND source = $2 AND source_id = $3`,
             [entityId, source, chave]
           );
+          /*
+           * ORDEM MORTA NÃO PODE TRANCAR A CHAVE PARA SEMPRE.
+           *
+           * O índice único é `(entity_id, source, source_id) WHERE source_id IS
+           * NOT NULL` — SEM filtro de status. Então uma ordem `cancelada` segue
+           * ocupando a chave, e reprogramar a mesma obrigação cai neste
+           * `DO NOTHING` calado.
+           *
+           * Custou uma noite em 01/09/2026: a chave PIX do Jonildo estava com
+           * dígito verificador inválido, cancelei as três ordens para refazê-las
+           * com a chave certa, e a tela passou a "programar" sem criar nada —
+           * seleção sumia, nada ia para Aprovações, nenhum erro à vista.
+           *
+           * Cancelar é dizer "esta ordem não vale", não "esta obrigação nunca
+           * mais será paga". Então a ordem morta é REABERTA: volta para
+           * `rascunho` com a coordenada de HOJE (é o ponto — a chave mudou), o
+           * valor e a data do pedido novo, e o motivo do cancelamento limpo. O
+           * histórico não se perde: `fin_audit_log` guarda o antes e o depois.
+           *
+           * Ordem VIVA continua intocada — é a garantia de não pagar duas vezes,
+           * e ela não pode ceder.
+           */
+          const morta = antigas[0] && (antigas[0].status === "cancelada" || antigas[0].status === "rejeitada");
+          if (morta) {
+            const { rows: reabertas } = await c.query<{ id: number; code: string; status: string }>(
+              `UPDATE fin_payment_request
+                  SET status = 'rascunho',
+                      payee_account_id = $4,
+                      payee_snapshot = $5::jsonb,
+                      payee_fingerprint = $6,
+                      amount_cents = $7,
+                      due_date = $8::date,
+                      scheduled_for = $9::date,
+                      method = $10,
+                      cancelled_by = NULL,
+                      cancelled_at = NULL,
+                      cancel_reason = NULL,
+                      notes = concat_ws(E'\n', nullif(notes, ''), $11::text),
+                      updated_at = now()
+                WHERE entity_id = $1 AND source = $2 AND source_id = $3
+                  AND status IN ('cancelada', 'rejeitada')
+                RETURNING id, code, status`,
+              [
+                entityId,
+                source,
+                chave,
+                conta.id,
+                JSON.stringify(fotoDaConta(conta)),
+                impressao,
+                alvo.valorCents,
+                alvo.dueDate,
+                opcoes.scheduledFor,
+                opcoes.metodo,
+                `[${new Date().toISOString()}] reaberta por ${actor}: a ordem estava ${antigas[0].status} e a obrigação foi reprogramada com a coordenada atual.`
+              ]
+            );
+            if (reabertas[0]) {
+              await c.query(
+                `INSERT INTO fin_audit_log
+                    (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
+                 VALUES ($1, 'fin_payment_request', $2, 'update', $3::jsonb, $4::jsonb,
+                         ARRAY['status', 'payee_account_id', 'payee_snapshot', 'payee_fingerprint'], $5::uuid, $6)`,
+                [
+                  entityId,
+                  reabertas[0].id,
+                  JSON.stringify({ status: antigas[0].status }),
+                  JSON.stringify({ status: "rascunho", motivo: "reaberta ao reprogramar" }),
+                  batchId,
+                  actor
+                ]
+              );
+              await c.query("RELEASE SAVEPOINT alvo");
+              resultado.criadas.push({
+                id: reabertas[0].id,
+                code: reabertas[0].code,
+                chaveDedupe: chave,
+                status: reabertas[0].status
+              });
+              continue;
+            }
+          }
+
           await c.query("RELEASE SAVEPOINT alvo");
           if (antigas[0]) {
             resultado.jaExistiam.push({ chaveDedupe: chave, code: antigas[0].code, status: antigas[0].status });
@@ -677,4 +759,121 @@ export async function enviarOrdensAoInter(
     }
   }
   return resultado;
+}
+
+/**
+ * Devolve para rascunho o que foi ao banco e não virou dinheiro.
+ *
+ * ===========================================================================
+ * POR QUE ISTO PRECISOU EXISTIR
+ * ===========================================================================
+ * Medido em 01/09/2026: 39 ordens programadas, 27 pagas, e 10 que chegaram ao
+ * Inter e ficaram no limbo. O dono explicou: "devido à demora em aprovar e
+ * falta de dinheiro em caixa, o Inter apagou tudo que não tinha saldo".
+ *
+ * Do nosso lado as 10 continuam em `aguardando_autorizacao` — que é a verdade
+ * do que NÓS sabemos: entregamos a ordem e não houve extrato. O banco não nos
+ * conta que apagou; a credencial não tem endpoint de consulta de pagamento, e
+ * inventar um "provavelmente morreu" a partir do silêncio seria afirmar o que
+ * não se sabe.
+ *
+ * Quem sabe é quem abre o aplicativo. Então esta função existe para registrar
+ * uma AFIRMAÇÃO HUMANA — "olhei no banco e esta ordem não está mais lá" — e
+ * devolvê-la à fila.
+ *
+ * ===========================================================================
+ * O RISCO, E POR QUE ELE É ACEITÁVEL AQUI
+ * ===========================================================================
+ * Se a ordem AINDA existir no banco e for reenviada, o banco pode criar uma
+ * segunda. A proteção é a chave idempotente, derivada do `code` por sha256 — e
+ * o `code` NÃO muda ao voltar para rascunho, de propósito: é exatamente isso
+ * que faz o reenvio ser reconhecido em vez de duplicado.
+ *
+ * Mas essa proteção é palpite não verificado contra a API real (ver o bloco de
+ * constantes de `inter-pagamento.ts`). Por isso a função exige `motivo` — quem
+ * devolve declara o que viu — e grava tudo em `fin_audit_log`. Não é uma trava:
+ * é o registro de quem afirmou o quê, que é o que resta quando a certeza não
+ * está disponível.
+ */
+export async function devolverParaRascunho(
+  ids: number[],
+  opcoes: { actor: string; motivo: string }
+): Promise<{ devolvidas: { id: number; code: string }[]; recusadas: { id: number; motivo: string }[] }> {
+  const lista = [...new Set((ids ?? []).map(Number).filter((n) => Number.isSafeInteger(n) && n > 0))];
+  if (lista.length === 0) throw new ValidacaoPagamento("nenhuma ordem informada");
+
+  const motivo = opcoes?.motivo?.trim();
+  if (!motivo || motivo.length < 5) {
+    throw new ValidacaoPagamento("diga o que você viu no banco — o motivo fica no registro");
+  }
+  const actor = opcoes?.actor?.trim() || "tela";
+
+  return transaction(async (c) => {
+    const resultado: { devolvidas: { id: number; code: string }[]; recusadas: { id: number; motivo: string }[] } = {
+      devolvidas: [],
+      recusadas: []
+    };
+    const batchId = randomUUID();
+
+    for (const id of lista) {
+      /*
+       * `paid_cents = 0` no WHERE não é redundante com o status: se uma
+       * execução foi registrada no intervalo entre a pessoa olhar o app e
+       * clicar, o gatilho já moveu a ordem para `pago` — e devolver para
+       * rascunho o que saiu da conta seria apagar um fato do caixa.
+       */
+      const { rows } = await c.query<{ id: number; code: string; status: string }>(
+        `UPDATE fin_payment_request
+            SET status = 'rascunho',
+                notes = concat_ws(E'\n', nullif(notes, ''), $2::text),
+                updated_at = now()
+          WHERE id = $1
+            AND status = 'aguardando_autorizacao'
+            AND paid_cents = 0
+          RETURNING id, code, status`,
+        // Dois parâmetros, dois marcadores. A versão anterior passava `motivo`
+        // solto como $2 e o SQL só usava $1 e $3 — Postgres recusa com "could
+        // not determine data type of parameter $2", e o tsc não vê nada disso.
+        // É o AGENTS.md §4 de novo, e desta vez com a rota devolvendo 500.
+        [
+          id,
+          `[${new Date().toISOString()}] devolvida para rascunho por ${actor}: ${motivo}. ` +
+            `A ordem tinha sido entregue ao Inter; quem devolveu afirma tê-la conferido no aplicativo. ` +
+            `O código permanece o mesmo, então o reenvio carrega a MESMA chave idempotente.`
+        ]
+      );
+
+      if (!rows[0]) {
+        const { rows: atual } = await c.query<{ status: string; paid_cents: string }>(
+          `SELECT status, paid_cents::text FROM fin_payment_request WHERE id = $1`,
+          [id]
+        );
+        resultado.recusadas.push({
+          id,
+          motivo: atual[0]
+            ? `está em "${atual[0].status}"${Number(atual[0].paid_cents) > 0 ? " e já tem pagamento registrado" : ""} — só volta para rascunho o que está aguardando autorização e não saiu`
+            : "ordem não encontrada"
+        });
+        continue;
+      }
+
+      await c.query(
+        `INSERT INTO fin_audit_log
+            (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
+         SELECT pr.entity_id, 'fin_payment_request', pr.id, 'update',
+                $2::jsonb, $3::jsonb, ARRAY['status'], $4::uuid, $5
+           FROM fin_payment_request pr WHERE pr.id = $1`,
+        [
+          rows[0].id,
+          JSON.stringify({ status: "aguardando_autorizacao" }),
+          JSON.stringify({ status: "rascunho", motivo }),
+          batchId,
+          actor
+        ]
+      );
+      resultado.devolvidas.push({ id: rows[0].id, code: rows[0].code });
+    }
+
+    return resultado;
+  });
 }

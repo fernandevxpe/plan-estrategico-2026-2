@@ -179,16 +179,61 @@ afirma(
  * O ÚNICO estado que o envio produz. Se um dia isto virar 'pago' ou 'aprovada',
  * o produto passou a afirmar coisa que não sabe.
  */
+/*
+ * A LISTA CURTA DOS ESTADOS QUE O CÓDIGO ESCREVE.
+ *
+ * Antes isto exigia que TODO `SET status` fosse `aguardando_autorizacao`, e
+ * quebrou quando `devolverParaRascunho` entrou — uma função legítima, que
+ * devolve à fila o que o banco apagou por falta de saldo. A asserção estava
+ * apertada no lugar errado: o que não pode acontecer é o código AFIRMAR
+ * pagamento ou aprovação, não escrever `rascunho`.
+ *
+ * `pago` e `pago_parcial` só o gatilho escreve, a partir de uma execução com
+ * lastro no extrato. `aprovada` e `em_lote` são estados de um fluxo de alçada
+ * interna que este produto não implementa — se aparecerem, alguém começou a
+ * decidir por dentro o que a 0075 mandou decidir no aplicativo do banco.
+ */
 const escrita = ler('lib/financeiro/pagar-programar.ts');
-const estadosEscritos = [...escrita.matchAll(/SET\s+status\s*=\s*'([a-z_]+)'/gi)].map((m) => m[1]);
+const ESTADOS_QUE_O_CODIGO_PODE_ESCREVER = new Set(['rascunho', 'aguardando_autorizacao', 'cancelada']);
+const estadosEscritos = [...new Set([...escrita.matchAll(/SET\s+status\s*=\s*'([a-z_]+)'/gi)].map((m) => m[1]))];
+const proibidos = estadosEscritos.filter((e) => !ESTADOS_QUE_O_CODIGO_PODE_ESCREVER.has(e));
 afirma(
-  estadosEscritos.every((e) => e === 'aguardando_autorizacao'),
-  'o envio só move para aguardando_autorizacao',
-  estadosEscritos.join(', ') || 'nenhum'
+  proibidos.length === 0,
+  `os estados escritos ficam na lista curta (${estadosEscritos.join(', ') || 'nenhum'})`,
+  proibidos.join(', ') || 'nenhum fora'
 );
+/*
+ * E o ENVIO, especificamente, não pode produzir outro estado.
+ *
+ * A fatia termina na PRÓXIMA função exportada. Sem esse corte ela ia até o fim
+ * do arquivo e engolia `devolverParaRascunho`, que escreve 'rascunho' com toda
+ * razão — a asserção acusava uma função inocente por vizinhança.
+ */
+const inicioEnvio = escrita.indexOf('export async function enviarOrdemAoInter');
+const depois = escrita.indexOf('\nexport ', inicioEnvio + 10);
+const envio = escrita.slice(inicioEnvio, depois === -1 ? undefined : depois);
+const doEnvio = [...new Set([...envio.matchAll(/SET\s+status\s*=\s*'([a-z_]+)'/gi)].map((m) => m[1]))];
 afirma(
-  !/paid_cents\s*=/.test(escrita),
-  'nada escreve paid_cents à mão (é mantido por gatilho a partir da execução)'
+  doEnvio.length > 0 && doEnvio.every((e) => e === 'aguardando_autorizacao'),
+  'o envio só move para aguardando_autorizacao',
+  doEnvio.join(', ') || 'nenhum'
+);
+/*
+ * ATRIBUIÇÃO, não comparação — e a diferença tem de ser vista LINHA A LINHA.
+ *
+ * SQL em template literal não tem ponto e vírgula, então um `SET[^;]*paid_cents`
+ * atravessava o UPDATE inteiro e casava com o `AND paid_cents = 0` do WHERE —
+ * que é justamente a guarda que impede devolver para rascunho o que já saiu da
+ * conta. A asserção acusava a proteção que ela deveria exigir.
+ */
+const atribuiPago = escrita
+  .split('\n')
+  .map((l) => l.trim())
+  .filter((l) => /paid_cents\s*=/.test(l) && !/^(AND|OR|WHERE)\b/i.test(l) && !/^\*|^\/\//.test(l));
+afirma(
+  atribuiPago.length === 0,
+  'nada ATRIBUI paid_cents (é mantido por gatilho a partir da execução)',
+  atribuiPago.join(' | ') || 'nenhuma linha'
 );
 
 console.log('\n=== 3. AMBIENTE: duas travas, e uma delas é produção ===');

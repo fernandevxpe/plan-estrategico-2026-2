@@ -34,6 +34,46 @@ const APLICAR = process.argv.includes('--aplicar');
 const ARQUIVO = 'secrets/chaves-pix.txt';
 const cauda = (s) => `…${String(s).trim().slice(-4)}`;
 
+/*
+ * DÍGITO VERIFICADOR — e por que ele tinha de estar aqui desde o começo.
+ *
+ * O CPF do Jonildo entrou como 05763467385 e o Inter recusou três pagamentos
+ * com "Chave em formato inválido [DCT29]". Os verificadores dele são 02, não 85:
+ * o número nunca foi um CPF. Eu só passei a conferir depois, quando um número
+ * ambíguo obrigou a distinguir CPF de telefone — os primeiros cadastros entraram
+ * sem checagem nenhuma.
+ *
+ * O custo de não validar não é o erro: é ONDE ele aparece. Sem isto, um dígito
+ * trocado atravessa o cadastro em silêncio e só se revela na hora do pagamento,
+ * com a ordem montada, o lote no meio e o banco recusando.
+ */
+function digitoOk(chave, tipo) {
+  const s = String(chave).replace(/\D/g, '');
+  const repetido = /^(\d)\1+$/.test(s);
+  if (tipo === 'CPF') {
+    if (s.length !== 11 || repetido) return false;
+    const dv = (b) => {
+      const t = b.split('').reduce((a, d, i) => a + Number(d) * (b.length + 1 - i), 0);
+      const r = (t * 10) % 11;
+      return r === 10 ? 0 : r;
+    };
+    return dv(s.slice(0, 9)) === Number(s[9]) && dv(s.slice(0, 10)) === Number(s[10]);
+  }
+  if (tipo === 'CNPJ') {
+    if (s.length !== 14 || repetido) return false;
+    const dv = (b, pesos) => {
+      const t = b.split('').reduce((a, d, i) => a + Number(d) * pesos[i], 0);
+      const r = t % 11;
+      return r < 2 ? 0 : 11 - r;
+    };
+    return (
+      dv(s.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(s[12]) &&
+      dv(s.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(s[13])
+    );
+  }
+  return true;
+}
+
 /** Mesma dedução de `extrair-favorecidos-inter.mjs`. Null = não reconhecida. */
 function tipoDaChave(chave) {
   const c = String(chave).trim();
@@ -89,6 +129,14 @@ for (const linha of linhas) {
   if (!tipo) {
     recusadas += 1;
     console.log(`  ✗  ${rotulo} chave em formato não reconhecido — telefone precisa de +55`);
+    continue;
+  }
+  if (!digitoOk(chaveBruta, tipo)) {
+    recusadas += 1;
+    console.log(
+      `  ✗  ${rotulo} ${tipo} com dígito verificador inválido — confira o número (foi assim que ` +
+        `três pagamentos do Jonildo falharam no banco, em 01/09/2026)`
+    );
     continue;
   }
 

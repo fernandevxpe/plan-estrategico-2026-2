@@ -2,6 +2,7 @@ import { autorDe } from "@/lib/financeiro/custo-fixo";
 import { FinanceUnavailableError } from "@/lib/financeiro/db";
 import { ErroInterPagamento } from "@/lib/financeiro/inter-pagamento";
 import {
+  devolverParaRascunho,
   enviarOrdemAoInter,
   enviarOrdensAoInter,
   programarPagamentos,
@@ -95,6 +96,27 @@ export async function POST(request: Request) {
    * Continua sem aprovar nada: cada ordem para em `aguardando_autorizacao`, e
    * quem aprova é a pessoa no aplicativo do Inter.
    */
+  /*
+   * `acao: "devolver"` — a ordem foi ao banco e não virou dinheiro.
+   *
+   * O Inter apaga o que fica sem saldo e não nos avisa; a credencial não tem
+   * endpoint de consulta de pagamento. Então quem olha o aplicativo declara o
+   * que viu, e a ordem volta para a fila. É afirmação humana registrada, não
+   * dedução a partir do silêncio.
+   */
+  if (corpo.acao === "devolver") {
+    try {
+      const ids = Array.isArray(corpo.ids) ? corpo.ids.map(Number) : [];
+      const resultado = await devolverParaRascunho(ids, {
+        actor: autorDe(request),
+        motivo: String(corpo.motivo ?? "")
+      });
+      return Response.json(resultado, { headers: { "Cache-Control": "no-store" } });
+    } catch (error) {
+      return respostaDeErro(error, "devolver ordens para rascunho");
+    }
+  }
+
   if (corpo.acao === "enviar-lote") {
     try {
       const ids = Array.isArray(corpo.ids) ? corpo.ids.map(Number) : [];

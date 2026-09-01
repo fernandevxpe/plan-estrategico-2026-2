@@ -230,6 +230,64 @@ try {
   ].filter((v) => v != null);
   afirma(ponteiros.length === 0, 'nenhum ponteiro de origem foi gravado', `${ponteiros.length}`);
 
+  // ----------------------------- 3c. devolver para a fila o que foi ao banco
+  /*
+   * Este caso existe porque a rota devolveu 500 na primeira vez que o dono
+   * clicou, em 01/09/2026: o UPDATE passava três parâmetros e usava dois, e o
+   * Postgres recusou com "could not determine data type of parameter $2". O
+   * `tsc` estava limpo. É o AGENTS.md §4 pela terceira vez nesta frente.
+   *
+   * A ordem é levada a `aguardando_autorizacao` direto no banco, de propósito:
+   * o caminho real exige falar com o Inter, e o que se prova aqui é a ROTA, não
+   * o envio.
+   */
+  const idOrdem = um.json?.criadas?.[0]?.id;
+  await pool.query(
+    `UPDATE fin_payment_request SET status='aguardando_autorizacao' WHERE id=$1`,
+    [idOrdem]
+  );
+
+  const devMotivoCurto = await chamar('/api/financeiro/contas-a-pagar/programar', {
+    acao: 'devolver',
+    ids: [idOrdem],
+    motivo: 'x'
+  });
+  afirma(devMotivoCurto.status === 422, 'motivo curto demais é recusado', `HTTP ${devMotivoCurto.status}`);
+
+  const dev = await chamar('/api/financeiro/contas-a-pagar/programar', {
+    acao: 'devolver',
+    ids: [idOrdem],
+    motivo: 'conferido no aplicativo do Inter: a ordem nao esta mais la'
+  });
+  afirma(dev.status === 200, 'devolver responde 200', `HTTP ${dev.status} ${JSON.stringify(dev.json)?.slice(0, 160)}`);
+  afirma(dev.json?.devolvidas?.length === 1, 'uma ordem devolvida');
+  const depoisDev = (
+    await pool.query(`SELECT status, notes FROM fin_payment_request WHERE id=$1`, [idOrdem])
+  ).rows[0];
+  afirma(depoisDev?.status === 'rascunho', 'voltou para rascunho', depoisDev?.status);
+  afirma(
+    String(depoisDev?.notes ?? '').includes('devolvida para rascunho'),
+    'o motivo ficou registrado em notes'
+  );
+  const auditada = (
+    await pool.query(
+      `SELECT count(*)::int AS n FROM fin_audit_log
+        WHERE target_table='fin_payment_request' AND target_id=$1 AND action='update'`,
+      [idOrdem]
+    )
+  ).rows[0].n;
+  afirma(auditada > 0, 'a devolução foi para o fin_audit_log', `${auditada} registro(s)`);
+
+  // Já em rascunho, devolver de novo tem de RECUSAR — senão o botão vira um
+  // jeito de mexer no estado de qualquer ordem.
+  const devDeNovo = await chamar('/api/financeiro/contas-a-pagar/programar', {
+    acao: 'devolver',
+    ids: [idOrdem],
+    motivo: 'segunda tentativa, a ordem ja voltou para a fila'
+  });
+  afirma(devDeNovo.json?.devolvidas?.length === 0, 'não devolve o que já está em rascunho');
+  afirma(devDeNovo.json?.recusadas?.length === 1, 'e diz por que recusou', devDeNovo.json?.recusadas?.[0]?.motivo);
+
   // ------------------------------------------------------- 4. corpo inválido
   const quatro = await chamar('/api/financeiro/contas-a-pagar/programar', {
     scheduledFor: quando,

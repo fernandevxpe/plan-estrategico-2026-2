@@ -26464,3 +26464,197 @@ details.fin-cartao-ressalvas > ul {
   color: var(--muted);
   white-space: nowrap;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   APROVAÇÕES · DEVOLVER À FILA O QUE O BANCO APAGOU (FinAprovacoes.tsx)
+
+   Medido em 01/09/2026: das 39 ordens programadas, 27 pagas, 2 em rascunho e 10
+   presas em `aguardando_autorizacao` — o Inter apaga o que fica sem saldo e não
+   avisa, e a credencial de pagamento não tem endpoint de consulta. A tela
+   registra a AFIRMAÇÃO de quem abriu o aplicativo, nunca um fato bancário.
+
+   O VOCABULÁRIO DE COR NÃO MUDA, e é por isso que a barra que abre a devolução
+   é NEUTRA (`--surface-2` sobre `--line`): roxo já é o caminho do produto — e o
+   caminho do produto nesta tela é ENVIAR, com a barra roxa logo acima; verde é
+   dinheiro que saiu; vermelho é o que falhou. Uma ordem devolvida não é nada
+   disso. O âmbar aparece em UM lugar só, a frase de risco da confirmação, e ali
+   ele significa exatamente o que já significa no resto da tela: uma decisão
+   parada esperando uma pessoa. Nenhuma cor literal.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* ── passo 1: a barra que só abre a confirmação ──────────────────────────── */
+.fin-apr-dev {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-2);
+}
+/* Botão de contorno, não sólido: o sólido roxo ao lado é o que MANDA dinheiro
+   para o banco, e dois botões cheios competindo ensinariam o dedo a errar. */
+.fin-apr-dev-abrir {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.fin-apr-dev-abrir:hover:not(:disabled) { border-color: var(--ink-amber); }
+.fin-apr-dev-abrir:disabled { opacity: .45; cursor: default; }
+/* Mesmo argumento de `.fin-apr-acoes-nota`: a frase que impede a leitura errada
+   fica colada no botão, porque o aviso do topo pode ter rolado para fora. */
+.fin-apr-dev-nota {
+  flex: 1 1 280px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.fin-apr-dev-nota strong { color: var(--ink); font-weight: 650; }
+
+/* ── passo 2: a confirmação, com o total à vista ─────────────────────────── */
+.fin-apr-dev-confirma {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--card);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.fin-apr-dev-titulo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.fin-apr-dev-titulo svg { flex: none; }
+/* O total no fim da linha, tabular: é o número que a pessoa confere antes de
+   clicar, e ele não pode dançar de largura conforme o dígito. */
+.fin-apr-dev-total {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A ÚNICA COISA ÂMBAR AQUI. A frase diz que a chave idempotente nunca foi
+   verificada contra a API real — é o risco de o banco criar uma segunda ordem,
+   e é uma decisão parada esperando uma pessoa, que é o que o âmbar significa
+   nesta tela desde `.fin-apr-esquecida`. Vem ANTES do campo de motivo de
+   propósito: risco lido depois do texto digitado é risco lido tarde. */
+.fin-apr-dev-risco {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--ink-amber);
+  border-radius: 0 9px 9px 0;
+  background: var(--tint-amber-soft);
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.fin-apr-dev-risco svg { flex: none; margin-top: 1px; color: var(--ink-amber); }
+
+/* A lista do que vai ser devolvido reusa `.fin-apr-res-lista`; só o teto de
+   altura é novo, para 10 ordens não empurrarem o botão para fora da tela. */
+.fin-apr-dev-alvos {
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.fin-apr-dev-campo { display: grid; gap: 5px; }
+.fin-apr-dev-campo > span {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink);
+}
+/* Onde o texto vai parar, dito no rótulo e não num tooltip: quem escreve
+   precisa saber que aquilo vira registro com o nome dele antes de escrever. */
+.fin-apr-dev-campo em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--muted);
+}
+.fin-apr-dev-campo textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.fin-apr-dev-campo textarea:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+}
+.fin-apr-dev-campo textarea:disabled { opacity: .6; cursor: default; }
+
+.fin-apr-dev-botoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}
+/* Sólido em `--ink` sobre `--card`, e não no roxo de `.fin-btn-primary`: o roxo
+   é reservado para o botão que entrega ordem ao banco. Este confirma uma
+   afirmação humana — é peso, não é o caminho do dinheiro. */
+.fin-apr-dev-confirmar {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 9px;
+  background: var(--ink);
+  color: var(--card);
+  font-size: 13px;
+  font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+}
+.fin-apr-dev-confirmar:disabled { opacity: .4; cursor: default; }
+/* Por que o botão está desligado, escrito ao lado dele. Um botão cinza sem
+   explicação é onde a pessoa clica três vezes e vai embora. */
+.fin-apr-dev-pendencia {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.fin-apr-dev-erro {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-red);
+  overflow-wrap: anywhere;
+}
+
+/* O resultado reusa `.fin-apr-res-*` inteiro; só o título é novo. ROXO e não
+   verde: verde nesta tela é dinheiro que saiu da conta, e ordem devolvida não é
+   dinheiro nenhum — é caminho do produto, o mesmo roxo do aviso do topo. */
+.fin-apr-res-titulo.volta { color: var(--purple-text); }
+
+@media (max-width: 720px) {
+  .fin-apr-dev-abrir { width: 100%; justify-content: center; }
+  .fin-apr-dev-confirmar { width: 100%; }
+  .fin-apr-dev-total { margin-left: 0; width: 100%; }
+}

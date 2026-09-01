@@ -134,7 +134,25 @@ export async function getCadastroAppPessoa(personId: number): Promise<CadastroAp
       linha_nome: string | null;
       cadastrado_pelo_time: boolean;
     }>(
-      `SELECT c.id, c.label, c.last4, c.bandeira, c.cor, c.tipo, c.status,
+      /*
+       * `brand` e `kind`, não `bandeira` e `tipo`.
+       *
+       * A coluna nasceu com nome em inglês na 0149 — o comentário dela fala de
+       * "bandeira" em prosa, mas o `ALTER TABLE` cria `brand` (linha 56). Aqui
+       * o SELECT pedia `c.bandeira` e `c.tipo`, e os dois faltam em `fin_card`:
+       * a tabela tem `brand` e `kind`. Resultado: GET e PATCH de
+       * `/api/financeiro/pessoas/[id]/cadastro-app` devolviam 500 em produção —
+       * `column c.bandeira does not exist`.
+       *
+       * O `tsc` passava limpo, porque ele não olha dentro de SQL. É o defeito
+       * do item 4 do AGENTS.md, de novo, e foi `npm run test:login` que o
+       * pegou. O Postgres só reclamava de `bandeira`: ele para na primeira
+       * coluna que falta, e `tipo` só apareceu depois de consertar a primeira.
+       *
+       * O apelido mantém o nome em português do lado do TypeScript, que é o que
+       * o resto do arquivo e a tela já leem.
+       */
+      `SELECT c.id, c.label, c.last4, c.brand AS bandeira, c.cor, c.kind AS tipo, c.status,
               ca.name AS linha_nome,
               (c.card_account_id IS NULL) AS cadastrado_pelo_time
          FROM fin_card c
@@ -314,9 +332,27 @@ export async function salvarCadastroAppPessoa(
         [personId, entityId, metodo, pixTipo, pixChave, recebeSalario, recebeReembolso]
       );
 
+      /*
+       * `'update'`, não `'upsert'`.
+       *
+       * `fin_audit_log_action_check` só aceita insert, update, delete,
+       * bulk_update, import e rollback — e `'upsert'` não está lá. Toda
+       * gravação de forma de pagamento por esta rota devolvia 500:
+       * `new row for relation "fin_audit_log" violates check constraint`.
+       *
+       * O `tsc` passava limpo porque ele não olha dentro de SQL, e o defeito
+       * ficava ESCONDIDO atrás de outro: o CPF da fixture de `test:login`
+       * colidia com o do Igor, então a rota recusava com 422 antes de chegar
+       * aqui. Consertar a fixture foi o que revelou este.
+       *
+       * `update` é o valor honesto: o INSERT é `ON CONFLICT DO UPDATE`, e nas
+       * 4.392 linhas de auditoria da base a convenção para edição já é essa.
+       * Corrigir no código em vez de afrouxar a constraint — ela é a única
+       * coisa que impede a coluna de virar texto livre.
+       */
       await client.query(
         `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, actor, fields)
-         VALUES ($1, 'fin_person_pagamento', $2, 'upsert', $3, ARRAY['pix_tipo','pix_chave','metodo'])`,
+         VALUES ($1, 'fin_person_pagamento', $2, 'update', $3, ARRAY['pix_tipo','pix_chave','metodo'])`,
         [entityId, personId, actor]
       );
     }

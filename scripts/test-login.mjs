@@ -884,7 +884,12 @@ try {
       body: JSON.stringify({
         whatsapp: '81999887766',
         birthDate: '1990-05-15',
-        cpf: '70365478474',
+        // CPF de teste com prefixo 999, que a Receita não emite — não pode
+        // colidir com gente de verdade. O valor anterior ('70365478474') é o
+        // CPF REAL do Igor (pessoa 1), então a rota recusava com 422 "este CPF
+        // já está em uso" e a seção 5g reprovava por dado da casa, não por
+        // defeito. O dígito verificador confere; a recusa era da unicidade.
+        cpf: '99988877714',
         pagamento: { metodo: 'pix', pixTipo: 'telefone', pixChave: '81999887766' }
       })
     });

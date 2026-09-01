@@ -123,3 +123,72 @@ export function itemAppJaLiquidado(
 ): boolean {
   return origem === "app" && Boolean(ultimaCompetencia) && competenciasPagas.has(ultimaCompetencia);
 }
+
+export type ParteParaCasar = {
+  valorCents: number;
+  pagoEm?: string | null;
+};
+
+export type LinhaParaCasar = {
+  valorCents: number;
+  casado: boolean;
+  data: string;
+};
+
+/**
+ * Casa cada item de comissão com um Pix do mesmo valor, um para um.
+ *
+ * O total da competência (R$ 7.035,51 no Jonildo, agosto/2026) quase nunca
+ * sai num Pix só. Sai item a item — e o ledger ainda classifica como 6.02 e
+ * desloca a competência. Sem esta passada, o Pix de R$ 4.629,00 do Nubank
+ * (03/08, valor EXATO do excedente declarado) some da conferência, a comissão
+ * inteira fica "a receber" e a diferença que fecha o reembolso some com ele.
+ *
+ * Não chuta valor próximo: a diferença tem de aparecer, não ser engolida.
+ * Item de R$ 0,00 ou R$ 0,01 não é comissão — fica de fora.
+ */
+export function casarPartesPorValor(
+  partes: ParteParaCasar[],
+  linhas: LinhaParaCasar[]
+): { pagoCents: number; pagoEm: string | null; nCasadas: number } {
+  let pagoCents = 0;
+  let pagoEm: string | null = null;
+  let nCasadas = 0;
+  for (const parte of partes) {
+    if (parte.valorCents < 100) continue;
+    const casa = linhas.find((l) => !l.casado && l.valorCents === parte.valorCents);
+    if (!casa) {
+      parte.pagoEm = null;
+      continue;
+    }
+    casa.casado = true;
+    parte.pagoEm = casa.data.slice(0, 10);
+    pagoCents += casa.valorCents;
+    nCasadas += 1;
+    if (!pagoEm || parte.pagoEm > pagoEm) pagoEm = parte.pagoEm;
+  }
+  return { pagoCents, pagoEm, nCasadas };
+}
+
+/**
+ * O mês de caixa da conferência entra na série mesmo sem Pix.
+ *
+ * `porMes` só nasce de lançamento. No dia 1º a folha do mês anterior ainda
+ * não saiu — setembro some da faixa e o selo "a receber" cola no último mês
+ * pago (agosto). Medido em 01/09/2026 no Jonildo (person_id = 3): último Pix
+ * em 03/08, conferência de caixa 2026-09, a receber R$ 14.975,37, e a faixa
+ * lia "Agosto".
+ *
+ * Não inventa valor: o stub tem total 0. O selo e o histórico pendente vêm
+ * da conferência, que já sabe o previsto.
+ */
+export function garantirMesDeCaixa(
+  porMes: MesComBandas[],
+  mesDeCaixa: string | null | undefined
+): MesComBandas[] {
+  if (!mesDeCaixa) return porMes;
+  if (porMes.some((m) => m.mes === mesDeCaixa)) return porMes;
+  return [...porMes, { mes: mesDeCaixa, totalCents: 0, porNatureza: {} }].sort((a, b) =>
+    a.mes.localeCompare(b.mes)
+  );
+}

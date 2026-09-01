@@ -7,6 +7,7 @@ import { gzipSync } from "node:zlib";
 import { FinanceUnavailableError, query, queryOne, transaction } from "@/lib/financeiro/db";
 import {
   alinharBandasComPixConferido,
+  casarPartesPorValor,
   itemAppJaLiquidado,
   pixesDoCaixa
 } from "@/lib/financeiro/recebiveis-reembolso";
@@ -1685,7 +1686,14 @@ export type PrevistoConciliado = {
   origem: string;
   /** O detalhe do grupo, para abrir na tela. Comissão de obra e de consultoria
    *  costumam sair por contas diferentes — sem o detalhe, o total não ajuda. */
-  partes: { descricao: string; valorCents: number; grupo: string | null; cliente: string | null }[];
+  partes: {
+    descricao: string;
+    valorCents: number;
+    grupo: string | null;
+    cliente: string | null;
+    /** Data do Pix que casou este item. Null quando ainda não caiu. */
+    pagoEm: string | null;
+  }[];
 };
 
 export type LancamentoExtrato = {
@@ -2301,7 +2309,13 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
        * chegou a hora, e chamar isso de divergência gritaria "faltou dinheiro"
        * para o time inteiro todo dia 1º.
        */
-      type ParteComissao = { descricao: string; valorCents: number; grupo: string | null; cliente: string | null };
+      type ParteComissao = {
+        descricao: string;
+        valorCents: number;
+        grupo: string | null;
+        cliente: string | null;
+        pagoEm: string | null;
+      };
       const comissaoPorComp = new Map<string, ParteComissao[]>();
       for (const c of comissaoItens) {
         const k = String(c.competencia);
@@ -2310,7 +2324,8 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
           descricao: String(c.descricao ?? "comissão"),
           valorCents: Number(c.valor_cents ?? 0),
           grupo: (c.tipo_nome as string) ?? null,
-          cliente: (c.cliente as string) ?? null
+          cliente: (c.cliente as string) ?? null,
+          pagoEm: null
         });
         comissaoPorComp.set(k, lista);
       }
@@ -2403,7 +2418,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         // Vigência resolvida no ÚLTIMO dia da competência — ver o comentário
         // do bloco: o reajuste de 29/08 vale para a folha de agosto.
         const fimDaCompetencia = `${mes}-31`;
-        const comissao = comissaoPorComp.get(mes) ?? [];
+        const comissao = (comissaoPorComp.get(mes) ?? []).filter((c) => c.valorCents >= 100);
         const reembolsoAprovado = reembolsoPorComp.get(mes);
         // NÃO somar o cabeçalho aqui: `fin_reembolso_saldo_unificado_v` já
         // inclui os itens aprovados vindos do app. Somar os dois contava os
@@ -2458,7 +2473,8 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
                 descricao: String(r.descricao ?? "reembolso"),
                 valorCents: Number(r.valor_parcela_cents ?? 0),
                 grupo: String(r.origem ?? "") === "app" ? "Aprovado no app" : "Parcelado",
-                cliente: null
+                cliente: null,
+                pagoEm: null
               }))
           }
         ];
@@ -2475,6 +2491,43 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
           p.pagoCents = casa.valorCents;
           p.conferido = true;
           p.pagoEm = casa.data.slice(0, 10);
+        }
+
+        /*
+         * COMISSÃO CASA ITEM A ITEM, INCLUSIVE FORA DA COMPETÊNCIA.
+         *
+         * O Pix de R$ 4.629,00 do Jonildo saiu do Nubank em 03/08, em 6.02, com
+         * competência de JULHO (`folha_mes_referencia`). O item declarado é de
+         * AGOSTO, valor exato, "excedente sobre o pró-labore". Sem olhar o
+         * extrato vizinho, a conferência de agosto mostrava comissão R$ 7.035
+         * toda pendente — e a diferença (as obras, R$ 2.406,50) que define o
+         * que ainda entra no pacote com o reembolso sumia.
+         *
+         * Só valor exato. Aproximar engoliria a diferença; o pedido é vê-la.
+         */
+        const pComissao = previstos.find((p) => p.natureza === "comissao");
+        if (pComissao && !pComissao.conferido && pComissao.previstoCents > 0) {
+          const pool = [
+            ...extrato,
+            ...[...pagoPorComp.entries()]
+              .filter(([comp]) => comp !== mes)
+              .flatMap(([, xs]) => xs)
+          ];
+          const casamento = casarPartesPorValor(pComissao.partes, pool);
+          if (casamento.pagoCents > 0) {
+            pComissao.pagoCents = casamento.pagoCents;
+            pComissao.conferido = true;
+            pComissao.pagoEm = casamento.pagoEm;
+            for (const l of pool) {
+              if (!l.casado || extrato.includes(l)) continue;
+              extrato.push({
+                ...l,
+                pista:
+                  l.pista ??
+                  `caiu em ${l.data.slice(8, 10)}/${l.data.slice(5, 7)}, competência diferente no ledger`
+              });
+            }
+          }
         }
 
         // A pista: um pagamento que não casa aqui pode bater com a comissão

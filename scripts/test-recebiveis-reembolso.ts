@@ -9,6 +9,8 @@
 
 import {
   alinharBandasComPixConferido,
+  casarPartesPorValor,
+  garantirMesDeCaixa,
   itemAppJaLiquidado,
   pixesDoCaixa
 } from "../lib/financeiro/recebiveis-reembolso.ts";
@@ -114,6 +116,52 @@ ok(
   "pedido novo de setembro, ainda sem Pix, entra na previsão"
 );
 ok(!itemAppJaLiquidado("app", "", pagas), "competência vazia não se inventa como paga");
+
+console.log("\n=== 4. SETEMBRO SEM PIX NÃO SOME DA FAIXA ===");
+
+const soAgosto = garantirMesDeCaixa(
+  [{ mes: "2026-08", totalCents: 1212900, porNatureza: { prolabore: 1212900 } }],
+  "2026-09"
+);
+ok(soAgosto.map((m) => m.mes).join(",") === "2026-08,2026-09", "setembro entra depois de agosto");
+ok(soAgosto[1].totalCents === 0, "sem inventar valor — o recebido de setembro ainda é zero");
+ok(
+  garantirMesDeCaixa(soAgosto, "2026-09") === soAgosto,
+  "mês que já está na série não duplica"
+);
+ok(
+  garantirMesDeCaixa(
+    [
+      { mes: "2026-08", totalCents: 1, porNatureza: {} },
+      { mes: "2026-09", totalCents: 581976, porNatureza: { prolabore: 581976 } }
+    ],
+    "2026-09"
+  ).length === 2,
+  "quem já recebeu em setembro (Fernando) fica com os dois meses"
+);
+
+console.log("\n=== 5. COMISSÃO DO NUBANK CASA ITEM A ITEM ===");
+
+const partesJonildo = [
+  { valorCents: 462900, pagoEm: null as string | null },
+  { valorCents: 157500, pagoEm: null as string | null },
+  { valorCents: 36600, pagoEm: null as string | null },
+  { valorCents: 1, pagoEm: null as string | null }
+];
+const linhasJonildo = [
+  { valorCents: 462900, casado: false, data: "2026-08-03" },
+  { valorCents: 587900, casado: false, data: "2026-08-01" }
+];
+const casado = casarPartesPorValor(partesJonildo, linhasJonildo);
+ok(casado.pagoCents === 462900, "Pix de R$ 4.629,00 casa o excedente, não o total");
+ok(partesJonildo[0].pagoEm === "2026-08-03", "a data do Nubank fica no item");
+ok(partesJonildo[1].pagoEm === null, "obra sem Pix fica pendente — a diferença aparece");
+ok(
+  casado.pagoCents === 462900 && partesJonildo[2].pagoEm === null,
+  "não soma o que não caiu (R$ 2.406,50 de obras seguem a receber)"
+);
+ok(!linhasJonildo[1].casado, "pró-labore de R$ 5.879 não é comido como comissão");
+ok(linhasJonildo[0].casado, "só o Pix do valor exato é consumido");
 
 console.log(`\n${falhas === 0 ? "ok" : "FALHOU"} — ${provas} prova(s), ${falhas} falha(s)`);
 process.exit(falhas === 0 ? 0 : 1);

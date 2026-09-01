@@ -15,6 +15,7 @@ import {
   useRecebiveis,
   type ConciliacaoMes
 } from "@/components/time/recebiveis-dado";
+import { garantirMesDeCaixa } from "@/lib/financeiro/recebiveis-reembolso";
 import {
   competenciaDe,
   IconePrevisao,
@@ -175,7 +176,19 @@ export function Recebiveis() {
   if (erro) return <p className="time-erro">{erro}</p>;
   if (!dado) return null;
 
-  if (dado.porMes.length === 0) {
+  /*
+   * A conciliação da COMPETÊNCIA mais recente já fechada — a primeira da lista.
+   *
+   * O previsto é da competência (folha de agosto). O que a faixa mostra é o
+   * MÊS DE CAIXA (setembro): é quando o Pix cai. Sem Pix ainda, `porMes` não
+   * tem setembro — e a faixa lia o último mês pago (agosto) com o selo de
+   * setembro. Garantir o mês de caixa na série põe o cartão certo, com
+   * recebido zero, em vez de esconder o mês que está aberto.
+   */
+  const conciliacaoDoMes = (dado.conciliacao ?? [])[0] ?? null;
+  const porMes = garantirMesDeCaixa(dado.porMes, conciliacaoDoMes?.mesDeCaixa);
+
+  if (porMes.length === 0) {
     return (
       <div className="time-tela-padrao">
         <header className="time-form-cabeca">
@@ -214,7 +227,7 @@ export function Recebiveis() {
 
   // Os seis meses mais recentes no compacto. O resto vive na tela cheia — a
   // coluna fica com 55px em 361px, e abaixo disso o rótulo do mês some.
-  const mesesBase = dado.porMes.slice(-6).map((m) => {
+  const mesesBase = porMes.slice(-6).map((m) => {
     const por = soNatureza(m.porNatureza);
     return { mes: m.mes, porNatureza: por, totalCents: Object.values(por).reduce((a, b) => a + b, 0), previsto: false };
   });
@@ -259,18 +272,17 @@ export function Recebiveis() {
     )
     .join("; ");
 
-  const porMesDesc = [...dado.porMes].reverse();
-  const ultimoMesRec = porMesDesc[0] ?? null;
-  const ultimoReembModelado = ultimoMesRec?.porNatureza?.reembolso ?? 0;
-
+  const porMesDesc = [...porMes].reverse();
   /*
-   * A conciliação da COMPETÊNCIA mais recente já fechada — a primeira da lista.
-   *
-   * Não é o mês corrente: a folha de agosto foi paga em 01/09, então é agosto
-   * que tem previsto E pago para comparar. Setembro só fecha em outubro, e
-   * conciliá-lo agora acusaria falta de dinheiro que ainda não venceu.
+   * O primeiro cartão é o mês de caixa da conferência, não o último mês com
+   * Pix. Sem isso, quem ainda não recebeu em setembro (Jonildo, 01/09) via
+   * "Agosto" com o selo de setembro.
    */
-  const conciliacaoDoMes = (dado.conciliacao ?? [])[0] ?? null;
+  const mesDaFaixa =
+    (conciliacaoDoMes
+      ? porMes.find((m) => m.mes === conciliacaoDoMes.mesDeCaixa)
+      : null) ?? porMesDesc[0] ?? null;
+  const ultimoReembModelado = mesDaFaixa?.porNatureza?.reembolso ?? 0;
 
   /*
    * O REEMBOLSO DA FAIXA VEM DA CONFERÊNCIA, não do rateio.
@@ -284,13 +296,22 @@ export function Recebiveis() {
    * R$ 1.440,76 são reembolso. `meusRecebiveis` agora copia esse número para
    * a banda do gráfico (`porMes`); a faixa continua lendo a conferência para
    * o caso de a banda ainda não ter sido alinhada.
+   *
+   * Só usa a conferência quando o cartão É o mês de caixa dela. Senão o
+   * reembolso conferido de setembro pintava o cartão de agosto.
    */
   const reembDaConferencia = conciliacaoDoMes?.previstos.find((p) => p.natureza === "reembolso");
   const ultimoReemb =
-    reembDaConferencia?.conferido && reembDaConferencia.pagoCents > 0
+    conciliacaoDoMes &&
+    mesDaFaixa?.mes === conciliacaoDoMes.mesDeCaixa &&
+    reembDaConferencia?.conferido &&
+    reembDaConferencia.pagoCents > 0
       ? reembDaConferencia.pagoCents
       : ultimoReembModelado;
-  const ultimoRemunAjustado = Math.max(0, (ultimoMesRec?.totalCents ?? 0) - ultimoReemb);
+  const ultimoRemunAjustado = Math.max(0, (mesDaFaixa?.totalCents ?? 0) - ultimoReemb);
+  const nPixDoCaixa = mesDaFaixa
+    ? dado.linhas.filter((l) => l.mes === mesDaFaixa.mes).length
+    : 0;
   // O que ainda não caiu, positivo. Vale com a folha aberta ou fechada — muda
   // só o nome que se dá a ele.
   const aReceberDoMes = conciliacaoDoMes?.aReceberCents ?? 0;
@@ -364,23 +385,25 @@ export function Recebiveis() {
               "confere" vira ruído em doze meses seguidos e some da vista
               justamente no mês em que passa a importar. */}
           <span className="time-faixa-rotulo">
-            {ultimoMesRec ? mesNome(ultimoMesRec.mes) : "no mês"}
+            {mesDaFaixa ? mesNome(mesDaFaixa.mes) : "no mês"}
           </span>
           <strong className="time-faixa-valor">
             {valor(
-              ultimoRemunAjustado > 0 ? ultimoRemunAjustado : (ultimoMesRec?.totalCents ?? 0),
+              ultimoRemunAjustado > 0 ? ultimoRemunAjustado : (mesDaFaixa?.totalCents ?? 0),
               ultimoRemunAjustado === 0 && ultimoReemb > 0
             )}
           </strong>
-          {ultimoMesRec && ultimoReemb > 0 && ultimoRemunAjustado > 0 ? (
+          {mesDaFaixa && ultimoReemb > 0 && ultimoRemunAjustado > 0 ? (
             <span className="time-faixa-nota time-nota-reemb">
               + {valor(ultimoReemb, true)}
             </span>
           ) : (
             <small className="time-faixa-nota">
-              {ultimoMesRec
-                ? plural(dado.linhas.filter((l) => l.mes === ultimoMesRec.mes).length, "pagamento", "pagamentos")
-                : "nada ainda"}
+              {nPixDoCaixa === 0 && aReceberDoMes > 0
+                ? "ainda não caiu"
+                : mesDaFaixa
+                  ? plural(nPixDoCaixa, "pagamento", "pagamentos")
+                  : "nada ainda"}
             </small>
           )}
           {/* Em FLUXO, nunca sobreposto: absoluto, ele cobria o próprio valor
@@ -708,10 +731,13 @@ export function Recebiveis() {
                   <span className="rec-mes-total-bloco">
                     <strong>{valor(m.totalCents, Object.keys(m.porNatureza).every((n) => n === "reembolso"))}</strong>
                     <small>
-                      {plural(doMes.length, "Pix", "Pix")}
-                      {concDoMes && concDoMes.aReceberCents > 0
-                        ? ` · a receber ${valor(concDoMes.aReceberCents)}`
-                        : ""}
+                      {doMes.length === 0 && concDoMes && concDoMes.aReceberCents > 0
+                        ? `ainda não caiu · a receber ${valor(concDoMes.aReceberCents)}`
+                        : `${plural(doMes.length, "Pix", "Pix")}${
+                            concDoMes && concDoMes.aReceberCents > 0
+                              ? ` · a receber ${valor(concDoMes.aReceberCents)}`
+                              : ""
+                          }`}
                     </small>
                   </span>
                   <IconeSeta />
@@ -895,14 +921,16 @@ function PainelConciliacao({
           {comPrevisto.map((p) => {
             const temDetalhe = p.partes.length > 0;
             const estaAberto = aberto === p.natureza;
+            const fechou = p.previstoCents > 0 && p.pagoCents === p.previstoCents;
+            const estado = fechou ? "ok" : conc.fechada ? "falta" : "espera";
             return (
               <Fragment key={p.natureza}>
                 <tr
-                  className={`${p.conferido ? "ok" : conc.fechada ? "falta" : "espera"}${temDetalhe ? " abre" : ""}`}
+                  className={`${estado}${temDetalhe ? " abre" : ""}`}
                   onClick={temDetalhe ? () => setAberto(estaAberto ? null : p.natureza) : undefined}
                 >
                   <td className="time-concil-tab-marca" aria-hidden>
-                    {p.conferido ? "✓" : conc.fechada ? "!" : "…"}
+                    {fechou ? "✓" : conc.fechada ? "!" : "…"}
                   </td>
                   <th scope="row">
                     {p.rotulo}
@@ -914,7 +942,21 @@ function PainelConciliacao({
                   </th>
                   <td>{valor(p.previstoCents)}</td>
                   <td className={p.conferido && p.pagoCents !== p.previstoCents ? "time-concil-mais" : ""}>
-                    {p.conferido ? valor(p.pagoCents) : "—"}
+                    {p.conferido ? (
+                      <>
+                        {valor(p.pagoCents)}
+                        {p.pagoEm ? <em>{diaMes(p.pagoEm)}</em> : null}
+                        {p.pagoCents !== p.previstoCents ? (
+                          <em>
+                            {p.pagoCents < p.previstoCents
+                              ? `faltam ${valor(p.previstoCents - p.pagoCents)}`
+                              : `a mais ${valor(p.pagoCents - p.previstoCents)}`}
+                          </em>
+                        ) : null}
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                 </tr>
                 {estaAberto
@@ -923,9 +965,17 @@ function PainelConciliacao({
                         <td />
                         <th scope="row" colSpan={2}>
                           {parte.descricao}
-                          <em>{[parte.grupo, parte.cliente].filter(Boolean).join(" · ")}</em>
+                          <em>
+                            {[
+                              parte.grupo,
+                              parte.cliente,
+                              parte.pagoEm ? `recebido ${diaMes(parte.pagoEm)}` : "pendente"
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </em>
                         </th>
-                        <td>{valor(parte.valorCents)}</td>
+                        <td>{parte.pagoEm ? valor(parte.valorCents) : "—"}</td>
                       </tr>
                     ))
                   : null}

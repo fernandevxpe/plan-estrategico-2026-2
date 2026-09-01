@@ -27955,9 +27955,13 @@ details.fin-cartao-ressalvas > ul {
 .time-concil-tab tbody th, .time-concil-tab tfoot th {
   text-align: left; font-weight: 650; text-transform: none; letter-spacing: 0;
 }
-.time-concil-tab tbody th em, .time-concil-tab .detalhe th em {
+.time-concil-tab tbody th em, .time-concil-tab .detalhe th em,
+.time-concil-tab tbody td em {
   display: block; font-style: normal; font-size: 10px; font-weight: 400;
   color: var(--muted); margin-top: 1px; text-transform: none; letter-spacing: 0;
+}
+.time-concil-tab tbody td.time-concil-mais em {
+  color: #b67818; font-weight: 600;
 }
 .time-concil-tab tbody tr { border-top: 1px solid var(--line); }
 .time-concil-tab tbody tr.abre { cursor: pointer; }

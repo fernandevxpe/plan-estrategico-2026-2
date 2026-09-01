@@ -29,7 +29,13 @@ export type PrevistoConciliado = {
   /** Data do Pix que casou, `YYYY-MM-DD`. Null quando ainda não caiu. */
   pagoEm: string | null;
   origem: string;
-  partes: { descricao: string; valorCents: number; grupo: string | null; cliente: string | null }[];
+  partes: {
+    descricao: string;
+    valorCents: number;
+    grupo: string | null;
+    cliente: string | null;
+    pagoEm: string | null;
+  }[];
 };
 
 export type LancamentoExtrato = {

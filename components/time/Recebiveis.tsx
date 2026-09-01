@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 import { useOcultarValores } from "@/components/time/ocultar-valores";
 import {
@@ -11,7 +11,8 @@ import {
   nomeMes,
   nomeMesTitulo,
   plural,
-  useRecebiveis
+  useRecebiveis,
+  type ConciliacaoMes
 } from "@/components/time/recebiveis-dado";
 import {
   competenciaDe,
@@ -92,6 +93,7 @@ export function Recebiveis() {
   const [ocultas, setOcultas] = useState<Set<string>>(new Set());
   const [mostrarPrevisao, setMostrarPrevisao] = useState(false);
   const [foco, setFoco] = useState<FocoPlot>(null);
+  const [conciliacaoAberta, setConciliacaoAberta] = useState(false);
 
   if (carregando) return <div className="time-aviso">carregando…</div>;
   if (erro) return <p className="time-erro">{erro}</p>;
@@ -192,6 +194,18 @@ export function Recebiveis() {
     : 0;
   const ultimoReemb = ultimoMesRec?.porNatureza?.reembolso ?? 0;
 
+  /*
+   * A conciliação da COMPETÊNCIA mais recente já fechada — a primeira da lista.
+   *
+   * Não é o mês corrente: a folha de agosto foi paga em 01/09, então é agosto
+   * que tem previsto E pago para comparar. Setembro só fecha em outubro, e
+   * conciliá-lo agora acusaria falta de dinheiro que ainda não venceu.
+   */
+  const conciliacaoDoMes = (dado.conciliacao ?? [])[0] ?? null;
+  // O que ainda não caiu, positivo. Vale com a folha aberta ou fechada — muda
+  // só o nome que se dá a ele.
+  const aReceberDoMes = conciliacaoDoMes?.aReceberCents ?? 0;
+
   const previsaoMeses = dado.previsao ?? [];
   const proximoMes = previsaoMeses[0];
   const totalReembolsoPrevisto = dado.emAbertoCents;
@@ -234,7 +248,32 @@ export function Recebiveis() {
       </header>
 
       <div className="time-faixa">
-        <article className="time-faixa-item time-faixa-destaque">
+        <article
+          className={
+            conciliacaoDoMes
+              ? `time-faixa-item time-faixa-destaque time-faixa-abre${
+                  conciliacaoDoMes.temDivergencia ? " time-faixa-diverge" : ""
+                }`
+              : "time-faixa-item time-faixa-destaque"
+          }
+          onClick={conciliacaoDoMes ? () => setConciliacaoAberta((v) => !v) : undefined}
+          role={conciliacaoDoMes ? "button" : undefined}
+          tabIndex={conciliacaoDoMes ? 0 : undefined}
+          aria-expanded={conciliacaoDoMes ? conciliacaoAberta : undefined}
+          onKeyDown={
+            conciliacaoDoMes
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setConciliacaoAberta((v) => !v);
+                  }
+                }
+              : undefined
+          }
+        >
+          {/* O selo só aparece quando HÁ diferença. Um selo permanente dizendo
+              "confere" vira ruído em doze meses seguidos e some da vista
+              justamente no mês em que passa a importar. */}
           <strong className="time-faixa-valor">
             {valor(
               ultimoRemun > 0 ? ultimoRemun : (ultimoMesRec?.totalCents ?? 0),
@@ -252,7 +291,31 @@ export function Recebiveis() {
                 : "nada ainda"}
             </small>
           )}
-          <span className="time-faixa-rotulo">{ultimoMesRec ? mesNome(ultimoMesRec.mes) : "no mês"}</span>
+          <span className="time-faixa-rotulo">
+            {ultimoMesRec ? mesNome(ultimoMesRec.mes) : "no mês"}
+            {conciliacaoDoMes ? (
+              <em className="time-faixa-abrir">{conciliacaoAberta ? "fechar" : "conferir"}</em>
+            ) : null}
+          </span>
+          {/* Em FLUXO, nunca sobreposto: absoluto, ele cobria o próprio valor
+              do mês — o número que a pessoa abriu a tela para ver. */}
+          {/* O SELO SEMPRE DIZ O QUE FALTA — só muda o tom.
+              Enquanto a folha está sendo paga é "a receber", em âmbar: fila,
+              não erro. Depois que a janela fecha vira "falta", em vermelho.
+              Esconder o número enquanto a janela está aberta tirava da tela
+              exatamente o que o dono pediu para ver. */}
+          {aReceberDoMes !== 0 ? (
+            <span
+              className={conciliacaoDoMes?.fechada ? "time-faixa-selo" : "time-faixa-selo time-faixa-selo-espera"}
+              title={
+                conciliacaoDoMes?.fechada
+                  ? "o previsto e o extrato não fecham"
+                  : "a folha ainda está sendo paga"
+              }
+            >
+              {conciliacaoDoMes?.fechada ? "falta" : "a receber"} {valor(aReceberDoMes)}
+            </span>
+          ) : null}
         </article>
         <article className="time-faixa-item time-faixa-previsto">
           <strong className="time-faixa-valor">
@@ -315,6 +378,9 @@ export function Recebiveis() {
           </article>
         )}
       </div>
+      {conciliacaoAberta && conciliacaoDoMes ? (
+        <PainelConciliacao conc={conciliacaoDoMes} valor={valor} onFechar={() => setConciliacaoAberta(false)} />
+      ) : null}
 
       <section
         className={`rec-plot rec-plot-mini${mostrarPrevisao && mesesPrevistos.length > 0 ? " rec-plot-rolagem" : ""}`}
@@ -655,5 +721,156 @@ export function Recebiveis() {
         </details>
       </section>
     </div>
+  );
+}
+
+/**
+ * O DETALHE DO MÊS — tabela compacta, uma linha por grupo, expansível.
+ *
+ * Voltou a ser TABELA depois de uma versão em duas listas que ficou alta demais:
+ * quatro previstos e três pagamentos viravam sete cartões e a tela pedia rolagem
+ * para responder "quanto falta". Tabela responde na primeira olhada; o que se
+ * perdeu com ela na primeira tentativa — dizer que "Salário recebido
+ * R$ 1.621,00" quando nada foi pago — se resolve com a COLUNA RECEBIDO vindo do
+ * casamento, e não de rateio.
+ *
+ * CADA GRUPO ABRE. Comissão de obra e de consultoria costumam sair por contas
+ * diferentes, então o total de comissão sozinho não ajuda ninguém a conferir; o
+ * mesmo vale para as parcelas de reembolso. Quem quer o número olha a linha,
+ * quem quer conferir abre.
+ */
+function PainelConciliacao({
+  conc,
+  valor,
+  onFechar
+}: {
+  conc: ConciliacaoMes;
+  valor: (cents: number, reemb?: boolean) => string;
+  onFechar: () => void;
+}) {
+  const [aberto, setAberto] = useState<string | null>(null);
+  const aReceber = conc.aReceberCents;
+  const comPrevisto = conc.previstos.filter((p) => p.previstoCents > 0);
+  const sobraram = conc.extrato.filter((l) => !l.casado);
+
+  return (
+    <section className="time-concil" aria-label={`Conferência de ${nomeMesTitulo(conc.mesDeCaixa)}`}>
+      <header className="time-concil-topo">
+        <div>
+          <h2>{nomeMesTitulo(conc.mesDeCaixa)}</h2>
+          <p>
+            o que cai em {nomeMes(conc.mesDeCaixa)} é a folha de {nomeMes(conc.mes)}
+            {!conc.fechada ? ` · ainda sendo paga, fecha em ${conc.fechaEm}` : ""}
+          </p>
+        </div>
+        <button type="button" onClick={onFechar} aria-label="Fechar conferência">
+          ✕
+        </button>
+      </header>
+
+      <div className="time-concil-placar">
+        <div>
+          <span>Previsto</span>
+          <strong>{valor(conc.previstoCents)}</strong>
+        </div>
+        <div>
+          <span>Recebido</span>
+          <strong>{valor(conc.pagoCents)}</strong>
+        </div>
+        <div
+          className={
+            aReceber === 0 ? "" : conc.fechada ? "time-concil-falta" : "time-concil-espera-txt"
+          }
+        >
+          <span>{conc.fechada ? "Faltou" : "A receber"}</span>
+          <strong>{aReceber === 0 ? "—" : valor(aReceber)}</strong>
+        </div>
+      </div>
+
+      <table className="time-concil-tab">
+        <thead>
+          <tr>
+            <th scope="col" aria-label="situação" />
+            <th scope="col">Item</th>
+            <th scope="col">Previsto</th>
+            <th scope="col">Recebido</th>
+          </tr>
+        </thead>
+        <tbody>
+          {comPrevisto.map((p) => {
+            const temDetalhe = p.partes.length > 0;
+            const estaAberto = aberto === p.natureza;
+            return (
+              <Fragment key={p.natureza}>
+                <tr
+                  className={`${p.conferido ? "ok" : conc.fechada ? "falta" : "espera"}${temDetalhe ? " abre" : ""}`}
+                  onClick={temDetalhe ? () => setAberto(estaAberto ? null : p.natureza) : undefined}
+                >
+                  <td className="time-concil-tab-marca" aria-hidden>
+                    {p.conferido ? "✓" : conc.fechada ? "!" : "…"}
+                  </td>
+                  <th scope="row">
+                    {p.rotulo}
+                    {temDetalhe ? (
+                      <em>
+                        {plural(p.partes.length, "item", "itens")} {estaAberto ? "▾" : "▸"}
+                      </em>
+                    ) : null}
+                  </th>
+                  <td>{valor(p.previstoCents)}</td>
+                  <td className={p.conferido && p.pagoCents !== p.previstoCents ? "time-concil-mais" : ""}>
+                    {p.conferido ? valor(p.pagoCents) : "—"}
+                  </td>
+                </tr>
+                {estaAberto
+                  ? p.partes.map((parte, i) => (
+                      <tr key={`${p.natureza}-${i}`} className="detalhe">
+                        <td />
+                        <th scope="row" colSpan={2}>
+                          {parte.descricao}
+                          <em>{[parte.grupo, parte.cliente].filter(Boolean).join(" · ")}</em>
+                        </th>
+                        <td>{valor(parte.valorCents)}</td>
+                      </tr>
+                    ))
+                  : null}
+              </Fragment>
+            );
+          })}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td />
+            <th scope="row">Total</th>
+            <td>{valor(conc.previstoCents)}</td>
+            <td>{valor(conc.pagoCents)}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      {sobraram.length > 0 ? (
+        <>
+          <h3 className="time-concil-titulo">
+            Pagamentos sem previsto
+            <em>caíram na conta, mas não batem com nenhuma linha acima</em>
+          </h3>
+          <ul className="time-concil-lista">
+            {sobraram.map((l, n) => (
+              <li key={`${l.data}-${n}`} className={l.pista ? "time-concil-espera" : "time-concil-pendente"}>
+                <span className="time-concil-marca" aria-hidden>
+                  ?
+                </span>
+                <span className="time-concil-nome">
+                  {l.data.slice(8, 10)}/{l.data.slice(5, 7)}
+                  <em>{l.pista ?? "não corresponde a nenhum previsto desta folha"}</em>
+                </span>
+                <strong>{valor(l.valorCents)}</strong>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
+    </section>
   );
 }

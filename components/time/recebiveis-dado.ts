@@ -12,7 +12,52 @@ import { useEffect, useState } from "react";
  * renderizou invisível.
  */
 
+/**
+ * A conciliação de um mês, espelhando `ConciliacaoMes` de `lib/financeiro/time.ts`.
+ *
+ * Espelho e não importação porque este arquivo é de cliente e aquele abre
+ * conexão de banco no topo — importar o tipo arrastaria `pg` para o bundle do
+ * celular. A divergência entre os dois é o preço, e é o mesmo preço que o resto
+ * deste arquivo já paga.
+ */
+export type PrevistoConciliado = {
+  natureza: "salario" | "prolabore" | "comissao" | "reembolso";
+  rotulo: string;
+  previstoCents: number;
+  pagoCents: number;
+  conferido: boolean;
+  origem: string;
+  partes: { descricao: string; valorCents: number; grupo: string | null; cliente: string | null }[];
+};
+
+export type LancamentoExtrato = {
+  data: string;
+  valorCents: number;
+  descricao: string;
+  natureza: string;
+  casado: boolean;
+  pista: string | null;
+};
+
+export type ConciliacaoMes = {
+  mes: string;
+  mesDeCaixa: string;
+  fechada: boolean;
+  fechaEm: string;
+  previstoCents: number;
+  pagoCents: number;
+  /** O que falta, somado linha a linha — nunca `previsto − pago`. */
+  aReceberCents: number;
+  aMaisCents: number;
+  diferencaCents: number;
+  temDivergencia: boolean;
+  previstos: PrevistoConciliado[];
+  extrato: LancamentoExtrato[];
+  semContraparte: LancamentoExtrato[];
+};
+
 export type Recebiveis = {
+  conciliacao?: ConciliacaoMes[];
   totalCents: number;
   mesAtualCents: number;
   medianaRecorrenteCents: number;

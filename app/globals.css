@@ -27838,3 +27838,137 @@ details.fin-cartao-ressalvas > ul {
    primeiro, e quem quer a tela no papel acha logo abaixo. */
 .exportar-imprimir { border-color: var(--line); color: var(--ink); }
 .exportar-imprimir:hover { border-color: var(--purple); color: var(--purple-text); }
+
+/* ── Conciliação do mês (app do time) ──────────────────────────────────────
+   O primeiro mês de transição (set/2026) trouxe previsto E recebido ao mesmo
+   tempo. Onde os dois não batem, a pessoa precisa ver — e antes disso o app só
+   mostrava o que caiu, então uma falta de R$ 354,24 passava calada.
+   ------------------------------------------------------------------------- */
+.time-faixa-abre { cursor: pointer; position: relative; }
+.time-faixa-abre:hover { border-color: var(--purple); }
+.time-faixa-abre:focus-visible { outline: 2px solid var(--neon-purple); outline-offset: 2px; }
+.time-faixa-abrir {
+  display: block; font-style: normal; font-size: 10px; font-weight: 600;
+  letter-spacing: .03em; text-transform: uppercase; color: var(--purple-text); margin-top: 2px;
+}
+/* O selo é vermelho só quando falta dinheiro; "a mais" não é problema, é
+   informação — pintar os dois de alarme ensinaria a ignorar os dois. */
+.time-faixa-selo {
+  display: inline-block; margin-top: 5px;
+  padding: 2px 7px; border-radius: 999px;
+  background: var(--neon-pink-ink, #b3204a); color: #fff;
+  font-size: 10px; font-weight: 700; letter-spacing: .02em; white-space: nowrap;
+}
+.time-faixa-diverge { border-color: var(--neon-pink-ink, #b3204a); }
+
+.time-concil {
+  margin-top: 12px; padding: 14px; border-radius: 14px;
+  border: 1px solid var(--line); background: var(--card);
+}
+.time-concil-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.time-concil-topo h2 { margin: 0; font-size: 16px; }
+.time-concil-topo p { margin: 3px 0 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.time-concil-topo button {
+  flex: none; width: 28px; height: 28px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); cursor: pointer;
+}
+
+/* Placar de três números no topo: previsto, o que saiu, e a diferença. É a
+   resposta curta; as duas listas abaixo são a resposta longa. */
+.time-concil-placar {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  padding: 10px; margin-bottom: 14px; border-radius: 10px; background: var(--surface-2);
+}
+.time-concil-placar div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.time-concil-placar span { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.time-concil-placar strong { font-size: 14px; font-variant-numeric: tabular-nums; }
+
+.time-concil-titulo {
+  margin: 14px 0 7px; font-size: 12px; font-weight: 650;
+  text-transform: none; letter-spacing: 0; color: var(--ink);
+}
+.time-concil-titulo em { font-style: normal; font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 11px; }
+
+.time-concil-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.time-concil-lista li {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 8px 9px; border-radius: 9px; background: var(--surface-2);
+}
+.time-concil-marca {
+  flex: none; width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; margin-top: 1px;
+}
+/* Verde para o que fechou, rosa para o que precisa de resposta. O "?" do
+   pagamento sem contraparte não é erro — é pergunta em aberto. */
+.time-concil-ok .time-concil-marca { background: color-mix(in srgb, var(--green-ink, #0f7a55) 22%, transparent); color: var(--green-ink, #0f7a55); }
+.time-concil-pendente .time-concil-marca { background: color-mix(in srgb, var(--neon-pink-ink, #b3204a) 20%, transparent); color: var(--neon-pink-ink, #b3204a); }
+.time-concil-pendente { background: color-mix(in srgb, var(--neon-pink-ink, #b3204a) 7%, var(--surface-2)); }
+.time-concil-nome { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; }
+.time-concil-nome em {
+  display: block; font-style: normal; font-size: 10.5px; font-weight: 400;
+  color: var(--muted); margin-top: 1px; line-height: 1.35;
+}
+.time-concil-lista li strong { flex: none; font-size: 13px; font-variant-numeric: tabular-nums; }
+.time-concil-falta strong, .time-concil-falta span { color: var(--neon-pink-ink, #b3204a); }
+.time-concil-mais strong, .time-concil-mais span { color: var(--green-ink, #0f7a55); }
+.time-concil-vazio { margin: 0; padding: 10px; border-radius: 9px; background: var(--surface-2); color: var(--muted); font-size: 12px; }
+
+
+/* O aviso no Início: mesma informação, um toque antes. Quem abre o app não vai
+   à guia de recebíveis por hábito — a divergência tem de ir até ele. */
+.time-inicio-divergencia {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  margin-bottom: 12px; padding: 11px 13px; border-radius: 12px;
+  border: 1px solid var(--neon-pink-ink, #b3204a);
+  background: color-mix(in srgb, var(--neon-pink-ink, #b3204a) 10%, var(--card));
+  color: var(--ink); font-family: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.time-inicio-divergencia strong { display: block; font-size: 13.5px; }
+.time-inicio-divergencia span { display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+.time-inicio-divergencia-seta { margin-left: auto; flex: none; color: var(--muted); }
+
+/* Competência ainda sendo paga: âmbar, não vermelho. "Ainda não saiu" é fila,
+   não falta — e pintar de alarme ensinaria o time a ignorar o alarme. */
+.time-concil-espera { background: color-mix(in srgb, #b67818 8%, var(--surface-2)); }
+.time-concil-espera .time-concil-marca { background: color-mix(in srgb, #b67818 22%, transparent); color: #b67818; }
+
+/* "Ainda a receber" é âmbar: é fila, não erro. Vira vermelho só depois que a
+   janela de pagamento fecha e o valor de fato não veio. */
+.time-concil-espera-txt strong, .time-concil-espera-txt span { color: #b67818; }
+.time-faixa-selo-espera { background: #b67818; }
+
+/* Tabela compacta da conferência.
+   Quatro colunas em 390px: marca (18px), item (o que sobra), previsto e
+   recebido (~86px cada — "R$ 4.379,00" em 12,5px pede 85px, medido). */
+.time-concil-tab { width: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
+.time-concil-tab th, .time-concil-tab td { padding: 7px 3px; text-align: right; font-size: 12.5px; }
+.time-concil-tab col, .time-concil-tab thead th:first-child, .time-concil-tab tbody td:first-child { width: 20px; }
+.time-concil-tab thead th { font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+.time-concil-tab thead th:nth-child(3), .time-concil-tab thead th:nth-child(4),
+.time-concil-tab tbody td:nth-child(3), .time-concil-tab tbody td:nth-child(4),
+.time-concil-tab tfoot td:nth-child(3), .time-concil-tab tfoot td:nth-child(4) { width: 86px; }
+.time-concil-tab tbody th, .time-concil-tab tfoot th {
+  text-align: left; font-weight: 650; text-transform: none; letter-spacing: 0;
+}
+.time-concil-tab tbody th em, .time-concil-tab .detalhe th em {
+  display: block; font-style: normal; font-size: 10px; font-weight: 400;
+  color: var(--muted); margin-top: 1px; text-transform: none; letter-spacing: 0;
+}
+.time-concil-tab tbody tr { border-top: 1px solid var(--line); }
+.time-concil-tab tbody tr.abre { cursor: pointer; }
+.time-concil-tab tbody tr.abre:hover { background: var(--surface-2); }
+.time-concil-tab tfoot tr { border-top: 2px solid var(--line); }
+.time-concil-tab tfoot th, .time-concil-tab tfoot td { font-weight: 700; }
+.time-concil-tab-marca { text-align: center !important; font-weight: 700; font-size: 11px; }
+/* Verde fechou, vermelho faltou, âmbar ainda vem. A cor mora na marca e numa
+   faixa fina à esquerda — pintar a linha inteira deixava a tabela listrada e
+   ilegível. */
+.time-concil-tab tr.ok .time-concil-tab-marca { color: var(--green-ink, #0f7a55); }
+.time-concil-tab tr.falta .time-concil-tab-marca { color: var(--neon-pink-ink, #b3204a); }
+.time-concil-tab tr.espera .time-concil-tab-marca { color: #b67818; }
+.time-concil-tab tr.falta th, .time-concil-tab tr.falta td { background: color-mix(in srgb, var(--neon-pink-ink, #b3204a) 6%, transparent); }
+.time-concil-tab tr.espera th, .time-concil-tab tr.espera td { background: color-mix(in srgb, #b67818 6%, transparent); }
+.time-concil-tab tr.detalhe { border-top: 0; }
+.time-concil-tab tr.detalhe th { padding-left: 10px; font-weight: 500; font-size: 11.5px; color: var(--muted); }
+.time-concil-tab tr.detalhe td { font-size: 11.5px; color: var(--muted); }

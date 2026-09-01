@@ -4433,6 +4433,20 @@ function Inicio({ envios }: { envios: Envio[] }) {
   const nCompras = envios.filter((e) => e.origem === "custo" || e.origem === "compra").length;
 
   /*
+   * A DIVERGÊNCIA VEM ATÉ O INÍCIO — não espera a pessoa ir procurar.
+   *
+   * Quem abre o app cai aqui. A conciliação mora em Recebíveis, e ninguém abre
+   * Recebíveis por hábito: abre quando desconfia. O aviso existe para o caso em
+   * que a pessoa NÃO tem motivo para desconfiar — foi exatamente o que
+   * aconteceu em setembro/2026, quando faltou R$ 354,24 no pró-labore do
+   * Fernando e nada na tela dizia isso.
+   *
+   * Só o mês mais recente, e só quando diverge. Um aviso que aparece todo mês
+   * deixa de ser aviso.
+   */
+  const divergencia = (rec?.conciliacao ?? []).find((c) => c.temDivergencia) ?? null;
+
+  /*
    * O texto do atalho de Movimentações passa a carregar a contagem de
    * "aguardando", que antes era um cartão separado no Início. A informação
    * sobrevive; o cartão não — ela é um recorte da mesma lista, e cabe onde a
@@ -4447,6 +4461,21 @@ function Inicio({ envios }: { envios: Envio[] }) {
 
   return (
     <div className="time-tela-padrao time-inicio-guia">
+      {divergencia ? (
+        <Link href="/time/recebiveis" className="time-inicio-divergencia">
+          <div>
+            <strong>
+              Faltou receber {valor(divergencia.aReceberCents)}
+            </strong>
+            <span>
+              na competência de {mesNome(divergencia.mes)} — o previsto e o extrato não fecham. Toque para conferir.
+            </span>
+          </div>
+          <span className="time-inicio-divergencia-seta" aria-hidden>
+            ›
+          </span>
+        </Link>
+      ) : null}
       <section className="time-guia-bloco" aria-labelledby="guia-recebido">
         <div className="time-faixa time-faixa-inicio">
           <Link href="/time/recebiveis" className="time-faixa-item time-faixa-destaque" id="guia-recebido">

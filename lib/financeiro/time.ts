@@ -1644,6 +1644,97 @@ export async function salvarContaPagamento(
 // Recebíveis: o que a pessoa recebe da casa (0161)
 // ---------------------------------------------------------------------------
 
+/**
+ * A CONCILIAÇÃO DE UM MÊS — o previsto contra o que caiu na conta.
+ *
+ * Nasceu do primeiro mês de transição (setembro/2026): a casa passou a ter, ao
+ * mesmo tempo, um valor PREVISTO por cadastro e um valor TRANSFERIDO. Onde os
+ * dois não batem, alguém precisa saber — e hoje ninguém sabia, porque o app só
+ * mostrava o que caiu.
+ *
+ * O PREVISTO É RECALCULADO, NÃO CONGELADO. Não há tabela de foto mensal, e não
+ * criei uma: o cadastro já guarda `vigente_desde` exatamente para um mês
+ * passado resolver o valor que valia lá. Recalcular é estável sob uso normal —
+ * só muda se alguém alterar uma vigência retroativa, que é ato deliberado de
+ * quem mexeu. A alternativa custava uma migration em produção para resolver um
+ * problema que a vigência já resolve.
+ *
+ * A DIFERENÇA É VIVA, e é isso que atende ao pedido: se a empresa pagar depois
+ * o que faltou, o recebido sobe na próxima leitura e a divergência fecha
+ * sozinha; se a pessoa devolver um valor a mais, ela fecha do outro lado. Nada
+ * aqui é gravado — a conciliação é uma LEITURA, e por isso não tem como
+ * envelhecer errada.
+ */
+export type NaturezaConciliada = "salario" | "prolabore" | "comissao" | "reembolso";
+
+export type PrevistoConciliado = {
+  natureza: NaturezaConciliada;
+  rotulo: string;
+  previstoCents: number;
+  /** O que o EXTRATO casou com este previsto. Zero quando nada casou. */
+  pagoCents: number;
+  conferido: boolean;
+  /** De onde o previsto saiu, para a pessoa conferir sem perguntar. */
+  origem: string;
+  /** O detalhe do grupo, para abrir na tela. Comissão de obra e de consultoria
+   *  costumam sair por contas diferentes — sem o detalhe, o total não ajuda. */
+  partes: { descricao: string; valorCents: number; grupo: string | null; cliente: string | null }[];
+};
+
+export type LancamentoExtrato = {
+  data: string;
+  valorCents: number;
+  descricao: string;
+  /** A categoria do ledger, como está lá. Em setembro os dois Pix são 6.02. */
+  natureza: string;
+  /** Casou com algum previsto pelo valor exato? */
+  casado: boolean;
+  /**
+   * Quando não casou, o que ele provavelmente é.
+   *
+   * Existe por um caso real: o Fernando pagou R$ 10,00 de comissão em 31/08, e
+   * o ledger carimbou competência de AGOSTO — mas os R$ 10,00 declarados são da
+   * competência de SETEMBRO (4 itens). Sem esta pista a tela dizia "não
+   * corresponde a nenhum previsto", que é verdade na competência e mentira na
+   * vida real.
+   */
+  pista: string | null;
+};
+
+export type ConciliacaoMes = {
+  /** A competência: a folha de qual mês. É por ela que a conta é feita. */
+  mes: string;
+  /**
+   * O mês em que esse dinheiro CAI na conta — e o nome pelo qual a pessoa
+   * chama a tela. A folha de agosto é paga em setembro; quem olha o app diz
+   * "setembro", e a tela tem de dizer o mesmo. A competência aparece como
+   * explicação, não como título.
+   */
+  mesDeCaixa: string;
+  /**
+   * A janela de pagamento desta competência já fechou?
+   *
+   * Enquanto ela está aberta, "falta dinheiro" é mentira: a folha está sendo
+   * paga. Só competência fechada pode acusar divergência.
+   */
+  fechada: boolean;
+  /** Dia em que ela fecha, para a tela poder dizer "a partir de 06/09". */
+  fechaEm: string;
+  previstoCents: number;
+  /** A soma do EXTRATO. Não é rateio, não é modelo: é o que saiu da conta. */
+  pagoCents: number;
+  /** O que falta receber, somado LINHA A LINHA. Nunca `previsto − pago`. */
+  aReceberCents: number;
+  /** O que veio acima do previsto. Conversa separada do que falta. */
+  aMaisCents: number;
+  diferencaCents: number;
+  temDivergencia: boolean;
+  previstos: PrevistoConciliado[];
+  extrato: LancamentoExtrato[];
+  /** Pagamentos que não casaram com previsto nenhum. */
+  semContraparte: LancamentoExtrato[];
+};
+
 export type RecebivelLinha = {
   data: string;
   mes: string;
@@ -1730,7 +1821,22 @@ export type MeusRecebiveis = {
   porNatureza: { natureza: string; cents: number; n: number }[];
   porMes: MesRecebivel[];
   linhas: RecebivelLinha[];
+  /**
+   * Um por mês fechado ou em curso, do primeiro mês de transição para cá.
+   * Mais recente primeiro — é o que a tela abre por padrão.
+   */
+  conciliacao: ConciliacaoMes[];
 };
+
+/**
+ * A primeira COMPETÊNCIA em que a conciliação faz sentido.
+ *
+ * É competência, não mês de pagamento: agosto/2026 foi liquidada em 01/09/2026.
+ * Antes disso não havia previsto por cadastro para comparar — o pró-labore
+ * esperado do Fernando começa em 24/08/2026. Conciliar julho para trás
+ * produziria "divergência" em cima de previsão que não existia.
+ */
+export const MES_INICIAL_CONCILIACAO = "2026-08";
 
 type RecebivelComissaoItem = {
   descricao: string;
@@ -1766,6 +1872,41 @@ const RECORRENTE = new Set(["salario", "prolabore", "estagio"]);
  * Quem olha esse número está perguntando "com quanto eu conto no mês que vem",
  * e para essa pergunta a mediana responde melhor.
  */
+/**
+ * O valor que valia num mês, segundo o cadastro com vigência.
+ *
+ * A lista vem ordenada por `vigente_desde` crescente, então a última linha cuja
+ * vigência já começou é a que vale. É a MESMA regra que a projeção usa; mora
+ * aqui fora para as duas não divergirem no dia em que uma for ajustada.
+ */
+/** "R$ 164,00" — só para compor a frase de origem, não para a tela somar. */
+function brlSimples(cents: number): string {
+  return `R$ ${(cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function valorVigenteEm(historico: Record<string, unknown>[], mes: string): number {
+  let valor = 0;
+  for (const linha of historico) {
+    const desde = String(linha.desde ?? "");
+    if (desde && desde <= mes) valor = Number(linha.valor_cents ?? 0);
+  }
+  return valor;
+}
+
+/** "2026-09" → "2026-10". Anda a régua de meses da conciliação. */
+function proximoMes(mes: string): string {
+  const [ano, m] = mes.split("-").map(Number);
+  const d = new Date(ano, m, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** "2026-09" → "2026-08". O reembolso de um mês tem competência do anterior. */
+function mesAnterior(mes: string): string {
+  const [ano, m] = mes.split("-").map(Number);
+  const d = new Date(ano, m - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
   const [
     linhas,
@@ -1777,7 +1918,9 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
     baseHistorico,
     prolaboreHistorico,
     comissaoFutura,
-    comissaoItens
+    comissaoItens,
+    reembolsoCabecalhos,
+    pagoPorCompetencia
   ] = await Promise.all([
     query<Record<string, unknown>>(
       `SELECT data, to_char(mes, 'YYYY-MM') AS mes, valor_cents, natureza, categoria, conta, descricao
@@ -1946,6 +2089,43 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         WHERE c.person_id = $1
         ORDER BY c.competencia DESC, c.valor_cents DESC`,
       [sessao.personId]
+    ).catch(() => []),
+    /*
+     * O CABEÇALHO DO REEMBOLSO — o previsto do mês seguinte.
+     *
+     * `fin_time_remuneracao_mes_v` define, na própria view, que o reembolso
+     * recebido no mês M é o da competência M−1 (`reference_month + 1 mon`).
+     * Para a conciliação comparar laranja com laranja, o PREVISTO tem de sair
+     * da MESMA tabela: `fin_reimbursement`. É a de 193 itens, lida por 7 views
+     * — a outra, `fin_reembolso_item`, é a que o AGENTS.md avisa que não pode
+     * ser somada junto, porque 192 dos 194 pares são a mesma despesa contada
+     * duas vezes.
+     */
+    query<Record<string, unknown>>(
+      `SELECT to_char(reference_month, 'YYYY-MM') AS competencia, status, total_cents
+         FROM fin_reimbursement
+        WHERE person_id = $1
+        ORDER BY reference_month DESC`,
+      [sessao.personId]
+    ).catch(() => []),
+    /*
+     * O PAGO, POR COMPETÊNCIA — `fin_time_recebivel_competencia_v` (0186).
+     *
+     * A outra view (`fin_time_recebivel_v`) agrupa pelo mês em que o Pix saiu, e
+     * é o certo para "quanto caiu em setembro". Para conciliar é o errado: os
+     * R$ 4.379,00 e R$ 1.440,76 que saíram em 01/09/2026 liquidam a folha de
+     * AGOSTO — `competence_date` diz isso, com `competence_rule =
+     * 'folha_mes_referencia'`. Comparar contra o previsto de setembro acusou uma
+     * diferença de R$ 354,24 que não existia.
+     */
+    query<Record<string, unknown>>(
+      `SELECT to_char(competencia, 'YYYY-MM') AS competencia,
+              to_char(pago_em, 'YYYY-MM-DD') AS pago_em,
+              valor_cents, natureza, categoria_code, competence_rule, descricao
+         FROM fin_time_recebivel_competencia_v
+        WHERE person_id = $1
+        ORDER BY competencia DESC, pago_em`,
+      [sessao.personId]
     ).catch(() => [])
   ]);
 
@@ -2083,6 +2263,284 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
   return {
     totalCents: itens.reduce((s, i) => s + i.valorCents, 0),
     mesAtualCents: meses.get(mesCorrente)?.totalCents ?? 0,
+    conciliacao: (() => {
+      /*
+       * CONCILIAÇÃO POR COMPETÊNCIA, EM QUATRO CAMADAS.
+       *
+       * Terceira versão, e as duas anteriores erraram por motivos que ficam
+       * escritos aqui porque são fáceis de reintroduzir:
+       *
+       *  1ª  leu o pago de `fin_time_remuneracao_mes_v`, que MODELA a divisão
+       *      (subtrai o salário base do total para desenhar a banda que o
+       *      ledger não tem). Mostrou "Salário recebido R$ 1.621,00" para um
+       *      Pix que não existe.
+       *  2ª  leu o pago do extrato, certo, mas agrupado pela DATA DO PIX. Os
+       *      R$ 4.379,00 e R$ 1.440,76 de 01/09/2026 liquidam a folha de
+       *      AGOSTO, e ela os comparou com o previsto de setembro — acusando
+       *      R$ 354,24 de falta que não existiam.
+       *
+       * Agora:
+       *
+       *  CAMADA 1  o previsto e suas partes, do cadastro, resolvido no ÚLTIMO
+       *            DIA da competência. O pró-labore do Fernando mudou de
+       *            R$ 3.379,00 para R$ 4.379,00 em 29/08 — resolver no dia 1º
+       *            devolveria o valor velho, e a folha de agosto pagou o novo.
+       *  CAMADA 2  o extrato, agrupado por `competence_date` (0186).
+       *  CAMADA 3  o casamento, por VALOR EXATO. A categoria do ledger não
+       *            serve: o reembolso de R$ 1.440,76 saiu lançado em 6.02
+       *            (pró-labore). Valor exato acerta o que dá e admite o resto.
+       *  CAMADA 4  o que sobrou dos dois lados, dito com todas as letras.
+       *
+       * SÓ COMPETÊNCIA FECHADA É CONCILIADA. A que está em curso ainda não
+       * venceu — em 01/09/2026 a folha de setembro não foi paga porque não
+       * chegou a hora, e chamar isso de divergência gritaria "faltou dinheiro"
+       * para o time inteiro todo dia 1º.
+       */
+      type ParteComissao = { descricao: string; valorCents: number; grupo: string | null; cliente: string | null };
+      const comissaoPorComp = new Map<string, ParteComissao[]>();
+      for (const c of comissaoItens) {
+        const k = String(c.competencia);
+        const lista = comissaoPorComp.get(k) ?? [];
+        lista.push({
+          descricao: String(c.descricao ?? "comissão"),
+          valorCents: Number(c.valor_cents ?? 0),
+          grupo: (c.tipo_nome as string) ?? null,
+          cliente: (c.cliente as string) ?? null
+        });
+        comissaoPorComp.set(k, lista);
+      }
+      const totalComissaoPorComp = new Map<string, number>();
+      for (const [k, lista] of comissaoPorComp) {
+        totalComissaoPorComp.set(k, lista.reduce((t, i) => t + i.valorCents, 0));
+      }
+
+      const reembolsoPorComp = new Map<string, { totalCents: number; status: string }>();
+      for (const r of reembolsoCabecalhos) {
+        reembolsoPorComp.set(String(r.competencia), {
+          totalCents: Number(r.total_cents ?? 0),
+          status: String(r.status ?? "")
+        });
+      }
+
+      /*
+       * A PARCELA DE REEMBOLSO QUE VENCE NO MÊS.
+       *
+       * Uma de cada série ainda aberta, da view UNIFICADA — e "unificada" é a
+       * palavra que importa: ela já junta as séries da planilha com os itens
+       * aprovados pelo app. Para o Fernando são 9 séries somando R$ 1.440,76
+       * (7 da planilha = R$ 1.276,76, mais Gasolina R$ 120,00 e PagBank
+       * R$ 44,00, que são o reembolso aprovado de agosto). Bate ao centavo com
+       * o Pix de 01/09. A view NÃO-unificada traz só as 7 e daria R$ 1.276,76.
+       *
+       * É uma foto do estado de HOJE. Para a competência recém-fechada ela vale;
+       * para uma antiga vai derivando conforme as séries são quitadas. Enquanto
+       * a conciliação cobre um mês ou dois isso não morde — e reconstruir o
+       * passado exigiria uma tabela de foto mensal que a casa não tem.
+       */
+      const parcelaDoMesCents = saldo.reduce(
+        (t, r) => t + (Number(r.parcelas_restantes ?? 0) > 0 ? Number(r.valor_parcela_cents ?? 0) : 0),
+        0
+      );
+
+      const pagoPorComp = new Map<string, LancamentoExtrato[]>();
+      for (const l of pagoPorCompetencia) {
+        const k = String(l.competencia);
+        const lista = pagoPorComp.get(k) ?? [];
+        lista.push({
+          data: String(l.pago_em),
+          valorCents: Number(l.valor_cents ?? 0),
+          descricao: String(l.descricao ?? ""),
+          natureza: String(l.natureza ?? ""),
+          casado: false,
+          pista: null
+        });
+        pagoPorComp.set(k, lista);
+      }
+
+      // Da competência inicial até a ANTERIOR à corrente. A recém-virada entra
+      // na lista mesmo aberta — a tela mostra "folha em andamento" em vez de
+      // esconder, que é a informação que a pessoa quer no dia 1º.
+      const competencias: string[] = [];
+      for (let cursor = MES_INICIAL_CONCILIACAO; cursor < mesCorrente; cursor = proximoMes(cursor)) {
+        competencias.push(cursor);
+        if (competencias.length > 36) break;
+      }
+
+      /*
+       * QUANDO UMA COMPETÊNCIA PODE SER CONCILIADA.
+       *
+       * Não é "quando o mês virou". A folha não sai num dia só — medido na base
+       * em 01/09/2026:
+       *
+       *   competência 06  paga de 04/06 a 03/07
+       *   competência 07  paga em 01/08 (17 pessoas), 02/08 (11) e 03/08 (2)
+       *   competência 08  até agora só 01/09, com 10 das ~26 pessoas
+       *
+       * Ou seja: a rodada leva de dois a três dias úteis depois da virada. Uma
+       * conciliação que rodasse hoje diria "faltou dinheiro" para as 15 pessoas
+       * que ainda não foram pagas — quinze alarmes falsos, no dia em que o
+       * financeiro está justamente pagando. Um aviso que erra assim ensina o
+       * time a ignorar o aviso.
+       *
+       * O dia 6 dá folga sobre os três dias medidos, incluindo fim de semana.
+       */
+      const DIA_QUE_A_FOLHA_FECHA = 6;
+      const hojeConcil = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+      const diaDeHoje = hojeConcil.getDate();
+
+      const saida: ConciliacaoMes[] = [];
+      for (const mes of competencias) {
+        // A competência mais recente só fecha depois da janela de pagamento;
+        // as anteriores já fecharam há muito.
+        const ehAUltima = proximoMes(mes) === mesCorrente;
+        const fechada = !ehAUltima || diaDeHoje >= DIA_QUE_A_FOLHA_FECHA;
+        const fechaEm = `${String(DIA_QUE_A_FOLHA_FECHA).padStart(2, "0")}/${proximoMes(mes).slice(5)}`;
+        // Vigência resolvida no ÚLTIMO dia da competência — ver o comentário
+        // do bloco: o reajuste de 29/08 vale para a folha de agosto.
+        const fimDaCompetencia = `${mes}-31`;
+        const comissao = comissaoPorComp.get(mes) ?? [];
+        const reembolsoAprovado = reembolsoPorComp.get(mes);
+        // NÃO somar o cabeçalho aqui: `fin_reembolso_saldo_unificado_v` já
+        // inclui os itens aprovados vindos do app. Somar os dois contava os
+        // R$ 164,00 do Fernando duas vezes e inflava o previsto de agosto para
+        // R$ 1.604,76 — quando o que a folha pagou foi R$ 1.440,76, exato.
+        const reembolsoPrevisto = parcelaDoMesCents;
+
+        const previstos: PrevistoConciliado[] = [
+          {
+            natureza: "salario",
+            rotulo: "Salário",
+            previstoCents: valorVigenteEm(baseHistorico, fimDaCompetencia),
+            pagoCents: 0,
+            conferido: false,
+            origem: "base cadastrada, vigente no fim da competência",
+            partes: []
+          },
+          {
+            natureza: "prolabore",
+            rotulo: "Pró-labore",
+            previstoCents: valorVigenteEm(prolaboreHistorico, fimDaCompetencia),
+            pagoCents: 0,
+            conferido: false,
+            origem: "esperado, vigente no fim da competência",
+            partes: []
+          },
+          {
+            natureza: "comissao",
+            rotulo: "Comissão",
+            previstoCents: comissao.reduce((t, c) => t + c.valorCents, 0),
+            pagoCents: 0,
+            conferido: false,
+            origem: `declarada nesta competência`,
+            partes: comissao
+          },
+          {
+            natureza: "reembolso",
+            rotulo: "Reembolso",
+            previstoCents: reembolsoPrevisto,
+            pagoCents: 0,
+            conferido: false,
+            origem: reembolsoAprovado
+              ? `parcelas em aberto, incluindo ${brlSimples(reembolsoAprovado.totalCents)} aprovado no app`
+              : "parcelas em aberto",
+            partes: saldo
+              .filter((r) => Number(r.parcelas_restantes ?? 0) > 0)
+              .map((r) => ({
+                descricao: String(r.descricao ?? "reembolso"),
+                valorCents: Number(r.valor_parcela_cents ?? 0),
+                grupo: String(r.origem ?? "") === "app" ? "Aprovado no app" : "Parcelado",
+                cliente: null
+              }))
+          }
+        ];
+
+        const extrato = pagoPorComp.get(mes) ?? [];
+
+        // PRIMEIRA PASSADA — valor exato, um para um. Sem o "um para um", dois
+        // previstos de mesmo valor consumiriam o mesmo Pix.
+        for (const p of previstos) {
+          if (p.previstoCents <= 0) continue;
+          const casa = extrato.find((l) => !l.casado && l.valorCents === p.previstoCents);
+          if (!casa) continue;
+          casa.casado = true;
+          p.pagoCents = casa.valorCents;
+          p.conferido = true;
+        }
+
+        // A pista: um pagamento que não casa aqui pode bater com a comissão
+        // declarada de outra competência. É o caso de comissão paga adiantado.
+        for (const l of extrato) {
+          if (l.casado) continue;
+          for (const [comp, total] of totalComissaoPorComp) {
+            if (total === l.valorCents && comp !== mes) {
+              l.pista = `comissão declarada de ${comp}, paga fora da competência`;
+              break;
+            }
+          }
+        }
+
+        /*
+         * SEGUNDA PASSADA — mesma natureza, valor diferente.
+         *
+         * Caso real: a comissão de agosto era R$ 8,00 e saiu um pagamento de
+         * R$ 10,00 em 31/08. Valor exato não casa, e sem esta passada o
+         * pagamento ficava órfão E a comissão ficava "a receber" — as duas
+         * erradas ao mesmo tempo. O dono viu na hora: "a comissão foi paga e
+         * aqui está projetando que eu receba".
+         *
+         * A natureza do lançamento não pode sair só da categoria do ledger: o
+         * R$ 10,00 está em 6.02 (pró-labore). Quando a pista já o identificou
+         * como comissão, ela vale mais que a categoria — porque veio de bater
+         * com um valor declarado, não de uma classificação automática.
+         */
+        for (const p of previstos) {
+          if (p.previstoCents <= 0 || p.conferido) continue;
+          const casa = extrato.find(
+            (l) => !l.casado && (l.natureza === p.natureza || (p.natureza === "comissao" && l.pista !== null))
+          );
+          if (!casa) continue;
+          casa.casado = true;
+          p.pagoCents = casa.valorCents;
+          p.conferido = true;
+        }
+
+        const previstoCents = previstos.reduce((t, p) => t + p.previstoCents, 0);
+        const pagoCents = extrato.reduce((t, l) => t + l.valorCents, 0);
+
+        /*
+         * O QUE FALTA É A SOMA DO QUE FALTA — nunca `previsto − pago`.
+         *
+         * A diferença de totais mistura coisas que não se compensam. Em agosto
+         * ela dava R$ 1.619,00: R$ 1.621,00 de salário mais R$ 8,00 de comissão,
+         * MENOS um pagamento de R$ 10,00 que a tela não sabia explicar. Um
+         * pagamento órfão abatia uma dívida que não era a dele, e o número não
+         * correspondia a nada que existisse no mundo.
+         *
+         * Somando linha a linha, o que falta é o que falta.
+         */
+        const aReceberCents = previstos.reduce((t, p) => t + Math.max(0, p.previstoCents - p.pagoCents), 0);
+        const aMaisCents = previstos.reduce((t, p) => t + Math.max(0, p.pagoCents - p.previstoCents), 0);
+
+        saida.push({
+          mes,
+          mesDeCaixa: proximoMes(mes),
+          fechada,
+          fechaEm,
+          previstoCents,
+          pagoCents,
+          aReceberCents,
+          aMaisCents,
+          diferencaCents: pagoCents - previstoCents,
+          // Competência aberta NUNCA diverge: o dinheiro ainda está saindo.
+          temDivergencia: fechada && (aReceberCents > 0 || aMaisCents > 0),
+          previstos,
+          extrato,
+          semContraparte: extrato.filter((l) => !l.casado)
+        });
+      }
+
+      return saida.reverse();
+    })(),
     medianaRecorrenteCents,
     salarioBase: base[0]
       ? {

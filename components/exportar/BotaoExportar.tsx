@@ -144,7 +144,12 @@ export function BotaoExportar() {
             className="exportar-tudo exportar-imprimir"
             onClick={() =>
               trabalhar("a impressão da página", async () => {
-                await imprimirPagina({ titulo: nomeDaTela(), quando: hojeEmTexto() });
+                // A impressão abre uma ABA e o diálogo é do navegador. Quando
+                // ela não abre — pop-up bloqueado, host sem serviço de
+                // impressão — o retorno diz o que a pessoa faz a seguir, em vez
+                // de o painel fechar como se tivesse dado certo.
+                const r = await imprimirPagina({ titulo: nomeDaTela(), quando: hojeEmTexto() });
+                if (!r.ok) throw new Error(r.aviso ?? "não consegui abrir a impressão");
               })
             }
           >

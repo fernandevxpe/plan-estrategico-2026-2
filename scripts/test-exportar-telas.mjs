@@ -156,13 +156,16 @@ try {
         try { bytesPdf = (await pdfDaPagina(alvos)).length; }
         catch (e) { erroPdf = String(e && e.message || e); }
 
-        // A impressão monta um documento isolado; aqui ele é montado e
+        // A impressao monta um documento isolado; aqui ele e montado e
         // inspecionado SEM chamar print(), que bloquearia o headless.
         let impressao = null, erroImpressao = null;
         try {
-          await imprimirPagina({ titulo: nomeDaTela(), quando: hojeEmTexto(), naoImprimir: true });
-          const quadros = document.querySelectorAll("iframe[title='documento para impressão']");
-          const doc = quadros[quadros.length - 1]?.contentDocument;
+          // O construtor devolve TEXTO agora, entao o teste nao precisa de aba
+          // nem de dialogo: DOMParser le o documento e responde as mesmas
+          // perguntas. Foi essa mudanca que tirou o print() de dentro do
+          // processo da aplicacao.
+          const html = montarHtmlDeImpressao({ titulo: nomeDaTela(), quando: hojeEmTexto() });
+          const doc = new DOMParser().parseFromString(html, "text/html");
           impressao = {
             nos: doc.getElementsByTagName("*").length,
             folhas: doc.querySelectorAll("link[rel='stylesheet'], style").length,
@@ -175,9 +178,11 @@ try {
             // Só o que foi removido de propósito (menu, topo, flutuantes) pode
             // faltar. Uma queda grande aqui significa clone vazio passando por
             // "montou sem erro".
-            nosNaTela: (document.querySelector("#conteudo") ?? document.querySelector("main") ?? document.body).getElementsByTagName("*").length
+            nosNaTela: (document.querySelector("#conteudo") ?? document.querySelector("main") ?? document.body).getElementsByTagName("*").length,
+            // O papel não pode levar script nenhum.
+            scripts: doc.querySelectorAll("script").length,
+            temBase: !!doc.querySelector("base[href]")
           };
-          for (const q of quadros) q.remove();
         } catch (e) { erroImpressao = String(e && e.message || e); }
         return JSON.stringify({
           tela: nomeDaTela(),
@@ -212,6 +217,8 @@ try {
       conferir("tem cabeçalho com nome e data", i.temCabecalho === true);
       conferir("não sobrou menu, topo nem botão flutuante", i.sobrouMenu === 0, `${i.sobrouMenu} sobrou(ram)`);
       conferir("nenhum <details> ficou fechado escondendo dado", i.detalhesFechados === 0, `${i.detalhesFechados} fechado(s)`);
+      conferir("nenhum <script> foi para o papel", i.scripts === 0, `${i.scripts}`);
+      conferir("tem <base> para os href relativos resolverem", i.temBase === true);
       conferir("as tabelas da tela foram junto", i.tabelas >= r.tabelas, `${i.tabelas} no papel, ${r.tabelas} na tela`);
       const guardado = i.nosNaTela > 0 ? i.nos / i.nosNaTela : 0;
       conferir(

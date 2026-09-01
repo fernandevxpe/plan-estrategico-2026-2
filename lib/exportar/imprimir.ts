@@ -1,27 +1,32 @@
 /**
  * IMPRIMIR A PÁGINA — o PDF do navegador, com a cara da tela.
  *
- * É a outra metade do que a exportação precisa oferecer. O PDF montado a
- * partir do dado (`pdf.ts`) ganha em tabela: pagina, repete cabeçalho, alinha
- * dinheiro. Mas ele redesenha a tela num formato só dele. Quando o que a pessoa
- * quer é a TELA — os cartões, os KPIs, a ordem visual, o gráfico onde ele está —
- * quem faz isso bem é o próprio navegador.
+ * É a outra metade do que a exportação oferece. O PDF montado do dado
+ * (`pdf.ts`) ganha em tabela: pagina, repete cabeçalho, alinha dinheiro. Mas
+ * redesenha a tela num formato só dele. Quando o que a pessoa quer é a TELA —
+ * os cartões, os KPIs, a ordem visual — quem faz isso bem é o navegador.
  *
- * POR QUE NUM IFRAME, E NÃO `window.print()` DIRETO
+ * EM ABA SEPARADA, E POR QUE MUDOU
  *
- * Porque `window.print()` foi exatamente o que travava esta casa. Medido em
- * 01/09/2026 com o Chrome headless sobre o app local, o reflow de impressão é
- * barato — 0ms em `/financeiro/custos-empresa`, 115ms em `/financeiro/caixa` —
- * então a explicação que eu tinha escrito antes ("reflow da árvore inteira num
- * quadro só") NÃO se sustenta nesses volumes — a tabela com os números está em
- * `components/financeiro/FinCustosEmpresa.tsx`, sobre `exportarPdf`. O que sobra é o que a medição não
- * alcança: a pré-visualização do Chromium sobre a árvore VIVA, com React,
- * observadores de resize dos gráficos e elementos fixos ainda montados.
+ * A primeira versão montava o documento num iframe oculto e chamava
+ * `print()` nele. Isso travou o Cursor num teste local em 01/09/2026 — a
+ * janela inteira fechou.
  *
- * O iframe tira todos esses da conta. O documento impresso é um clone estático:
- * sem React, sem `ResponsiveContainer` remedindo, sem menu, sem botão
- * flutuante. E o documento da aplicação nunca entra em layout de impressão —
- * então, trave o que travar lá dentro, a tela por trás continua de pé.
+ * Medi o que ia para o papel antes de culpar o tamanho, e o tamanho está
+ * absolvido: em `/financeiro/pessoas`, o documento sai com 3.370 nós e 240 KB,
+ * montado em 40ms; em `/financeiro/caixa`, 649 nós e 91 KB em 18ms. Nenhum
+ * `<script>` entra junto — o payload RSC do Next (166 KB dos 190 KB da página)
+ * mora FORA de `#conteudo`, então o clone nunca o carregou.
+ *
+ * Sobra a chamada `print()`. Num iframe, ela roda no MESMO processo de
+ * renderização da aplicação: se o motor de impressão do host morre — e num
+ * webview de Electron, que é o que o Cursor embute, ele morre — leva a tela
+ * junto. Uma aba nova é outro contexto de navegação: o pior caso passa a ser
+ * perder a aba do documento, nunca a tela onde a pessoa estava trabalhando.
+ *
+ * E se `print()` falhar mesmo assim, a aba continua aberta com a página pronta
+ * para imprimir. A pessoa dá Cmd+P e resolve. Não existe caminho em que ela
+ * fique sem saída.
  */
 
 const ATRIBUTO_TEMA = "data-theme";
@@ -92,98 +97,115 @@ const CSS_DO_PAPEL = `
 export type OpcoesImpressao = {
   titulo: string;
   quando: string;
-  /** Só para teste: monta o documento e devolve o iframe sem chamar imprimir. */
-  naoImprimir?: boolean;
 };
 
+function escaparHtml(t: string): string {
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 /**
- * Monta o documento de impressão num iframe oculto e devolve o iframe.
+ * O documento de impressão, como texto.
  *
- * Separado de `imprimirPagina` porque `print()` bloqueia e não tem retorno —
- * a montagem, que é a parte que pode errar, fica conferível sozinha.
+ * Devolver string em vez de mexer num DOM vivo é o que torna isto conferível:
+ * `scripts/test-exportar-telas.mjs` lê o resultado com `DOMParser`, sem
+ * precisar de aba, de iframe nem de diálogo aberto.
  */
-export function montarDocumentoDeImpressao(opcoes: OpcoesImpressao): HTMLIFrameElement {
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("aria-hidden", "true");
-  iframe.setAttribute("title", "documento para impressão");
-  // Fora da tela, mas com tamanho: um iframe de 0x0 não calcula layout, e o
-  // gráfico sairia com largura zero.
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:1200px;height:900px;opacity:0;border:0;pointer-events:none;z-index:-1;";
-  document.body.appendChild(iframe);
-
-  const doc = iframe.contentDocument;
-  if (!doc) return iframe;
-
-  doc.open();
-  doc.write("<!doctype html><html><head><meta charset='utf-8'></head><body></body></html>");
-  doc.close();
-
-  // Tema claro no papel, sempre. O escuro imprime cartão preto e gasta tinta
-  // para devolver um documento que ninguém consegue ler numa cópia.
-  doc.documentElement.setAttribute(ATRIBUTO_TEMA, "claro");
-  doc.documentElement.lang = document.documentElement.lang || "pt-BR";
-  // As variáveis de fonte moram na classe do <html> (next/font). Sem elas o
-  // clone imprime na fonte padrão do sistema, com outra métrica.
-  doc.documentElement.className = document.documentElement.className;
-
-  // O CSS da aplicação, como ele estiver: <link> em produção, <style> em dev.
-  for (const folha of Array.from(document.querySelectorAll("link[rel='stylesheet'], style"))) {
-    doc.head.appendChild(folha.cloneNode(true));
-  }
-  const doPapel = doc.createElement("style");
-  doPapel.textContent = CSS_DO_PAPEL;
-  doc.head.appendChild(doPapel);
-
+export function montarHtmlDeImpressao(opcoes: OpcoesImpressao): string {
   const clone = raizDoConteudo().cloneNode(true) as HTMLElement;
   for (const lixo of Array.from(clone.querySelectorAll(FORA_DO_PAPEL))) lixo.remove();
+  // `<script>` não tem o que fazer no papel. Hoje o clone não pega nenhum — o
+  // payload do Next mora fora de `#conteudo` —, mas isso é detalhe de como o
+  // framework monta a página, e não uma promessa dele.
+  for (const script of Array.from(clone.querySelectorAll("script"))) script.remove();
   // `<details>` fechado esconde conteúdo que existe. No papel não há clique.
   for (const bloco of Array.from(clone.querySelectorAll("details"))) bloco.setAttribute("open", "");
 
-  doc.body.insertAdjacentHTML("afterbegin", cabecalhoImpresso(opcoes.titulo, opcoes.quando));
-  doc.body.appendChild(clone);
+  const estilos = Array.from(document.querySelectorAll("link[rel='stylesheet'], style"))
+    .map((el) => el.outerHTML)
+    .join("\n");
 
-  return iframe;
+  // As variáveis de fonte moram na classe do <html> (next/font). Sem elas o
+  // documento imprime na fonte do sistema, com outra métrica.
+  const classeRaiz = escaparHtml(document.documentElement.className);
+  const idioma = escaparHtml(document.documentElement.lang || "pt-BR");
+
+  return `<!doctype html>
+<html lang="${idioma}" data-theme="claro" class="${classeRaiz}">
+<head>
+<meta charset="utf-8">
+<!-- Sem base, a aba nova e about:blank e nao tem URL de referencia: todo
+     href relativo de folha de estilo e de imagem quebraria em silencio. -->
+<base href="${escaparHtml(location.origin)}/">
+<title>${escaparHtml(opcoes.titulo)}</title>
+${estilos}
+<style>${CSS_DO_PAPEL}</style>
+</head>
+<body>
+${cabecalhoImpresso(opcoes.titulo, opcoes.quando)}
+${clone.outerHTML}
+</body>
+</html>`;
 }
 
-/** Espera as folhas de estilo do clone antes de mandar para o papel. */
-async function esperarEstilos(iframe: HTMLIFrameElement, tetoMs = 4000): Promise<void> {
-  const doc = iframe.contentDocument;
-  if (!doc) return;
-  const inicio = performance.now();
+/** Espera as folhas de estilo da aba nova antes de mandar para o papel. */
+async function esperarEstilos(doc: Document, tetoMs = 6000): Promise<void> {
+  const inicio = Date.now();
   const links = Array.from(doc.querySelectorAll<HTMLLinkElement>("link[rel='stylesheet']"));
-  while (performance.now() - inicio < tetoMs) {
-    // `sheet` só fica não-nulo quando a folha terminou de carregar. Imprimir
-    // antes disso produz uma página sem estilo nenhum.
+  while (Date.now() - inicio < tetoMs) {
+    // `sheet` só deixa de ser null quando a folha terminou de carregar.
+    // Imprimir antes disso produz uma página sem estilo nenhum.
     if (links.every((l) => l.sheet !== null)) break;
     await new Promise((r) => setTimeout(r, 60));
   }
-  if (doc.fonts?.ready) await Promise.race([doc.fonts.ready, new Promise((r) => setTimeout(r, 1500))]);
-  await new Promise((r) => requestAnimationFrame(() => r(null)));
+  if (doc.fonts?.ready) await Promise.race([doc.fonts.ready, new Promise((r) => setTimeout(r, 2000))]);
+  await new Promise((r) => setTimeout(r, 120));
 }
 
+/** O que a aba mostra se o diálogo não abrir sozinho. */
+const AVISO_MANUAL = `
+  <div id="xpe-manual" style="position:fixed;top:0;left:0;right:0;z-index:999999;
+       background:#111;color:#fff;font:600 13px/1.5 system-ui,sans-serif;padding:10px 14px;text-align:center">
+    Se o diálogo de impressão não abrir, use Cmd+P (ou Ctrl+P) para salvar como PDF.
+  </div>
+  <style>@media print { #xpe-manual { display: none !important; } }</style>`;
+
+export type ResultadoImpressao = { ok: boolean; aviso?: string };
+
 /**
- * Abre o diálogo de impressão do navegador sobre uma cópia da tela.
+ * Abre o documento numa aba nova e pede a impressão.
  *
- * Quem escolhe "Salvar como PDF" ali recebe a página com a cara dela — que é
- * o que o PDF montado do dado não entrega, e vice-versa. As duas saídas
- * existem porque respondem a perguntas diferentes.
+ * Precisa ser chamada DENTRO do clique: `window.open` fora do gesto do usuário
+ * é bloqueada por padrão em todo navegador.
  */
-export async function imprimirPagina(opcoes: OpcoesImpressao): Promise<void> {
-  const iframe = montarDocumentoDeImpressao(opcoes);
+export async function imprimirPagina(opcoes: OpcoesImpressao): Promise<ResultadoImpressao> {
+  const html = montarHtmlDeImpressao(opcoes);
+
+  const aba = window.open("", "_blank");
+  if (!aba) {
+    return { ok: false, aviso: "o navegador bloqueou a aba de impressão — libere o pop-up para este site e tente de novo" };
+  }
+
   try {
-    await esperarEstilos(iframe);
-    if (opcoes.naoImprimir) return;
-    const janela = iframe.contentWindow;
-    if (!janela) throw new Error("não consegui montar o documento de impressão");
-    janela.focus();
-    janela.print();
-  } finally {
-    if (!opcoes.naoImprimir) {
-      // O iframe some DEPOIS do diálogo. Removê-lo na hora cancela a impressão
-      // no Safari, que lê o documento de forma assíncrona.
-      const remover = () => iframe.remove();
-      iframe.contentWindow?.addEventListener("afterprint", remover, { once: true });
-      setTimeout(remover, 60_000);
-    }
+    aba.document.open();
+    aba.document.write(html);
+    aba.document.close();
+  } catch {
+    aba.close();
+    return { ok: false, aviso: "não consegui montar o documento de impressão" };
+  }
+
+  await esperarEstilos(aba.document);
+  aba.document.body.insertAdjacentHTML("afterbegin", AVISO_MANUAL);
+
+  try {
+    aba.focus();
+    aba.print();
+    return { ok: true };
+  } catch (erro) {
+    // A aba FICA ABERTA de propósito: mesmo sem diálogo, a pessoa tem o
+    // documento pronto e resolve com Cmd+P. Fechar aqui seria tirar a única
+    // saída que sobrou.
+    console.error("imprimir:", erro);
+    return { ok: false, aviso: "abri o documento numa aba nova — use Cmd+P por lá para salvar em PDF" };
   }
 }

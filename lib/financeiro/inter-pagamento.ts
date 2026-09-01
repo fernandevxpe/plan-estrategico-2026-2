@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { request as httpsRequest } from "node:https";
 import { resolve } from "node:path";
@@ -438,6 +439,37 @@ function reais(valorCents: number): string {
  * palpite (ver constantes); o registro no banco não é, e é ele que garante que
  * reenviar a mesma ordem não crie uma segunda.
  */
+/**
+ * A chave de idempotência, no formato que o Inter exige — e DETERMINÍSTICA.
+ *
+ * Medido no primeiro POST aceito, em 31/08/2026. Mandamos o código da ordem
+ * (`PG-2026-0021`) e o banco respondeu:
+ *
+ *   violacoes: [{ propriedade: "realizarPagamentoPix.xIdIdempotente",
+ *                 valor: "PG-2026-0021",
+ *                 razao: "O valor deve seguir o padrão
+ *                         ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }]
+ *
+ * Duas coisas ficaram provadas ali: o header `x-id-idempotente` é o nome certo
+ * (o banco o chama `xIdIdempotente`), e o valor tem de ter forma de UUID.
+ *
+ * DERIVADA DO CÓDIGO, e não sorteada, porque é isso que idempotência significa:
+ * reenviar a MESMA ordem tem de mandar a MESMA chave, senão o banco a trata
+ * como pagamento novo e paga duas vezes. Um `randomUUID()` a cada tentativa
+ * transformaria a proteção no seu contrário — e reenviar é justamente o que se
+ * faz quando a rede cai sem resposta, que é quando não se sabe se o primeiro
+ * chegou.
+ *
+ * sha256 do código, cortado em 8-4-4-4-12. Não é UUID de verdade (não carrega
+ * versão nem variante nos bits reservados), e o Inter não pede: ele valida a
+ * FORMA, com a regex acima. Colisão entre dois códigos exigiria colisão de
+ * sha256 nos primeiros 128 bits.
+ */
+export function idempotenciaDe(codigo: string): string {
+  const h = createHash("sha256").update(codigo).digest("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}
+
 export async function incluirPagamentoPix(ordem: OrdemPix, idempotencia: string): Promise<RespostaPix> {
   exigirHabilitado();
 

@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type pg from "pg";
 
 import { query, queryOne, transaction } from "./db";
-import { incluirPagamentoPix, pagamentoInterHabilitado } from "./inter-pagamento";
+import { idempotenciaDe, incluirPagamentoPix, pagamentoInterHabilitado } from "./inter-pagamento";
 
 /**
  * Programar pagamento: gravar a ORDEM e, opcionalmente, entregá-la ao banco
@@ -537,16 +537,26 @@ export async function enviarOrdemAoInter(
       dataPagamento: ordem.scheduled_for ?? ordem.due_date,
       descricao: ordem.description
     },
-    // Chave idempotente = `code` da ordem (PG-2026-0001). Estável, única por
-    // ordem e legível no extrato do banco quando alguém for conferir.
-    ordem.code
+    /*
+     * O `code` da ordem NÃO serve como chave idempotente — o Inter exige forma
+     * de UUID. Medido em 31/08/2026:
+     *
+     *   violacoes: [{ propriedade: "realizarPagamentoPix.xIdIdempotente",
+     *                 valor: "PG-2026-0021",
+     *                 razao: "O valor deve seguir o padrão ^[0-9a-f]{8}-..." }]
+     *
+     * `idempotenciaDe` deriva o UUID do próprio código, por sha256. Derivar em
+     * vez de sortear é o que preserva a garantia: reenviar a mesma ordem manda a
+     * mesma chave, e o banco reconhece em vez de pagar de novo.
+     */
+    idempotenciaDe(ordem.code)
   );
 
   const linha =
     `[${new Date().toISOString()}] enviado ao Inter por ${actor} — ` +
     `codigoSolicitacao=${resposta.codigoSolicitacao ?? "(não informado)"}, ` +
     `tipoRetorno=${resposta.tipoRetorno ?? "(não informado)"}, ` +
-    `httpStatus=${resposta.httpStatus}, idempotencia=${ordem.code}. ` +
+    `httpStatus=${resposta.httpStatus}, idempotencia=${idempotenciaDe(ordem.code)}. ` +
     `Aguardando autorização humana no aplicativo do banco — nada aqui aprova.`;
 
   const marcadores = ["inter-enviado"];
@@ -587,7 +597,7 @@ export async function enviarOrdemAoInter(
         codigo_solicitacao: resposta.codigoSolicitacao,
         tipo_retorno: resposta.tipoRetorno,
         http_status: resposta.httpStatus,
-        idempotencia: ordem.code
+        idempotencia: idempotenciaDe(ordem.code)
       }),
       randomUUID(),
       actor

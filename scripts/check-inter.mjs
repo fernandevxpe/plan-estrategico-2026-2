@@ -173,9 +173,11 @@ try {
     client_id: process.env[VAR_ID],
     client_secret: process.env[VAR_SECRET],
     grant_type: 'client_credentials',
-    // A de pagamento NÃO tem extrato.read — pedi-lo ali daria um ✗ que assusta
-    // sem significar nada. O controle de cada integração é o escopo dela.
-    scope: PAGAMENTO ? 'pix.write' : 'extrato.read'
+    // O controle de cada integração é o escopo DELA. Pedir extrato.read na de
+    // pagamento — ou pix.write, como esta linha fazia — dá um ✗ que assusta sem
+    // significar nada: em 31/08/2026 a integração final ficou só com
+    // pagamento-pix.write, e o controle antigo acusou falha numa credencial boa.
+    scope: PAGAMENTO ? 'pagamento-pix.write' : 'extrato.read'
   }).toString();
 
   const res = await pedir({

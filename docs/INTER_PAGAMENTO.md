@@ -91,7 +91,28 @@ node scripts/check-inter.mjs --escopos
 
 Ele pede um token por escopo e mostra qual o banco aceita. **Não chama rota de pagamento nenhuma** — pedir token não move dinheiro. Escopo não contratado volta `401` com *"No registered scope value for this client has been requested"*.
 
-O nome do escopo que o código usa é `pagamento-pix.write`, e ele é **palpite não verificado** — o Inter não publica OpenAPI. Se a sonda recusar, o nome certo é o que o portal mostrou ao criar a integração; troque em `lib/financeiro/inter-pagamento.ts`, no bloco de constantes do topo (endpoint, escopo, header e corpo estão todos lá, de propósito, para a correção ser de uma linha).
+### Medido em 31/08/2026 — e os dois palpites estavam errados
+
+A permissão **"Receber e enviar pagamentos via Pix"** concede:
+
+```
+200  pix.write             ACEITO   ← é este
+200  cob.write             ACEITO   (o lado de receber, que não usamos)
+401  pagamento-pix.write   não contratado
+401  pagamento.write       não contratado
+```
+
+E o GET de desempate achou a rota certa:
+
+```
+401  GET /banking/v2/pix              token recusado
+401  GET /pix/v2/pix                  token recusado
+405  GET /banking/v2/pagamento/pix    ← ROTA EXISTE e o token é aceito
+```
+
+`405` é "método não permitido": a rota existe e o token serve, ela só espera POST. É a prova mais forte possível sem criar um pagamento.
+
+**Os dois valores já estão corrigidos no código** (`CAMINHO_PIX = /banking/v2/pagamento/pix`, `ESCOPO_PIX_ESCRITA = pix.write`). O que continua não verificado é o **corpo** da requisição e o nome do header de idempotência — porque testá-los exige um POST, e POST cria pagamento. O primeiro envio real é que vai dizer.
 
 Depois:
 

@@ -72,9 +72,10 @@ import { resolve } from "node:path";
  * Tudo o que a casa sabe sobre a API veio de bibliotecas open-source e da
  * documentação de ERPs.
  *
- * Some-se a isso o fato decisivo: a credencial que a XPE tem hoje é
- * `extrato.read` e SÓ LEITURA. Nenhuma linha abaixo pôde ser exercitada contra
- * a API real. Nem uma.
+ * Isso valia inteiro até 31/08/2026, quando a segunda integração foi criada.
+ * ROTA e ESCOPO deixaram de ser palpite e passaram a ser medidos (ver abaixo).
+ * O que continua NÃO VERIFICADO é o CORPO da requisição e o nome do header de
+ * idempotência: nenhum POST foi feito ainda, porque POST cria pagamento.
  *
  * Por isso endpoint, escopo, nome de header e forma do corpo estão concentrados
  * AQUI, e não espalhados pelas funções: a primeira chamada real quase
@@ -83,13 +84,31 @@ import { resolve } from "node:path";
  *
  *   HOST_INTER          VERIFICADO — o sync de extrato usa este host todo dia.
  *   CAMINHO_TOKEN       VERIFICADO — mesmo endpoint do cliente de leitura.
- *   CAMINHO_PIX         PALPITE. Vem do padrão /banking/v2/* dos endpoints de
- *                       leitura que funcionam. Pode ser /banking/v2/pix, pode
- *                       ser /pix/v2/... (o Inter tem família "Pix" separada da
- *                       "Banking"), pode exigir sufixo.
- *   ESCOPO_PIX_ESCRITA  PALPITE. Segue a convenção `<recurso>.<verbo>` do
- *                       `extrato.read`. O nome que o portal mostra ao criar a
- *                       integração é a fonte da verdade.
+ *   CAMINHO_PIX         VERIFICADO em 31/08/2026, e os dois palpites anteriores
+ *                       estavam errados. `node scripts/check-inter.mjs
+ *                       --escopos --pagamento` fez um GET em três candidatos,
+ *                       com o token real:
+ *
+ *                         401  GET /banking/v2/pix            token recusado
+ *                         401  GET /pix/v2/pix                token recusado
+ *                         405  GET /banking/v2/pagamento/pix  ← esta
+ *
+ *                       405 é "método não permitido": a rota EXISTE e o token
+ *                       É ACEITO — ela só não responde a GET, porque espera
+ *                       POST. É a prova mais forte que se consegue sem criar
+ *                       um pagamento.
+ *   ESCOPO_PIX_ESCRITA  VERIFICADO em 31/08/2026. A permissão marcada no
+ *                       Internet Banking foi "Receber e enviar pagamentos via
+ *                       Pix", e a sonda mostrou o que ela concede:
+ *
+ *                         200  pix.write             ACEITO   ← este
+ *                         200  cob.write             ACEITO   (o lado de receber)
+ *                         401  pagamento-pix.write   não contratado
+ *                         401  pagamento.write       não contratado
+ *
+ *                       `pagamento-pix.write` era o palpite anterior, e vinha
+ *                       da família errada: a permissão é da família Pix, não da
+ *                       família Pagamento.
  *   HEADER_IDEMPOTENCIA PALPITE. Nenhuma fonte consultada nomeia o header de
  *                       idempotência do Inter. Mandar um header que o banco
  *                       ignora é inofensivo; ACREDITAR que ele protege sem
@@ -101,8 +120,8 @@ import { resolve } from "node:path";
  */
 const HOST_INTER = "cdpj.partners.bancointer.com.br";
 const CAMINHO_TOKEN = "/oauth/v2/token";
-const CAMINHO_PIX = "/banking/v2/pix";
-const ESCOPO_PIX_ESCRITA = "pagamento-pix.write";
+const CAMINHO_PIX = "/banking/v2/pagamento/pix";
+const ESCOPO_PIX_ESCRITA = "pix.write";
 const HEADER_IDEMPOTENCIA = "x-id-idempotente";
 const HEADER_CONTA = "x-conta-corrente";
 

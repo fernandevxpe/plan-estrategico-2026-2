@@ -266,6 +266,26 @@ if (ESCOPOS) {
   const espera = (ms) => new Promise((r) => setTimeout(r, ms));
   let algumAceito = false;
 
+  const pedirToken = async (escopo) => {
+    const corpo = new URLSearchParams({
+      client_id: process.env[VAR_ID],
+      client_secret: process.env[VAR_SECRET],
+      grant_type: 'client_credentials',
+      scope: escopo
+    }).toString();
+    const r = await pedir({
+      path: '/oauth/v2/token',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(corpo)
+      },
+      body: corpo
+    });
+    if (r.status !== 200) return { status: r.status, token: null };
+    return { status: 200, token: JSON.parse(r.body).access_token };
+  };
+
   for (const escopo of ESCOPOS_DE_PAGAMENTO) {
     const corpo = new URLSearchParams({
       client_id: process.env[VAR_ID],
@@ -291,6 +311,57 @@ if (ESCOPOS) {
       console.log(`  ---  ${escopo.padEnd(24)} falhou na conexão: ${e.message}`);
     }
     await espera(20_000);
+  }
+
+  /*
+   * A ROTA ACEITA ESTE TOKEN? — e por que um GET responde isso com segurança.
+   *
+   * Medido em 31/08/2026, na integração criada com a permissão "Receber e
+   * enviar pagamentos via Pix": `pix.write` e `cob.write` ACEITOS,
+   * `pagamento-pix.write` e `pagamento.write` recusados.
+   *
+   * Isso é ambíguo. `pix.write` e `cob.write` são os escopos da API Pix (padrão
+   * BACEN), onde `pix.write` costuma significar DEVOLUÇÃO de Pix recebido — não
+   * envio de pagamento. Pode ser que o Inter reuse o escopo para as duas
+   * coisas, ou que enviar exija a permissão "Pagar contas, fornecedores e
+   * despesas", que não foi marcada.
+   *
+   * O GET desempata sem risco, pelo mesmo raciocínio que
+   * `sync-cartao-inter.mjs --provar-api` usou: o roteador do Inter responde 404
+   * ANTES de olhar o token, então rota inexistente e rota sem permissão se
+   * distinguem. E GET numa rota que só aceita POST devolve 405 — resposta que
+   * PROVA que a rota existe e o token serve, sem criar pagamento nenhum.
+   *
+   *   405  a rota existe e este token é aceito  → é o escopo certo
+   *   401/403  a rota existe e o token NÃO serve → falta a outra permissão
+   *   404  a rota não existe nesse caminho      → o endpoint é outro
+   */
+  if (algumAceito) {
+    const t = await pedirToken('pix.write');
+    if (t.token) {
+      console.log('\nA rota de pagamento aceita este token? (GET, nunca POST)\n');
+      for (const rota of ['/banking/v2/pix', '/pix/v2/pix', '/banking/v2/pagamento/pix']) {
+        try {
+          const r = await pedir({
+            path: rota,
+            method: 'GET',
+            headers: { Authorization: `Bearer ${t.token}`, Accept: 'application/json' }
+          });
+          const veredito =
+            r.status === 404
+              ? 'rota NÃO existe neste caminho'
+              : r.status === 405
+                ? 'ROTA EXISTE e o token é aceito (405 = método errado, que é o esperado num GET)'
+                : r.status === 401 || r.status === 403
+                  ? 'rota existe mas este token NÃO serve — falta a outra permissão'
+                  : r.body.replace(/\s+/g, ' ').slice(0, 80);
+          console.log(`  ${String(r.status).padEnd(4)} GET ${rota.padEnd(28)} ${veredito}`);
+        } catch (e) {
+          console.log(`  ---  GET ${rota.padEnd(28)} falhou na conexão: ${e.message}`);
+        }
+        await espera(7000);
+      }
+    }
   }
 
   console.log(

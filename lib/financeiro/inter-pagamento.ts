@@ -84,41 +84,48 @@ import { resolve } from "node:path";
  *
  *   HOST_INTER          VERIFICADO — o sync de extrato usa este host todo dia.
  *   CAMINHO_TOKEN       VERIFICADO — mesmo endpoint do cliente de leitura.
- *   CAMINHO_PIX         `/banking/v2/pix`, e a história de como se chegou aqui
- *                       vale mais que a conclusão — porque a sonda MENTIU.
+ *   CAMINHO_PIX         `/banking/v2/pix`. VERIFICADO pelo caminho mais caro:
+ *                       o endpoint respondeu, e o que ele recusou foi o ESCOPO,
+ *                       não a rota.
  *
- *                       Um GET com o token real deu, em 31/08/2026:
+ *                       A história vale mais que a conclusão, porque duas
+ *                       sondas mentiram antes desta:
  *
- *                         401  GET /banking/v2/pix
- *                         401  GET /pix/v2/pix
- *                         405  GET /banking/v2/pagamento/pix
+ *                       1. GET com o token real, em 31/08/2026:
+ *                            401  GET /banking/v2/pix
+ *                            405  GET /banking/v2/pagamento/pix
+ *                          Li o 405 como "rota certa, espera POST" e troquei o
+ *                          caminho. O POST seguinte levou 405 também.
  *
- *                       Li o 405 como "a rota existe e espera POST" e troquei o
- *                       caminho. O POST seguinte levou 405 TAMBÉM — aquele
- *                       caminho não aceita nem GET nem POST.
+ *                       2. De volta a /banking/v2/pix, o POST respondeu:
+ *                            401 "requested scope is not registered for this client"
+ *                          Isto é a rota FALANDO. Ela existe, aceita POST, e
+ *                          rejeita o token por falta de escopo.
  *
- *                       O 401 em `/banking/v2/pix` era outra coisa: GET ali é
- *                       CONSULTAR pagamento, e consulta pede `pix.read`, que
- *                       esta credencial não tem. Este servidor checa autorização
- *                       ANTES do método; o outro checa método antes. Um GET não
- *                       distingue os dois casos, e foi por isso que a sonda não
- *                       serviu para escolher caminho de POST.
+ *                       REGRA: para rota de escrita, GET só prova AUSÊNCIA
+ *                       (404). Nem 401 nem 405 provam presença. Quem prova é o
+ *                       POST — e o erro dele, quando é sobre escopo e não sobre
+ *                       rota, é a confirmação de que o caminho está certo.
  *
- *                       Fica registrado: para rota de ESCRITA, GET só prova
- *                       ausência (404). Nem 401 nem 405 provam presença.
+ *   ESCOPO_PIX_ESCRITA  `pagamento-pix.write` — e ele PRECISA da permissão
+ *                       "Pagar contas, fornecedores e despesas" no Internet
+ *                       Banking, que é diferente da que foi marcada primeiro.
  *
- *   ESCOPO_PIX_ESCRITA  VERIFICADO em 31/08/2026. A permissão marcada no
- *                       Internet Banking foi "Receber e enviar pagamentos via
- *                       Pix", e a sonda mostrou o que ela concede:
+ *                       O que a integração de 31/08/2026 concedeu:
+ *                         200  pix.write    ACEITO   (API Pix: devolução)
+ *                         200  cob.write    ACEITO   (API Pix: cobrança)
+ *                         401  pagamento-pix.write   NÃO contratado
  *
- *                         200  pix.write             ACEITO   ← este
- *                         200  cob.write             ACEITO   (o lado de receber)
- *                         401  pagamento-pix.write   não contratado
- *                         401  pagamento.write       não contratado
+ *                       "Receber e enviar pagamentos via Pix" soa como envio, e
+ *                       não é: ela dá a API Pix do padrão BACEN, que trata do
+ *                       dinheiro que CHEGA — cobrança e devolução. Tirar dinheiro
+ *                       da conta é API Banking, família Pagamento.
  *
- *                       `pagamento-pix.write` era o palpite anterior, e vinha
- *                       da família errada: a permissão é da família Pix, não da
- *                       família Pagamento.
+ *                       A prova: com token de `pix.write`, POST /banking/v2/pix
+ *                       devolve 401 "requested scope is not registered for this
+ *                       client". O token é válido; o escopo dentro dele é que
+ *                       não serve para esta rota.
+ *
  *   HEADER_IDEMPOTENCIA PALPITE. Nenhuma fonte consultada nomeia o header de
  *                       idempotência do Inter. Mandar um header que o banco
  *                       ignora é inofensivo; ACREDITAR que ele protege sem
@@ -131,7 +138,7 @@ import { resolve } from "node:path";
 const HOST_INTER = "cdpj.partners.bancointer.com.br";
 const CAMINHO_TOKEN = "/oauth/v2/token";
 const CAMINHO_PIX = "/banking/v2/pix";
-const ESCOPO_PIX_ESCRITA = "pix.write";
+const ESCOPO_PIX_ESCRITA = "pagamento-pix.write";
 const HEADER_IDEMPOTENCIA = "x-id-idempotente";
 const HEADER_CONTA = "x-conta-corrente";
 
@@ -318,6 +325,36 @@ const tokensPorEscopo = new Map<string, { token: string; expiraEm: number }>();
  * Vale 60 minutos (doc 2.3) e é para ser reutilizado. Guarda com 60s de margem,
  * no molde de scripts/lib/inter.mjs:81-114.
  */
+/*
+ * O erro de escopo é o mais provável nesta integração, e o mais confuso: o
+ * token é emitido com sucesso e a rota recusa mesmo assim. Sem esta tradução,
+ * a tela mostra "requested scope is not registered for this client" e quem lê
+ * vai procurar defeito no código.
+ */
+export function explicarErroDoInter(
+  status: number,
+  corpo: string,
+  onde: "token" | "rota" = "rota"
+): string | null {
+  const texto = `${corpo}`.toLowerCase();
+  if (status === 401 && texto.includes("scope")) {
+    return (
+      (onde === "token"
+        ? "O banco recusou EMITIR token para este escopo: ele não está contratado nesta integração. "
+        : "O token foi emitido, mas esta rota não aceita o escopo que ele carrega. ") +
+      "Falta a permissão \"Pagar contas, fornecedores e despesas\" na integração do " +
+      "Internet Banking — ela é a da API Banking, que TIRA dinheiro da conta. " +
+      "\"Receber e enviar pagamentos via Pix\" concede pix.write e cob.write, que " +
+      "são da API Pix (cobrança e devolução) e não servem para enviar. " +
+      "Confira com: node scripts/check-inter.mjs --escopos --pagamento"
+    );
+  }
+  if (status === 403) {
+    return "A conta tem o escopo mas não a permissão para esta operação — confira as alçadas no Internet Banking.";
+  }
+  return null;
+}
+
 export async function obterTokenPagamento(escopo: string): Promise<string> {
   exigirHabilitado();
 
@@ -348,8 +385,9 @@ export async function obterTokenPagamento(escopo: string): Promise<string> {
   // RECEBIDO entra porque é a mensagem do banco sobre o que estava errado, e
   // com escopo não verificado (ver constantes) é a única pista útil.
   if (res.status !== 200) {
+    const ajuda = explicarErroDoInter(res.status, res.body, "token");
     throw new ErroInterPagamento(
-      `token do Inter falhou para o escopo "${escopo}": HTTP ${res.status}`,
+      `token do Inter falhou para o escopo "${escopo}": HTTP ${res.status}${ajuda ? ` — ${ajuda}` : ""}`,
       res.status,
       res.body.slice(0, 500)
     );
@@ -449,8 +487,9 @@ export async function incluirPagamentoPix(ordem: OrdemPix, idempotencia: string)
   if (res.status < 200 || res.status >= 300) {
     // O corpo do banco vai junto. Sem ele, o primeiro teste real seria um
     // "HTTP 404" mudo sobre qual dos palpites acima está errado.
+    const ajuda = explicarErroDoInter(res.status, res.body);
     throw new ErroInterPagamento(
-      `Inter POST ${CAMINHO_PIX} falhou: HTTP ${res.status}`,
+      `Inter POST ${CAMINHO_PIX} falhou: HTTP ${res.status}${ajuda ? ` — ${ajuda}` : ""}`,
       res.status,
       res.body.slice(0, 1000)
     );

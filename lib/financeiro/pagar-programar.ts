@@ -8,6 +8,8 @@ import { query, queryOne, transaction } from "./db";
 import {
   idempotenciaDe,
   incluirPagamentoPix,
+  marcadorDeTentativa,
+  tentativaDe,
   pagamentoInterHabilitado,
   INTERVALO_ENTRE_PAGAMENTOS_MS
 } from "./inter-pagamento";
@@ -92,7 +94,13 @@ export type AlvoProgramacao = {
 
 export type ResultadoProgramacao = {
   criadas: { id: number; code: string; chaveDedupe: string; status: string }[];
-  jaExistiam: { chaveDedupe: string; code: string; status: string }[];
+  /*
+   * `jaExistiam` carrega o `id` porque a ordem que já existe é, muitas vezes,
+   * exatamente a que a pessoa quer mandar ao banco agora. Sem o id, a tela via
+   * "já existia" e não tinha o que enviar — a seleção sumia sem erro nenhum.
+   * Quem decide se ela PODE sair é o status, e a decisão é da tela.
+   */
+  jaExistiam: { id: number; chaveDedupe: string; code: string; status: string }[];
   recusadas: { chaveDedupe: string; motivo: string }[];
 };
 
@@ -309,8 +317,8 @@ export async function programarPagamentos(
         // uma violação dele estouraria a transação inteira em vez de devolver
         // zero linhas.
         if (origem?.coluna === "document_id") {
-          const { rows: vivas } = await c.query<{ code: string; status: string }>(
-            `SELECT code, status
+          const { rows: vivas } = await c.query<{ id: number; code: string; status: string }>(
+            `SELECT id, code, status
                FROM fin_payment_request
               WHERE document_id = $1 AND status NOT IN ('rejeitada', 'cancelada')
               LIMIT 1`,
@@ -319,7 +327,12 @@ export async function programarPagamentos(
           if (vivas[0]) {
             await c.query("ROLLBACK TO SAVEPOINT alvo");
             await c.query("RELEASE SAVEPOINT alvo");
-            resultado.jaExistiam.push({ chaveDedupe: chave, code: vivas[0].code, status: vivas[0].status });
+            resultado.jaExistiam.push({
+              id: vivas[0].id,
+              chaveDedupe: chave,
+              code: vivas[0].code,
+              status: vivas[0].status
+            });
             continue;
           }
         }
@@ -370,8 +383,8 @@ export async function programarPagamentos(
           // tinha esta obrigação. Programar duas vezes o mesmo compromisso não
           // pode criar duas ordens, e este é o ponto em que isso é garantido
           // pelo banco, não pela boa vontade do chamador.
-          const { rows: antigas } = await c.query<{ code: string; status: string }>(
-            `SELECT code, status
+          const { rows: antigas } = await c.query<{ id: number; code: string; status: string }>(
+            `SELECT id, code, status
                FROM fin_payment_request
               WHERE entity_id = $1 AND source = $2 AND source_id = $3`,
             [entityId, source, chave]
@@ -460,7 +473,12 @@ export async function programarPagamentos(
 
           await c.query("RELEASE SAVEPOINT alvo");
           if (antigas[0]) {
-            resultado.jaExistiam.push({ chaveDedupe: chave, code: antigas[0].code, status: antigas[0].status });
+            resultado.jaExistiam.push({
+              id: antigas[0].id,
+              chaveDedupe: chave,
+              code: antigas[0].code,
+              status: antigas[0].status
+            });
           } else {
             resultado.recusadas.push({ chaveDedupe: chave, motivo: "conflito de idempotência sem linha correspondente" });
           }
@@ -524,6 +542,7 @@ type OrdemNoBanco = {
   payee_account_id: number | null;
   payee_snapshot: Record<string, unknown> | null;
   payee_fingerprint: string | null;
+  tags: string[] | null;
 };
 
 /**
@@ -559,7 +578,7 @@ export async function enviarOrdemAoInter(
   const ordem = await queryOne<OrdemNoBanco>(
     `SELECT id, entity_id, code, status, method, net_cents, description,
             scheduled_for, due_date, counterparty_id,
-            payee_account_id, payee_snapshot, payee_fingerprint
+            payee_account_id, payee_snapshot, payee_fingerprint, tags
        FROM fin_payment_request
       WHERE id = $1`,
     [id]
@@ -636,14 +655,17 @@ export async function enviarOrdemAoInter(
      * vez de sortear é o que preserva a garantia: reenviar a mesma ordem manda a
      * mesma chave, e o banco reconhece em vez de pagar de novo.
      */
-    idempotenciaDe(ordem.code)
+    // A tentativa entra na chave. Reenviar a MESMA tentativa manda a mesma
+    // chave (o banco reconhece); uma tentativa nova — que só nasce quando
+    // alguém devolve a ordem à fila, com motivo — manda chave nova.
+    idempotenciaDe(ordem.code, tentativaDe(ordem.tags))
   );
 
   const linha =
     `[${new Date().toISOString()}] enviado ao Inter por ${actor} — ` +
     `codigoSolicitacao=${resposta.codigoSolicitacao ?? "(não informado)"}, ` +
     `tipoRetorno=${resposta.tipoRetorno ?? "(não informado)"}, ` +
-    `httpStatus=${resposta.httpStatus}, idempotencia=${idempotenciaDe(ordem.code)}. ` +
+    `httpStatus=${resposta.httpStatus}, idempotencia=${idempotenciaDe(ordem.code, tentativaDe(ordem.tags))}. ` +
     `Aguardando autorização humana no aplicativo do banco — nada aqui aprova.`;
 
   const marcadores = ["inter-enviado"];
@@ -684,7 +706,8 @@ export async function enviarOrdemAoInter(
         codigo_solicitacao: resposta.codigoSolicitacao,
         tipo_retorno: resposta.tipoRetorno,
         http_status: resposta.httpStatus,
-        idempotencia: idempotenciaDe(ordem.code)
+        idempotencia: idempotenciaDe(ordem.code, tentativaDe(ordem.tags)),
+        tentativa: tentativaDe(ordem.tags)
       }),
       randomUUID(),
       actor
@@ -822,24 +845,47 @@ export async function devolverParaRascunho(
        * clicar, o gatilho já moveu a ordem para `pago` — e devolver para
        * rascunho o que saiu da conta seria apagar um fato do caixa.
        */
+      /*
+       * A tentativa nova sai da tentativa atual, então precisa ser LIDA antes.
+       * Calcular no SQL daria para fazer, mas duplicaria em SQL a regra que
+       * `tentativaDe` já implementa em um lugar só — e é ela que `enviarOrdem`
+       * usa para montar a chave. Duas implementações da mesma contagem é como a
+       * ordem voltaria à fila com uma tentativa e sairia com outra.
+       */
+      const { rows: antes } = await c.query<{ tags: string[] | null }>(
+        `SELECT tags FROM fin_payment_request WHERE id = $1`,
+        [id]
+      );
+      const proximaTentativa = tentativaDe(antes[0]?.tags) + 1;
+
       const { rows } = await c.query<{ id: number; code: string; status: string }>(
         `UPDATE fin_payment_request
             SET status = 'rascunho',
                 notes = concat_ws(E'\n', nullif(notes, ''), $2::text),
+                -- A tentativa SOBE aqui, e só aqui. É o que dá chave idempotente
+                -- nova ao reenvio — sem isso, ordem que o banco rejeitou por
+                -- saldo fica presa para sempre no "Idempotente duplicado".
+                tags = coalesce((
+                  SELECT array_agg(DISTINCT t ORDER BY t)
+                    FROM unnest(coalesce(tags, '{}'::text[]) || ARRAY[$3::text]) AS t
+                ), tags),
                 updated_at = now()
           WHERE id = $1
             AND status = 'aguardando_autorizacao'
             AND paid_cents = 0
           RETURNING id, code, status`,
-        // Dois parâmetros, dois marcadores. A versão anterior passava `motivo`
-        // solto como $2 e o SQL só usava $1 e $3 — Postgres recusa com "could
-        // not determine data type of parameter $2", e o tsc não vê nada disso.
-        // É o AGENTS.md §4 de novo, e desta vez com a rota devolvendo 500.
+        // Três marcadores, três parâmetros — conferido contra o SQL acima, uma
+        // linha de cada vez. É o AGENTS.md §4: a primeira versão passava
+        // `motivo` solto como $2 e o SQL usava $1 e $3; a segunda esqueceu $3
+        // depois que a etiqueta de tentativa entrou. As duas compilaram, e as
+        // duas devolveram 500 na cara de quem clicou. O tsc não confere isto.
         [
           id,
           `[${new Date().toISOString()}] devolvida para rascunho por ${actor}: ${motivo}. ` +
             `A ordem tinha sido entregue ao Inter; quem devolveu afirma tê-la conferido no aplicativo. ` +
-            `O código permanece o mesmo, então o reenvio carrega a MESMA chave idempotente.`
+            `Tentativa ${proximaTentativa}: o reenvio carrega uma chave idempotente NOVA, ` +
+            `então o banco vai tratá-lo como pedido novo e não como duplicata.`,
+          marcadorDeTentativa(proximaTentativa)
         ]
       );
 

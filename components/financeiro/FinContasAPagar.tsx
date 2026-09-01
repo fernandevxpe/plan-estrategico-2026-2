@@ -414,7 +414,7 @@ type LinhaCap = ContaAPagar & { id: string };
  */
 type RespostaProgramar = {
   criadas?: { id?: number; code?: string; chaveDedupe?: string }[];
-  jaExistiam?: { id?: number; code?: string }[];
+  jaExistiam?: { id?: number; code?: string; chaveDedupe?: string; status?: string }[];
   recusadas?: { chaveDedupe?: string; motivo?: string }[];
   error?: string;
 };
@@ -600,6 +600,12 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
   const [emVoo, setEmVoo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [resultado, setResultado] = useState<RespostaProgramar | null>(null);
+  /*
+   * As que já existiam e NÃO puderam ser reenviadas, com o status que as
+   * segura. Sem esta lista, "3 já existiam" e nenhuma no painel de envio é
+   * indistinguível de "sumiu" — que foi como o silêncio se leu na primeira vez.
+   */
+  const [jaNoBanco, setJaNoBanco] = useState<{ code: string; status: string }[]>([]);
   const [envio, setEnvio] = useState<Envio | null>(null);
   /*
    * Ref e não estado: o laço é uma função async que já capturou o `envio` do
@@ -1054,16 +1060,44 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
        */
       const porChave = new Map(escolhidas.map((l) => [l.chaveDedupe, l]));
       const fila: ItemEnvio[] = [];
-      for (const c of r.criadas ?? []) {
-        if (typeof c.id !== "number") continue;
-        const linha = c.chaveDedupe ? porChave.get(c.chaveDedupe) : undefined;
+      const paraFila = (o: { id?: number; code?: string; chaveDedupe?: string }) => {
+        if (typeof o.id !== "number") return;
+        const linha = o.chaveDedupe ? porChave.get(o.chaveDedupe) : undefined;
         fila.push({
-          id: c.id,
-          code: c.code ?? `ordem ${c.id}`,
-          rotulo: linha ? rotuloDaLinha(linha) : c.chaveDedupe ?? `ordem ${c.id}`,
+          id: o.id,
+          code: o.code ?? `ordem ${o.id}`,
+          rotulo: linha ? rotuloDaLinha(linha) : o.chaveDedupe ?? `ordem ${o.id}`,
           valorCents: linha?.valorCents ?? 0
         });
+      };
+      for (const c of r.criadas ?? []) paraFila(c);
+
+      /*
+       * A ORDEM QUE JÁ EXISTIA TAMBÉM VAI — se ainda puder sair.
+       *
+       * Programar é idempotente: marcar de novo uma obrigação que já virou
+       * ordem devolve `jaExistiam`, não `criadas`. Até 01/09/2026 a fila só
+       * lia `criadas`, então esse caso enviava ZERO — e como o clique é um só
+       * ("seleciono e mando para aprovação"), a tela limpava a seleção,
+       * mostrava "0 programadas · N já existiam" e nada chegava ao banco. Foi
+       * relatado como "seleciono, mando enviar, some tudo e nem vai para
+       * Aprovações".
+       *
+       * O filtro de status é a parte que não pode ceder: `rascunho` e
+       * `aprovada` ainda não saíram, então podem sair; `aguardando_autorizacao`
+       * JÁ está no banco esperando aprovação humana, e reenviá-la é o caminho
+       * para pagar duas vezes. O servidor recusa esse caso de qualquer forma
+       * (409 em `enviarOrdemAoInter`), mas deixar a tela mandar para tomar 409
+       * transformaria uma regra em um erro na cara de quem clicou.
+       */
+      const PODEM_SAIR = new Set(["rascunho", "aprovada"]);
+      const jaPresas: { code: string; status: string }[] = [];
+      for (const j of r.jaExistiam ?? []) {
+        if (PODEM_SAIR.has(String(j.status))) paraFila(j);
+        else jaPresas.push({ code: j.code ?? `ordem ${j.id}`, status: String(j.status ?? "?") });
       }
+      setJaNoBanco(jaPresas);
+
       if (fila.length > 0) await enviarEmSerie(fila, { enviadas: [], falhadas: [], naoEnviadas: [] });
 
       router.refresh();
@@ -1493,7 +1527,29 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
               ))}
             </ul>
           ) : null}
-          <button type="button" className="fin-btn-ghost" onClick={() => setResultado(null)}>
+          {/* "Já existia" tem duas faces muito diferentes: a que acabou de ser
+              reenviada (e aparece no painel de envio) e a que está PRESA porque
+              já saiu para o banco. Só a segunda entra aqui, com o status que a
+              segura — reenviar essa é o caminho para pagar duas vezes. */}
+          {jaNoBanco.length ? (
+            <ul className="fin-cap-recusadas">
+              {jaNoBanco.map((j) => (
+                <li key={j.code}>
+                  <b>{j.code}</b> — já está em &ldquo;{ROTULO_ORDEM[j.status] ?? j.status}&rdquo;, não
+                  foi reenviada. Se ela não estiver no aplicativo do banco, devolva para a fila em
+                  Aprovações.
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <button
+            type="button"
+            className="fin-btn-ghost"
+            onClick={() => {
+              setResultado(null);
+              setJaNoBanco([]);
+            }}
+          >
             Fechar
           </button>
         </div>

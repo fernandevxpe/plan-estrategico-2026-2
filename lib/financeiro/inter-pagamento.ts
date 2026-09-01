@@ -465,8 +465,56 @@ function reais(valorCents: number): string {
  * FORMA, com a regex acima. Colisão entre dois códigos exigiria colisão de
  * sha256 nos primeiros 128 bits.
  */
-export function idempotenciaDe(codigo: string): string {
-  const h = createHash("sha256").update(codigo).digest("hex");
+/*
+ * ===========================================================================
+ * A CHAVE MUDA QUANDO UMA PESSOA DIZ QUE A TENTATIVA ANTERIOR MORREU
+ * ===========================================================================
+ * Medido em 01/09/2026, e é a lição mais cara desta frente. A chave derivada só
+ * do `code` provou funcionar — o Inter reconheceu a repetição:
+ *
+ *   422 PIXP103 "Idempotente duplicado. Foi identificado um Pix rejeitado,
+ *       inserido anteriormente com idempotente informado.
+ *       Motivo rejeição: 60168 - Saldo Insuficiente"
+ *
+ * Ou seja: a proteção contra pagar duas vezes está de pé, e não é mais palpite.
+ * Mas ela guardava a REJEIÇÃO junto, e com chave imutável as 7 ordens que
+ * falharam por saldo nunca mais sairiam. A proteção virou prisão.
+ *
+ * A distinção que resolve é a mesma que o produto já fazia em outro lugar:
+ *
+ *   MESMA tentativa, reenviada porque a rede caiu e não se sabe o que houve
+ *     → MESMA chave. É exatamente aqui que duplicar dinheiro é o risco.
+ *
+ *   NOVA tentativa, porque uma PESSOA conferiu o aplicativo e declarou que a
+ *   anterior não existe mais
+ *     → NOVA chave. Sem isso, ordem rejeitada é ordem morta para sempre.
+ *
+ * O contador vive em `fin_payment_request.tags`, como `inter-tentativa:N`, e só
+ * `devolverParaRascunho` o incrementa — a mesma função que exige motivo e grava
+ * quem afirmou. A chave nova, portanto, custa uma afirmação humana registrada.
+ * Não há caminho automático para trocá-la, e isso é a garantia.
+ */
+const PREFIXO_TENTATIVA = "inter-tentativa:";
+
+/** A tentativa atual de uma ordem. 1 quando nunca foi devolvida à fila. */
+export function tentativaDe(tags: readonly string[] | null | undefined): number {
+  let maior = 1;
+  for (const t of tags ?? []) {
+    if (!t.startsWith(PREFIXO_TENTATIVA)) continue;
+    const n = Number(t.slice(PREFIXO_TENTATIVA.length));
+    if (Number.isSafeInteger(n) && n > maior) maior = n;
+  }
+  return maior;
+}
+
+export function marcadorDeTentativa(n: number): string {
+  return `${PREFIXO_TENTATIVA}${n}`;
+}
+
+export function idempotenciaDe(codigo: string, tentativa = 1): string {
+  // `PG-2026-0054#1`. A tentativa entra na semente: mesma tentativa dá a mesma
+  // chave (protege), tentativa nova dá chave nova (destrava).
+  const h = createHash("sha256").update(`${codigo}#${tentativa}`).digest("hex");
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 

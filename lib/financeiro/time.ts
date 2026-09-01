@@ -5,6 +5,11 @@ import { promisify } from "node:util";
 import { gzipSync } from "node:zlib";
 
 import { FinanceUnavailableError, query, queryOne, transaction } from "@/lib/financeiro/db";
+import {
+  alinharBandasComPixConferido,
+  itemAppJaLiquidado,
+  pixesDoCaixa
+} from "@/lib/financeiro/recebiveis-reembolso";
 import { conferirDocumento } from "@/scripts/lib/fin-documento.mjs";
 
 /**
@@ -1674,6 +1679,8 @@ export type PrevistoConciliado = {
   /** O que o EXTRATO casou com este previsto. Zero quando nada casou. */
   pagoCents: number;
   conferido: boolean;
+  /** Data do Pix que casou, `YYYY-MM-DD`. Null quando ainda não caiu. */
+  pagoEm: string | null;
   /** De onde o previsto saiu, para a pessoa conferir sem perguntar. */
   origem: string;
   /** O detalhe do grupo, para abrir na tela. Comissão de obra e de consultoria
@@ -1942,7 +1949,8 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
      */
     query<Record<string, unknown>>(
       `SELECT slug, descricao, parcela, parcelas_total, parcelas_restantes,
-              valor_parcela_cents, saldo_cents, origem
+              valor_parcela_cents, saldo_cents, origem,
+              to_char(ultima_competencia, 'YYYY-MM') AS ultima_competencia
          FROM fin_reembolso_saldo_unificado_v
         WHERE person_id = $1 AND NOT quitado
         ORDER BY saldo_cents DESC`,
@@ -2260,10 +2268,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
 
   const mesCorrente = new Date().toISOString().slice(0, 7);
 
-  return {
-    totalCents: itens.reduce((s, i) => s + i.valorCents, 0),
-    mesAtualCents: meses.get(mesCorrente)?.totalCents ?? 0,
-    conciliacao: (() => {
+  const conciliacao = (() => {
       /*
        * CONCILIAÇÃO POR COMPETÊNCIA, EM QUATRO CAMADAS.
        *
@@ -2413,6 +2418,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
             previstoCents: valorVigenteEm(baseHistorico, fimDaCompetencia),
             pagoCents: 0,
             conferido: false,
+            pagoEm: null,
             origem: "base cadastrada, vigente no fim da competência",
             partes: []
           },
@@ -2422,6 +2428,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
             previstoCents: valorVigenteEm(prolaboreHistorico, fimDaCompetencia),
             pagoCents: 0,
             conferido: false,
+            pagoEm: null,
             origem: "esperado, vigente no fim da competência",
             partes: []
           },
@@ -2431,6 +2438,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
             previstoCents: comissao.reduce((t, c) => t + c.valorCents, 0),
             pagoCents: 0,
             conferido: false,
+            pagoEm: null,
             origem: `declarada nesta competência`,
             partes: comissao
           },
@@ -2440,6 +2448,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
             previstoCents: reembolsoPrevisto,
             pagoCents: 0,
             conferido: false,
+            pagoEm: null,
             origem: reembolsoAprovado
               ? `parcelas em aberto, incluindo ${brlSimples(reembolsoAprovado.totalCents)} aprovado no app`
               : "parcelas em aberto",
@@ -2465,6 +2474,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
           casa.casado = true;
           p.pagoCents = casa.valorCents;
           p.conferido = true;
+          p.pagoEm = casa.data.slice(0, 10);
         }
 
         // A pista: um pagamento que não casa aqui pode bater com a comissão
@@ -2502,6 +2512,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
           casa.casado = true;
           p.pagoCents = casa.valorCents;
           p.conferido = true;
+          p.pagoEm = casa.data.slice(0, 10);
         }
 
         const previstoCents = previstos.reduce((t, p) => t + p.previstoCents, 0);
@@ -2540,7 +2551,53 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
       }
 
       return saida.reverse();
-    })(),
+    })();
+
+  /*
+   * O HISTÓRICO LÊ `porMes`. A view MODELA a divisão (salário-base menos
+   * residual) e em setembro/2026 pintou R$ 1.621,00 de salário que não saiu
+   * — o selo "a receber" dizia isso, o histórico desmentia. Os dois Pix do
+   * dia 01/09 foram R$ 4.379,00 (pró-labore) e R$ 1.440,76 (reembolso).
+   * Só reescreve o mês quando esses Pix somam o total que caiu.
+   */
+  alinharBandasComPixConferido(
+    porMes,
+    conciliacao.flatMap((c) => pixesDoCaixa(c))
+  );
+
+  porNat.clear();
+  for (const m of porMes) {
+    for (const [nat, v] of Object.entries(m.porNatureza)) {
+      const a = porNat.get(nat) ?? { cents: 0, n: 0 };
+      porNat.set(nat, { cents: a.cents + v, n: a.n + 1 });
+    }
+  }
+
+  /*
+   * Gasolina R$ 120 + PagBank R$ 44 saíram no Pix de 01/09 e seguem
+   * `aprovado` no cabeçalho. A conferência já casou; projetá-los em outubro
+   * cobraria de novo. Série da planilha fica — é parcela que se repete.
+   */
+  const competenciasReembolsoPago = new Set(
+    conciliacao
+      .filter((c) =>
+        c.previstos.some((p) => p.natureza === "reembolso" && p.conferido && p.pagoCents > 0)
+      )
+      .map((c) => c.mes)
+  );
+  const saldoParaPrevisao = saldo.filter(
+    (r) =>
+      !itemAppJaLiquidado(
+        String(r.origem ?? ""),
+        String(r.ultima_competencia ?? ""),
+        competenciasReembolsoPago
+      )
+  );
+
+  return {
+    totalCents: itens.reduce((s, i) => s + i.valorCents, 0),
+    mesAtualCents: meses.get(mesCorrente)?.totalCents ?? 0,
+    conciliacao,
     medianaRecorrenteCents,
     salarioBase: base[0]
       ? {
@@ -2588,7 +2645,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
       // reembolso E a última comissão já declarada, com teto de 12. Antes o
       // teto olhava só o reembolso, então uma comissão parcelada até jan/27
       // ficava fora da própria projeção que a alimenta.
-      const maiorRestante = saldo.reduce((n, r) => Math.max(n, Number(r.parcelas_restantes ?? 0)), 0);
+      const maiorRestante = saldoParaPrevisao.reduce((n, r) => Math.max(n, Number(r.parcelas_restantes ?? 0)), 0);
       const temCadastro =
         baseHistorico.length > 0 || prolaboreHistorico.length > 0 || comissaoPorMes.size > 0;
 
@@ -2610,7 +2667,7 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
       for (let k = 1; k <= quantos; k += 1) {
         const d = new Date(hojeSp.getFullYear(), hojeSp.getMonth() + k, 1);
         const mes = mesChave(d);
-        const reembolso = saldo.reduce(
+        const reembolso = saldoParaPrevisao.reduce(
           (t, r) => t + (Number(r.parcelas_restantes ?? 0) >= k ? Number(r.valor_parcela_cents ?? 0) : 0),
           0
         );
@@ -2662,10 +2719,34 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         });
         m.set(k, g);
       }
+      /*
+       * O cabeçalho da competência só tem o que o app pediu naquele mês. O
+       * Pix casa o cabeçalho MAIS as parcelas da planilha. Sem completar
+       * aqui, abrir a banda de setembro listava R$ 164,00 e a coluna dizia
+       * R$ 1.440,76.
+       */
+      for (const conc of conciliacao) {
+        const reemb = conc.previstos.find((p) => p.natureza === "reembolso");
+        if (!reemb?.conferido || reemb.pagoCents <= 0 || reemb.partes.length === 0) continue;
+        const g = m.get(conc.mes) ?? { competencia: conc.mes, totalCents: 0, itens: [] };
+        if (g.totalCents >= reemb.pagoCents) continue;
+        g.itens = saldo
+          .filter((r) => Number(r.parcelas_restantes ?? 0) > 0)
+          .map((r) => ({
+            descricao: String(r.descricao ?? "reembolso"),
+            valorCents: Number(r.valor_parcela_cents ?? 0),
+            parcela: Number(r.parcela ?? 0) || null,
+            parcelasTotal: Number(r.parcelas_total ?? 0) || null,
+            tipo: String(r.origem ?? "") === "app" ? "app" : "planilha",
+            temComprovante: false
+          }));
+        g.totalCents = g.itens.reduce((t, i) => t + i.valorCents, 0);
+        m.set(conc.mes, g);
+      }
       return [...m.values()].sort((a, b) => b.competencia.localeCompare(a.competencia));
     })(),
-    emAbertoCents: saldo.reduce((t, r) => t + Number(r.saldo_cents ?? 0), 0),
-    emAberto: saldo.map((r) => ({
+    emAbertoCents: saldoParaPrevisao.reduce((t, r) => t + Number(r.saldo_cents ?? 0), 0),
+    emAberto: saldoParaPrevisao.map((r) => ({
       slug: String(r.slug),
       descricao: String(r.descricao ?? r.slug),
       parcela: Number(r.parcela ?? 0),

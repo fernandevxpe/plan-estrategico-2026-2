@@ -6,6 +6,7 @@ import { useOcultarValores } from "@/components/time/ocultar-valores";
 import {
   CLASSE,
   ROTULO,
+  diaMes,
   mesCurto,
   mesNome,
   nomeMes,
@@ -85,6 +86,81 @@ function IconeSeta() {
       <path d="M6 9l6 6 6-6" />
     </svg>
   );
+}
+
+type LinhaHistorico = {
+  key: string;
+  natureza: string;
+  rotulo: string;
+  cents: number;
+  pendente: boolean;
+  pagoEm: string | null;
+};
+
+/**
+ * Pendente primeiro; recebido com a data do Pix.
+ *
+ * Sem conferência, cai na composição modelada — meses antigos não têm
+ * previsto por cadastro para dizer o que falta.
+ */
+function linhasDoHistorico(
+  mes: string,
+  porNatureza: Record<string, number>,
+  conc: ConciliacaoMes | undefined
+): LinhaHistorico[] {
+  if (!conc) {
+    return Object.entries(porNatureza)
+      .sort((a, b) => b[1] - a[1])
+      .map(([natureza, cents]) => ({
+        key: natureza,
+        natureza,
+        rotulo: ROTULO[natureza] ?? natureza,
+        cents,
+        pendente: false,
+        pagoEm: null
+      }));
+  }
+  const out: LinhaHistorico[] = [];
+  for (const p of conc.previstos) {
+    const recebidoAqui = p.pagoEm && p.pagoEm.slice(0, 7) === mes ? p.pagoCents : 0;
+    const pendente = Math.max(0, p.previstoCents - p.pagoCents);
+    if (pendente > 0) {
+      out.push({
+        key: `${p.natureza}-pend`,
+        natureza: p.natureza,
+        rotulo: p.rotulo,
+        cents: pendente,
+        pendente: true,
+        pagoEm: null
+      });
+    }
+    if (recebidoAqui > 0) {
+      out.push({
+        key: `${p.natureza}-rec`,
+        natureza: p.natureza,
+        rotulo: p.rotulo,
+        cents: recebidoAqui,
+        pendente: false,
+        pagoEm: p.pagoEm
+      });
+    }
+  }
+  for (const l of conc.extrato) {
+    if (l.casado || l.data.slice(0, 7) !== mes) continue;
+    out.push({
+      key: `extra-${l.data}-${l.valorCents}`,
+      natureza: l.natureza,
+      rotulo: ROTULO[l.natureza] ?? l.natureza,
+      cents: l.valorCents,
+      pendente: false,
+      pagoEm: l.data.slice(0, 10)
+    });
+  }
+  return out.sort((a, b) => {
+    if (a.pendente !== b.pendente) return a.pendente ? -1 : 1;
+    if (a.pagoEm && b.pagoEm && a.pagoEm !== b.pagoEm) return b.pagoEm.localeCompare(a.pagoEm);
+    return b.cents - a.cents;
+  });
 }
 
 export function Recebiveis() {
@@ -185,14 +261,7 @@ export function Recebiveis() {
 
   const porMesDesc = [...dado.porMes].reverse();
   const ultimoMesRec = porMesDesc[0] ?? null;
-  const ultimoRemun = ultimoMesRec
-    ? (ultimoMesRec.porNatureza?.salario ?? 0) +
-      (ultimoMesRec.porNatureza?.prolabore ?? 0) +
-      (ultimoMesRec.porNatureza?.estagio ?? 0) +
-      (ultimoMesRec.porNatureza?.comissao ?? 0) +
-      (ultimoMesRec.porNatureza?.extra ?? 0)
-    : 0;
-  const ultimoReemb = ultimoMesRec?.porNatureza?.reembolso ?? 0;
+  const ultimoReembModelado = ultimoMesRec?.porNatureza?.reembolso ?? 0;
 
   /*
    * A conciliação da COMPETÊNCIA mais recente já fechada — a primeira da lista.
@@ -202,6 +271,26 @@ export function Recebiveis() {
    * conciliá-lo agora acusaria falta de dinheiro que ainda não venceu.
    */
   const conciliacaoDoMes = (dado.conciliacao ?? [])[0] ?? null;
+
+  /*
+   * O REEMBOLSO DA FAIXA VEM DA CONFERÊNCIA, não do rateio.
+   *
+   * `porNatureza.reembolso` sai de `fin_time_remuneracao_mes_v`, que MODELA a
+   * divisão do que entrou. Para setembro/2026 ela dizia R$ 164,00 — e o que
+   * saiu de reembolso foram R$ 1.440,76. Os dois Pix do mês estão os dois em
+   * 6.02 no ledger, então o rateio distribuiu por conta própria e errou.
+   *
+   * A conferência já resolveu isso casando por valor: ela SABE que os
+   * R$ 1.440,76 são reembolso. `meusRecebiveis` agora copia esse número para
+   * a banda do gráfico (`porMes`); a faixa continua lendo a conferência para
+   * o caso de a banda ainda não ter sido alinhada.
+   */
+  const reembDaConferencia = conciliacaoDoMes?.previstos.find((p) => p.natureza === "reembolso");
+  const ultimoReemb =
+    reembDaConferencia?.conferido && reembDaConferencia.pagoCents > 0
+      ? reembDaConferencia.pagoCents
+      : ultimoReembModelado;
+  const ultimoRemunAjustado = Math.max(0, (ultimoMesRec?.totalCents ?? 0) - ultimoReemb);
   // O que ainda não caiu, positivo. Vale com a folha aberta ou fechada — muda
   // só o nome que se dá a ele.
   const aReceberDoMes = conciliacaoDoMes?.aReceberCents ?? 0;
@@ -274,13 +363,16 @@ export function Recebiveis() {
           {/* O selo só aparece quando HÁ diferença. Um selo permanente dizendo
               "confere" vira ruído em doze meses seguidos e some da vista
               justamente no mês em que passa a importar. */}
+          <span className="time-faixa-rotulo">
+            {ultimoMesRec ? mesNome(ultimoMesRec.mes) : "no mês"}
+          </span>
           <strong className="time-faixa-valor">
             {valor(
-              ultimoRemun > 0 ? ultimoRemun : (ultimoMesRec?.totalCents ?? 0),
-              ultimoRemun === 0 && ultimoReemb > 0
+              ultimoRemunAjustado > 0 ? ultimoRemunAjustado : (ultimoMesRec?.totalCents ?? 0),
+              ultimoRemunAjustado === 0 && ultimoReemb > 0
             )}
           </strong>
-          {ultimoMesRec && ultimoReemb > 0 && ultimoRemun > 0 ? (
+          {ultimoMesRec && ultimoReemb > 0 && ultimoRemunAjustado > 0 ? (
             <span className="time-faixa-nota time-nota-reemb">
               + {valor(ultimoReemb, true)}
             </span>
@@ -291,12 +383,6 @@ export function Recebiveis() {
                 : "nada ainda"}
             </small>
           )}
-          <span className="time-faixa-rotulo">
-            {ultimoMesRec ? mesNome(ultimoMesRec.mes) : "no mês"}
-            {conciliacaoDoMes ? (
-              <em className="time-faixa-abrir">{conciliacaoAberta ? "fechar" : "conferir"}</em>
-            ) : null}
-          </span>
           {/* Em FLUXO, nunca sobreposto: absoluto, ele cobria o próprio valor
               do mês — o número que a pessoa abriu a tela para ver. */}
           {/* O SELO SEMPRE DIZ O QUE FALTA — só muda o tom.
@@ -318,6 +404,9 @@ export function Recebiveis() {
           ) : null}
         </article>
         <article className="time-faixa-item time-faixa-previsto">
+          <span className="time-faixa-rotulo">
+            {proximoMes ? mesNome(proximoMes.mes) : "Próximo mês"}
+          </span>
           <strong className="time-faixa-valor">
             {valor(
               remProximoMes > 0 ? remProximoMes : previstoProximoMes,
@@ -331,9 +420,6 @@ export function Recebiveis() {
           ) : (
             <small className="time-faixa-nota">previsto</small>
           )}
-          <span className="time-faixa-rotulo">
-            {proximoMes ? mesNome(proximoMes.mes) : "Próximo mês"}
-          </span>
         </article>
         {temFuturos ? (
           <a className="time-faixa-item time-faixa-reembolso" href="#aberto">
@@ -610,6 +696,8 @@ export function Recebiveis() {
           <div className="rec-secao-corpo">
         {porMesDesc.map((m, i) => {
           const doMes = dado.linhas.filter((l) => l.mes === m.mes);
+          const concDoMes = (dado.conciliacao ?? []).find((c) => c.mesDeCaixa === m.mes);
+          const linhasMes = linhasDoHistorico(m.mes, m.porNatureza, concDoMes);
           return (
             // Só o mês mais recente abre. Todos abertos dariam 1.686px de
             // rolagem antes do primeiro mês antigo.
@@ -619,7 +707,12 @@ export function Recebiveis() {
                 <span className="rec-mes-cabeca-direita">
                   <span className="rec-mes-total-bloco">
                     <strong>{valor(m.totalCents, Object.keys(m.porNatureza).every((n) => n === "reembolso"))}</strong>
-                    <small>{plural(doMes.length, "Pix", "Pix")}</small>
+                    <small>
+                      {plural(doMes.length, "Pix", "Pix")}
+                      {concDoMes && concDoMes.aReceberCents > 0
+                        ? ` · a receber ${valor(concDoMes.aReceberCents)}`
+                        : ""}
+                    </small>
                   </span>
                   <IconeSeta />
                 </span>
@@ -658,37 +751,39 @@ export function Recebiveis() {
                 em menos da metade das vezes.
               */}
               <ul className="rec-naturezas rec-naturezas-mes">
-                {Object.entries(m.porNatureza)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([nat, v]) => {
+                {linhasMes.map((linha) => {
                     const reemb =
-                      nat === "reembolso"
+                      !linha.pendente && linha.natureza === "reembolso"
                         ? (dado.reembolsoPorCompetencia ?? []).find((c) => c.competencia === competenciaDe(m.mes))
                         : null;
-                    const temDetalhe =
-                      Boolean(reemb) ||
-                      (nat === "salario" && dado.salarioBase !== null && v < dado.salarioBase.valorCents);
+                    const temDetalhe = Boolean(reemb);
                     const cabeca = (
                       <>
-                        <i className={`rec-ponto ${CLASSE[nat] ?? "nat-encargo"}`} aria-hidden />
+                        <i className={`rec-ponto ${CLASSE[linha.natureza] ?? "nat-encargo"}`} aria-hidden />
                         <span className="rec-nat-nome">
-                          {ROTULO[nat] ?? nat}
-                          {reemb ? <small>competência {nomeMesTitulo(reemb.competencia)}</small> : null}
+                          {linha.rotulo}
+                          {linha.pendente ? (
+                            <small className="rec-nat-pendente">pendente</small>
+                          ) : linha.pagoEm ? (
+                            <small>
+                              {diaMes(linha.pagoEm)}
+                              {reemb ? ` · competência ${nomeMesTitulo(reemb.competencia)}` : ""}
+                            </small>
+                          ) : reemb ? (
+                            <small>competência {nomeMesTitulo(reemb.competencia)}</small>
+                          ) : null}
                         </span>
-                        <b className="rec-nat-valor">{valor(v, nat === "reembolso")}</b>
+                        <b className="rec-nat-valor">{valor(linha.cents, linha.natureza === "reembolso")}</b>
                         {temDetalhe ? <IconeSeta /> : null}
                       </>
                     );
                     return (
-                      <li key={nat}>
+                      <li key={linha.key}>
                         {temDetalhe ? (
                           <details className="rec-nat-mes">
-                            <summary className="rec-nat-linha">{cabeca}</summary>
-                            {nat === "salario" && dado.salarioBase && v < dado.salarioBase.valorCents ? (
-                              <p className="rec-nat-nota">
-                                Neste mês caiu menos que a base contratada de {valor(dado.salarioBase.valorCents)}.
-                              </p>
-                            ) : null}
+                            <summary className={`rec-nat-linha${linha.pendente ? " rec-nat-espera" : ""}`}>
+                              {cabeca}
+                            </summary>
                             {reemb ? (
                               <ul className="rec-reemb-itens">
                                 {reemb.itens.map((it, k) => (
@@ -708,7 +803,7 @@ export function Recebiveis() {
                             ) : null}
                           </details>
                         ) : (
-                          <div className="rec-nat-linha">{cabeca}</div>
+                          <div className={`rec-nat-linha${linha.pendente ? " rec-nat-espera" : ""}`}>{cabeca}</div>
                         )}
                       </li>
                     );
@@ -754,7 +849,7 @@ function PainelConciliacao({
   const sobraram = conc.extrato.filter((l) => !l.casado);
 
   return (
-    <section className="time-concil" aria-label={`Conferência de ${nomeMesTitulo(conc.mesDeCaixa)}`}>
+        <section className="time-concil" aria-label={`Conferência de ${nomeMesTitulo(conc.mesDeCaixa)}`}>
       <header className="time-concil-topo">
         <div>
           <h2>{nomeMesTitulo(conc.mesDeCaixa)}</h2>

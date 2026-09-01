@@ -26,6 +26,8 @@ export type PrevistoConciliado = {
   previstoCents: number;
   pagoCents: number;
   conferido: boolean;
+  /** Data do Pix que casou, `YYYY-MM-DD`. Null quando ainda não caiu. */
+  pagoEm: string | null;
   origem: string;
   partes: { descricao: string; valorCents: number; grupo: string | null; cliente: string | null }[];
 };
@@ -186,6 +188,9 @@ export const mesNome = (m: string) => {
   const s = MES_LONGO[Number(m.slice(5, 7)) - 1];
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
+/** Dia/mês do Pix — "01/09". */
+export const diaMes = (iso: string) =>
+  iso.length >= 10 ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : iso;
 
 /**
  * O carregador, único.

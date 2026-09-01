@@ -13335,6 +13335,9 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   line-height: 1.25;
   margin-top: 2px;
 }
+.time-faixa-item > .time-faixa-rotulo:first-child {
+  margin-top: 0;
+}
 .time-faixa-valor {
   font-family: var(--font-display), var(--font-body), sans-serif;
   font-size: clamp(14px, 4vw, 17px);
@@ -20305,6 +20308,11 @@ button.rec-plot-acao {
 }
 .rec-naturezas-mes .rec-nat-nome { font-size: 13px; font-weight: 500; color: var(--ink); }
 .rec-naturezas-mes .rec-nat-nome small { font-size: 10.5px; margin-top: 1px; }
+.rec-naturezas-mes .rec-nat-nome small.rec-nat-pendente {
+  color: var(--ink-amber);
+  font-weight: 550;
+}
+.rec-nat-linha.rec-nat-espera .rec-nat-valor { color: var(--ink-amber); }
 .rec-naturezas-mes .rec-nat-valor {
   font-size: 12.5px; font-weight: 600; color: var(--muted);
   font-variant-numeric: tabular-nums; white-space: nowrap;
@@ -27847,10 +27855,6 @@ details.fin-cartao-ressalvas > ul {
 .time-faixa-abre { cursor: pointer; position: relative; }
 .time-faixa-abre:hover { border-color: var(--purple); }
 .time-faixa-abre:focus-visible { outline: 2px solid var(--neon-purple); outline-offset: 2px; }
-.time-faixa-abrir {
-  display: block; font-style: normal; font-size: 10px; font-weight: 600;
-  letter-spacing: .03em; text-transform: uppercase; color: var(--purple-text); margin-top: 2px;
-}
 /* O selo é vermelho só quando falta dinheiro; "a mais" não é problema, é
    informação — pintar os dois de alarme ensinaria a ignorar os dois. */
 .time-faixa-selo {

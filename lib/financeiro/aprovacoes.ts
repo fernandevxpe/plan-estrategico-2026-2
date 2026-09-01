@@ -141,6 +141,17 @@ export type OrdemAprovacao = {
   /** De onde saiu a chave: a foto congelada na ordem, ou o cadastro de hoje. */
   chaveDoSnapshot: boolean;
   descricao: string;
+  /**
+   * Quem registrou a seleção, e quando.
+   *
+   * Existe porque a ordem pode nascer numa máquina e ser enviada de outra: em
+   * produção a escrita bancária é bloqueada por construção, então quem
+   * seleciona lá deixa a ordem em `rascunho` e quem tem a credencial envia
+   * depois. Numa tela onde uma pessoa despacha o que outra escolheu, "quem
+   * pediu isto" é o que separa conferir de despachar no automático.
+   */
+  pedidoPor: string | null;
+  pedidoEm: string | null;
   /** `net_cents`: o que sai da conta, já com juros, multa e desconto. */
   valorCents: number;
   pagoCents: number;
@@ -173,6 +184,8 @@ type LinhaBanco = {
   code: string;
   status: string;
   description: string;
+  requested_by: string | null;
+  requested_at: string | null;
   net_cents: string;
   paid_cents: string;
   due_date: string | null;
@@ -248,6 +261,8 @@ export async function getAprovacoes(): Promise<Aprovacoes> {
                 p.paid_cents::text               AS paid_cents,
                 to_char(p.due_date, 'YYYY-MM-DD')      AS due_date,
                 to_char(p.scheduled_for, 'YYYY-MM-DD') AS scheduled_for,
+                p.requested_by,
+                to_char(p.requested_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI') AS requested_at,
                 p.notes,
                 p.tags,
                 c.name                           AS favorecido,
@@ -326,6 +341,8 @@ export async function getAprovacoes(): Promise<Aprovacoes> {
         chaveMascarada: mascararChave(r.chave, r.chave_tipo),
         chaveDoSnapshot: Boolean(r.chave_do_snapshot),
         descricao: r.description,
+        pedidoPor: r.requested_by == null ? null : String(r.requested_by),
+        pedidoEm: r.requested_at == null ? null : String(r.requested_at),
         valorCents: Number(r.net_cents),
         pagoCents: Number(r.paid_cents),
         dueDate: r.due_date,

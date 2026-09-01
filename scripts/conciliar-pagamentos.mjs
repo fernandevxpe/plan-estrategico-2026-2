@@ -130,9 +130,18 @@ for (const o of ordens) {
     continue;
   }
 
-  // (3) a linha tem de existir no ledger. A chave é a MESMA que
-  // `import-inter.mjs` usa: sha256("inter|id:<idTransacao>").
-  const hash = dedupeHash({ accountSlug: ACCOUNT_SLUG, sourceId: `id:${tx.idTransacao}` });
+  /*
+   * (3) a linha tem de existir no ledger, e a chave é a MESMA que
+   * `import-inter.mjs` monta em :299 — `dedupeHash({accountSlug, sourceId})`
+   * com o `idTransacao` CRU.
+   *
+   * `dedupeHash` já acrescenta o prefixo `id:` por dentro
+   * (`${accountSlug}|id:${sourceId}`, fin-normalize.mjs). Eu passava
+   * `id:${idTransacao}` e produzia `inter|id:id:123` — hash que nunca casa. O
+   * sintoma foi honesto e enganoso ao mesmo tempo: "está no extrato mas NÃO no
+   * ledger", logo depois de um import que gravou a linha.
+   */
+  const hash = dedupeHash({ accountSlug: ACCOUNT_SLUG, sourceId: tx.idTransacao });
   const { rows: lastro } = await pool.query(
     `SELECT t.id, t.posted_on::text AS posted_on, -t.amount_cents AS cents, t.end_to_end_id
        FROM fin_transaction t

@@ -5,7 +5,12 @@ import { createHash, randomUUID } from "node:crypto";
 import type pg from "pg";
 
 import { query, queryOne, transaction } from "./db";
-import { idempotenciaDe, incluirPagamentoPix, pagamentoInterHabilitado } from "./inter-pagamento";
+import {
+  idempotenciaDe,
+  incluirPagamentoPix,
+  pagamentoInterHabilitado,
+  INTERVALO_ENTRE_PAGAMENTOS_MS
+} from "./inter-pagamento";
 
 /**
  * Programar pagamento: gravar a ORDEM e, opcionalmente, entregá-la ao banco
@@ -650,7 +655,12 @@ export async function enviarOrdensAoInter(
   if (!trava.ok) throw new ValidacaoPagamento(trava.motivo ?? "escrita bancária desligada", 503);
 
   const resultado: ResultadoEnvioLote = { enviadas: [], falharam: [] };
-  for (const id of lista) {
+  const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  for (const [posicao, id] of lista.entries()) {
+    // Espera ANTES, exceto na primeira: assim o intervalo separa chamadas e não
+    // sobra um atraso morto no fim do lote.
+    if (posicao > 0) await espera(INTERVALO_ENTRE_PAGAMENTOS_MS);
     try {
       const r = await enviarOrdemAoInter(id, opcoes);
       resultado.enviadas.push({

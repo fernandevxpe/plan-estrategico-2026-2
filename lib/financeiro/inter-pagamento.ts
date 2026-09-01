@@ -470,6 +470,11 @@ export function idempotenciaDe(codigo: string): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 
+// O ritmo vive em `inter-ritmo.ts`, sem import de disco, para a TELA poder
+// importar o mesmo número. Duplicar fazia a barra de progresso prometer um
+// tempo e o servidor cumprir outro.
+export { INTERVALO_ENTRE_PAGAMENTOS_MS } from "./inter-ritmo";
+
 export async function incluirPagamentoPix(ordem: OrdemPix, idempotencia: string): Promise<RespostaPix> {
   exigirHabilitado();
 

@@ -13,7 +13,7 @@ export const revalidate = 0;
 /**
  * Aprovações — onde a ordem enviada ao Inter é acompanhada até o dinheiro sair.
  *
- * Leitura pura, carregada no SERVIDOR como Custo da empresa e Pessoas: não há
+ * Leitura e envio, carregada no SERVIDOR como Custo da empresa e Pessoas: não há
  * escrita nesta tela, então um estado de carregamento no cliente seria custo
  * sem contrapartida.
  *

@@ -1,19 +1,29 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+
+// O MESMO número que o servidor usa entre um pagamento e o seguinte. Duplicá-lo
+// fazia a barra prometer um tempo e o envio cumprir outro.
+import { INTERVALO_ENTRE_PAGAMENTOS_MS } from "@/lib/financeiro/inter-ritmo";
 import {
   Building2,
   CalendarCheck,
   CalendarClock,
   ChevronRight,
+  CircleCheck,
   CircleDashed,
+  CirclePause,
+  CircleStop,
+  CircleX,
   Cpu,
   CreditCard,
   Hammer,
   House,
   Landmark,
   ListFilter,
+  RotateCcw,
+  Send,
   ShieldAlert,
   Users
 } from "lucide-react";
@@ -72,6 +82,40 @@ import { KpiAnalise } from "./FinKpiAnalise";
  * a 0075 diz que `aguardando_autorizacao` é onde o produto termina e a pessoa
  * vai para o aplicativo do Inter. O aviso está no topo E na barra de ação,
  * porque um aviso que só existe no topo não está na tela no instante do clique.
+ *
+ * ---------------------------------------------------------------------------
+ * O ENVIO É UMA REQUISIÇÃO POR ORDEM, E O LAÇO MORA AQUI
+ * ---------------------------------------------------------------------------
+ * Medido no primeiro lote real, 01/09/2026: 38 ordens selecionadas, 27 saíram,
+ * 11 ficaram em rascunho — e a tela não disse QUAIS. O envio era uma requisição
+ * só (`acao: "enviar-lote"`) que fazia as 38 chamadas ao Inter em sequência; o
+ * navegador e o proxy cortaram a conexão antes do fim e o resultado inteiro se
+ * perdeu, inclusive o das que tinham dado certo.
+ *
+ * O Inter limita ~10 pagamentos/min, e por isso `INTERVALO_ENTRE_PAGAMENTOS_MS`
+ * (lib/financeiro/inter-pagamento.ts) espera 6,5s entre chamadas. Com isso 38
+ * ordens levam ~4 minutos, que NÃO cabe numa requisição HTTP. Então o laço
+ * subiu para o cliente: `PUT { id }` uma por vez, com o progresso na tela e um
+ * botão de parar.
+ *
+ * As três listas do resultado existem por causa daquele lote: "falhou COM
+ * MOTIVO" e "nem chegou a ser tentada" são fatos diferentes, e em 01/09 as 11
+ * ficaram indistinguíveis — o dono só descobriu quais eram conferindo o banco.
+ *
+ * ---------------------------------------------------------------------------
+ * EM PRODUÇÃO, O CLIQUE REGISTRA A SELEÇÃO — E ISSO É O COMPORTAMENTO CERTO
+ * ---------------------------------------------------------------------------
+ * O POST que cria as ordens não fala com banco nenhum: grava `rascunho` no
+ * Postgres e pronto. Só o PUT precisa do certificado do Inter, que existe
+ * apenas na máquina local (`pagamentoInterHabilitado`: NODE_ENV=production
+ * nunca envia). Ou seja, em produção o clique CRIA as ordens e o envio devolve
+ * 503 — e as ordens ficam lá, no mesmo Postgres, para serem enviadas do local
+ * pela guia de Aprovações.
+ *
+ * **A ordem em rascunho É a seleção registrada.** Não existe estado paralelo de
+ * "seleção salva" nem tabela nova para isso, pela regra da 0030: duas tabelas
+ * para o mesmo conceito fazem toda soma de dinheiro ter duas respostas. O que
+ * esta tela faz é NOMEAR o 503 como sucesso parcial em vez de erro.
  */
 
 const ICONE_GRUPO: Record<GrupoContas, typeof House> = {
@@ -369,14 +413,102 @@ type LinhaCap = ContaAPagar & { id: string };
  * lista, não a tela.
  */
 type RespostaProgramar = {
-  criadas?: { id?: number; code?: string }[];
+  criadas?: { id?: number; code?: string; chaveDedupe?: string }[];
   jaExistiam?: { id?: number; code?: string }[];
   recusadas?: { chaveDedupe?: string; motivo?: string }[];
-  /** Preenchido depois do envio ao Inter, na segunda etapa do mesmo clique. */
-  enviadas?: { id?: number; code?: string; codigoSolicitacao?: string | null }[];
-  falharamNoEnvio?: { id?: number; motivo?: string }[];
   error?: string;
 };
+
+
+/**
+ * Fatia da espera. Sem ela, "Parar" só teria efeito até 6,5s depois do clique —
+ * e um botão que demora 6 segundos para responder se lê como quebrado.
+ */
+const PASSO_ESPERA_MS = 200;
+
+/** Uma ordem já criada, esperando a vez no laço de envio. */
+type ItemEnvio = {
+  id: number;
+  code: string;
+  /** "Fernando — Pró-labore": quem recebe e por quê, na linguagem da lista. */
+  rotulo: string;
+  valorCents: number;
+};
+
+type Enviada = ItemEnvio & { codigoSolicitacao: string | null };
+type Falhada = ItemEnvio & { motivo: string; http: number };
+
+/**
+ * POR QUE O LAÇO PAROU — e é isso que separa "falhou" de "nem foi tentada".
+ *
+ *   fim      chegou ao fim da fila
+ *   pedido   alguém clicou Parar. Não é erro: é decisão.
+ *   ignicao  503 na primeira tentativa — a escrita bancária está desligada
+ *            nesta máquina. As ordens estão criadas e em rascunho.
+ *   queda    503 de outra natureza (banco financeiro fora). Mesma lógica:
+ *            insistir 37 vezes na mesma parede não descobre nada.
+ */
+type MotivoParada = "fim" | "pedido" | "ignicao" | "queda";
+
+type Envio = {
+  /** Quantas ordens este painel cobre, somando o que já saiu em tentativas anteriores. */
+  total: number;
+  enviadas: Enviada[];
+  falhadas: Falhada[];
+  /** Ainda não tentadas: a fila do laço, encolhendo. */
+  naoEnviadas: ItemEnvio[];
+  /** A que está no ar agora. Null enquanto espera o intervalo ou quando acabou. */
+  atual: ItemEnvio | null;
+  rodando: boolean;
+  parada: MotivoParada;
+  /** O motivo do 503, por extenso, quando `parada` é `ignicao` ou `queda`. */
+  motivoDaParada: string | null;
+};
+
+/** O que o painel já sabia e NÃO está sendo retentado agora — ver `enviarEmSerie`. */
+type BaseEnvio = Pick<Envio, "enviadas" | "falhadas" | "naoEnviadas">;
+
+function esperar(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function somarItens(itens: { valorCents: number }[]): number {
+  return itens.reduce((s, i) => s + i.valorCents, 0);
+}
+
+/**
+ * "~3 min" / "~40s". Segundos até 90 e minutos depois: abaixo disso o minuto
+ * arredondado ("~1 min" para 40 segundos) exagera a espera em 50%, e o número
+ * existe justamente para a pessoa decidir se fica olhando ou vai fazer outra
+ * coisa.
+ */
+function tempoAproximado(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s === 0) return "acabando";
+  if (s < 90) return `~${s}s`;
+  return `~${Math.round(s / 60)} min`;
+}
+
+/**
+ * O 503 da ignição, separado do 503 de banco fora.
+ *
+ * A frase casada é a que `pagamentoInterHabilitado` escreve nos DOIS ramos
+ * (NODE_ENV=production e INTER_PAGAMENTO_LOCAL≠1), em
+ * `lib/financeiro/inter-pagamento.ts`. É casamento de string, sim — e a
+ * alternativa seria um campo novo no contrato para um fato que a resposta já
+ * carrega por extenso. O custo de errar é pequeno e conhecido: cai no texto de
+ * `queda`, que mostra o mesmo motivo na íntegra.
+ */
+function ehIgnicaoDesligada(motivo: string): boolean {
+  return /escrita banc[áa]ria desligada/i.test(motivo);
+}
+
+/** O nome que a pessoa reconhece na barra de progresso e nas três listas. */
+function rotuloDaLinha(l: ContaAPagar): string {
+  const quem = l.contraparte?.trim() || l.descricao?.trim() || "sem favorecido";
+  const oQue = l.natureza ?? l.categoriaNome ?? null;
+  return oQue ? `${quem} — ${oQue}` : quem;
+}
 
 function podeProgramar(l: ContaAPagar): boolean {
   return l.impedimento === null && l.ordem === null;
@@ -468,6 +600,22 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
   const [emVoo, setEmVoo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [resultado, setResultado] = useState<RespostaProgramar | null>(null);
+  const [envio, setEnvio] = useState<Envio | null>(null);
+  /*
+   * Ref e não estado: o laço é uma função async que já capturou o `envio` do
+   * render em que começou. Um `pararSolicitado` em `useState` seria lido lá
+   * dentro sempre como `false` — o clássico stale closure — e o botão Parar
+   * não pararia nada.
+   */
+  const pararRef = useRef(false);
+  /*
+   * O que a máquina RESPONDEU sobre a ignição, não o que o contrato promete.
+   * `ContasAPagar` não expõe nada sobre a trava do Inter, e inventar um campo
+   * para isso seria contrato novo para um fato que o 503 já entrega. Depois do
+   * primeiro 503 de ignição a tela sabe, e o botão passa a se chamar pelo que
+   * ele de fato faz aqui: registrar a seleção.
+   */
+  const [ignicaoDesligada, setIgnicaoDesligada] = useState<string | null>(null);
   /* Os dois filtros são MULTI-SELEÇÃO e independentes: "Salário + Pró-labore"
      é um gesto que o dono descreveu, e "só o que está pronta" cruza com ele. */
   const [eixosFiltrados, setEixosFiltrados] = useState<Set<string>>(new Set());
@@ -709,11 +857,142 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
     setCiclosFiltrados(new Set());
   }
 
+  /**
+   * O LAÇO DE ENVIO — uma requisição por ordem, na cadência do Inter.
+   *
+   * `fila` são as ordens a tentar; `base` é TUDO que este painel já sabe e que
+   * não está sendo retentado agora. Sem esse carry-over, clicar "tentar de novo
+   * só as que falharam" apagaria do painel as que ficaram para trás — perder de
+   * vista justamente a lista que este trabalho existe para criar.
+   *
+   * TRÊS SAÍDAS, NÃO DUAS. Enviada, falhada com motivo, e não-tentada. A
+   * terceira é o ponto: em 01/09/2026, 11 ordens ficaram em rascunho e a tela
+   * as deixou indistinguíveis das que deram erro.
+   *
+   * O 503 INTERROMPE O LAÇO. Ele é condição da MÁQUINA — ignição desligada ou
+   * banco financeiro fora —, idêntica para as 38 seguintes. Insistir custaria
+   * 37 × 6,5s = ~4 minutos para colher 37 cópias da mesma frase. É a mesma
+   * decisão que `enviarOrdensAoInter` já tomava do lado do servidor, checando a
+   * trava UMA vez antes do laço. A ordem que levou o 503 volta para
+   * "não enviadas": nada saiu por ela, porque a trava é conferida antes de
+   * qualquer chamada ao banco.
+   */
+  async function enviarEmSerie(fila: ItemEnvio[], base: BaseEnvio) {
+    pararRef.current = false;
+    const enviadas: Enviada[] = [...base.enviadas];
+    const falhadas: Falhada[] = [...base.falhadas];
+    const total = enviadas.length + falhadas.length + base.naoEnviadas.length + fila.length;
+
+    const anotar = (
+      restam: number,
+      atual: ItemEnvio | null,
+      rodando: boolean,
+      parada: MotivoParada,
+      motivoDaParada: string | null
+    ) =>
+      setEnvio({
+        total,
+        enviadas: [...enviadas],
+        falhadas: [...falhadas],
+        naoEnviadas: [...fila.slice(restam), ...base.naoEnviadas],
+        atual,
+        rodando,
+        parada,
+        motivoDaParada
+      });
+
+    anotar(0, null, true, "fim", null);
+
+    let i = 0;
+    let parada: MotivoParada = "fim";
+    let motivoDaParada: string | null = null;
+
+    for (; i < fila.length; i++) {
+      const item = fila[i];
+      /* O nome aparece ANTES da espera, e não só na hora do fetch: durante os
+         6,5s a linha diria "Enviando 13 de 38" sem dizer de quem — seis
+         segundos e meio de progresso anônimo em cada uma das 38. */
+      anotar(i + 1, item, true, "fim", null);
+
+      /* Espera ANTES, menos na primeira: o intervalo separa chamadas e não
+         sobra um atraso morto no fim — mesmo desenho de `enviarOrdensAoInter`.
+         Fatiada em 200ms para o Parar responder na hora. */
+      if (i > 0) {
+        for (let ja = 0; ja < INTERVALO_ENTRE_PAGAMENTOS_MS && !pararRef.current; ja += PASSO_ESPERA_MS) {
+          await esperar(PASSO_ESPERA_MS);
+        }
+      }
+      if (pararRef.current) {
+        parada = "pedido";
+        break;
+      }
+
+      try {
+        // `urlDaOrigem` e não o path cru: a plataforma abre com Basic Auth, e um
+        // fetch relativo herda o userinfo da barra de endereço — o Chromium
+        // recusa a requisição inteira. Ver lib/url-origem.ts.
+        const r = await fetch(urlDaOrigem("/api/financeiro/contas-a-pagar/programar"), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: item.id })
+        });
+        const corpo = (await r.json().catch(() => ({}))) as {
+          codigoSolicitacao?: string | null;
+          error?: string;
+        };
+        if (r.ok) {
+          enviadas.push({ ...item, codigoSolicitacao: corpo.codigoSolicitacao ?? null });
+        } else {
+          const motivo = corpo.error?.trim() || `o servidor recusou sem dizer o motivo (HTTP ${r.status})`;
+          if (r.status === 503) {
+            motivoDaParada = motivo;
+            parada = ehIgnicaoDesligada(motivo) ? "ignicao" : "queda";
+            if (parada === "ignicao") setIgnicaoDesligada(motivo);
+            break;
+          }
+          falhadas.push({ ...item, motivo, http: r.status });
+        }
+      } catch (e) {
+        /* Rede que cai no meio: a ordem PODE ter chegado ao Inter e a resposta
+           se perdido. Por isso o texto não promete que nada saiu — ele manda
+           conferir, que é o que a 0075 chama de "o mais caro de perder". */
+        falhadas.push({
+          ...item,
+          motivo: `a requisição não completou (${e instanceof Error ? e.message : "rede"}). Confira esta ordem na guia de Aprovações antes de reenviar.`,
+          http: 0
+        });
+      }
+      anotar(i + 1, null, true, "fim", null);
+    }
+
+    anotar(i, null, false, parada, motivoDaParada);
+  }
+
+  function pararEnvio() {
+    pararRef.current = true;
+  }
+
+  /** "Tentar de novo só as que falharam" e "retomar as que ficaram". */
+  async function retomarEnvio(fila: ItemEnvio[], base: BaseEnvio) {
+    if (!fila.length || emVoo) return;
+    setEmVoo(true);
+    setErro(null);
+    try {
+      await enviarEmSerie(fila, base);
+      router.refresh();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "não enviou");
+    } finally {
+      setEmVoo(false);
+    }
+  }
+
   async function programar() {
     if (!escolhidas.length || !podeEnviar) return;
     setEmVoo(true);
     setErro(null);
     setResultado(null);
+    setEnvio(null);
     try {
       /*
        * Uma obrigação, um alvo. O índice único (entity_id, source, source_id)
@@ -749,41 +1028,44 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
       const r = (await resposta.json()) as RespostaProgramar;
       if (!resposta.ok) throw new Error(r.error ?? "não programou");
 
+      setResultado(r);
+      // As ordens existem a partir daqui. Manter as linhas marcadas convidaria
+      // a clicar de novo no que já virou `fin_payment_request`.
+      setSelecionadas(new Set());
+
       /*
-       * SEGUNDA ETAPA DO MESMO CLIQUE: entregar as ordens ao Inter.
+       * SEGUNDA ETAPA DO MESMO CLIQUE: entregar as ordens ao Inter, UMA A UMA.
        *
        * O gesto do dono é um só — "seleciono o que vou pagar e mando para
        * aprovação". Duas etapas existem porque são dois fatos diferentes: a
-       * ordem gravada no nosso banco (que não depende de rede) e a ordem
-       * entregue ao banco (que depende). Separá-las é o que faz uma falha de
-       * rede não perder a programação: as ordens ficam em `rascunho` e a guia
-       * de Aprovações permite reenviar.
+       * ordem gravada no nosso banco (que não depende de rede nem de
+       * credencial) e a ordem entregue ao banco (que depende das duas).
+       * Separá-las é o que faz uma falha de envio não perder a programação: as
+       * ordens ficam em `rascunho` e a guia de Aprovações permite reenviar —
+       * inclusive de OUTRA máquina, que é como a produção funciona.
+       *
+       * O nome e o valor de cada ordem são congelados AGORA, a partir da linha
+       * que a pessoa marcou. Depois do `router.refresh()` a lista muda de forma
+       * (as linhas passam a ter ordem), e o painel de resultado tem de
+       * continuar dizendo o que foi enviado, não o que a tela mostra agora.
        *
        * E o envio NÃO paga. Ele para em `aguardando_autorizacao` — quem aprova
        * é você, no aplicativo do Inter.
        */
-      const ids = (r.criadas ?? []).map((c) => c.id).filter((id): id is number => typeof id === "number");
-      if (ids.length > 0) {
-        const env = await fetch(urlDaOrigem("/api/financeiro/contas-a-pagar/programar"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ acao: "enviar-lote", ids })
+      const porChave = new Map(escolhidas.map((l) => [l.chaveDedupe, l]));
+      const fila: ItemEnvio[] = [];
+      for (const c of r.criadas ?? []) {
+        if (typeof c.id !== "number") continue;
+        const linha = c.chaveDedupe ? porChave.get(c.chaveDedupe) : undefined;
+        fila.push({
+          id: c.id,
+          code: c.code ?? `ordem ${c.id}`,
+          rotulo: linha ? rotuloDaLinha(linha) : c.chaveDedupe ?? `ordem ${c.id}`,
+          valorCents: linha?.valorCents ?? 0
         });
-        const e = (await env.json()) as {
-          enviadas?: { id?: number; code?: string; codigoSolicitacao?: string | null }[];
-          falharam?: { id?: number; motivo?: string }[];
-          error?: string;
-        };
-        // Envio que falha não desfaz a programação: as ordens existem, em
-        // rascunho, e o motivo aparece junto em vez de virar erro de tela.
-        r.enviadas = e.enviadas ?? [];
-        r.falharamNoEnvio = env.ok
-          ? e.falharam ?? []
-          : ids.map((id) => ({ id, motivo: e.error ?? "não enviou" }));
       }
+      if (fila.length > 0) await enviarEmSerie(fila, { enviadas: [], falhadas: [], naoEnviadas: [] });
 
-      setResultado(r);
-      setSelecionadas(new Set());
       router.refresh();
     } catch (e) {
       setErro(e instanceof Error ? e.message : "não programou");
@@ -797,9 +1079,12 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
       <header className="fin-cap-topo">
         <label className="fin-cap-mes">
           <span>Competência</span>
+          {/* Trocar de mês no meio do envio recarrega a tela e mata o laço com
+              ordens pela metade. Enquanto o envio roda, o mês fica onde está. */}
           <select
             className="fin-select"
             value={dados.competencia}
+            disabled={emVoo}
             onChange={(e) => trocarMes(e.target.value)}
           >
             {dados.meses.map((mes) => (
@@ -876,7 +1161,7 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
                     type="button"
                     className={`fin-cap-chip fin-cap-chip-${c.slug}${ativo ? " ativo" : ""}`}
                     aria-pressed={ativo}
-                    disabled={c.n === 0}
+                    disabled={c.n === 0 || emVoo}
                     title={`${c.nome} — ${c.dica}${c.n ? ` · ${brlPrecise(c.cents)}` : ""}`}
                     onClick={() => alternarCiclo(c.slug)}
                   >
@@ -903,6 +1188,7 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
                     type="button"
                     className={`fin-cap-chip${c.ehNatureza ? " natureza" : ""}${ativo ? " ativo" : ""}`}
                     aria-pressed={ativo}
+                    disabled={emVoo}
                     title={[
                       `${c.n} ${c.n === 1 ? "linha" : "linhas"} · ${brlPrecise(c.cents)}`,
                       c.duplicadas
@@ -924,6 +1210,7 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
                 <button
                   type="button"
                   className="fin-cap-chip fin-cap-chip-mais"
+                  disabled={emVoo}
                   onClick={() => setVerTodosEixos((v) => !v)}
                 >
                   {verTodosEixos ? "ver menos" : `+${chipsEixo.length - LIMITE_CHIPS} categorias`}
@@ -995,7 +1282,7 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
               <b>{visiveis.length}</b> de {linhas.length} linhas · <b>{brlCents(visiveisCents)}</b> ·{" "}
               {elegiveisVisiveis.length}{" "}
               {elegiveisVisiveis.length === 1 ? "pronta para virar ordem" : "prontas para virar ordem"}
-              <button type="button" className="fin-cap-limpar" onClick={limparFiltros}>
+              <button type="button" className="fin-cap-limpar" disabled={emVoo} onClick={limparFiltros}>
                 limpar filtros
               </button>
             </p>
@@ -1118,14 +1405,28 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
               {escolhidasOcultas} fora do filtro
             </span>
           ) : null}
+          {/* O RÓTULO SEGUE O QUE A MÁQUINA JÁ RESPONDEU.
+              Depois do primeiro 503 de ignição, "Realizar pagamento" é uma
+              promessa que esta máquina não cumpre: aqui o clique CRIA as ordens
+              e para. Chamar isso de "Registrar seleção" é o nome do que
+              acontece — e as ordens em rascunho são a seleção registrada, no
+              mesmo Postgres que a máquina local lê. */}
           <button
             type="button"
             className="fin-btn-primary"
             disabled={emVoo || !podeEnviar}
-            title={dataNoPassado ? `${dateLabel(quando)} já passou` : undefined}
+            title={
+              dataNoPassado
+                ? `${dateLabel(quando)} já passou`
+                : ignicaoDesligada ?? undefined
+            }
             onClick={() => void programar()}
           >
-            {emVoo ? "Enviando…" : "Realizar pagamento (enviar para aprovação)"}
+            {emVoo
+              ? "Enviando…"
+              : ignicaoDesligada
+                ? "Registrar seleção (o envio ao banco está desligado aqui)"
+                : "Realizar pagamento (enviar para aprovação)"}
           </button>
           <button
             type="button"
@@ -1152,6 +1453,26 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
           </span>
           {erro ? <span className="fin-badge-atencao">{erro}</span> : null}
         </div>
+      ) : null}
+
+      {/* O ERRO DO POST QUANDO NÃO HÁ MAIS BARRA PARA CARREGÁ-LO. A seleção é
+          limpa assim que as ordens nascem, e a barra some junto — sem isto, uma
+          falha depois desse instante não teria onde aparecer. */}
+      {erro && !escolhidas.length ? (
+        <p className="fin-cap-erro" role="alert">
+          <ShieldAlert size={16} strokeWidth={2.2} aria-hidden />
+          <span>{erro}</span>
+        </p>
+      ) : null}
+
+      {envio ? (
+        <PainelEnvio
+          envio={envio}
+          ocupado={emVoo}
+          onParar={pararEnvio}
+          onRetomar={(fila, base) => void retomarEnvio(fila, base)}
+          onFechar={() => setEnvio(null)}
+        />
       ) : null}
 
       {resultado ? (
@@ -1193,7 +1514,7 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
           <p>
             As {linhas.length} linhas de {monthKeyLabel(dados.competencia)} continuam aqui — é o
             filtro que não casa com nenhuma.{" "}
-            <button type="button" className="fin-cap-limpar" onClick={limparFiltros}>
+            <button type="button" className="fin-cap-limpar" disabled={emVoo} onClick={limparFiltros}>
               limpar filtros
             </button>
           </p>
@@ -1276,6 +1597,376 @@ export function FinContasAPagar({ dados }: { dados: ContasAPagar }) {
         );
       })}
     </>
+  );
+}
+
+/** A guia onde as ordens vivem depois daqui — repetida em cada grupo. */
+const ONDE_AS_ORDENS_VIVEM = "/financeiro/aprovacoes";
+
+/**
+ * O PAINEL DO ENVIO: o progresso enquanto roda, e TRÊS listas quando para.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE TRÊS E NÃO DUAS
+ * ---------------------------------------------------------------------------
+ * No primeiro lote real (01/09/2026) 38 ordens foram selecionadas, 27 saíram e
+ * 11 ficaram em rascunho — e a tela mostrou um número só. As 11 podiam ser erro
+ * do Inter, recusa de cadastro ou simplesmente "a requisição morreu antes de
+ * chegar nelas", e não havia como saber: o dono descobriu conferindo o banco.
+ *
+ * "Falhou COM MOTIVO" e "nem foi tentada" pedem gestos diferentes — a primeira
+ * pede conserto, a segunda pede só retomar. Um número só as chamava de a mesma
+ * coisa.
+ *
+ * ---------------------------------------------------------------------------
+ * O PAINEL NÃO SOME SOZINHO
+ * ---------------------------------------------------------------------------
+ * Sem `setTimeout`, sem toast, sem auto-fechar. Ele é o único lugar onde o
+ * `codigoSolicitacao` de cada ordem aparece junto do nome de quem recebe, e é
+ * o que a pessoa lê ao lado do aplicativo do banco.
+ */
+function PainelEnvio({
+  envio,
+  ocupado,
+  onParar,
+  onRetomar,
+  onFechar
+}: {
+  envio: Envio;
+  ocupado: boolean;
+  onParar: () => void;
+  onRetomar: (fila: ItemEnvio[], base: BaseEnvio) => void;
+  onFechar: () => void;
+}) {
+  const feitas = envio.enviadas.length + envio.falhadas.length;
+  const pct = envio.total > 0 ? Math.round((feitas / envio.total) * 100) : 0;
+  /*
+   * O relógio conta só a FILA que ainda não começou: cada uma dessas custa uma
+   * espera de 6,5s mais a própria requisição. A que está no ar já não espera
+   * mais nada. Estimativa por baixo de propósito — quem espera 4 minutos
+   * perdoa 10 segundos a mais, não 40 a menos.
+   */
+  const faltaMs = envio.naoEnviadas.length * INTERVALO_ENTRE_PAGAMENTOS_MS;
+  const temPendencia = envio.falhadas.length > 0 || envio.naoEnviadas.length > 0;
+
+  /*
+   * As que o reenvio em massa NÃO pode levar junto.
+   *
+   * `http === 0` é requisição que não completou: a ordem pode ter chegado ao
+   * Inter e só a resposta ter se perdido. Só a chave idempotente separaria "o
+   * banco reconhece e ignora" de "o banco paga de novo" — e ela é palpite não
+   * verificado contra a API real (ver o bloco de constantes de
+   * inter-pagamento.ts). Enquanto for palpite, essas se resolvem uma a uma na
+   * guia de Aprovações, depois de conferir.
+   */
+  const incertas = envio.falhadas.filter((f) => f.http === 0);
+  const seguras = envio.falhadas.filter((f) => f.http !== 0);
+
+  /* 409 é estado errado da ordem: ela EXISTE aqui e nada saiu por ela. É a
+     diferença entre "perdi o trabalho" e "tenho de olhar uma coisa". */
+  const temConflito = envio.falhadas.some((f) => f.http === 409);
+
+  return (
+    <section className="fin-cap-envio" aria-label="Envio das ordens ao Banco Inter">
+      {envio.rodando ? (
+        <div className="fin-cap-envio-andando" role="status" aria-live="polite">
+          <div
+            className="fin-cap-envio-barra"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={envio.total}
+            aria-valuenow={feitas}
+            aria-label={`${feitas} de ${envio.total} ordens processadas`}
+          >
+            <span style={{ width: `${pct}%` }} />
+          </div>
+          <p className="fin-cap-envio-linha">
+            <Send size={14} strokeWidth={2.2} aria-hidden />
+            <b>
+              Enviando {Math.min(feitas + 1, envio.total)} de {envio.total}
+            </b>
+            {envio.atual ? <span className="fin-cap-envio-quem">{envio.atual.rotulo}</span> : null}
+            <span className="fin-cap-envio-falta">falta {tempoAproximado(faltaMs)}</span>
+            <button type="button" className="fin-btn-ghost fin-cap-envio-parar" onClick={onParar}>
+              <CircleStop size={14} strokeWidth={2.2} aria-hidden />
+              Parar
+            </button>
+          </p>
+          {/* SEM `beforeunload`. O diálogo do navegador é intrusivo e aparece
+              igual para quem fechou por engano e para quem fechou de propósito;
+              a frase abaixo diz a mesma coisa sem sequestrar o gesto — e o
+              custo real de sair é pequeno, porque as ordens já estão gravadas. */}
+          <p className="fin-cap-envio-nota">
+            Uma ordem por vez, com 6,5s entre elas — é o limite do Inter (~10 por minuto).{" "}
+            <b>Sair desta página interrompe o envio.</b> O que não tiver sido entregue continua
+            aqui em rascunho, e você manda depois pela guia de Aprovações.
+          </p>
+        </div>
+      ) : (
+        <p className={`fin-cap-envio-fecho fin-cap-envio-fecho-${envio.parada}`} role="status">
+          {envio.parada === "ignicao" ? (
+            <>
+              <CirclePause size={16} strokeWidth={2.2} aria-hidden />
+              <span>
+                {/* A CONTAGEM É A DAS QUE FICARAM, não `total`: num "tentar de
+                    novo" o total inclui as que já tinham saído, e dizer que
+                    elas foram "criadas e guardadas" seria voltar atrás num fato
+                    que a lista de Enviadas logo abaixo desmente. */}
+                <b>
+                  {envio.naoEnviadas.length}{" "}
+                  {envio.naoEnviadas.length === 1
+                    ? "ordem criada e guardada em rascunho"
+                    : "ordens criadas e guardadas em rascunho"}
+                  .
+                </b>{" "}
+                O envio ao banco não aconteceu, e aqui isso é o esperado: o certificado do Inter
+                só existe na máquina local, então nesta o clique registra a seleção e para. É a
+                mesma fila, no mesmo banco — abra a{" "}
+                <a className="pp-link" href={ONDE_AS_ORDENS_VIVEM}>
+                  guia de Aprovações
+                </a>{" "}
+                na máquina local para mandá-las.
+                <span className="fin-cap-envio-motivo">{envio.motivoDaParada}</span>
+              </span>
+            </>
+          ) : envio.parada === "queda" ? (
+            <>
+              <CircleX size={16} strokeWidth={2.2} aria-hidden />
+              <span>
+                <b>O envio parou.</b> As {envio.naoEnviadas.length} que ficaram continuam criadas
+                e em rascunho — nada foi perdido. Motivo devolvido pelo servidor:
+                <span className="fin-cap-envio-motivo">{envio.motivoDaParada}</span>
+              </span>
+            </>
+          ) : envio.parada === "pedido" ? (
+            <>
+              <CirclePause size={16} strokeWidth={2.2} aria-hidden />
+              <span>
+                <b>Você parou o envio.</b> {envio.enviadas.length}{" "}
+                {envio.enviadas.length === 1 ? "ordem saiu" : "ordens saíram"} e{" "}
+                {envio.naoEnviadas.length}{" "}
+                {envio.naoEnviadas.length === 1 ? "não chegou" : "não chegaram"} a ser{" "}
+                {envio.naoEnviadas.length === 1 ? "tentada" : "tentadas"}. Parar não é erro: as que
+                ficaram continuam em rascunho, esperando o seu próximo clique.
+              </span>
+            </>
+          ) : envio.falhadas.length === 0 ? (
+            <>
+              <CircleCheck size={16} strokeWidth={2.2} aria-hidden />
+              <span>
+                <b>
+                  {envio.enviadas.length}{" "}
+                  {envio.enviadas.length === 1 ? "ordem entregue" : "ordens entregues"} ao Banco
+                  Inter.
+                </b>{" "}
+                Nenhuma falhou. Nada saiu da conta ainda — a aprovação é sua, no aplicativo do
+                banco.
+              </span>
+            </>
+          ) : (
+            <>
+              <CircleX size={16} strokeWidth={2.2} aria-hidden />
+              <span>
+                <b>
+                  {envio.enviadas.length}{" "}
+                  {envio.enviadas.length === 1 ? "entregue" : "entregues"}, {envio.falhadas.length}{" "}
+                  {envio.falhadas.length === 1 ? "falhou" : "falharam"}.
+                </b>{" "}
+                O motivo de cada falha está abaixo, na íntegra.
+              </span>
+            </>
+          )}
+        </p>
+      )}
+
+      <div className="fin-cap-envio-grupos">
+        {/* ENVIADAS — e a frase que separa "entregue" de "pago". */}
+        <div className="fin-cap-envio-grupo enviadas">
+          <h3>
+            <CircleCheck size={14} strokeWidth={2.4} aria-hidden />
+            Enviadas ({envio.enviadas.length})
+            <span className="fin-cap-envio-valor">{brlCents(somarItens(envio.enviadas))}</span>
+          </h3>
+          <p className="fin-cap-envio-explica">
+            {envio.enviadas.length
+              ? "Estão aguardando a sua aprovação no aplicativo do Banco Inter — nada saiu da conta."
+              : "Nenhuma ordem foi entregue ao banco nesta rodada."}{" "}
+            <a className="pp-link" href={ONDE_AS_ORDENS_VIVEM}>
+              ver em Aprovações
+            </a>
+          </p>
+          {envio.enviadas.length ? (
+            <ul className="fin-cap-envio-lista">
+              {envio.enviadas.map((e) => (
+                <li key={e.id}>
+                  <b className="fin-cap-envio-code">{e.code}</b>
+                  <span className="fin-cap-envio-quem">{e.rotulo}</span>
+                  <span className="fin-cap-envio-cifra">{brlPrecise(e.valorCents)}</span>
+                  {/* O codigoSolicitacao é para COPIAR e procurar no aplicativo
+                      do banco — mesma decisão de `.fin-apr-cod`. */}
+                  <span className={e.codigoSolicitacao ? "fin-cap-envio-cod" : "fin-cap-envio-cod vazio"}>
+                    {e.codigoSolicitacao ?? "sem código de solicitação"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+
+        {/* FALHARAM — o motivo por extenso é o dado que faltou em 01/09. */}
+        <div className="fin-cap-envio-grupo falhadas">
+          <h3>
+            <CircleX size={14} strokeWidth={2.4} aria-hidden />
+            Falharam ({envio.falhadas.length})
+            <span className="fin-cap-envio-valor">{brlCents(somarItens(envio.falhadas))}</span>
+          </h3>
+          <p className="fin-cap-envio-explica">
+            {envio.falhadas.length
+              ? "O banco ou a conferência recusou. A ordem continua registrada aqui — o motivo de cada uma está escrito abaixo."
+              : "Nenhuma ordem foi recusada."}{" "}
+            <a className="pp-link" href={ONDE_AS_ORDENS_VIVEM}>
+              ver em Aprovações
+            </a>
+          </p>
+          {envio.falhadas.length ? (
+            <>
+              <ul className="fin-cap-envio-lista">
+                {envio.falhadas.map((f) => (
+                  <li key={f.id}>
+                    <b className="fin-cap-envio-code">{f.code}</b>
+                    <span className="fin-cap-envio-quem">{f.rotulo}</span>
+                    <span className="fin-cap-envio-cifra">{brlPrecise(f.valorCents)}</span>
+                    <span className="fin-cap-envio-motivo">{f.motivo}</span>
+                  </li>
+                ))}
+              </ul>
+              {temConflito ? (
+                <p className="fin-cap-envio-calma">
+                  Onde o motivo fala em estado da ordem, ela <b>existe e está registrada aqui</b> —
+                  não é dinheiro perdido nem trabalho refeito. Leia o motivo antes de reenviar pela
+                  guia de Aprovações.
+                </p>
+              ) : null}
+              <button
+                type="button"
+                className="fin-btn-ghost"
+                disabled={ocupado || seguras.length === 0}
+                /*
+                 * FALHA DE REDE NÃO ENTRA NO REENVIO EM MASSA.
+                 *
+                 * `http === 0` é requisição que não completou: a ordem PODE ter
+                 * chegado ao Inter e só a resposta ter se perdido. Reenviar tem
+                 * duas proteções — o servidor só manda o que está em
+                 * rascunho/aprovada, e a chave idempotente é derivada do `code`
+                 * por sha256 — mas a SEGUNDA é palpite não verificado contra a
+                 * API real, e é justamente ela que separaria "o banco reconhece
+                 * e ignora" de "o banco paga de novo".
+                 *
+                 * Enquanto for palpite, um clique que reenvia 30 ordens não pode
+                 * carregar junto a que talvez já tenha saído. Ela fica de fora,
+                 * nomeada, e se resolve uma a uma na guia de Aprovações — depois
+                 * de conferir. É a mesma disciplina do resto: o produto para
+                 * onde a certeza acaba.
+                 */
+                title={
+                  incertas.length
+                    ? `${incertas.length} ordem(ns) ficam de fora: a requisição não completou e elas podem ter chegado ao banco. Confira em Aprovações antes de reenviar cada uma.`
+                    : undefined
+                }
+                onClick={() =>
+                  onRetomar(
+                    // Só o que a fila precisa: o motivo da tentativa anterior
+                    // não vai junto, senão ele reaparece colado numa ordem que
+                    // acabou de dar certo.
+                    seguras.map(({ id, code, rotulo, valorCents }) => ({
+                      id,
+                      code,
+                      rotulo,
+                      valorCents
+                    })),
+                    // As incertas continuam no painel, em falhadas, para não
+                    // sumirem da vista de quem precisa conferi-las.
+                    { enviadas: envio.enviadas, falhadas: incertas, naoEnviadas: envio.naoEnviadas }
+                  )
+                }
+              >
+                <RotateCcw size={14} strokeWidth={2.2} aria-hidden />
+                Tentar de novo só as que falharam ({envio.falhadas.length})
+              </button>
+            </>
+          ) : null}
+        </div>
+
+        {/* NÃO ENVIADAS — as que nem foram tentadas. É a distinção inteira. */}
+        <div className="fin-cap-envio-grupo pendentes">
+          <h3>
+            <CirclePause size={14} strokeWidth={2.4} aria-hidden />
+            Não enviadas ({envio.naoEnviadas.length})
+            <span className="fin-cap-envio-valor">{brlCents(somarItens(envio.naoEnviadas))}</span>
+          </h3>
+          <p className="fin-cap-envio-explica">
+            {envio.naoEnviadas.length === 0
+              ? "Nenhuma ficou para trás."
+              : envio.parada === "ignicao"
+                ? "Nem chegaram a ser tentadas: o envio ao banco está desligado nesta máquina. Elas estão criadas e em rascunho — é a sua seleção, registrada."
+                : envio.parada === "pedido"
+                  ? "Nem chegaram a ser tentadas — você parou antes. Continuam em rascunho, intactas."
+                  : "Nem chegaram a ser tentadas. Continuam em rascunho, intactas."}{" "}
+            <a className="pp-link" href={ONDE_AS_ORDENS_VIVEM}>
+              ver em Aprovações
+            </a>
+          </p>
+          {envio.naoEnviadas.length ? (
+            <>
+              <ul className="fin-cap-envio-lista">
+                {envio.naoEnviadas.map((p) => (
+                  <li key={p.id}>
+                    <b className="fin-cap-envio-code">{p.code}</b>
+                    <span className="fin-cap-envio-quem">{p.rotulo}</span>
+                    <span className="fin-cap-envio-cifra">{brlPrecise(p.valorCents)}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className="fin-btn-ghost"
+                disabled={ocupado}
+                title={
+                  envio.parada === "ignicao"
+                    ? "Nesta máquina o envio está desligado — daqui isto vai levar ao mesmo 503."
+                    : `${tempoAproximado(envio.naoEnviadas.length * INTERVALO_ENTRE_PAGAMENTOS_MS)} para as ${envio.naoEnviadas.length}`
+                }
+                onClick={() =>
+                  onRetomar(envio.naoEnviadas, {
+                    enviadas: envio.enviadas,
+                    falhadas: envio.falhadas,
+                    naoEnviadas: []
+                  })
+                }
+              >
+                <Send size={14} strokeWidth={2.2} aria-hidden />
+                Enviar as {envio.naoEnviadas.length} que faltam
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      {!envio.rodando ? (
+        <button
+          type="button"
+          className="fin-btn-ghost fin-cap-envio-fechar"
+          title={
+            temPendencia
+              ? "as ordens continuam na guia de Aprovações — fechar aqui não desfaz nada"
+              : undefined
+          }
+          onClick={onFechar}
+        >
+          Fechar
+        </button>
+      ) : null}
+    </section>
   );
 }
 

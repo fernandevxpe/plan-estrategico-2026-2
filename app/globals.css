@@ -25968,3 +25968,499 @@ details.fin-cartao-ressalvas > ul {
   .fin-apr-cab { flex-wrap: wrap; }
   .fin-apr-cab-total { text-align: left; width: 100%; }
 }
+
+/* ── ENVIAR AO INTER: o primeiro bloco deixou de ser só leitura ─────────────
+   Acrescentado em 01/09/2026, depois que 11 ordens de R$ 17.639,86 ficaram em
+   `rascunho` sem nenhum caminho de tela para reenviá-las.
+
+   Nenhuma cor nova. O vocabulário desta tela já está gasto e é ele que segura o
+   sentido: ROXO é o caminho do produto (o aviso permanente, o progresso do
+   envio), ÂMBAR é fila de decisão humana (a ordem esquecida no app do banco),
+   VERDE é dinheiro que saiu da conta e VERMELHO é o que falhou. Uma seleção
+   transitória não é nenhuma dessas coisas — ela usa o cinza-tinta de
+   `.fin-custo-marcada`, que é como a casa marca linha escolhida em toda parte.
+   ------------------------------------------------------------------------- */
+
+/* A coluna do checkbox. Mesma largura e mesmo `accent-color` de
+   `.fin-custo-sel`: marcar uma ordem para ir ao banco tem de ser o mesmo gesto
+   visual de marcar um custo, não um controle novo para aprender. */
+.fin-apr-sel { width: 34px; padding-right: 0; }
+.fin-apr-sel input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+/* Desligado é o status que o envio recusa com 409 (só rascunho e aprovada
+   saem). O cursor diz isso antes do clique; o `title` diz depois. */
+.fin-apr-sel input:disabled { cursor: not-allowed; opacity: .4; }
+
+/* Oito colunas em vez de sete — mesma razão do `min-width: 900px` acima. */
+.fin-table-wrap .fin-apr-tabela.com-selecao { min-width: 940px; }
+
+.fin-apr-tabela tr.fin-apr-marcada > td {
+  background: color-mix(in srgb, var(--ink) 5%, var(--card));
+}
+/* A esquecida VENCE a marcada: a marcação é uma escolha de agora e volta atrás
+   com um clique; o âmbar é um fato sobre dinheiro que não saiu. */
+.fin-apr-tabela tr.fin-apr-marcada.fin-apr-esquecida > td { background: var(--tint-amber-soft); }
+
+/* ── a barra de ação ─────────────────────────────────────────────────────── */
+.fin-apr-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--tint-purple-line);
+  border-radius: 11px;
+  background: var(--tint-purple-soft);
+}
+.fin-apr-acoes .fin-btn-primary { display: inline-flex; align-items: center; gap: 7px; }
+/* A frase "quem paga é você, no aplicativo" fica COLADA no botão, e não só no
+   aviso do topo: um aviso que rolou para fora da tela não está lá no instante
+   do clique. Mesmo argumento de `.fin-cap-barra-nota`. */
+.fin-apr-acoes-nota {
+  flex: 1 1 280px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.fin-apr-acoes-nota strong { color: var(--ink); font-weight: 650; }
+
+/* ── a barra de progresso ────────────────────────────────────────────────── */
+.fin-apr-prog {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-2);
+}
+.fin-apr-prog-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.fin-apr-prog-linha strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fin-apr-prog-quem { flex: 1 1 220px; min-width: 0; color: var(--muted); overflow-wrap: anywhere; }
+.fin-apr-prog-eta {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fin-apr-prog-trilho {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--track);
+  overflow: hidden;
+}
+/* Roxo, e não o verde de `.fin-queue-progress`: verde nesta tela significa
+   "saiu da conta". Uma barra verde enquanto o lote anda diria, sem palavra
+   nenhuma, que o dinheiro está saindo — que é exatamente a leitura errada. */
+.fin-apr-prog-trilho span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--purple);
+  transition: width .25s ease;
+}
+.fin-apr-prog-nota { margin: 0; font-size: 12px; color: var(--muted); }
+
+/* ── o resultado em três grupos ──────────────────────────────────────────────
+   O painel não some sozinho: ele é a única prova, do lado de cá, de quais
+   ordens saíram. Sombra e fundo de `--card` sobre o bloco para ele não ser
+   confundido com mais uma faixa de aviso. */
+.fin-apr-res {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--card);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.fin-apr-res-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.fin-apr-res-contagens { margin: 0; font-size: 13.5px; color: var(--ink); }
+.fin-apr-res-contagens b { font-variant-numeric: tabular-nums; }
+
+.fin-apr-res-grupo {
+  display: grid;
+  gap: 7px;
+  justify-items: start;
+  padding-left: 10px;
+  border-left: 2px solid var(--line);
+}
+.fin-apr-res-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.fin-apr-res-titulo.ok { color: var(--ink-green); }
+.fin-apr-res-titulo.erro { color: var(--ink-red); }
+/* "Não tentada" é âmbar pelo mesmo motivo que a ordem esquecida: é fila de
+   decisão humana — alguém parou e alguém precisa retomar —, nunca um erro. */
+.fin-apr-res-titulo.espera { color: var(--ink-amber); }
+.fin-apr-res-nota {
+  margin: 0;
+  max-width: 82ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.fin-apr-res-nota strong { color: var(--ink); font-weight: 650; }
+
+.fin-apr-res-lista {
+  display: grid;
+  gap: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fin-apr-res-lista li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+}
+.fin-apr-res-lista li:first-child { border-top: none; }
+.fin-apr-res-quem { color: var(--ink); }
+.fin-apr-res-valor { color: var(--muted); font-variant-numeric: tabular-nums; }
+/* O codigoSolicitacao cai na linha de baixo, inteiro e selecionável: é o que a
+   pessoa copia para procurar no aplicativo do banco. */
+.fin-apr-res-lista .fin-apr-cod { flex: 1 1 100%; margin-top: 1px; }
+/* O MOTIVO OCUPA A LINHA INTEIRA E NÃO É CORTADO. O texto do Inter é o único
+   diagnóstico que existe deste lado — foi ele que revelou que o `code` não
+   servia como chave idempotente ("O valor deve seguir o padrão ^[0-9a-f]{8}-").
+   Reticências aqui custariam a próxima descoberta. */
+.fin-apr-res-motivo {
+  flex: 1 1 100%;
+  color: var(--ink-red);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  /* O botão que envia ocupa a largura toda: no telefone ele divide a faixa com
+     a nota, e um alvo de toque espremido ao lado de texto é onde o dedo erra. */
+  .fin-apr-acoes .fin-btn-primary { width: 100%; justify-content: center; }
+  .fin-apr-prog-eta { width: 100%; }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   CONTAS A PAGAR · O ENVIO AO INTER, UMA ORDEM POR VEZ (FinContasAPagar.tsx)
+
+   Medido no primeiro lote real, 01/09/2026: 38 ordens selecionadas, 27 saíram,
+   11 ficaram em rascunho — e a tela não disse quais nem mostrou nada durante o
+   ~1 minuto de espera. Com os 6,5s que o limite do Inter (~10/min) exige, 38
+   ordens levam ~4 minutos: tempo longo demais para uma tela muda, e longo
+   demais para caber numa requisição só.
+
+   Daí as duas peças aqui: uma barra que anda enquanto o laço roda, e um painel
+   de três listas que NÃO some sozinho quando ele para.
+
+   Nenhuma cor literal — os três grupos usam o mesmo vocabulário do resto da
+   tela: verde `--ink-green` para o que saiu, vermelho `--ink-red` para o que o
+   banco recusou, âmbar `--ink-amber` para o que está parado esperando uma
+   decisão humana (o mesmo âmbar de `.fin-cap-aconfirmar` e `.fin-apr-esquecida`).
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* O erro do POST quando a barra de ação já sumiu com a seleção. */
+.fin-cap-erro {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink-red);
+  border-radius: 0 10px 10px 0;
+  background: var(--tint-red);
+  color: var(--ink-red);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.fin-cap-erro svg { flex: none; margin-top: 1px; }
+
+.fin-cap-envio {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--tint-purple-line);
+  border-radius: 12px;
+  background: var(--card);
+}
+/* O painel é o único lugar onde o `codigoSolicitacao` aparece junto do nome de
+   quem recebe; ele fica em cima da lista, e não atrás dela. */
+.fin-cap-envio > * { width: 100%; }
+.fin-cap-envio .fin-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  font-weight: 600;
+}
+.fin-cap-envio .fin-btn-ghost:disabled { opacity: .5; cursor: default; }
+
+/* ── enquanto roda ────────────────────────────────────────────────────────── */
+.fin-cap-envio-andando { display: grid; gap: 8px; }
+
+/* A barra é a única parte da tela que responde "quanto falta" sem ler número.
+   Track em `--track` (o mesmo das barras da casa) e preenchimento em `--purple`
+   porque envio é caminho feliz — âmbar e vermelho estão reservados para parado
+   e recusado, e gastá-los aqui apagaria os dois sinais que precisam ser achados. */
+.fin-cap-envio-barra {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+.fin-cap-envio-barra > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--purple);
+  transition: width .25s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fin-cap-envio-barra > span { transition: none; }
+}
+
+.fin-cap-envio-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.fin-cap-envio-linha > svg { flex: none; color: var(--purple-text); }
+.fin-cap-envio-linha > b {
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+/* Quem está sendo pago AGORA. "Enviando 12 de 38" sozinho não deixa ninguém
+   conferir se o laço está na fatia certa; o nome deixa. */
+.fin-cap-envio-quem { color: var(--ink); min-width: 0; }
+.fin-cap-envio-falta {
+  margin-left: auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--chip-neutral-bg);
+  color: var(--chip-neutral-ink);
+  font-size: 11.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* Parar não é ação destrutiva — é decisão, e por isso não usa o vermelho de
+   erro. Fica só mais pesado que os outros fantasmas, para achar sem procurar. */
+.fin-cap-envio .fin-btn-ghost.fin-cap-envio-parar {
+  border-color: var(--tint-purple-line);
+  color: var(--purple-text);
+}
+
+.fin-cap-envio-nota {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.fin-cap-envio-nota b { color: var(--ink-amber); font-weight: 700; }
+
+/* ── quando parou: a frase que enquadra o resultado inteiro ───────────────── */
+.fin-cap-envio-fecho {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border-left: 3px solid var(--line);
+  background: var(--surface-2);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.fin-cap-envio-fecho svg { flex: none; margin-top: 2px; }
+.fin-cap-envio-fecho b { color: var(--ink); font-weight: 700; }
+
+/* IGNIÇÃO DESLIGADA NÃO É VERMELHO. Em produção este é o caminho NORMAL: o
+   POST cria as ordens (que é a seleção registrada) e só o envio é bloqueado,
+   porque o certificado do Inter existe apenas na máquina local. Pintar isso de
+   erro ensinaria a casa a ignorar o vermelho. Âmbar: fila de decisão humana. */
+.fin-cap-envio-fecho-ignicao,
+.fin-cap-envio-fecho-pedido {
+  border-left-color: var(--ink-amber);
+  background: var(--tint-amber-soft);
+}
+.fin-cap-envio-fecho-ignicao svg,
+.fin-cap-envio-fecho-pedido svg { color: var(--ink-amber); }
+.fin-cap-envio-fecho-fim {
+  border-left-color: var(--ink-green);
+  background: var(--tint-green-soft);
+}
+.fin-cap-envio-fecho-fim svg { color: var(--ink-green); }
+.fin-cap-envio-fecho-queda {
+  border-left-color: var(--ink-red);
+  background: var(--tint-red);
+}
+.fin-cap-envio-fecho-queda svg { color: var(--ink-red); }
+
+/* ── os três grupos ──────────────────────────────────────────────────────────
+   Enviada, falhada COM MOTIVO, e não-tentada. A terceira é o motivo do painel:
+   em 01/09 as 11 que ficaram para trás eram indistinguíveis das que deram erro,
+   e a única forma de saber quais eram foi abrir o banco. */
+.fin-cap-envio-grupos {
+  display: grid;
+  gap: 10px;
+}
+.fin-cap-envio-grupo {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.fin-cap-envio-grupo h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.fin-cap-envio-grupo h3 svg { flex: none; }
+.fin-cap-envio-valor {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.fin-cap-envio-grupo.enviadas { border-color: var(--tint-green-line); }
+.fin-cap-envio-grupo.enviadas h3 svg,
+.fin-cap-envio-grupo.enviadas .fin-cap-envio-valor { color: var(--ink-green); }
+.fin-cap-envio-grupo.falhadas h3 svg,
+.fin-cap-envio-grupo.falhadas .fin-cap-envio-valor { color: var(--ink-red); }
+.fin-cap-envio-grupo.pendentes h3 svg,
+.fin-cap-envio-grupo.pendentes .fin-cap-envio-valor { color: var(--ink-amber); }
+/* Só a lista com item ganha borda de cor; grupo em zero fica neutro, senão a
+   tela toda pisca de vermelho e âmbar quando não há nada de errado. */
+.fin-cap-envio-grupo.falhadas:has(.fin-cap-envio-lista) { border-color: var(--ink-red); }
+.fin-cap-envio-grupo.pendentes:has(.fin-cap-envio-lista) { border-color: var(--tint-amber-line); }
+
+.fin-cap-envio-explica {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 84ch;
+}
+
+.fin-cap-envio-lista {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+/* Três colunas na primeira linha (code · quem · valor) e o que sobra ocupando a
+   largura inteira embaixo. O motivo NÃO é truncado: ele é o dado que faltou. */
+.fin-cap-envio-lista > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 6px 0;
+  font-size: 12.5px;
+}
+.fin-cap-envio-lista > li + li { border-top: 1px dashed var(--line); }
+.fin-cap-envio-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.fin-cap-envio-cifra {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+/* O código de solicitação é para COPIAR e procurar no aplicativo do banco —
+   mesma decisão (e mesma forma) de `.fin-apr-cod`. */
+.fin-cap-envio-cod {
+  grid-column: 1 / -1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  word-break: break-all;
+  user-select: all;
+}
+.fin-cap-envio-cod.vazio { font-family: inherit; font-style: italic; user-select: auto; opacity: .75; }
+.fin-cap-envio-motivo {
+  display: block;
+  grid-column: 1 / -1;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-red);
+}
+/* No cabeçalho de "parou", o motivo do servidor é contexto, não acusação. */
+.fin-cap-envio-fecho .fin-cap-envio-motivo { color: var(--muted); }
+
+.fin-cap-envio-calma {
+  margin: 8px 0 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--tint-amber);
+  color: var(--ink-amber);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.fin-cap-envio-calma b { font-weight: 700; }
+.fin-cap-envio-grupo .fin-btn-ghost { margin-top: 9px; }
+
+.fin-cap-envio-fechar { justify-self: start; }
+
+@media (max-width: 720px) {
+  .fin-cap-envio-falta { margin-left: 0; }
+  .fin-cap-envio-lista > li { grid-template-columns: auto minmax(0, 1fr); }
+  .fin-cap-envio-cifra { grid-column: 1 / -1; }
+}
+
+/* Quem registrou a seleção, sob os dias no estado. Discreto de propósito: é
+   contexto para conferir, não um número que se compara. */
+.fin-apr-pedido {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}

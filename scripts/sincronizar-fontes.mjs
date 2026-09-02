@@ -169,6 +169,18 @@ export const ETAPAS = [
     script: 'scripts/promover-erp-extrato.mjs',
     args: ['--conta=nubank', '--fechar-saldo']
   },
+  // Identificar vem depois de promover, e responde QUEM — nunca O QUE.
+  // O extrato do Nubank chega sem contraparte: o `beneficiado` do erp-obras vem
+  // vazio e o nome mora dentro da descrição, depois de um `|`. Sem esta etapa,
+  // a folha inteira cai na fila como saída anônima, e quem revisa gasta o
+  // tempo decifrando descrição de banco em vez de decidir a natureza do
+  // pagamento. A categoria continua com o humano — ver o cabeçalho do script.
+  {
+    fonte: 'erp_obras',
+    nome: 'identificação do extrato do Nubank',
+    script: 'scripts/identificar-extrato-nubank.mjs',
+    args: ['--aplicar']
+  },
   {
     fonte: null,
     nome: 'lifecycle da fila financeira',

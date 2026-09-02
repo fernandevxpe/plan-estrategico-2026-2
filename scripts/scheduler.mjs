@@ -127,6 +127,14 @@ const STEPS = [
     args: ['--conta=nubank', '--fechar-saldo'],
     required: false
   },
+  // Depois de promover, dar nome a quem recebeu. Só isso: a natureza do
+  // pagamento (salário, pró-labore, comissão) continua sendo decisão humana.
+  {
+    name: 'identificação do extrato do Nubank',
+    script: 'scripts/identificar-extrato-nubank.mjs',
+    args: ['--aplicar'],
+    required: false
+  },
   // As caixinhas (fonte `polp`) NÃO entram: a fonte declara 108 posições e
   // entrega 91, e o ingestor aborta em vez de gravar saldo menor que o real.
   // O porquê e a medição estão em `sincronizar-fontes.mjs`, que é a lista irmã

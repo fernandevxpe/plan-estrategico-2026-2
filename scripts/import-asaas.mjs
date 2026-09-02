@@ -484,15 +484,47 @@ try {
        -- resultado de conciliação com a outra ponta e não pode ser rebaixado
        -- para 'em_transito' por um sync — isso desfaria a neutralização e a
        -- receita voltaria a contar em dobro.
-       transfer_status = CASE WHEN fin_transaction.transfer_status = 'pareado'
+       --
+       -- 'anulado' entra na MESMA cláusula, e não por simetria estética: a 0044
+       -- marcou 8 linhas do Asaas como anuladas e gravou reversal_group_id
+       -- nelas, e a CHECK fin_transaction_reversal_group_completo exige que os
+       -- dois andem juntos ((reversal_group_id IS NULL) = (transfer_status <>
+       -- 'anulado')). O EXCLUDED de um sync sempre traz 'nao'/'em_transito' —
+       -- o extrato não sabe o que é anulação —, então rebaixar deixava o grupo
+       -- preenchido com o status trocado e o banco recusava a linha inteira.
+       -- Medido em 01/09/2026: toda importação do Asaas morria em
+       -- violates check constraint "fin_transaction_reversal_group_completo",
+       -- por causa de 8 linhas de 2025-05 a 2026-05 que o import reencontra a
+       -- cada rodada porque o bruto acumula o histórico inteiro.
+       transfer_status = CASE WHEN fin_transaction.transfer_status IN ('pareado', 'anulado')
                               THEN fin_transaction.transfer_status ELSE EXCLUDED.transfer_status END,
-       -- COALESCE: quem classificou continua sendo quem classificou. Sem isto o
-       -- sync apagava 'humano' e a linha passava a dizer que ninguém a
-       -- classificou, enquanto a categoria (travada) era a da pessoa.
-       classified_by      = COALESCE(EXCLUDED.classified_by, fin_transaction.classified_by),
-       classified_rule_id = COALESCE(EXCLUDED.classified_rule_id, fin_transaction.classified_rule_id),
-       classified_reason  = COALESCE(EXCLUDED.classified_reason, fin_transaction.classified_reason),
-       classified_at      = COALESCE(EXCLUDED.classified_at, fin_transaction.classified_at),
+       -- O COALESCE sozinho protegia só o caso em que a rodada não achou nada:
+       -- EXCLUDED não-nulo vence, e EXCLUDED é não-nulo sempre que uma regra
+       -- casa. Então a linha que uma pessoa classificou e TRAVOU passava a
+       -- dizer 'fato_estrutural' na primeira reimportação que casasse regra.
+       --
+       -- Medido em 01/09/2026, na primeira importação que voltou a fechar
+       -- depois da correção do 'anulado' logo acima: 399 linhas travadas por
+       -- xpeadmin em 19–20/08 amanheceram com carimbo de máquina. A categoria
+       -- resistiu (human_locked_fields protege o valor), mas a proveniência
+       -- mentia — e o invariante E1 existe exatamente para dizer isso:
+       -- "trava com carimbo de máquina é trava que a próxima sync vai ignorar".
+       --
+       -- Mesma cláusula de 'pareado' e 'anulado', e pelo mesmo motivo: sync não
+       -- desfaz decisão de gente. Os quatro campos andam juntos porque um
+       -- 'humano' com rule_id de máquina é meia verdade, que é pior que as duas.
+       classified_by      = CASE WHEN fin_transaction.classified_by IN ('humano', 'trava')
+                                 THEN fin_transaction.classified_by
+                                 ELSE COALESCE(EXCLUDED.classified_by, fin_transaction.classified_by) END,
+       classified_rule_id = CASE WHEN fin_transaction.classified_by IN ('humano', 'trava')
+                                 THEN fin_transaction.classified_rule_id
+                                 ELSE COALESCE(EXCLUDED.classified_rule_id, fin_transaction.classified_rule_id) END,
+       classified_reason  = CASE WHEN fin_transaction.classified_by IN ('humano', 'trava')
+                                 THEN fin_transaction.classified_reason
+                                 ELSE COALESCE(EXCLUDED.classified_reason, fin_transaction.classified_reason) END,
+       classified_at      = CASE WHEN fin_transaction.classified_by IN ('humano', 'trava')
+                                 THEN fin_transaction.classified_at
+                                 ELSE COALESCE(EXCLUDED.classified_at, fin_transaction.classified_at) END,
        -- review_status DERIVA da categoria que sobrou, não da que a regra achou
        -- nesta rodada. As regras de texto não rodam contra o extrato, então
        -- EXCLUDED vem sempre 'pendente' — atribuir direto devolvia à fila 3 mil

@@ -32,7 +32,18 @@ export function loadEnv(file = '.env.local') {
     }
 
     env[key] = value;
-    if (!(key in process.env)) process.env[key] = value;
+    // O ambiente herdado vence o arquivo — no Railway a variável do painel é a
+    // verdadeira e o `.env.local` nem existe. Mas string VAZIA não é valor
+    // herdado: é valor perdido, e `key in process.env` não sabe a diferença.
+    //
+    // Medido em 01/09/2026: `ASAAS_API_KEY` começa com `$aact_`, o loader do
+    // Next trata `$` como interpolação e esvazia a variável no processo do
+    // servidor. `sincronizar-fontes.mjs` spawna as etapas com `env: process.env`,
+    // então a chave chegava PRESENTE e VAZIA em `sync-asaas.mjs`, o `in` dava
+    // true, o arquivo não era consultado e a etapa morria em "ASAAS_API_KEY
+    // ausente em .env.local" — com a chave inteira ali no arquivo. Era o botão
+    // de atualizar do cabeçalho falhando por um `$`.
+    if (!process.env[key]) process.env[key] = value;
   }
 
   return env;

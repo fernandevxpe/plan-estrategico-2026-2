@@ -106,6 +106,31 @@ const STEPS = [
   // agendador, pelo mesmo motivo do Asaas: estoura o watchdog de 20 min.
   { name: 'sync Inter', script: 'scripts/sync-inter.mjs', required: false },
   { name: 'importação do Inter', script: 'scripts/import-inter.mjs', required: false },
+  // Nubank: espelho, promoção e caixinhas — incluídos em 01/09/2026.
+  //
+  // A razão está medida: naquele dia Asaas e Inter fecharam em 01/09 e o Nubank
+  // ainda estava em 15/08, com 117 lançamentos e R$ 11.682,57 de fora. É a
+  // conta por onde a folha sai, e ela era a única das três que dependia de
+  // alguém lembrar de digitar dois comandos.
+  //
+  // A ordem entre as três é a mesma de `sincronizar-fontes.mjs`, e o motivo
+  // está escrito lá em detalhe: staging → ledger → caixinhas, porque a Polp
+  // espelha as pernas opostas das linhas da conta corrente e precisa que elas
+  // já existam. Este bloco e o `ETAPAS` daquele arquivo são a MESMA lista de
+  // propósito — o botão é este pipeline disparado por uma pessoa, e o dia em
+  // que os dois divergirem é o dia em que "atualizar" passa a significar duas
+  // coisas diferentes na mesma plataforma.
+  { name: 'espelho do erp-obras', script: 'scripts/sync-erp-obras.mjs', required: false },
+  {
+    name: 'promoção do extrato do Nubank',
+    script: 'scripts/promover-erp-extrato.mjs',
+    args: ['--conta=nubank', '--fechar-saldo'],
+    required: false
+  },
+  // As caixinhas (fonte `polp`) NÃO entram: a fonte declara 108 posições e
+  // entrega 91, e o ingestor aborta em vez de gravar saldo menor que o real.
+  // O porquê e a medição estão em `sincronizar-fontes.mjs`, que é a lista irmã
+  // desta — as duas continuam iguais, inclusive nesta ausência.
   // Uma única consolidação depois dos dois importadores. A rotina percorre a
   // fila completa e ancora ledger/DRE/saldos; chamá-la dentro de cada INSERT
   // multiplicaria esse custo pelo número de linhas do extrato.

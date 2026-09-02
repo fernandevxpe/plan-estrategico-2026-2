@@ -64,9 +64,37 @@ function contaLedger(slugErp) {
  * Carregá-lo com loadEnv() jogaria tudo em process.env, onde qualquer outro
  * trecho deste processo poderia usá-las por engano. Aqui só sai o que interessa.
  */
+const descascar = (v) =>
+  v && ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'")))
+    ? v.slice(1, -1)
+    : v;
+
 function erpDatabaseUrl() {
+  // O ambiente vem primeiro, e por necessidade: desde que esta fonte virou
+  // etapa do botão (e do agendador), ela precisa rodar no Railway — onde
+  // `.env.obras` não existe, porque `.env*` é ignorado pelo git e o arquivo é o
+  // `.env.local` INTEIRO do outro projeto, que não tem por que ser publicado.
+  //
+  // O nome é `ERP_OBRAS_DIRECT_URL` e não `DIRECT_URL` de propósito. Existe uma
+  // `DIRECT_URL` no painel do Railway e ninguém neste repositório sabe dizer,
+  // olhando, se ela aponta para o erp-obras ou para o banco desta plataforma.
+  // Um nome ambíguo aqui erraria de banco em silêncio até a primeira consulta
+  // a "LancamentoFinanceiro"; um nome próprio não tem como ser confundido.
+  //
+  // As aspas são descascadas aqui pelo mesmo motivo que o parser do arquivo as
+  // descasca: no `.env.obras` o valor está entre aspas, e quem for copiá-lo
+  // para o painel do Railway copia a linha inteira. Uma aspa a mais vira
+  // `hostname: 'base'` num erro de driver que não menciona aspas em lugar
+  // nenhum — medido ao testar este caminho.
+  const doAmbiente = descascar(process.env.ERP_OBRAS_DIRECT_URL?.trim());
+  if (doAmbiente) return doAmbiente;
+
   const path = ['.env.obras', resolve(process.cwd(), '.env.obras')].find((p) => existsSync(p));
-  if (!path) throw new Error('.env.obras não encontrado — é dele que sai a URL de leitura do erp-obras');
+  if (!path) {
+    throw new Error(
+      'sem ERP_OBRAS_DIRECT_URL no ambiente e .env.obras não encontrado — é de um dos dois que sai a URL de leitura do erp-obras'
+    );
+  }
 
   for (const raw of readFileSync(path, 'utf8').split(/\r?\n/)) {
     const line = raw.trim();
@@ -85,7 +113,7 @@ function erpDatabaseUrl() {
     if (!erpDatabaseUrl.fallback) erpDatabaseUrl.fallback = value;
   }
   if (erpDatabaseUrl.fallback) return erpDatabaseUrl.fallback;
-  throw new Error('DIRECT_URL/DATABASE_URL ausentes no .env.obras');
+  throw new Error('DIRECT_URL/DATABASE_URL ausentes no .env.obras, e ERP_OBRAS_DIRECT_URL ausente no ambiente');
 }
 
 async function lerDoErp() {

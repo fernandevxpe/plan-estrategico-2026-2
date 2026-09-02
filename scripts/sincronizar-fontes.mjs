@@ -27,6 +27,21 @@
 //                       autenticação. Todo dado passa por get()
 //   import-*.mjs ...... não falam com API nenhuma; leem o acervo bruto local
 //
+// E as três etapas do Nubank, conferidas do mesmo jeito ao entrarem aqui:
+//
+//   sync-erp-obras.mjs ......... não é API, é SQL no banco do Adryan. A sessão
+//                                abre com SET SESSION CHARACTERISTICS AS
+//                                TRANSACTION READ ONLY e o script CONFERE com
+//                                `SHOW transaction_read_only` antes da primeira
+//                                consulta, abortando se a trava não pegou. É a
+//                                restrição absoluta nº 1, e ela é do servidor,
+//                                não da nossa disciplina
+//   promover-erp-extrato.mjs ... não fala com API nenhuma; lê o espelho local e
+//                                escreve neste ledger
+//   sync-polp-investimentos.mjs  fetch(..., { method: 'GET' }) explícito, aqui e
+//                                em scripts/lib/polp.mjs. Criar integração é
+//                                POST e vive em outro arquivo, que não é etapa
+//
 // Nenhum deles emite cobrança, paga, transfere, estorna ou cria webhook.
 //
 // ===========================================================================
@@ -107,6 +122,53 @@ export const ETAPAS = [
   { fonte: 'asaas',     nome: 'importação do Asaas',     script: 'scripts/import-asaas.mjs' },
   { fonte: 'inter_api', nome: 'sync Inter',              script: 'scripts/sync-inter.mjs' },
   { fonte: 'inter_api', nome: 'importação do Inter',     script: 'scripts/import-inter.mjs' },
+  // -------------------------------------------------------------------------
+  // O NUBANK, QUE ATÉ 01/09/2026 O BOTÃO NÃO ALCANÇAVA
+  // -------------------------------------------------------------------------
+  // O pedido foi "inclua-o no botão para atualizar", e o que o motivou está
+  // medido: com Asaas e Inter em dia no dia 01/09, o Nubank parara em 15/08 —
+  // 117 lançamentos e R$ 11.682,57 de fora, numa conta que é justamente por
+  // onde a folha sai. As duas fontes já estavam catalogadas como `automatica`
+  // e sem agendamento (Dúvida 65); o que faltava era serem etapa.
+  //
+  // A ORDEM NÃO É ARBITRÁRIA e não pode ser embaralhada:
+  //
+  //   1. o espelho lê o erp-obras e grava em `erp_extrato_linha` — staging, não
+  //      toca o ledger, e é por isso que ele pode rodar sem cerimônia;
+  //   2. a promoção leva o espelho para `fin_transaction`, restrita à conta que
+  //      a fonte declara alimentar (ver o cabeçalho de promover-erp-extrato);
+  //
+  // A `polp` (as caixinhas) FICOU DE FORA, e não por esquecimento — ela não
+  // roda hoje. Medido em 01/09/2026, duas execuções seguidas do dry-run:
+  //
+  //   meta.total = 108   ·   alcançadas 94, depois 91   ·   abortado nas duas
+  //   "a fonte declara 108 posições e só foi possível reunir 94.
+  //    Gravar agora produziria um saldo menor que o real — abortado."
+  //
+  // A paginação da fonte é instável (108 linhas, 91 distintas) e a varredura
+  // por id — que existe justamente para tapar isso — recuperou 3 numa execução
+  // e 0 na outra. Sondei 40 ids acima do máximo: nenhum pertence a esta
+  // integração, então as que faltam não são posições novas fora da faixa. É
+  // problema na fonte, não na faixa varrida.
+  //
+  // A trava está CERTA em abortar: gravar 91 de 108 posições produz saldo de
+  // caixinha menor que o real. Pôr aqui uma etapa que aborta todas as noites
+  // faria toda execução terminar em 'parcial' — o mesmo defeito que o
+  // fin-review-lifecycle já causou nesta lista, e que faz o desfecho parar de
+  // significar alguma coisa. O catálogo passa a dizer isso na tela, com data.
+  //
+  // Quando voltar, ela entra DEPOIS da promoção e não antes: espelha, como
+  // perna oposta, as aplicações e resgates da CONTA CORRENTE, e só espelha
+  // linha que ainda não tenha par. Rodando antes do passo 2 não acharia as
+  // linhas do dia. Em 01/09 havia R$ 34.365,12 de Resgate RDB — exatamente o
+  // caso em que a ordem importa.
+  { fonte: 'erp_obras', nome: 'espelho do erp-obras',    script: 'scripts/sync-erp-obras.mjs' },
+  {
+    fonte: 'erp_obras',
+    nome: 'promoção do extrato do Nubank',
+    script: 'scripts/promover-erp-extrato.mjs',
+    args: ['--conta=nubank', '--fechar-saldo']
+  },
   {
     fonte: null,
     nome: 'lifecycle da fila financeira',

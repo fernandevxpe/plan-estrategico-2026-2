@@ -223,6 +223,41 @@ if (suspeitas.length) {
   }
 }
 
+/*
+ * A CHAVE JÁ FOI PROVADA COM DINHEIRO?
+ *
+ * Em 03/09/2026 o Inter recusou duas ordens do João com HTTP 422
+ * "Chave não cadastrada no Pix [DCT23]". A coordenada dele era o CPF, que existe
+ * como documento e NÃO estava registrado como chave no banco dele. O erro só
+ * apareceu no envio, depois de programar, aprovar e mandar.
+ *
+ * Não dá para perguntar ao Inter se uma chave existe: a credencial tem escopo
+ * `pix.write` e não há endpoint de consulta nesta integração. Mas há uma prova
+ * mais barata e que já está na base — a PROCEDÊNCIA da conta:
+ *
+ *   `extrato Inter · último uso ...`   o banco já pagou nessa chave. É prova com
+ *                                      dinheiro, a mais forte que existe aqui.
+ *   qualquer outra origem              alguém digitou. Pode estar certa, mas
+ *                                      ninguém provou — e é onde o DCT23 mora.
+ *
+ * Isto não bloqueia nada: chave digitada costuma estar certa. O que ele faz é
+ * dizer QUAIS são, antes do lote, para o erro não chegar no meio do pagamento.
+ */
+const nuncaProvadas = rows.filter(
+  (r) => r.pag_chave && !String(r.pag_origem ?? "").startsWith("extrato")
+);
+if (nuncaProvadas.length) {
+  console.log(`\nNUNCA PROVADAS COM UM PAGAMENTO REAL — ${nuncaProvadas.length} de ${rows.length}\n`);
+  for (const r of nuncaProvadas) {
+    console.log(
+      `  ? ${n(r.pessoa, 26)} ${n(r.pag_tipo, 5)} ${n(m(r.pag_chave), 8)} ${String(r.pag_origem ?? "sem origem")}`
+    );
+  }
+  console.log("\n    Foi assim que as ordens do João falharam com 'Chave não cadastrada no Pix'");
+  console.log("    [DCT23] — o CPF dele existia, mas não era chave no banco. Uma chave que já");
+  console.log("    recebeu dinheiro não tem esse risco; estas nunca receberam.");
+}
+
 console.log(`\nCADASTRARAM NO APP — ${cadastraram.length} de ${rows.length}\n`);
 for (const r of cadastraram) {
   console.log(

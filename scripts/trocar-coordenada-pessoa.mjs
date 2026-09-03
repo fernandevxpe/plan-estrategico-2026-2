@@ -63,6 +63,29 @@ const FORCAR = process.argv.includes('--forcar');
  * tentativa.
  */
 const NOVA_CHAVE = arg('nova-chave');
+/*
+ * TED: a conta que não é PIX.
+ *
+ * `fin_payee_account` sempre aceitou operation_type='TED' — as colunas de banco,
+ * agência e conta estão lá desde a 0001, porque são as que POST /transfers do
+ * Asaas consome. O que NÃO aceita é o envio: `pagar-programar.ts` recusa com 422
+ * qualquer ordem cujo método não seja pix ("só PIX está implementado").
+ *
+ * Então cadastrar TED é registrar o dado certo, não ligar um caminho de
+ * pagamento. Por isso `--so-cadastrar` existe e é o padrão recomendado para TED:
+ * a conta entra no cadastro sem virar a padrão, e quem recebe por PIX continua
+ * recebendo por PIX até alguém implementar o envio TED.
+ */
+const TED = {
+  banco: arg('banco'),
+  bancoNome: arg('banco-nome'),
+  agencia: arg('agencia'),
+  conta: arg('conta'),
+  tipoConta: arg('tipo-conta') ?? 'corrente'
+};
+const DOC = arg('doc');
+const NOME_TITULAR = arg('nome');
+const SO_CADASTRAR = process.argv.includes('--so-cadastrar');
 
 if (!PESSOA) {
   console.error('\n  falta --pessoa="Nome". Ex.: --pessoa="Igor A" --para=CNPJ\n');
@@ -146,6 +169,71 @@ try {
 
   let alvo = contas.find((c) => (c.pix_address_key_type ?? '').toUpperCase() === PARA);
 
+  if (!alvo && PARA === 'TED' && TED.banco) {
+    // Conta 838053872-0 → number 838053872, digit 0. O dígito mora em coluna
+    // própria porque o Asaas os pede separados, e juntá-los aqui obrigaria a
+    // separá-los de novo na hora do envio — com regra duplicada e um dos dois
+    // lados errando o dia em que a conta tiver dois dígitos.
+    const bruta = String(TED.conta ?? '').replace(/\s/g, '');
+    const [numero, digito] = bruta.includes('-') ? bruta.split('-') : [bruta.slice(0, -1), bruta.slice(-1)];
+    if (!numero || !digito) throw new Error('--conta precisa vir como 838053872-0 (número e dígito)');
+    const docLimpo = DOC ? digitosDe(DOC) : null;
+    if (docLimpo) {
+      const v = conferirDocumento(docLimpo);
+      if (!v.valido) throw new Error(`documento do titular inválido: ${v.motivo}`);
+    }
+    if (!pessoa.counterparty_id) throw new Error(`${pessoa.name} não tem contraparte primária`);
+    const dados = [
+      pessoa.counterparty_id, 'conta informada pelo dono', TED.banco,
+      TED.bancoNome ?? null, TED.agencia, numero, digito,
+      TED.tipoConta === 'poupanca' ? 'CONTA_POUPANCA' : 'CONTA_CORRENTE',
+      NOME_TITULAR ?? pessoa.name, docLimpo
+    ];
+    if (!APLICAR) {
+      console.log(`\n  + criaria conta TED banco ${TED.banco} ag ${TED.agencia} cc ${numero}-${digito}`);
+      alvo = {
+        id: '(nova)', counterparty_id: pessoa.counterparty_id, is_default: false,
+        operation_type: 'TED', pix_address_key: null, pix_address_key_type: null,
+        bank_code: TED.banco, bank_name: TED.bancoNome, agency: TED.agencia,
+        account_number: numero, account_digit: digito,
+        account_type: dados[7], owner_name: dados[8], owner_document: docLimpo,
+        label: 'conta informada pelo dono', contraparte: '(primária)'
+      };
+    } else {
+      const { rows } = await cliente.query(
+        `INSERT INTO fin_payee_account
+           (counterparty_id, label, operation_type, bank_code, bank_name, agency,
+            account_number, account_digit, account_type, owner_name, owner_document,
+            is_default, is_active)
+         VALUES ($1,$2,'TED',$3,$4,$5,$6,$7,$8,$9,$10,false,true)
+         RETURNING id, counterparty_id, is_default, operation_type, pix_address_key,
+                   pix_address_key_type, bank_code, bank_name, agency, account_number,
+                   account_digit, account_type, owner_name, owner_document, label`,
+        dados
+      );
+      alvo = { ...rows[0], contraparte: '(primária)' };
+      await cliente.query(
+        `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
+         VALUES ((SELECT id FROM fin_entity WHERE slug='xpe'), 'fin_payee_account', $1, 'insert', NULL, $2::jsonb,
+                 ARRAY['operation_type','bank_code','agency','account_number'], $3, $4)`,
+        [alvo.id, JSON.stringify({ tipo: 'TED', banco: TED.banco, agencia: TED.agencia,
+          conta: `${numero}-${digito}`, pessoa: pessoa.name }), LOTE, ATOR]
+      );
+      console.log(`\n  + conta ${alvo.id} criada: TED banco ${TED.banco} ag ${TED.agencia} cc ${numero}-${digito}`);
+    }
+    contas.push(alvo);
+    if (SO_CADASTRAR) {
+      await cliente.query(APLICAR ? 'COMMIT' : 'ROLLBACK');
+      console.log(
+        APLICAR
+          ? `\n  COMMIT — conta cadastrada. NÃO virou padrão: o envio só implementa PIX, e a\n` +
+            `  coordenada atual continua valendo. Para trocar, rode sem --so-cadastrar.\n`
+          : `\n  ROLLBACK — dry-run. Use --aplicar para gravar.\n`
+      );
+      process.exit(0);
+    }
+  }
+
   if (!alvo && NOVA_CHAVE) {
     // O tipo vem de `--para` no vocabulário do app (cpf/cnpj/telefone/...), e a
     // conta favorecida guarda no do Asaas (CPF/CNPJ/PHONE/...).
@@ -195,7 +283,9 @@ try {
   }
 
   // Verificável: a chave é documento e bate com o cadastro da pessoa.
-  const v = conferirDocumento(alvo.pix_address_key ?? '');
+  const v = alvo.operation_type === 'TED'
+    ? { valido: false }
+    : conferirDocumento(alvo.pix_address_key ?? '');
   const bate =
     v.valido &&
     ((v.tipo === 'cpf' && v.digitos === digitosDe(pessoa.cpf)) ||

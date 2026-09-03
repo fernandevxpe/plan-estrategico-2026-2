@@ -27980,3 +27980,50 @@ details.fin-cartao-ressalvas > ul {
 .time-concil-tab tr.detalhe { border-top: 0; }
 .time-concil-tab tr.detalhe th { padding-left: 10px; font-weight: 500; font-size: 11.5px; color: var(--muted); }
 .time-concil-tab tr.detalhe td { font-size: 11.5px; color: var(--muted); }
+
+/* ── remarcar e cancelar rascunho (aprovações) ───────────────────────────────
+   O bloco herda `.fin-apr-acoes`, que já é a faixa de ação do envio. Aqui só
+   entram as peças que ele não tinha: o campo de data e a confirmação do
+   cancelamento, que abre embaixo em vez de virar popup — a decisão é pequena
+   e não merece tirar a lista de baixo dos olhos de quem escolheu as ordens. */
+.fin-apr-acoes-data {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.fin-apr-acoes-data input {
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-family: inherit;
+}
+.fin-apr-acoes-data input:disabled { opacity: 0.55; }
+
+/* Ocupa a linha inteira: o campo de motivo é texto livre e some se dividir
+   espaço com os botões numa tela estreita. */
+.fin-apr-acoes-confirma {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  padding-top: 10px;
+  border-top: 1px solid var(--tint-purple-line);
+}
+.fin-apr-acoes-confirma input {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-family: inherit;
+}
+.fin-apr-acoes-confirma .fin-apr-acoes-nota { flex-basis: 100%; }

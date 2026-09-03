@@ -2,10 +2,12 @@ import { autorDe } from "@/lib/financeiro/custo-fixo";
 import { FinanceUnavailableError } from "@/lib/financeiro/db";
 import { ErroInterPagamento } from "@/lib/financeiro/inter-pagamento";
 import {
+  cancelarOrdens,
   devolverParaRascunho,
   enviarOrdemAoInter,
   enviarOrdensAoInter,
   programarPagamentos,
+  reagendarOrdens,
   ValidacaoPagamento,
   type AlvoProgramacao
 } from "@/lib/financeiro/pagar-programar";
@@ -114,6 +116,42 @@ export async function POST(request: Request) {
       return Response.json(resultado, { headers: { "Cache-Control": "no-store" } });
     } catch (error) {
       return respostaDeErro(error, "devolver ordens para rascunho");
+    }
+  }
+
+  /*
+   * `acao: "reagendar"` — a ordem voltou para a fila com a data em que foi
+   * programada, e essa data já passou. O envio manda `scheduled_for` como data
+   * de pagamento, e o banco recusa data no passado: sem remarcar, a ordem fica
+   * presa. Muda o dia e nada mais — favorecido, valor e vencimento seguem.
+   */
+  if (corpo.acao === "reagendar") {
+    try {
+      const ids = Array.isArray(corpo.ids) ? corpo.ids.map(Number) : [];
+      const resultado = await reagendarOrdens(ids, String(corpo.scheduledFor ?? ""), {
+        actor: autorDe(request)
+      });
+      return Response.json(resultado, { headers: { "Cache-Control": "no-store" } });
+    } catch (error) {
+      return respostaDeErro(error, "reagendar ordens");
+    }
+  }
+
+  /*
+   * `acao: "cancelar"` — mata a ORDEM, não a dívida. A obrigação volta a
+   * aparecer na fila de contas a pagar, porque o salário ou a comissão que ela
+   * representava continua devido.
+   */
+  if (corpo.acao === "cancelar") {
+    try {
+      const ids = Array.isArray(corpo.ids) ? corpo.ids.map(Number) : [];
+      const resultado = await cancelarOrdens(ids, {
+        actor: autorDe(request),
+        motivo: String(corpo.motivo ?? "")
+      });
+      return Response.json(resultado, { headers: { "Cache-Control": "no-store" } });
+    } catch (error) {
+      return respostaDeErro(error, "cancelar ordens");
     }
   }
 

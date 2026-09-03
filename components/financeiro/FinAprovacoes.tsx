@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Ban,
+  CalendarClock,
   CheckCircle2,
   ChevronRight,
   CircleAlert,
@@ -984,6 +985,180 @@ function useSelecao(elegiveis: OrdemAprovacao[]) {
  * aqui aprova nem confirma pagamento — a rota termina em
  * `aguardando_autorizacao` e é onde o produto acaba.
  */
+/**
+ * REMARCAR E CANCELAR — o que fazer com rascunho que perdeu a data.
+ *
+ * `devolver` traz a ordem de volta do banco, mas ela volta com a data em que
+ * FOI programada — e essa data já passou. `enviarOrdemAoInter` manda
+ * `scheduled_for` como data de pagamento, e data no passado o banco recusa: a
+ * ordem fica presa numa fila que não consegue sair dela. Medido em 03/09/2026:
+ * quatro ordens nesse estado, duas delas devolvidas naquele mesmo dia.
+ *
+ * O dono: "passaram da data e não foram feitas, deveria poder editar aqui a
+ * data ou então cancelar os rascunhos e ter que fazer do zero na tela de custos
+ * da empresa". As duas saídas moram aqui — e remarcar é a barata, porque a
+ * ordem já tem favorecido conferido e coordenada correta.
+ *
+ * CANCELAR NÃO QUITA. A obrigação volta para a fila de contas a pagar, porque o
+ * salário ou a comissão continua devido; o que morre é a ordem. Por isso o
+ * motivo é obrigatório, como em `devolver`: daqui a três meses alguém vai
+ * perguntar por quê, e a resposta não pode depender de quem estava na sala.
+ */
+function AcoesDeRascunho({
+  escolhidas,
+  visiveis,
+  hoje,
+  desabilitado,
+  onFeito
+}: {
+  escolhidas: OrdemAprovacao[];
+  visiveis: OrdemAprovacao[];
+  hoje: string;
+  desabilitado: boolean;
+  onFeito: () => void;
+}) {
+  const router = useRouter();
+  const [data, setData] = useState(hoje);
+  const [emVoo, setEmVoo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState(false);
+  const [motivo, setMotivo] = useState("");
+
+  /*
+   * Só rascunho aceita as duas ações — 'aprovada' já passou pelo banco e sai
+   * pela porta do envio.
+   *
+   * A faixa aparece quando EXISTE rascunho na lista, não quando há seleção: um
+   * controle que só nasce depois de marcar é um controle que quem não sabe que
+   * ele existe nunca encontra — e foi exatamente assim que o dono ficou com
+   * quatro ordens presas sem saber que dava para remarcar.
+   */
+  const rascunhosNaLista = useMemo(
+    () => visiveis.filter((o) => o.status === "rascunho"),
+    [visiveis]
+  );
+  const rascunhos = useMemo(() => escolhidas.filter((o) => o.status === "rascunho"), [escolhidas]);
+  const nada = rascunhos.length === 0;
+  const motivoCurto = motivo.trim().length < MOTIVO_MINIMO;
+
+  const chamar = useCallback(
+    async (corpo: Record<string, unknown>, rotulo: string) => {
+      if (emVoo || rascunhos.length === 0) return;
+      setEmVoo(true);
+      setErro(null);
+      setAviso(null);
+      try {
+        const resposta = await fetch(urlDaOrigem(ROTA_ENVIO), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...corpo, ids: rascunhos.map((o) => o.id) })
+        });
+        const json = (await resposta.json().catch(() => ({}))) as {
+          recusadas?: { id: number; motivo: string }[];
+          error?: string;
+        };
+        if (!resposta.ok) {
+          setErro(json.error ?? `o servidor respondeu ${resposta.status} sem dizer por quê`);
+          return;
+        }
+        const recusadas = json.recusadas ?? [];
+        setAviso(
+          recusadas.length === 0
+            ? `${plural(rascunhos.length, "ordem", "ordens")} ${rotulo}.`
+            : `${rascunhos.length - recusadas.length} de ${rascunhos.length} ${rotulo}. ` +
+              `Recusadas: ${recusadas.map((r) => r.motivo).join(" · ")}`
+        );
+        setCancelando(false);
+        setMotivo("");
+        onFeito();
+        router.refresh();
+      } catch (e) {
+        setErro(e instanceof Error ? e.message : "a requisição não completou");
+        router.refresh();
+      } finally {
+        setEmVoo(false);
+      }
+    },
+    [emVoo, rascunhos, onFeito, router]
+  );
+
+  if (rascunhosNaLista.length === 0) return null;
+
+  return (
+    <div className="fin-apr-acoes">
+      <label className="fin-apr-acoes-data">
+        <CalendarClock size={14} strokeWidth={2.2} aria-hidden />
+        <span>Pagar em</span>
+        <input
+          type="date"
+          value={data}
+          min={hoje}
+          disabled={desabilitado || emVoo}
+          onChange={(e) => setData(e.target.value)}
+        />
+      </label>
+      <button
+        type="button"
+        className="fin-btn-ghost"
+        disabled={desabilitado || emVoo || !data || nada}
+        title="muda só o dia do pagamento — favorecido, valor e vencimento continuam como estão"
+        onClick={() => void chamar({ acao: "reagendar", scheduledFor: data }, "remarcada(s)")}
+      >
+        Remarcar{nada ? "" : ` ${plural(rascunhos.length, "rascunho", "rascunhos")}`}
+      </button>
+      <button
+        type="button"
+        className="fin-btn-ghost"
+        disabled={desabilitado || emVoo || nada}
+        title="mata a ordem; a obrigação volta para a fila de contas a pagar"
+        onClick={() => setCancelando((v) => !v)}
+      >
+        Cancelar{nada ? "" : ` ${plural(rascunhos.length, "rascunho", "rascunhos")}`}
+      </button>
+      {nada ? (
+        <span className="fin-apr-acoes-nota">
+          Marque {plural(rascunhosNaLista.length, "o rascunho", "os rascunhos")} acima para remarcar
+          a data ou cancelar. Remarcar muda só o dia — quem venceu continua vencido.
+        </span>
+      ) : null}
+
+      {cancelando ? (
+        <div className="fin-apr-acoes-confirma">
+          <input
+            type="text"
+            value={motivo}
+            placeholder="por que está cancelando? fica no registro"
+            disabled={emVoo}
+            onChange={(e) => setMotivo(e.target.value)}
+          />
+          <button
+            type="button"
+            className="fin-btn-primary"
+            disabled={emVoo || motivoCurto}
+            onClick={() => void chamar({ acao: "cancelar", motivo: motivo.trim() }, "cancelada(s)")}
+          >
+            Confirmar cancelamento
+          </button>
+          <span className="fin-apr-acoes-nota">
+            A dívida continua: a linha volta para <code>custos-empresa?aba=contas-a-pagar</code>.
+          </span>
+        </div>
+      ) : null}
+
+      {erro ? (
+        <p className="fin-apr-acoes-nota" role="alert">
+          {erro}
+        </p>
+      ) : aviso ? (
+        <p className="fin-apr-acoes-nota" role="status">
+          {aviso}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function BlocoParaEnviar({
   bloco,
   ordens,
@@ -1186,6 +1361,14 @@ function BlocoParaEnviar({
           </span>
         </div>
       ) : null}
+
+      <AcoesDeRascunho
+        escolhidas={escolhidas}
+        visiveis={filtro.visiveis}
+        hoje={hoje}
+        desabilitado={emVoo}
+        onFeito={limpar}
+      />
 
       {progresso ? (
         <div className="fin-apr-prog" role="status" aria-live="polite">

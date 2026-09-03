@@ -818,6 +818,181 @@ export async function enviarOrdensAoInter(
  * é o registro de quem afirmou o quê, que é o que resta quando a certeza não
  * está disponível.
  */
+/**
+ * Muda o DIA em que uma ordem em rascunho pretende ser paga.
+ *
+ * ---------------------------------------------------------------------------
+ * O BURACO QUE ISTO FECHA
+ * ---------------------------------------------------------------------------
+ * `devolverParaRascunho` existe porque o Inter apaga o que fica sem saldo e não
+ * avisa. A ordem volta para a fila — e volta com a data em que ela FOI
+ * programada, que a essa altura já passou. Medido em 03/09/2026: PG-2026-0089
+ * (Diogo) e PG-2026-0090 (Igor Alves) voltaram para rascunho agendadas para
+ * 01/09. `enviarOrdemAoInter` manda `scheduled_for ?? due_date` como data de
+ * pagamento, e data no passado o banco recusa.
+ *
+ * Sem isto, a saída era cancelar e refazer tudo na tela de custos — jogando
+ * fora uma ordem que já tem favorecido conferido e coordenada correta. O dono,
+ * em 03/09: "passaram da data e não foram feitas, deveria poder editar aqui a
+ * data ou então cancelar os rascunhos".
+ *
+ * ---------------------------------------------------------------------------
+ * O QUE ELA NÃO MEXE
+ * ---------------------------------------------------------------------------
+ * `due_date` fica como está. Vencimento é fato da obrigação, não intenção de
+ * quem paga: reescrevê-lo apagaria o atraso: a tela mostraria "em dia" para uma
+ * conta que venceu no dia 2 e foi paga no dia 8. `scheduled_for` é a data que a
+ * casa escolhe, e é só ela que muda.
+ *
+ * O snapshot e o fingerprint também ficam. A coordenada não mudou — mudar a
+ * data não pode ser uma porta lateral para trocar destino de dinheiro, e é
+ * exatamente por isso que esta função não aceita nenhum campo de favorecido.
+ *
+ * Só `rascunho` e `paid_cents = 0`: ordem entregue ao banco tem de voltar pela
+ * porta da frente (`devolver`) antes de ser remarcada, e o que já saiu do caixa
+ * não se remarca nunca.
+ */
+export async function reagendarOrdens(
+  ids: number[],
+  novaData: string,
+  opcoes: { actor: string }
+): Promise<{ reagendadas: { id: number; code: string }[]; recusadas: { id: number; motivo: string }[] }> {
+  const lista = [...new Set((ids ?? []).map(Number).filter((n) => Number.isSafeInteger(n) && n > 0))];
+  if (lista.length === 0) throw new ValidacaoPagamento("nenhuma ordem informada");
+
+  const data = String(novaData ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+    throw new ValidacaoPagamento("data precisa estar em YYYY-MM-DD");
+  }
+  // Hoje em São Paulo, não em UTC: às 21h de Recife o UTC já virou o dia, e a
+  // data de hoje seria recusada como passado por uma diferença de fuso.
+  const hoje = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }))
+    .toISOString()
+    .slice(0, 10);
+  if (data < hoje) {
+    throw new ValidacaoPagamento(`${data} já passou — o banco recusa pagamento com data no passado`);
+  }
+  const actor = opcoes?.actor?.trim() || "tela";
+
+  return transaction(async (c) => {
+    const resultado: { reagendadas: { id: number; code: string }[]; recusadas: { id: number; motivo: string }[] } = {
+      reagendadas: [],
+      recusadas: []
+    };
+    const batchId = randomUUID();
+
+    for (const id of lista) {
+      const { rows } = await c.query<{ id: number; code: string; antes: string | null }>(
+        `UPDATE fin_payment_request
+            SET scheduled_for = $2::date, updated_at = now()
+          WHERE id = $1 AND status = 'rascunho' AND paid_cents = 0
+          RETURNING id, code, (SELECT scheduled_for::text FROM fin_payment_request o WHERE o.id = $1) AS antes`,
+        [id, data]
+      );
+
+      if (!rows[0]) {
+        const { rows: atual } = await c.query<{ status: string; paid_cents: string }>(
+          `SELECT status, paid_cents::text FROM fin_payment_request WHERE id = $1`,
+          [id]
+        );
+        resultado.recusadas.push({
+          id,
+          motivo: atual[0]
+            ? `está em "${atual[0].status}"${Number(atual[0].paid_cents) > 0 ? " e já tem pagamento registrado" : ""} — só remarca rascunho que não saiu`
+            : "ordem não encontrada"
+        });
+        continue;
+      }
+
+      await c.query(
+        `INSERT INTO fin_audit_log
+            (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
+         SELECT pr.entity_id, 'fin_payment_request', pr.id, 'update',
+                $2::jsonb, $3::jsonb, ARRAY['scheduled_for'], $4::uuid, $5
+           FROM fin_payment_request pr WHERE pr.id = $1`,
+        [rows[0].id, JSON.stringify({ scheduled_for: rows[0].antes }),
+         JSON.stringify({ scheduled_for: data }), batchId, actor]
+      );
+      resultado.reagendadas.push({ id: rows[0].id, code: rows[0].code });
+    }
+
+    return resultado;
+  });
+}
+
+/**
+ * Cancela uma ordem em rascunho. A obrigação continua devida.
+ *
+ * Cancelar NÃO quita nada: a linha volta a aparecer na fila de contas a pagar,
+ * porque o que ela representa — o salário, a comissão — continua existindo. É a
+ * ORDEM que morre, não a dívida. Por isso o motivo é obrigatório e fica em
+ * `cancel_reason`: daqui a três meses, "por que esta ordem foi cancelada" tem
+ * de ter resposta sem depender de quem estava na sala.
+ *
+ * Só rascunho. Ordem já entregue ao banco passa por `devolver` primeiro — o
+ * caminho existe justamente para registrar que alguém CONFERIU no aplicativo do
+ * Inter que ela não virou dinheiro.
+ */
+export async function cancelarOrdens(
+  ids: number[],
+  opcoes: { actor: string; motivo: string }
+): Promise<{ canceladas: { id: number; code: string }[]; recusadas: { id: number; motivo: string }[] }> {
+  const lista = [...new Set((ids ?? []).map(Number).filter((n) => Number.isSafeInteger(n) && n > 0))];
+  if (lista.length === 0) throw new ValidacaoPagamento("nenhuma ordem informada");
+
+  const motivo = opcoes?.motivo?.trim();
+  if (!motivo || motivo.length < 5) {
+    throw new ValidacaoPagamento("diga por que está cancelando — o motivo fica no registro");
+  }
+  const actor = opcoes?.actor?.trim() || "tela";
+
+  return transaction(async (c) => {
+    const resultado: { canceladas: { id: number; code: string }[]; recusadas: { id: number; motivo: string }[] } = {
+      canceladas: [],
+      recusadas: []
+    };
+    const batchId = randomUUID();
+
+    for (const id of lista) {
+      const { rows } = await c.query<{ id: number; code: string }>(
+        `UPDATE fin_payment_request
+            SET status = 'cancelado', cancelled_by = $2, cancelled_at = now(),
+                cancel_reason = $3, updated_at = now()
+          WHERE id = $1 AND status = 'rascunho' AND paid_cents = 0
+          RETURNING id, code`,
+        [id, actor, motivo]
+      );
+
+      if (!rows[0]) {
+        const { rows: atual } = await c.query<{ status: string; paid_cents: string }>(
+          `SELECT status, paid_cents::text FROM fin_payment_request WHERE id = $1`,
+          [id]
+        );
+        resultado.recusadas.push({
+          id,
+          motivo: atual[0]
+            ? `está em "${atual[0].status}"${Number(atual[0].paid_cents) > 0 ? " e já tem pagamento registrado" : ""} — só cancela rascunho que não saiu`
+            : "ordem não encontrada"
+        });
+        continue;
+      }
+
+      await c.query(
+        `INSERT INTO fin_audit_log
+            (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
+         SELECT pr.entity_id, 'fin_payment_request', pr.id, 'update',
+                $2::jsonb, $3::jsonb, ARRAY['status'], $4::uuid, $5
+           FROM fin_payment_request pr WHERE pr.id = $1`,
+        [rows[0].id, JSON.stringify({ status: "rascunho" }),
+         JSON.stringify({ status: "cancelado", motivo }), batchId, actor]
+      );
+      resultado.canceladas.push({ id: rows[0].id, code: rows[0].code });
+    }
+
+    return resultado;
+  });
+}
+
 export async function devolverParaRascunho(
   ids: number[],
   opcoes: { actor: string; motivo: string }

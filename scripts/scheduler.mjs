@@ -127,11 +127,22 @@ const STEPS = [
     args: ['--conta=nubank', '--fechar-saldo'],
     required: false
   },
-  // Depois de promover, dar nome a quem recebeu. Só isso: a natureza do
-  // pagamento (salário, pró-labore, comissão) continua sendo decisão humana.
+  // Depois de promover, dar nome a quem recebeu.
   {
     name: 'identificação do extrato do Nubank',
     script: 'scripts/identificar-extrato-nubank.mjs',
+    args: ['--aplicar'],
+    required: false
+  },
+  // E a natureza, para quem é do TIME — o vínculo já a decide (regra do dono,
+  // 10/08/2026). Sem esta etapa, a folha de doze pessoas ficou sem categoria em
+  // setembro/2026, a competência não virou folha e a conferência de cada uma
+  // delas mostrou pendente o dinheiro que já estava na conta. O motivo completo,
+  // a medição e o que esta etapa NÃO faz estão em `sincronizar-fontes.mjs`, que
+  // é a lista irmã desta — as duas continuam iguais.
+  {
+    name: 'custo de pessoa por vínculo',
+    script: 'scripts/classificar-custo-pessoas.mjs',
     args: ['--aplicar'],
     required: false
   },

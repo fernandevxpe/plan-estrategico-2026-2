@@ -174,11 +174,51 @@ export const ETAPAS = [
   // vazio e o nome mora dentro da descrição, depois de um `|`. Sem esta etapa,
   // a folha inteira cai na fila como saída anônima, e quem revisa gasta o
   // tempo decifrando descrição de banco em vez de decidir a natureza do
-  // pagamento. A categoria continua com o humano — ver o cabeçalho do script.
+  // pagamento.
   {
     fonte: 'erp_obras',
     nome: 'identificação do extrato do Nubank',
     script: 'scripts/identificar-extrato-nubank.mjs',
+    args: ['--aplicar']
+  },
+  /*
+   * E, PARA QUEM É DO TIME, O "O QUE" TAMBÉM — porque ele já foi decidido.
+   *
+   * Até 03/09/2026 esta etapa não existia, e a linha acima dizia "a categoria
+   * continua com o humano". A intenção estava certa para pagamento a
+   * desconhecido; para a folha de alguém do time ela cobrava uma decisão que já
+   * tinha dono: o vínculo, na regra que o Fernando fixou em 10/08 (sócio →
+   * 6.02, MEI → 6.01, estagiário → 6.06).
+   *
+   * O QUE CUSTOU NÃO TER: em 03/09 a folha de setembro de DOZE pessoas —
+   * R$ 42.951,25 — estava sem categoria nenhuma. Sem categoria não há
+   * `cash_flow_group = 'pessoal'`, sem isso a competência fica no caixa (0071)
+   * e o pagamento do dia 1º não entra na conferência da folha do mês anterior.
+   * A tela do Igor mostrava a folha inteira pendente com R$ 12.892,26 já na
+   * conta dele; a do Jonildo cobrava R$ 2.406,50 que ninguém devia.
+   *
+   * Todas as doze são MEI, "indefinido" ou "irregular" — nenhum sócio. O motivo
+   * é `fin_person.default_category_id`: sócio tem, e o gatilho
+   * `fin_transaction_categoria_pessoa` classifica sozinho na identificação;
+   * MEI não tem, e ninguém classificava.
+   *
+   * POR QUE É SEGURO RODAR TODA NOITE. Medido antes de ligar: o UPDATE só toca
+   * `category_id IS NULL`, respeita `human_locked_fields` e nunca reclassifica
+   * categoria existente — os reembolsos 6.05 do Igor, travados por decisão
+   * humana, ficaram intactos. Rodar duas vezes não muda nada na segunda.
+   *
+   * O QUE ELA NÃO FAZ: separar reembolso de salário. Ela roteia tudo da pessoa
+   * para a categoria do vínculo, então um reembolso do MEI nasce em 6.01 e é
+   * um humano que o move para 6.05 — e a trava dele passa a proteger. Isso é
+   * grosso para a DRE e suficiente para a conferência, que casa por VALOR e não
+   * por categoria. Trocar "tela errada para doze pessoas" por "reembolso de
+   * MEI entra como salário até alguém mover" é um negócio bom; fingir que não
+   * há troca é que seria ruim.
+   */
+  {
+    fonte: null,
+    nome: 'custo de pessoa por vínculo',
+    script: 'scripts/classificar-custo-pessoas.mjs',
     args: ['--aplicar']
   },
   {

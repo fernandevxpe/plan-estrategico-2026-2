@@ -7,7 +7,7 @@ import { gzipSync } from "node:zlib";
 import { FinanceUnavailableError, query, queryOne, transaction } from "@/lib/financeiro/db";
 import {
   alinharBandasComPixConferido,
-  casarPartesPorValor,
+  casarComissaoPorEliminacao,
   itemAppJaLiquidado,
   pixesDoCaixa
 } from "@/lib/financeiro/recebiveis-reembolso";
@@ -1571,6 +1571,19 @@ export async function salvarContaPagamento(
     throw new TimeError("para TED preciso do banco, da agência e da conta", 400);
   }
 
+  /*
+   * O TITULAR NÃO É MAIS PERGUNTA (0191).
+   *
+   * O app do time parou de perguntar "a conta é sua ou do seu CNPJ?" porque o
+   * MEI é uma PJ no nome da própria pessoa — a pergunta pede que ela escolha
+   * entre duas coisas que são a mesma, e a única pessoa que respondeu "não é
+   * minha" escreveu o próprio nome. O tipo da chave já diz o que a pergunta
+   * tentava saber.
+   *
+   * O parâmetro continua sendo aceito, e não por compatibilidade com o app: é
+   * a tela do FINANCEIRO que informa o titular quando o dinheiro de fato vai
+   * para um terceiro. Omitido, o titular é a própria pessoa.
+   */
   const titularNome = titularEhAPessoa ? null : texto(dados.titularNome, 120);
   const titularDoc = titularEhAPessoa ? "" : String(dados.titularDocumento ?? "").replace(/\D/g, "");
   if (!titularEhAPessoa && (!titularNome || !(titularDoc.length === 11 || titularDoc.length === 14))) {
@@ -1623,6 +1636,39 @@ export async function salvarContaPagamento(
         `time:${sessao.personId}`
       ]
     );
+
+    /*
+     * A CHAVE QUE É DOCUMENTO TAMBÉM COMPLETA O CADASTRO (0191).
+     *
+     * "O CPF deve ser cadastrado para a empresa de qualquer forma, assim como
+     * temos o e-mail, telefone, data de aniversário." Quando a pessoa cadastra
+     * a chave PIX no próprio CPF ou no CNPJ do MEI, ela acabou de digitar um
+     * documento conferido — e o perfil dela seguia vazio, cobrando o mesmo
+     * número numa segunda tela.
+     *
+     * Só preenche o que está VAZIO. Chave PIX não corrige documento existente:
+     * se os dois divergirem, isso é uma pergunta para um humano, não uma
+     * sobrescrita silenciosa. E o `WHERE NOT EXISTS` protege o índice único
+     * parcial (entity_id, cpf) — dois cadastros com o mesmo CPF são a mesma
+     * pessoa em duas linhas, e fundir cadastro não é trabalho desta rota.
+     */
+    if (metodo === "pix" && (pixTipo === "cpf" || pixTipo === "cnpj") && pixChave) {
+      const d = conferirDocumento(pixChave);
+      if (d.valido && d.tipo === pixTipo) {
+        const coluna = pixTipo === "cpf" ? "cpf" : "cnpj";
+        await client.query(
+          `UPDATE fin_person p
+              SET ${coluna} = $2
+            WHERE p.id = $1
+              AND p.${coluna} IS NULL
+              AND NOT EXISTS (
+                SELECT 1 FROM fin_person o
+                 WHERE o.entity_id = p.entity_id AND o.${coluna} = $2 AND o.id <> p.id
+              )`,
+          [sessao.personId, d.digitos]
+        );
+      }
+    }
 
     // Mudar para onde vai dinheiro é exatamente o que precisa de rastro.
     await client.query(
@@ -1852,6 +1898,20 @@ export type MeusRecebiveis = {
  * produziria "divergência" em cima de previsão que não existia.
  */
 export const MES_INICIAL_CONCILIACAO = "2026-08";
+
+/**
+ * O primeiro MÊS DE CAIXA em que a comissão declarada é cobrada na conferência.
+ *
+ * Não é a mesma régua da conciliação, e é por isso que mora numa constante
+ * própria: salário e reembolso são conciliáveis desde agosto, a comissão não.
+ * Antes de setembro/2026 a casa não declarava comissão — ela era paga por
+ * dentro do pró-labore, e o que existe em `fin_pessoa_comissao_declarada` para
+ * agosto foi cadastrado em 29/08, depois de a folha de agosto ter saído.
+ *
+ * Cobrar o que veio antes desta data acusaria dívida paga. O Fernando, em
+ * 03/09/2026: "vamos começar a conciliar dos meses vigentes em diante".
+ */
+export const MES_INICIAL_COMISSAO_CONCILIADA = "2026-09";
 
 type RecebivelComissaoItem = {
   descricao: string;
@@ -2329,11 +2389,6 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         });
         comissaoPorComp.set(k, lista);
       }
-      const totalComissaoPorComp = new Map<string, number>();
-      for (const [k, lista] of comissaoPorComp) {
-        totalComissaoPorComp.set(k, lista.reduce((t, i) => t + i.valorCents, 0));
-      }
-
       const reembolsoPorComp = new Map<string, { totalCents: number; status: string }>();
       for (const r of reembolsoCabecalhos) {
         reembolsoPorComp.set(String(r.competencia), {
@@ -2418,7 +2473,53 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         // Vigência resolvida no ÚLTIMO dia da competência — ver o comentário
         // do bloco: o reajuste de 29/08 vale para a folha de agosto.
         const fimDaCompetencia = `${mes}-31`;
-        const comissao = (comissaoPorComp.get(mes) ?? []).filter((c) => c.valorCents >= 100);
+        /*
+         * A COMISSÃO NÃO SEGUE A COMPETÊNCIA DA FOLHA — E NUNCA SEGUIU.
+         *
+         * A 0165 é explícita sobre a competência da comissão declarada:
+         * "primeiro dia do mês a que a comissão se refere — O MESMO MÊS EM QUE
+         * CAIU NO BANCO, diferente do reembolso (que é sempre competência do
+         * mês anterior ao pagamento)".
+         *
+         * Ou seja: salário, pró-labore e reembolso da competência de agosto
+         * caem em SETEMBRO; a comissão que cai em setembro é a declarada em
+         * SETEMBRO. São dois regimes, e esta tela somava os dois no mesmo
+         * balde — comparando o dinheiro de setembro com a comissão de agosto.
+         *
+         * Medido em 03/09/2026, folha de agosto:
+         *
+         *   Jonildo   previsto 12.844,66  ·  pago 12.844,66   exato
+         *   Gabriel   previsto 13.175,17  ·  pago 13.174,97   R$ 0,20
+         *   Fernando  não muda: a comissão dele é R$ 10,00 nos dois meses
+         *
+         * Com a competência da folha, o Jonildo acusava R$ 2.406,50 a receber
+         * com o dinheiro já na conta dele, e o Gabriel R$ 7.695,10 a mais. O
+         * dono viu pelo lado certo: "parece que está faltando receber um
+         * dinheiro que não existe... ele recebeu tudo previsto".
+         *
+         * As duas gambiarras que existiam para compensar isto — casar comissão
+         * FORA da competência e a "pista" de pagamento adiantado — saíram
+         * junto: elas consertavam por valor o que era desalinhamento de regime,
+         * e mantê-las agora casaria a mesma comissão em dois meses.
+         */
+        const mesDeCaixa = proximoMes(mes);
+        /*
+         * E SÓ VALE DE SETEMBRO EM DIANTE.
+         *
+         * O Fernando, em 03/09: "vamos começar a conciliar dos meses vigentes
+         * em diante... porque começamos agora a cadastrar as comissões; algumas
+         * foram parceladas e isso deve ter composto o salário deles antes".
+         *
+         * É o fato que decide: antes de setembro a comissão não era declarada,
+         * ela vinha dentro do pró-labore. Cobrar a competência de agosto —
+         * declarada em 29/08, quando a folha de agosto já tinha sido paga no
+         * dia 03 — apontaria R$ 7.320,52 de dívida que a casa já pagou por
+         * dentro, para quatro pessoas.
+         */
+        const comissao =
+          mesDeCaixa >= MES_INICIAL_COMISSAO_CONCILIADA
+            ? (comissaoPorComp.get(mesDeCaixa) ?? []).filter((c) => c.valorCents >= 100)
+            : [];
         const reembolsoAprovado = reembolsoPorComp.get(mes);
         // NÃO somar o cabeçalho aqui: `fin_reembolso_saldo_unificado_v` já
         // inclui os itens aprovados vindos do app. Somar os dois contava os
@@ -2494,55 +2595,6 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         }
 
         /*
-         * COMISSÃO CASA ITEM A ITEM, INCLUSIVE FORA DA COMPETÊNCIA.
-         *
-         * O Pix de R$ 4.629,00 do Jonildo saiu do Nubank em 03/08, em 6.02, com
-         * competência de JULHO (`folha_mes_referencia`). O item declarado é de
-         * AGOSTO, valor exato, "excedente sobre o pró-labore". Sem olhar o
-         * extrato vizinho, a conferência de agosto mostrava comissão R$ 7.035
-         * toda pendente — e a diferença (as obras, R$ 2.406,50) que define o
-         * que ainda entra no pacote com o reembolso sumia.
-         *
-         * Só valor exato. Aproximar engoliria a diferença; o pedido é vê-la.
-         */
-        const pComissao = previstos.find((p) => p.natureza === "comissao");
-        if (pComissao && !pComissao.conferido && pComissao.previstoCents > 0) {
-          const pool = [
-            ...extrato,
-            ...[...pagoPorComp.entries()]
-              .filter(([comp]) => comp !== mes)
-              .flatMap(([, xs]) => xs)
-          ];
-          const casamento = casarPartesPorValor(pComissao.partes, pool);
-          if (casamento.pagoCents > 0) {
-            pComissao.pagoCents = casamento.pagoCents;
-            pComissao.conferido = true;
-            pComissao.pagoEm = casamento.pagoEm;
-            for (const l of pool) {
-              if (!l.casado || extrato.includes(l)) continue;
-              extrato.push({
-                ...l,
-                pista:
-                  l.pista ??
-                  `caiu em ${l.data.slice(8, 10)}/${l.data.slice(5, 7)}, competência diferente no ledger`
-              });
-            }
-          }
-        }
-
-        // A pista: um pagamento que não casa aqui pode bater com a comissão
-        // declarada de outra competência. É o caso de comissão paga adiantado.
-        for (const l of extrato) {
-          if (l.casado) continue;
-          for (const [comp, total] of totalComissaoPorComp) {
-            if (total === l.valorCents && comp !== mes) {
-              l.pista = `comissão declarada de ${comp}, paga fora da competência`;
-              break;
-            }
-          }
-        }
-
-        /*
          * SEGUNDA PASSADA — mesma natureza, valor diferente.
          *
          * Caso real: a comissão de agosto era R$ 8,00 e saiu um pagamento de
@@ -2557,16 +2609,57 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
          * com um valor declarado, não de uma classificação automática.
          */
         for (const p of previstos) {
-          if (p.previstoCents <= 0 || p.conferido) continue;
-          const casa = extrato.find(
-            (l) => !l.casado && (l.natureza === p.natureza || (p.natureza === "comissao" && l.pista !== null))
-          );
+          // Comissão sai daqui: ela tem passada própria logo abaixo, e é a
+          // ÚLTIMA de todas de propósito — ela varre o que sobrar, então
+          // deixá-la antes faria o salário pago com valor diferente do
+          // cadastro ser contado como comissão.
+          if (p.previstoCents <= 0 || p.conferido || p.natureza === "comissao") continue;
+          const casa = extrato.find((l) => !l.casado && l.natureza === p.natureza);
           if (!casa) continue;
           casa.casado = true;
           p.pagoCents = casa.valorCents;
           p.conferido = true;
           p.pagoEm = casa.data.slice(0, 10);
         }
+
+        /*
+         * COMISSÃO: PRIMEIRO ITEM A ITEM, DEPOIS POR ELIMINAÇÃO.
+         *
+         * O item a item pega o que saiu em PIX próprio — o Jonildo tem os
+         * R$ 300,00 de comissão de consultoria, pagos isolados pelo Inter com
+         * essa descrição no extrato.
+         *
+         * Mas o grosso da comissão sai em BLOCO: um PIX só para onze parcelas
+         * de obra. Exigir valor exato por parcela era pedir que o banco
+         * conhecesse o cadastro, e o resultado era a tela mostrar a comissão
+         * inteira pendente ao lado de um pagamento "sem previsto" do mesmo
+         * tamanho — as duas metades erradas ao mesmo tempo.
+         *
+         * A eliminação resolve sem adivinhar: salário, pró-labore e reembolso
+         * são valores exatos do cadastro e já casaram acima. O que sobra no
+         * extrato da competência é, por construção, comissão — e a devolução
+         * entra aí com sinal negativo (0193), então a soma é o LÍQUIDO.
+         *
+         * Isto não engole diferença: `pagoCents` recebe o que sobrou, e se ele
+         * não alcançar o previsto a falta continua aparecendo. O Gabriel fecha
+         * com R$ 0,20 faltando, e é isso que a tela dele diz.
+         */
+        const pComissao = previstos.find((p) => p.natureza === "comissao");
+        if (pComissao && pComissao.previstoCents > 0) {
+          const naoCasadosAntes = extrato.filter((l) => !l.casado);
+          const c = casarComissaoPorEliminacao(pComissao.partes, extrato);
+          pComissao.pagoCents = c.pagoCents;
+          pComissao.conferido = c.pagoCents > 0;
+          pComissao.pagoEm = c.pagoEm ?? pComissao.pagoEm;
+          // A pista explica na tela por que um Pix sem valor de parcela conta
+          // como comissão. Sem ela, a linha vira "casou" sem dizer com o quê.
+          if (c.emBloco > 0) {
+            for (const l of naoCasadosAntes) {
+              if (l.casado) l.pista = l.pista ?? "comissão do mês, paga em bloco";
+            }
+          }
+        }
+
 
         const previstoCents = previstos.reduce((t, p) => t + p.previstoCents, 0);
         const pagoCents = extrato.reduce((t, l) => t + l.valorCents, 0);

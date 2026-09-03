@@ -9,6 +9,7 @@
 
 import {
   alinharBandasComPixConferido,
+  casarComissaoPorEliminacao,
   casarPartesPorValor,
   garantirMesDeCaixa,
   itemAppJaLiquidado,
@@ -162,6 +163,58 @@ ok(
 );
 ok(!linhasJonildo[1].casado, "pró-labore de R$ 5.879 não é comido como comissão");
 ok(linhasJonildo[0].casado, "só o Pix do valor exato é consumido");
+
+console.log("\n=== 6. COMISSÃO PAGA EM BLOCO, COM DEVOLUÇÃO ===");
+
+/*
+ * Os três casos reais da folha de agosto/2026, medidos em 03/09. Eles cobrem
+ * as três formas que o pagamento de comissão assume nesta casa — e o Fernando
+ * está aqui de propósito: ele é a prova de que a mudança NÃO mexe em quem já
+ * estava certo.
+ */
+
+// JONILDO — comissão de setembro R$ 4.904,80, paga em dois Pix e uma devolução.
+// O de R$ 300,00 é a parcela de consultoria, que saiu isolada e casa exato.
+const partesJon = [
+  { valorCents: 157500, pagoEm: null as string | null },
+  { valorCents: 59475, pagoEm: null as string | null },
+  { valorCents: 30000, pagoEm: null as string | null },
+  { valorCents: 402005, pagoEm: null as string | null }
+];
+const extratoJon = [
+  { valorCents: 484804, casado: false, data: "2026-09-01" },
+  { valorCents: -24324, casado: false, data: "2026-09-01" },
+  { valorCents: 30000, casado: false, data: "2026-09-02" }
+];
+const jon = casarComissaoPorEliminacao(partesJon, extratoJon);
+ok(jon.pagoCents === 490480, "Jonildo: bloco + devolução dão a comissão exata (R$ 4.904,80)");
+ok(partesJon[2].pagoEm === "2026-09-02", "a parcela de consultoria casa pelo valor exato");
+ok(extratoJon.every((l) => l.casado), "nada sobra como pagamento sem previsto");
+ok(jon.emBloco === 2, "os dois lançamentos do Nubank entram em bloco");
+
+// GABRIEL — comissão de setembro R$ 9.357,31 paga em dois Pix que somam
+// R$ 9.357,11. A falta de R$ 0,20 tem de SOBREVIVER: é o que prova que a
+// eliminação não engole diferença.
+const partesGab = [{ valorCents: 935731, pagoEm: null as string | null }];
+const extratoGab = [
+  { valorCents: 586400, casado: false, data: "2026-09-02" },
+  { valorCents: 349311, casado: false, data: "2026-09-01" }
+];
+const gab = casarComissaoPorEliminacao(partesGab, extratoGab);
+ok(gab.pagoCents === 935711, "Gabriel: soma o bloco sem arredondar para o previsto");
+ok(935731 - gab.pagoCents === 20, "os R$ 0,20 que faltam continuam faltando");
+
+// FERNANDO — comissão de R$ 10,00 num Pix próprio. Casa exato, sem bloco.
+const partesFer = [{ valorCents: 1000, pagoEm: null as string | null }];
+const extratoFer = [{ valorCents: 1000, casado: false, data: "2026-08-31" }];
+const fer = casarComissaoPorEliminacao(partesFer, extratoFer);
+ok(fer.pagoCents === 1000 && fer.emBloco === 0, "Fernando: casamento exato não vira bloco");
+
+// Devolução sozinha não pode virar comissão negativa.
+const soDevolucao = [{ valorCents: -24324, casado: false, data: "2026-09-01" }];
+const nada = casarComissaoPorEliminacao([{ valorCents: 50000, pagoEm: null }], soDevolucao);
+ok(nada.pagoCents === 0, "devolução sem pagamento no mês não vira comissão negativa");
+ok(!soDevolucao[0].casado, "e a devolução continua visível como não casada");
 
 console.log(`\n${falhas === 0 ? "ok" : "FALHOU"} — ${provas} prova(s), ${falhas} falha(s)`);
 process.exit(falhas === 0 ? 0 : 1);

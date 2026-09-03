@@ -3418,9 +3418,6 @@ function TelaPerfil({
   const [bancoNome, setBancoNome] = useState("");
   const [agencia, setAgencia] = useState("");
   const [contaNum, setContaNum] = useState("");
-  const [titularEhEu, setTitularEhEu] = useState(true);
-  const [titularNome, setTitularNome] = useState("");
-  const [titularDoc, setTitularDoc] = useState("");
   /**
    * SALÁRIO ATUAL E REEMBOLSO PREVISTO, no perfil.
    *
@@ -3533,9 +3530,6 @@ function TelaPerfil({
       setBancoNome(c.bancoNome ?? "");
       setAgencia(c.agencia ?? "");
       setContaNum(c.conta ?? "");
-      setTitularEhEu(c.titularEhAPessoa);
-      setTitularNome(c.titularNome ?? "");
-      setTitularDoc(c.titularDocumento ?? "");
     })();
   }, []);
 
@@ -3551,7 +3545,6 @@ function TelaPerfil({
         body: JSON.stringify({
           metodo: contaMetodo, pixTipo, pixChave,
           bancoNome, agencia, conta: contaNum,
-          titularEhAPessoa: titularEhEu, titularNome, titularDocumento: titularDoc,
           recebeSalario: true, recebeReembolso: true
         })
       });
@@ -4041,14 +4034,21 @@ function TelaPerfil({
                     </div>
                   </>
                 ) : null}
-                <div className="time-perfil-dado-item">
-                  <span className="time-perfil-dado-rotulo">Titular</span>
-                  <span className="time-perfil-dado-valor">
-                    {conta?.titularEhAPessoa
-                      ? "Eu mesmo"
-                      : `${conta?.titularNome ?? "Outro"}${conta?.titularDocumento ? ` (Doc: ${conta.titularDocumento})` : ""}`}
-                  </span>
-                </div>
+                {/*
+                  "Titular: Eu mesmo" era uma linha que nunca dizia nada — o
+                  titular é a própria pessoa em 25 de 25 cadastros. O que vale
+                  mostrar é o caso raro: quando o dinheiro vai para OUTRO nome,
+                  e aí o comprovante não vai bater com o dela (0191).
+                */}
+                {conta && !conta.titularEhAPessoa ? (
+                  <div className="time-perfil-dado-item">
+                    <span className="time-perfil-dado-rotulo">Quem recebe</span>
+                    <span className="time-perfil-dado-valor">
+                      {conta.titularNome ?? "Outra pessoa"}
+                      {conta.titularDocumento ? ` (${conta.titularDocumento})` : ""}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </div>
           </details>
@@ -4108,6 +4108,19 @@ function TelaPerfil({
                     )
                   )}
                 </div>
+                {/*
+                  A ORIENTAÇÃO NO LUGAR DA PERGUNTA (0191).
+
+                  Antes existia um "de quem é a conta: minha / do meu CNPJ",
+                  e ela fazia a pessoa escolher entre duas coisas que são a
+                  mesma — o MEI é PJ no nome dela. Aqui a mesma informação vira
+                  instrução: quem é MEI escolhe CNPJ, e pronto.
+                */}
+                <small>
+                  {pixTipo === "cnpj"
+                    ? "É o CNPJ do seu MEI. O comprovante sai no nome da sua empresa — é o que a XPE precisa para lançar a nota."
+                    : "Se você é MEI, prefira a chave no CNPJ."}
+                </small>
               </div>
               <label className="time-porta-campo">
                 <span>Chave PIX</span>
@@ -4143,36 +4156,6 @@ function TelaPerfil({
               </div>
             </>
           )}
-
-          <div className="campo">
-            <span className="campo-rotulo" id="grupo-titular">De quem é a conta</span>
-            <div className="chips" role="group" aria-labelledby="grupo-titular">
-              <button type="button" aria-pressed={titularEhEu} className={titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(true)}>
-                Minha
-              </button>
-              <button type="button" aria-pressed={!titularEhEu} className={!titularEhEu ? "chip ativo" : "chip"} onClick={() => setTitularEhEu(false)}>
-                Do meu CNPJ / de outra pessoa
-              </button>
-            </div>
-            <small>
-              {titularEhEu
-                ? "O comprovante vai sair no seu nome."
-                : "Comum aqui: o time é MEI e recebe no CNPJ. Diga o titular para o comprovante fazer sentido depois."}
-            </small>
-          </div>
-
-          {!titularEhEu ? (
-            <div className="campo-par">
-              <label className="time-porta-campo">
-                <span>Nome do titular</span>
-                <input value={titularNome} onChange={(e) => setTitularNome(e.target.value)} />
-              </label>
-              <label className="time-porta-campo">
-                <span>CPF ou CNPJ dele</span>
-                <input value={titularDoc} onChange={(e) => setTitularDoc(e.target.value)} inputMode="numeric" />
-              </label>
-            </div>
-          ) : null}
 
           {erroConta ? <p className="time-porta-erro" role="alert">{erroConta}</p> : null}
           {contaOk ? <p className="conta-pgto-ok" role="status">Conta salva. O financeiro vai conferir antes do próximo pagamento.</p> : null}

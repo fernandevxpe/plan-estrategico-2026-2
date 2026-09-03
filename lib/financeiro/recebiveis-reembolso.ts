@@ -170,6 +170,60 @@ export function casarPartesPorValor(
   return { pagoCents, pagoEm, nCasadas };
 }
 
+export type ComissaoConciliada = {
+  pagoCents: number;
+  pagoEm: string | null;
+  /** Quantos lançamentos foram atribuídos em bloco (fora o casamento exato). */
+  emBloco: number;
+};
+
+/**
+ * O QUE SOBROU NO EXTRATO É COMISSÃO — a passada que fecha a conferência.
+ *
+ * A comissão é a única natureza que a casa paga em BLOCO: um Pix só para as
+ * onze parcelas de obra do mês. Salário, pró-labore e reembolso saem em valor
+ * exato do cadastro e casam um a um antes desta função rodar; o que resta no
+ * extrato da competência é, por eliminação, a comissão.
+ *
+ * Exigir valor exato por parcela era pedir que o banco conhecesse o cadastro.
+ * O resultado media-se na tela: comissão inteira "a receber" ao lado de um
+ * pagamento "sem previsto" do mesmo tamanho — as duas metades erradas juntas.
+ *
+ * ELA NÃO ENGOLE DIFERENÇA. `pagoCents` é o que de fato sobrou; se não chegar
+ * ao previsto, a falta continua aparecendo. Medido em 03/09/2026, folha de
+ * agosto: o Gabriel fecha com R$ 0,20 faltando, e é isso que a tela dele diz.
+ *
+ * DEVOLUÇÃO ENTRA AQUI, com valor negativo (0193). O Jonildo recebeu
+ * R$ 4.848,04 de comissão e devolveu R$ 243,24 no mesmo dia; a soma da sobra
+ * dá o líquido R$ 4.604,80, que é o que ele ficou.
+ *
+ * Esta função é a ÚLTIMA a rodar de propósito. Antes das outras, ela varreria
+ * para a comissão um salário pago com valor diferente do cadastrado.
+ */
+export function casarComissaoPorEliminacao(
+  partes: ParteParaCasar[],
+  extrato: LinhaParaCasar[]
+): ComissaoConciliada {
+  const exato = casarPartesPorValor(partes, extrato);
+  const sobra = extrato.filter((l) => !l.casado);
+  const sobraCents = sobra.reduce((t, l) => t + l.valorCents, 0);
+
+  // Sobra só negativa é devolução sem pagamento nesta competência — atribuí-la
+  // à comissão faria a tela dizer que a pessoa recebeu menos que zero.
+  if (sobraCents <= 0) {
+    return { pagoCents: exato.pagoCents, pagoEm: exato.pagoEm, emBloco: 0 };
+  }
+
+  for (const l of sobra) l.casado = true;
+  const datas = sobra.map((l) => l.data.slice(0, 10)).sort();
+  const ultima = datas[datas.length - 1] ?? null;
+  return {
+    pagoCents: exato.pagoCents + sobraCents,
+    pagoEm: !exato.pagoEm || (ultima && ultima > exato.pagoEm) ? ultima : exato.pagoEm,
+    emBloco: sobra.length
+  };
+}
+
 /**
  * O mês de caixa da conferência entra na série mesmo sem Pix.
  *

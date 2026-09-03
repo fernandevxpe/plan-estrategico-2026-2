@@ -38,6 +38,7 @@ import pg from 'pg';
 
 import { financeDatabaseUrl } from './lib/artifact-db.mjs';
 import { conferirDocumento, digitosDe } from './lib/fin-documento.mjs';
+import { normalizarChavePix, TIPO_PARA_PAYEE } from './lib/fin-pix.mjs';
 import { loadEnv } from './lib/env.mjs';
 
 loadEnv();
@@ -47,6 +48,21 @@ const PESSOA = arg('pessoa');
 const PARA = (arg('para') ?? 'CNPJ').toUpperCase();
 const APLICAR = process.argv.includes('--aplicar');
 const FORCAR = process.argv.includes('--forcar');
+/*
+ * `--nova-chave` cria a coordenada que ainda não existe.
+ *
+ * Sem isto o script só sabia ESCOLHER entre contas que o extrato já conhecia, e
+ * quem nunca recebeu numa chave não tinha como passar a receber nela. Em
+ * 03/09/2026 o Inter recusou as duas ordens do João com
+ * "Chave não cadastrada no Pix [DCT23]": a coordenada dele era o CPF, e o CPF
+ * não estava registrado como chave no banco dele. A chave que ele usa é um
+ * telefone que esta base nunca tinha visto.
+ *
+ * A chave passa por `normalizarChavePix`, a MESMA função que o app do time usa —
+ * é ela que teria recusado o "819999269107" de 12 dígitos que veio na primeira
+ * tentativa.
+ */
+const NOVA_CHAVE = arg('nova-chave');
 
 if (!PESSOA) {
   console.error('\n  falta --pessoa="Nome". Ex.: --pessoa="Igor A" --para=CNPJ\n');
@@ -128,8 +144,55 @@ try {
     );
   }
 
-  const alvo = contas.find((c) => (c.pix_address_key_type ?? '').toUpperCase() === PARA);
-  if (!alvo) throw new Error(`nenhuma conta ativa com chave ${PARA} para ${pessoa.name}`);
+  let alvo = contas.find((c) => (c.pix_address_key_type ?? '').toUpperCase() === PARA);
+
+  if (!alvo && NOVA_CHAVE) {
+    // O tipo vem de `--para` no vocabulário do app (cpf/cnpj/telefone/...), e a
+    // conta favorecida guarda no do Asaas (CPF/CNPJ/PHONE/...).
+    const tipoApp = PARA.toLowerCase() === 'phone' ? 'telefone' : PARA.toLowerCase();
+    const chave = normalizarChavePix(tipoApp, NOVA_CHAVE);
+    const tipoPayee = TIPO_PARA_PAYEE[tipoApp];
+    // Nasce na contraparte PRIMÁRIA: é a identidade que a casa reconhece, e uma
+    // chave que ninguém nunca usou não tem contraparte própria no extrato.
+    if (!pessoa.counterparty_id) throw new Error(`${pessoa.name} não tem contraparte primária`);
+    if (!APLICAR) {
+      console.log(`\n  + criaria conta ${tipoPayee} ${cauda(chave)} na contraparte ${pessoa.counterparty_id}`);
+      alvo = {
+        id: '(nova)', counterparty_id: pessoa.counterparty_id, is_default: false,
+        operation_type: 'PIX', pix_address_key: chave, pix_address_key_type: tipoPayee,
+        bank_code: null, bank_name: null, agency: null, account_number: null,
+        account_digit: null, account_type: null, owner_name: pessoa.name,
+        owner_document: null, label: 'informada pelo dono', contraparte: '(primária)'
+      };
+    } else {
+      const { rows } = await cliente.query(
+        `INSERT INTO fin_payee_account
+           (counterparty_id, label, operation_type, pix_address_key, pix_address_key_type,
+            owner_name, is_default, is_active)
+         VALUES ($1, $2, 'PIX', $3, $4, $5, false, true)
+         RETURNING id, counterparty_id, is_default, operation_type, pix_address_key,
+                   pix_address_key_type, bank_code, bank_name, agency, account_number,
+                   account_digit, account_type, owner_name, owner_document, label`,
+        [pessoa.counterparty_id, 'informada pelo dono', chave, tipoPayee, pessoa.name]
+      );
+      alvo = { ...rows[0], contraparte: '(primária)' };
+      await cliente.query(
+        `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
+         VALUES ((SELECT id FROM fin_entity WHERE slug='xpe'), 'fin_payee_account', $1, 'insert', NULL, $2::jsonb,
+                 ARRAY['pix_address_key','pix_address_key_type'], $3, $4)`,
+        [alvo.id, JSON.stringify({ tipo: tipoPayee, cauda: cauda(chave), pessoa: pessoa.name }), LOTE, ATOR]
+      );
+      console.log(`\n  + conta ${alvo.id} criada: ${tipoPayee} ${cauda(chave)}`);
+    }
+    contas.push(alvo);
+  }
+
+  if (!alvo) {
+    throw new Error(
+      `nenhuma conta ativa com chave ${PARA} para ${pessoa.name}. ` +
+        `Se a chave é nova, passe --nova-chave=<valor>.`
+    );
+  }
 
   // Verificável: a chave é documento e bate com o cadastro da pessoa.
   const v = conferirDocumento(alvo.pix_address_key ?? '');

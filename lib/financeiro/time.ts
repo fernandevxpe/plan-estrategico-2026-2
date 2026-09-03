@@ -12,6 +12,7 @@ import {
   pixesDoCaixa
 } from "@/lib/financeiro/recebiveis-reembolso";
 import { conferirDocumento } from "@/scripts/lib/fin-documento.mjs";
+import { normalizarChavePix as normalizarChavePixCompartilhada } from "@/scripts/lib/fin-pix.mjs";
 
 /**
  * O app do time — a camada de servidor.
@@ -1443,45 +1444,22 @@ export type ContaPagamento = {
 };
 
 /**
- * A CHAVE PIX, VALIDADA PELO TIPO — porque chave errada não dá erro.
+ * A CHAVE PIX, VALIDADA PELO TIPO — a regra mora em `scripts/lib/fin-pix.mjs`.
  *
- * Uma chave malformada não volta como falha: ou o banco recusa na hora do
- * pagamento (bom) ou ela é válida e pertence a OUTRA PESSOA (péssimo). Como
- * esta tabela existe para programar lote de pagamento, validar aqui é a
- * diferença entre um erro que aparece e um que não.
+ * Mudou de lugar em 03/09/2026 pelo mesmo arranjo de `conferirDocumento`: os
+ * scripts que trocam coordenada de pagamento (`trocar-coordenada-pessoa.mjs`)
+ * precisam validar a chave EXATAMENTE como esta rota valida. Duas cópias da
+ * mesma regra é como o app do time passaria a aceitar uma chave que o script
+ * grava de outro jeito.
  *
- * Os formatos seguem o que o BR Code espera, e são os mesmos de
- * `lib/financeiro/pix-brcode.ts`: CPF e CNPJ só dígitos, telefone em E.164
- * com o `+55`, e-mail e chave aleatória como estão.
+ * Reexportado aqui para não quebrar quem já importava de `time.ts`, e traduzido
+ * para `TimeError` porque quem chama esta camada responde HTTP.
  */
 export function normalizarChavePix(tipo: string, bruta: string): string {
-  const v = bruta.trim();
-  const d = v.replace(/\D/g, "");
-  switch (tipo) {
-    case "cpf":
-      if (d.length !== 11) throw new TimeError("CPF precisa ter 11 dígitos", 400);
-      return d;
-    case "cnpj":
-      if (d.length !== 14) throw new TimeError("CNPJ precisa ter 14 dígitos", 400);
-      return d;
-    case "telefone": {
-      // Aceita com ou sem o 55; grava sempre no formato que o PIX exige.
-      const nacional = d.startsWith("55") ? d.slice(2) : d;
-      if (nacional.length < 10 || nacional.length > 11) {
-        throw new TimeError("telefone precisa ter DDD + número (10 ou 11 dígitos)", 400);
-      }
-      return `+55${nacional}`;
-    }
-    case "email":
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) throw new TimeError("e-mail inválido", 400);
-      return v.toLowerCase();
-    case "aleatoria":
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) {
-        throw new TimeError("chave aleatória tem 36 caracteres no formato do banco", 400);
-      }
-      return v.toLowerCase();
-    default:
-      throw new TimeError("tipo de chave inválido", 400);
+  try {
+    return normalizarChavePixCompartilhada(tipo, bruta);
+  } catch (erro) {
+    throw new TimeError(erro instanceof Error ? erro.message : "chave PIX inválida", 400);
   }
 }
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarRange, FileDown, Layers } from "lucide-react";
 
+import type { OpcoesContas } from "@/lib/financeiro/contas";
 import type { ContasAPagar } from "@/lib/financeiro/contas-a-pagar";
 import type { AbaCustos } from "@/lib/financeiro/custo-empresa-abas";
 import type { CustosEmpresa } from "@/lib/financeiro/custos-empresa";
@@ -37,10 +38,12 @@ type Atalho = (typeof ATALHOS)[number]["slug"];
 export function FinCustosEmpresa({
   dados,
   contas,
+  opcoes,
   aba
 }: {
   dados: CustosEmpresa;
   contas: ContasAPagar;
+  opcoes: OpcoesContas;
   aba: AbaCustos;
 }) {
   const router = useRouter();
@@ -159,7 +162,7 @@ export function FinCustosEmpresa({
       </nav>
 
       {aba === "contas-a-pagar" ? (
-        <FinContasAPagar dados={contas} />
+        <FinContasAPagar dados={contas} opcoes={opcoes} />
       ) : !dados.disponivel ? (
         <section className="card fin-empty">
           <h2 className="card-title">Custo da empresa indisponível</h2>

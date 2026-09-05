@@ -11,6 +11,12 @@
 // descrição 'teste automatizado — fita 3M comprada'. Em agosto eles eram 100%
 // do que a tela de Contas a pagar tinha para mostrar.
 //
+// Em 03/09/2026 o resíduo ativo já estava em zero (tudo `ignorado`), mas a
+// agenda AINDA emitia as linhas — Contas a pagar lia `ignorado` como "A
+// confirmar". O filtro `estado NOT IN ('ignorado','cancelado')` em
+// `getContasAPagar` é o que tira da fila de caixa; este script continua
+// sendo a limpeza na origem quando o teste aborta de novo.
+//
 // O CORTE É ESTREITO DE PROPÓSITO
 // Só remove linha cuja descrição/título começa com 'teste automatizado —' — a
 // string que o próprio teste escreve, e que nenhum lançamento real usa. Nada de

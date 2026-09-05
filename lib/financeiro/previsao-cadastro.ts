@@ -4,6 +4,7 @@ import { query } from "./db";
 import {
   ORDEM_PACOTE,
   pacoteDaComissao,
+  type FracionamentoParcela,
   type PacoteComissao,
   type PedacoComissao
 } from "./contas-a-pagar-eixos";
@@ -15,6 +16,9 @@ export {
   pacoteDaComissao,
   pedacosDaComissao,
   rotuloDaBanda,
+  aplicarFracionamento,
+  diaDaParcela,
+  type FracionamentoParcela,
   type PacoteComissao,
   type PedacoComissao
 } from "./contas-a-pagar-eixos";
@@ -228,6 +232,10 @@ export type BandaPagamento = {
   /** Só em comissão. Null = um PIX só (mês passado, ou ordem antiga na chave sem pacote). */
   pacote: PacoteComissao | null;
   cents: number;
+  /** Só quando salário/pró-labore fracionado no cadastro. */
+  parcela?: number;
+  parcelasTotal?: number;
+  diaMes?: number;
 };
 
 /**
@@ -250,6 +258,67 @@ export function bandasParaPagar(p: PrevisaoPessoaMes): BandaPagamento[] {
   }
   if (p.reembolsoCents > 0) out.push({ natureza: "reembolso", pacote: null, cents: p.reembolsoCents });
   return out;
+}
+
+export async function listarFracionamentoPagamento(
+  entitySlug: string,
+  mes: string
+): Promise<FracionamentoParcela[]> {
+  const rows = await query<{
+    person_id: number;
+    natureza: string;
+    parcela: number;
+    dia_mes: number;
+    valor_cents: number;
+    parcelas_total: number;
+  }>(
+    `WITH alvo AS (SELECT to_date($2, 'YYYY-MM') AS mes),
+     vigentes AS (
+       SELECT f.person_id,
+              f.natureza,
+              f.parcela,
+              f.dia_mes,
+              f.valor_cents,
+              row_number() OVER (
+                PARTITION BY f.person_id, f.natureza, f.parcela
+                ORDER BY f.vigente_desde DESC, f.id DESC
+              ) AS rn
+         FROM fin_pessoa_pagamento_fracionado f
+         JOIN fin_person p ON p.id = f.person_id
+         JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $1
+        CROSS JOIN alvo
+        WHERE f.vigente_desde <= alvo.mes
+     ),
+     ativos AS (
+       SELECT person_id, natureza, parcela, dia_mes, valor_cents
+         FROM vigentes
+        WHERE rn = 1
+     ),
+     tot AS (
+       SELECT person_id, natureza, count(*)::int AS parcelas_total
+         FROM ativos
+        GROUP BY person_id, natureza
+     )
+     SELECT a.person_id,
+            a.natureza,
+            a.parcela,
+            a.dia_mes,
+            a.valor_cents,
+            t.parcelas_total
+       FROM ativos a
+       JOIN tot t ON t.person_id = a.person_id AND t.natureza = a.natureza
+      ORDER BY a.person_id, a.natureza, a.parcela`,
+    [entitySlug, mes]
+  ).catch(() => []);
+
+  return rows.map((r) => ({
+    personId: Number(r.person_id),
+    natureza: r.natureza === "prolabore" ? "prolabore" : "salario",
+    parcela: Number(r.parcela),
+    parcelasTotal: Number(r.parcelas_total),
+    diaMes: Number(r.dia_mes),
+    valorCents: Number(r.valor_cents ?? 0)
+  }));
 }
 
 /**

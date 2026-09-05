@@ -9,9 +9,14 @@ import {
   naoConfirmadaDe,
   naturezaDe,
   pedacosDaComissao,
+  aplicarFracionamento,
+  aplicarConciliacaoLedger,
+  diaDaParcela,
+  naturezaDaOrigemRef,
   CAMADA_COMPOSICAO,
   ordemDaNatureza,
   type Certeza,
+  type ConciliacaoLedger,
   type GrupoContas,
   type ImpedimentoPagar,
   type PedacoComissao
@@ -30,6 +35,7 @@ import { listarAnexosPorChave, listarFavoritos, type AnexoCobranca } from "./con
 import {
   bandasParaPagar,
   getPrevisaoCadastro,
+  listarFracionamentoPagamento,
   listarPedacosComissao,
   rotuloDaBanda,
   ROTULO_PACOTE,
@@ -169,6 +175,8 @@ export type ContaAPagar = {
   origemTabela: string | null;
   origemId: number | null;
   origemRef: string | null;
+  /** Id em `fin_custo_previsto` quando a linha já é item (ex.: ignorado materializado). */
+  itemId: number | null;
   entraNoTotal: boolean;
   motivoNaoSoma: string | null;
   /**
@@ -213,6 +221,12 @@ export type ContaAPagar = {
    * o PIX continua sendo a linha, não cada pedaço.
    */
   pedacos: PedacoComissao[];
+  /**
+   * Pix do extrato que casa com esta banda. `precisaConfirmacao` bloqueia novo
+   * pagamento até o dono aceitar — evita pagar de novo o que o Nubank já pagou
+   * com categoria errada no ledger.
+   */
+  conciliacaoLedger: ConciliacaoLedger | null;
 };
 
 export type ContasAPagar = {
@@ -222,6 +236,11 @@ export type ContasAPagar = {
   competencia: string;
   hoje: string;
   linhas: ContaAPagar[];
+  /**
+   * O que o dono disse que não vai acontecer neste mês. Fora da fila de caixa,
+   * mas recuperável — sem esta lista, Ignorar era apagar sem volta na prática.
+   */
+  ignorados: ContaAPagar[];
   areasEmpresa: Opcao[];
   /**
    * De que mês veio a composição da folha. Igual à competência = fechamento
@@ -239,6 +258,7 @@ function vazio(competencia: string, ressalva: string | null): ContasAPagar {
     competencia,
     hoje: "",
     linhas: [],
+    ignorados: [],
     areasEmpresa: [],
     folhaMolde: null,
     ressalva
@@ -275,7 +295,7 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
              AND cls.counterparty_id IS NOT DISTINCT FROM v.counterparty_id`
       : "";
 
-    const [linhasRows, mesesRows, areasCatRows, areasItemRows] = await Promise.all([
+    const [linhasRows, ignoradosRows, mesesRows, areasCatRows, areasItemRows] = await Promise.all([
       query<Record<string, unknown>>(
         `SELECT v.dia::text                                  AS dia,
                 to_char(v.competencia, 'YYYY-MM')            AS competencia,
@@ -299,6 +319,7 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
                 v.origem_tabela,
                 v.origem_id,
                 v.origem_ref,
+                v.item_id,
                 v.chave_dedupe,
                 v.entra_no_total,
                 v.motivo_nao_soma,
@@ -348,6 +369,48 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
               LIMIT 1
            ) ex ON TRUE
           WHERE v.direcao = 'pagar'
+            AND v.dia >= to_date($2, 'YYYY-MM')
+            AND v.dia <  (to_date($2, 'YYYY-MM') + interval '1 month')
+            -- ignorado/cancelado NAO entram nesta tela.
+            -- A agenda gerencial guarda o item com motivo ao lado (decisao
+            -- visivel). Contas a pagar e fila de CAIXA: o que o dono ja disse
+            -- que nao vai pagar aqui vira "A confirmar" se passar, porque
+            -- entra_no_total = false e ninguem soma por ele. Medido em
+            -- 03/09/2026: 5x "teste automatizado - fita 3M comprada"
+            -- (R$ 267,90) em set/26, todas ignorado pelo
+            -- limpar-residuo-teste.mjs, todas na faixa Atrasadas pedindo
+            -- boleto e NF-e. Sem crase neste comentario: ele mora DENTRO
+            -- de um template literal.
+            AND COALESCE(v.estado, '') NOT IN ('ignorado', 'cancelado')
+          ORDER BY v.dia, v.valor_cents DESC`,
+        [ENTITY, competencia]
+      ),
+      /*
+       * Ignorados da MESMA competencia, consulta leve: sem PIX nem ordem —
+       * nao se paga o que foi descartado. O item_id e o que reativa.
+       */
+      query<Record<string, unknown>>(
+        `SELECT v.dia::text AS dia,
+                to_char(v.competencia, 'YYYY-MM') AS competencia,
+                v.tempo, v.dias_a_frente, v.procedencia, v.estado, v.camada,
+                v.descricao, v.counterparty_id, v.contraparte,
+                v.category_id, v.categoria_code, v.categoria, v.nucleo,
+                v.valor_cents, v.realizado_cents,
+                v.realizado_em::text AS realizado_em, v.vencido, v.certeza,
+                v.origem_tabela, v.origem_id, v.origem_ref, v.item_id,
+                v.chave_dedupe, v.entra_no_total, v.motivo_nao_soma,
+                false AS chave_tem_vencedora,
+                NULL::text AS time_gravado, NULL::text AS bloco_gravado,
+                NULL::bigint AS payee_account_id,
+                NULL::text AS pix_address_key_type, NULL::text AS pix_address_key,
+                NULL::bigint AS ordem_id, NULL::text AS ordem_code,
+                NULL::text AS ordem_status, NULL::text AS ordem_scheduled,
+                NULL::bigint AS ordem_pago_cents, NULL::text AS ordem_pago_em,
+                NULL::text AS ordem_e2e
+           FROM fin_agenda_dia_v v
+           JOIN fin_entity e ON e.id = v.entity_id AND e.slug = $1
+          WHERE v.direcao = 'pagar'
+            AND v.estado = 'ignorado'
             AND v.dia >= to_date($2, 'YYYY-MM')
             AND v.dia <  (to_date($2, 'YYYY-MM') + interval '1 month')
           ORDER BY v.dia, v.valor_cents DESC`,
@@ -415,7 +478,7 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
     const mesCorrente = hojeRows[0]?.mes ?? competencia;
     const competenciaPassada = competencia < mesCorrente;
 
-    const [previsaoCadastro, folhaRealizadaRows, pedacosMes] = await Promise.all([
+    const [previsaoCadastro, folhaRealizadaRows, pedacosMes, fracionamentoMes, pagosLedgerRows] = await Promise.all([
       competenciaPassada ? Promise.resolve([] as Awaited<ReturnType<typeof getPrevisaoCadastro>>) : getPrevisaoCadastro(ENTITY, competencia),
       competenciaPassada
         ? query<Record<string, unknown>>(
@@ -434,8 +497,14 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
             [ENTITY, competencia]
           ).catch(() => [] as Record<string, unknown>[])
         : Promise.resolve([] as Record<string, unknown>[]),
-      listarPedacosComissao(ENTITY, competencia)
+      listarPedacosComissao(ENTITY, competencia),
+      competenciaPassada
+        ? Promise.resolve([])
+        : listarFracionamentoPagamento(ENTITY, competencia),
+      competenciaPassada ? Promise.resolve([]) : listarPagosFolhaNoMes(ENTITY, competencia)
     ]);
+
+    const pagosLedger = pagosLedgerRows;
 
     const pedacosPorPessoa = new Map<number, PedacoComissao[]>();
     for (const p of pedacosMes) {
@@ -505,7 +574,7 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
       areasPorItem.set(k, lista);
     }
 
-    const linhas: ContaAPagar[] = linhasRows.map((r) => {
+    const mapearLinhaAgenda = (r: Record<string, unknown>): ContaAPagar => {
       const counterpartyId = r.counterparty_id == null ? null : Number(r.counterparty_id);
       const categoryId = r.category_id == null ? null : Number(r.category_id);
       const camada = String(r.camada ?? "");
@@ -570,6 +639,7 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
         origemTabela: r.origem_tabela == null ? null : String(r.origem_tabela),
         origemId: r.origem_id == null ? null : Number(r.origem_id),
         origemRef: r.origem_ref == null ? null : String(r.origem_ref),
+        itemId: r.item_id == null ? null : Number(r.item_id),
         entraNoTotal,
         motivoNaoSoma: r.motivo_nao_soma == null ? null : String(r.motivo_nao_soma),
         naoConfirmada: naoConfirmadaDe({ realizadoEm, entraNoTotal, outraLinhaConta }),
@@ -609,9 +679,13 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
               },
         favorito: false,
         anexos: [],
-        pedacos: []
+        pedacos: [],
+        conciliacaoLedger: null
       };
-    });
+    };
+
+    const linhas: ContaAPagar[] = linhasRows.map(mapearLinhaAgenda);
+    const ignorados: ContaAPagar[] = ignoradosRows.map(mapearLinhaAgenda);
 
     /*
      * A folha agregada da 0077 SAI, e a composição do cadastro ENTRA.
@@ -646,6 +720,15 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
       natureza: string;
       pacote: PacoteComissao | null;
       cents: number;
+      parcela?: number;
+      parcelasTotal?: number;
+      diaMes?: number;
+      /**
+       * Ordem antiga na chave `…:salario` (sem parcela). A linha continua
+       * UM PIX — senão o pago fica órfão e as partes novas nascem pagáveis.
+       */
+      chaveSemParcela?: boolean;
+      detalheParcelas?: { parcela: number; cents: number; diaMes: number }[];
       /**
        * Ordem antiga na chave `…:comissao` (sem pacote). A linha continua
        * UM PIX — senão o pago fica órfão e as partes novas nascem pagáveis.
@@ -659,8 +742,18 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
       if (b.chaveSemPacote) {
         return `${competencia}|fin_person:${b.personId}:${b.natureza}`;
       }
+      if (b.chaveSemParcela) {
+        return `${competencia}|fin_person:${b.personId}:${b.natureza}`;
+      }
       if (b.natureza === "comissao" && b.pacote) {
         return `${competencia}|fin_person:${b.personId}:comissao:${b.pacote}`;
+      }
+      if (
+        (b.natureza === "salario" || b.natureza === "prolabore") &&
+        b.parcela != null &&
+        b.parcela > 0
+      ) {
+        return `${competencia}|fin_person:${b.personId}:${b.natureza}:${b.parcela}`;
       }
       return `${competencia}|fin_person:${b.personId}:${b.natureza}`;
     }
@@ -675,13 +768,16 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
           cents: Number(r.valor_cents ?? 0)
         }))
       : previsaoCadastro.flatMap((p) =>
-          bandasParaPagar(p).map((b) => ({
+          aplicarFracionamento(bandasParaPagar(p), fracionamentoMes, p.personId).map((b) => ({
             personId: p.personId,
             pessoa: p.pessoa,
             counterpartyId: p.counterpartyId,
             natureza: b.natureza,
             pacote: b.pacote,
-            cents: b.cents
+            cents: b.cents,
+            parcela: b.parcela,
+            parcelasTotal: b.parcelasTotal,
+            diaMes: b.diaMes
           }))
         );
 
@@ -693,7 +789,19 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
           .map((b) => `${competencia}|fin_person:${b.personId}:comissao`)
       )
     ];
-    const chavesFolha = [...new Set([...chavesNovas, ...chavesVelhasComissao])];
+    const chavesVelhasParcela = [
+      ...new Set(
+        bandas
+          .filter(
+            (b) =>
+              (b.natureza === "salario" || b.natureza === "prolabore") &&
+              b.parcela != null &&
+              b.parcela > 0
+          )
+          .map((b) => `${competencia}|fin_person:${b.personId}:${b.natureza}`)
+      )
+    ];
+    const chavesFolha = [...new Set([...chavesNovas, ...chavesVelhasComissao, ...chavesVelhasParcela])];
     if (chavesFolha.length > 0) {
       const ordensRows = await query<Record<string, unknown>>(
         `SELECT pr.source_id, pr.id, pr.code, pr.status, pr.scheduled_for::text AS scheduled_for,
@@ -768,21 +876,85 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
           ];
         });
       }
+
+      const comOrdemParcelaAntiga = new Set<string>();
+      for (const chave of ordensPorChave.keys()) {
+        const m = /\|fin_person:(\d+):(salario|prolabore)$/.exec(chave);
+        if (m) comOrdemParcelaAntiga.add(`${m[1]}:${m[2]}`);
+      }
+      if (comOrdemParcelaAntiga.size > 0) {
+        const porPessoa = new Map<number, Banda[]>();
+        for (const b of bandas) {
+          const lista = porPessoa.get(b.personId) ?? [];
+          lista.push(b);
+          porPessoa.set(b.personId, lista);
+        }
+        bandas = [...porPessoa.values()].flatMap((lista) => {
+          const id = lista[0]?.personId;
+          if (id == null) return lista;
+          const naturezasColapsar = ["salario", "prolabore"] as const;
+          let saida = lista;
+          for (const nat of naturezasColapsar) {
+            if (!comOrdemParcelaAntiga.has(`${id}:${nat}`)) continue;
+            const parceladas = saida.filter((b) => b.natureza === nat && b.parcela != null);
+            if (!parceladas.length) continue;
+            const uma = parceladas[0];
+            saida = [
+              ...saida.filter((b) => b.natureza !== nat),
+              {
+                ...uma,
+                chaveSemParcela: true,
+                parcela: undefined,
+                parcelasTotal: undefined,
+                diaMes: undefined,
+                cents: parceladas.reduce((s, c) => s + c.cents, 0),
+                detalheParcelas:
+                  parceladas.length > 1
+                    ? parceladas.map((c) => ({
+                        parcela: c.parcela ?? 0,
+                        cents: c.cents,
+                        diaMes: c.diaMes ?? 2
+                      }))
+                    : undefined
+              }
+            ];
+          }
+          return saida;
+        });
+      }
     }
 
     const linhasFolha: ContaAPagar[] = bandas.map((b) => {
       const chaveDedupe = chaveDaBanda(b);
-      const rotulo = rotuloDaBanda({ natureza: b.natureza, pacote: b.pacote });
-      const detalhe =
+      const rotulo = rotuloDaBanda({
+        natureza: b.natureza,
+        pacote: b.pacote,
+        parcela: b.parcela,
+        parcelasTotal: b.parcelasTotal
+      });
+      const detalheComissao =
         b.natureza === "comissao" && b.detalhePacotes && b.detalhePacotes.length > 1
           ? b.detalhePacotes.map((d) => `${ROTULO_PACOTE[d.pacote]} ${brl(d.cents)}`).join(" · ")
           : null;
+      const detalheParcela =
+        (b.natureza === "salario" || b.natureza === "prolabore") &&
+        b.detalheParcelas &&
+        b.detalheParcelas.length > 1
+          ? b.detalheParcelas
+              .map((d) => `${d.parcela}ª dia ${d.diaMes} ${brl(d.cents)}`)
+              .join(" · ")
+          : null;
+      const detalhe = detalheComissao ?? detalheParcela;
       const parte =
         b.pacote === "obras" || b.pacote === "consultoria" ? b.pacote : null;
       const origemRef =
         b.natureza === "comissao" && b.pacote
           ? `fin_person:${b.personId}:comissao:${b.pacote}`
-          : `fin_person:${b.personId}:${b.natureza}`;
+          : (b.natureza === "salario" || b.natureza === "prolabore") &&
+              b.parcela != null &&
+              !b.chaveSemParcela
+            ? `fin_person:${b.personId}:${b.natureza}:${b.parcela}`
+            : `fin_person:${b.personId}:${b.natureza}`;
       // Mês fechado é história: o dinheiro saiu, e a tela não pode oferecer
       // "programar" um pagamento de julho.
       const realizadoEm = competenciaPassada ? `${competencia}-01` : null;
@@ -796,8 +968,10 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
 
       return {
         chaveDedupe,
-        // Dia 2, a mesma regra que a 0079 usa para a folha.
-        dia: `${competencia}-02`,
+        dia:
+          b.diaMes != null && !b.chaveSemParcela
+            ? diaDaParcela(competencia, b.diaMes)
+            : `${competencia}-02`,
         competencia,
         tempo: competenciaPassada ? "passado" : "futuro",
         diasAFrente: 0,
@@ -821,6 +995,7 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
         origemTabela: "fin_person",
         origemId: b.personId,
         origemRef,
+        itemId: null,
         entraNoTotal: true,
         motivoNaoSoma: null,
         naoConfirmada: false,
@@ -847,15 +1022,66 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
         ordem: ordensPorChave.get(chaveDedupe) ?? null,
         favorito: false,
         anexos: [],
-        pedacos: pedacosDaComissao(b.natureza, b.pacote, pedacosPorPessoa.get(b.personId) ?? [])
+        pedacos: pedacosDaComissao(b.natureza, b.pacote, pedacosPorPessoa.get(b.personId) ?? []),
+        conciliacaoLedger: null
       };
     });
 
     linhasFolha.sort(
       (a, b) =>
         (a.contraparte ?? "").localeCompare(b.contraparte ?? "", "pt-BR") ||
-        ordemDaNatureza(a.origemRef?.split(":")[2] ?? "") - ordemDaNatureza(b.origemRef?.split(":")[2] ?? "")
+        ordemDaNatureza(a.origemRef?.split(":")[2] ?? "") -
+          ordemDaNatureza(b.origemRef?.split(":")[2] ?? "") ||
+        (a.origemRef ?? "").localeCompare(b.origemRef ?? "", "pt-BR")
     );
+
+    if (!competenciaPassada && linhasFolha.length > 0) {
+      linhasFolha.splice(0, linhasFolha.length, ...marcarFolhaPagaNoLedger(linhasFolha, pagosLedger));
+    }
+
+    const contrapartesNaComposicao = new Set(
+      linhasFolha.map((l) => l.counterpartyId).filter((id): id is number => id != null)
+    );
+    const personIdsComposicao = [
+      ...new Set(linhasFolha.map((l) => l.origemId).filter((id): id is number => id != null))
+    ];
+    if (personIdsComposicao.length > 0) {
+      const cpExtra = await query<{ counterparty_id: number }>(
+        `SELECT DISTINCT x.counterparty_id
+           FROM (
+             SELECT p.counterparty_id
+               FROM fin_person p
+              WHERE p.id = ANY($1::int[])
+                AND p.counterparty_id IS NOT NULL
+             UNION
+             SELECT l.counterparty_id
+               FROM fin_person_counterparty l
+              WHERE l.person_id = ANY($1::int[])
+                AND l.status = 'confirmado'
+           ) x
+          WHERE x.counterparty_id IS NOT NULL`,
+        [personIdsComposicao]
+      ).catch(() => [] as { counterparty_id: number }[]);
+      for (const row of cpExtra) contrapartesNaComposicao.add(Number(row.counterparty_id));
+    }
+
+    /** Documento/recorrente/agregada que a composição já substitui — só confunde na tela. */
+    function ocultarFolhaParalela(l: ContaAPagar): boolean {
+      if (linhasFolha.length === 0 || l.grupo !== "folha") return false;
+      if (l.camada === CAMADA_COMPOSICAO) return false;
+      if (l.counterpartyId != null && contrapartesNaComposicao.has(l.counterpartyId)) return true;
+      if (l.impedimento === "duplicada") return true;
+      return false;
+    }
+
+    const semRecorrenteDuplicado = (l: ContaAPagar): boolean => {
+      if (linhasFolha.length === 0 || l.camada !== "pagar_recorrente" || l.grupo !== "folha") {
+        return true;
+      }
+      if (l.counterpartyId != null && contrapartesNaComposicao.has(l.counterpartyId)) return false;
+      if (l.origemTabela === "fin_recurring" && l.origemId === 400) return false;
+      return true;
+    };
 
     const linhasFinais =
       linhasFolha.length > 0
@@ -868,7 +1094,7 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
               impedimento: "duplicada" as ImpedimentoPagar,
               motivoNaoSoma: `já no cadastro da folha · ${brl(l.valorCents)}`
             })),
-            ...semFolhaAgregada.map((l) =>
+            ...semFolhaAgregada.filter((l) => !ocultarFolhaParalela(l) && semRecorrenteDuplicado(l)).map((l) =>
               l.grupo === "folha" && l.impedimento === "duplicada"
                 ? { ...l, motivoNaoSoma: `já no cadastro da folha · ${brl(l.valorCents)}` }
                 : l
@@ -886,6 +1112,7 @@ export async function getContasAPagar(competenciaPedida?: string | null): Promis
       competencia,
       hoje,
       linhas: linhasComCobranca,
+      ignorados,
       areasEmpresa: areasCatRows,
       folhaMolde: linhasFolha.length > 0 ? competencia : null,
       ressalva: linhasFinais.length === 0 ? "nenhuma saída prevista nesta competência" : null
@@ -920,4 +1147,120 @@ async function colarCobranca(linhas: ContaAPagar[]): Promise<ContaAPagar[]> {
     console.error("[financeiro] cobranca indisponível:", error);
     return linhas;
   }
+}
+
+type PagoFolhaLedger = {
+  personId: number;
+  natureza: string;
+  cents: number;
+  dia: string;
+  usado?: boolean;
+};
+
+/** Pix de folha que já saíram no mês — qualquer conta (Nubank, Inter…). */
+async function listarPagosFolhaNoMes(entitySlug: string, mes: string): Promise<PagoFolhaLedger[]> {
+  const rows = await query<{
+    person_id: number;
+    natureza: string;
+    cents: number;
+    dia: string;
+  }>(
+    `WITH alvo AS (SELECT to_date($2, 'YYYY-MM') AS mes),
+     tx AS (
+       SELECT t.counterparty_id,
+              CASE cat.code
+                WHEN '6.01' THEN 'salario'
+                WHEN '6.02' THEN 'prolabore'
+                WHEN '6.06' THEN 'estagio'
+                WHEN '4.01' THEN 'comissao'
+                WHEN '6.05' THEN 'reembolso'
+                WHEN '6.03' THEN 'encargo_beneficio'
+                WHEN '6.04' THEN 'encargo_beneficio'
+              END AS natureza,
+              t.posted_on::date AS dia,
+              (-t.amount_cents)::bigint AS cents
+         FROM fin_transaction t
+         JOIN fin_entity e ON e.id = t.entity_id AND e.slug = $1
+         JOIN fin_category cat ON cat.id = t.category_id
+        CROSS JOIN alvo
+        WHERE t.amount_cents < 0
+          AND date_trunc('month', t.posted_on) = alvo.mes
+          AND cat.code IN ('6.01', '6.02', '6.03', '6.04', '6.05', '6.06', '4.01')
+     ),
+     mapa AS (
+       SELECT p.id AS person_id, p.counterparty_id AS cp_id
+         FROM fin_person p
+         JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $1
+        WHERE p.counterparty_id IS NOT NULL
+       UNION
+       SELECT l.person_id, l.counterparty_id
+         FROM fin_person_counterparty l
+         JOIN fin_person p ON p.id = l.person_id
+         JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $1
+        WHERE l.status = 'confirmado'
+     )
+     SELECT m.person_id,
+            tx.natureza,
+            tx.dia::text,
+            tx.cents
+       FROM tx
+       JOIN mapa m ON m.cp_id = tx.counterparty_id
+      WHERE tx.natureza IS NOT NULL
+      ORDER BY tx.dia, tx.cents DESC`,
+    [entitySlug, mes]
+  ).catch(() => []);
+
+  return rows.map((r) => ({
+    personId: Number(r.person_id),
+    natureza: String(r.natureza),
+    cents: Number(r.cents ?? 0),
+    dia: String(r.dia)
+  }));
+}
+
+/**
+ * Se o Nubank (ou outra conta) já pagou esta banda no mês, marca como realizado
+ * ou sugere confirmação quando a categoria do extrato diverge do cadastro.
+ */
+function marcarFolhaPagaNoLedger(
+  linhas: ContaAPagar[],
+  pagos: PagoFolhaLedger[]
+): ContaAPagar[] {
+  const entradas = linhas.map((l) => ({
+    personId: l.origemId ?? -1,
+    natureza: naturezaDaOrigemRef(l.origemRef) ?? "",
+    valorCents: l.valorCents
+  }));
+  const resultados = aplicarConciliacaoLedger(entradas, pagos);
+
+  return linhas.map((l, i) => {
+    const r = resultados[i];
+    if (r.tipo === "nenhum") return { ...l, conciliacaoLedger: null };
+
+    const base = {
+      ...l,
+      conciliacaoLedger: r.conciliacao
+    };
+
+    if (r.tipo === "auto") {
+      return {
+        ...base,
+        realizadoEm: r.dia,
+        realizadoCents: l.valorCents,
+        impedimento: impedimentoDe({
+          realizadoEm: r.dia,
+          entraNoTotal: true,
+          outraLinhaConta: true,
+          counterpartyId: l.counterpartyId,
+          payeeAccountId: l.payeeAccountId,
+          valorCents: l.valorCents
+        })
+      };
+    }
+
+    return {
+      ...base,
+      impedimento: "pix_sugerido" as ImpedimentoPagar
+    };
+  });
 }

@@ -489,6 +489,64 @@ export async function criarItemManual(
   return { id, batchId, estado: String((rows[0] as unknown as { estado: string }).estado) };
 }
 
+/**
+ * Cria o item desta competência e os 11 seguintes — recorrência mensal sem
+ * passar por fin_recurring (CHECK de conflito de camada costuma bloquear
+ * ativação quando já há documento/custo). Doze itens concretos: cada mês
+ * some ao pagar e o próximo já está na fila. Mesma regra de dia do
+ * `criarPagamento` (grampo no último dia do mês).
+ */
+export async function criarSerieMensal(
+  c: Cliente,
+  args: { item: ItemManual; actor: string; meses?: number }
+): Promise<{ ids: number[]; batchId: string; estado: string; chaveDedupe: string }> {
+  const n = args.meses ?? 12;
+  if (n < 1 || n > 24) throw new ValidacaoCusto(400, "série mensal entre 1 e 24 meses");
+  if (!args.item.diaEsperado) {
+    throw new ValidacaoCusto(400, "diaEsperado é obrigatório para recorrência mensal");
+  }
+  if (args.item.valorCents == null) {
+    throw new ValidacaoCusto(400, "recorrência mensal exige valorCents — indeterminado não se projeta 12 vezes");
+  }
+
+  const ids: number[] = [];
+  let batchId = "";
+  let estado = "previsto";
+
+  for (let i = 0; i < n; i++) {
+    const competencia = deslocarMes(args.item.competencia, i);
+    const diaEsperado = deslocarDiaNoMes(args.item.diaEsperado, i);
+    const r = await criarItemManual(c, {
+      item: { ...args.item, competencia, diaEsperado },
+      actor: args.actor
+    });
+    ids.push(r.id);
+    if (i === 0) {
+      batchId = r.batchId;
+      estado = r.estado;
+    }
+  }
+
+  return { ids, batchId, estado, chaveDedupe: `item|${ids[0]}` };
+}
+
+/** `YYYY-MM` + N meses → `YYYY-MM-01` (formato que competenciaDe grava). */
+function deslocarMes(competencia: string, meses: number): string {
+  const base = competencia.length === 7 ? `${competencia}-01` : competencia;
+  const [y, m] = base.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + meses, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
+}
+
+/** Mantém o dia do mês; 31 em fevereiro vira 28/29. */
+function deslocarDiaNoMes(dia: string, meses: number): string {
+  const [y, m, day] = dia.split("-").map(Number);
+  const alvo = new Date(Date.UTC(y, m - 1 + meses, 1));
+  const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  const d = Math.min(day, ultimo);
+  return `${alvo.getUTCFullYear()}-${String(alvo.getUTCMonth() + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 // ---------------------------------------------------------------------------
 // Editar
 // ---------------------------------------------------------------------------

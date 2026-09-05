@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   CalendarClock,
+  Check,
   FileText,
   Paperclip,
   Star,
@@ -21,6 +22,7 @@ import {
 } from "@/lib/financeiro/contas-a-pagar-eixos";
 import { rotuloSubparte } from "@/lib/financeiro/custo-empresa-partes";
 import { brlPrecise, dateLabel, shortDateLabel } from "@/lib/financeiro/format";
+import { urlDaOrigem } from "@/lib/url-origem";
 
 /**
  * A FILA DOS PREVISTOS — aluguel, conta de luz, DAS, o que se paga com boleto.
@@ -186,6 +188,43 @@ export function FinCapFila({
                         if (j?.leitura?.aviso) setErro(j.leitura.aviso);
                         onAtualizar();
                       }}
+                      onDecidir={async (acao, motivo) => {
+                        setErro(null);
+                        if (!l.origemRef) {
+                          setErro("esta linha não tem origem — não dá para confirmar nem ignorar daqui");
+                          return;
+                        }
+                        if (acao === "nao-vai-acontecer" && !motivo?.trim()) {
+                          setErro("informe o motivo para ignorar");
+                          return;
+                        }
+
+                        const r = await fetch(urlDaOrigem("/api/financeiro/gerencial/agenda/confirmar"), {
+                          method: "POST",
+                          headers: { "content-type": "application/json" },
+                          body: JSON.stringify({
+                            acao,
+                            ...(acao === "nao-vai-acontecer" ? { motivo: motivo!.trim() } : {}),
+                            itens: [
+                              {
+                                direcao: "pagar",
+                                competencia: l.competencia.slice(0, 7),
+                                origemRef: l.origemRef,
+                                ...(acao === "confirmar" ? { valorCents: l.valorCents } : {})
+                              }
+                            ]
+                          })
+                        });
+                        const j = (await r.json().catch(() => null)) as {
+                          erro?: string;
+                          error?: string;
+                        } | null;
+                        if (!r.ok) {
+                          setErro(j?.erro ?? j?.error ?? "não registrou a decisão");
+                          return;
+                        }
+                        onAtualizar();
+                      }}
                     />
                   </li>
                 ))}
@@ -245,7 +284,8 @@ function CartaoConta({
   onMarcar,
   onAbrir,
   onFavorito,
-  onAnexar
+  onAnexar,
+  onDecidir
 }: {
   linha: Linha;
   hoje: string;
@@ -255,7 +295,11 @@ function CartaoConta({
   onAbrir: () => void;
   onFavorito: (prox: boolean) => void;
   onAnexar: (kind: KindCobranca, file: File) => void;
+  onDecidir: (acao: "confirmar" | "nao-vai-acontecer", motivo?: string) => void | Promise<void>;
 }) {
+  const [pedindoMotivo, setPedindoMotivo] = useState(false);
+  const [motivo, setMotivo] = useState("não se aplica neste mês");
+  const [emVoo, setEmVoo] = useState(false);
   const estado = estadoDoCiclo(linha);
   const metodo = metodoDaLinha(linha);
   const prazo = rotuloPrazo(linha.dia, hoje, linha.vencido);
@@ -265,6 +309,17 @@ function CartaoConta({
   const boleto = anexos.find((a) => a.kind === "boleto");
   const nfe = anexos.find((a) => a.kind === "nota_fiscal");
   const parte = linha.subparte ? rotuloSubparte(linha.subparte) : null;
+  const aConfirmar = linha.naoConfirmada && estado !== "paga";
+
+  async function decidir(acao: "confirmar" | "nao-vai-acontecer", motivoIgnorar?: string) {
+    setEmVoo(true);
+    try {
+      await onDecidir(acao, motivoIgnorar);
+      setPedindoMotivo(false);
+    } finally {
+      setEmVoo(false);
+    }
+  }
 
   return (
     <article
@@ -272,7 +327,8 @@ function CartaoConta({
         "fin-cap-card",
         marcada ? "marcada" : "",
         faixa === "atrasada" && estado !== "paga" ? "atrasada" : "",
-        linha.naoConfirmada && estado !== "paga" ? "aconfirmar" : "",
+        aConfirmar ? "aconfirmar" : "",
+        pedindoMotivo ? "pedindo-motivo" : "",
         aberta ? "aberta" : ""
       ]
         .filter(Boolean)
@@ -333,15 +389,76 @@ function CartaoConta({
           ) : (
             <span className="fin-cap-doc falta">Falta NF-e</span>
           )}
-          {linha.naoConfirmada && estado !== "paga" ? (
-            <span className="fin-cap-selo-confirmar">a confirmar</span>
-          ) : null}
+          {aConfirmar ? <span className="fin-cap-selo-confirmar">a confirmar</span> : null}
         </span>
       </button>
 
       <div className="fin-cap-card-acoes">
-        <BotaoAnexo kind="boleto" rotulo="Boleto" onEscolher={(f) => onAnexar("boleto", f)} />
-        <BotaoAnexo kind="nota_fiscal" rotulo="NF-e" onEscolher={(f) => onAnexar("nota_fiscal", f)} />
+        {aConfirmar ? (
+          pedindoMotivo ? (
+            <div className="fin-cap-ignorar-box">
+              <label className="fin-cap-ignorar-campo">
+                <span>Motivo</span>
+                <input
+                  className="fin-input"
+                  value={motivo}
+                  autoFocus
+                  disabled={emVoo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && motivo.trim()) void decidir("nao-vai-acontecer", motivo);
+                    if (e.key === "Escape") setPedindoMotivo(false);
+                  }}
+                  placeholder="por que não vai acontecer"
+                />
+              </label>
+              <button
+                type="button"
+                className="fin-cap-decidir ignorar"
+                disabled={emVoo || !motivo.trim()}
+                onClick={() => void decidir("nao-vai-acontecer", motivo)}
+              >
+                {emVoo ? "…" : "Confirmar"}
+              </button>
+              <button
+                type="button"
+                className="fin-cap-decidir cancelar"
+                disabled={emVoo}
+                onClick={() => setPedindoMotivo(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="fin-cap-decidir confirmar"
+                title="Esta conta vai acontecer — entra no total e pode virar ordem"
+                disabled={emVoo}
+                onClick={() => void decidir("confirmar")}
+              >
+                <Check size={13} strokeWidth={2.4} aria-hidden />
+                Confirmar
+              </button>
+              <button
+                type="button"
+                className="fin-cap-decidir ignorar"
+                title="Não vai acontecer neste mês — some da fila de caixa"
+                disabled={emVoo}
+                onClick={() => setPedindoMotivo(true)}
+              >
+                <X size={13} strokeWidth={2.4} aria-hidden />
+                Ignorar
+              </button>
+            </>
+          )
+        ) : (
+          <>
+            <BotaoAnexo kind="boleto" rotulo="Boleto" onEscolher={(f) => onAnexar("boleto", f)} />
+            <BotaoAnexo kind="nota_fiscal" rotulo="NF-e" onEscolher={(f) => onAnexar("nota_fiscal", f)} />
+          </>
+        )}
       </div>
     </article>
   );

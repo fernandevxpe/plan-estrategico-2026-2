@@ -60,6 +60,8 @@ export type ImpedimentoPagar =
   | "sem_favorecido"
   | "sem_chave_pix"
   | "valor_invalido"
+  /** Pix no extrato casa com o valor, mas a categoria diverge ou a soma é ambígua. */
+  | "pix_sugerido"
   | null;
 
 export const MOTIVO_IMPEDIMENTO: Record<Exclude<ImpedimentoPagar, null>, string> = {
@@ -67,7 +69,8 @@ export const MOTIVO_IMPEDIMENTO: Record<Exclude<ImpedimentoPagar, null>, string>
   duplicada: "outra linha desta tela já conta este dinheiro",
   sem_favorecido: "sem favorecido identificado",
   sem_chave_pix: "sem chave PIX cadastrada para o favorecido",
-  valor_invalido: "sem valor"
+  valor_invalido: "sem valor",
+  pix_sugerido: "Pix encontrado no extrato — confirme antes de pagar de novo"
 };
 
 /**
@@ -178,7 +181,31 @@ export const SLUG_POR_CATEGORIA: Record<string, string> = {
 /** O slug da natureza, ou null quando não é gente. Estável para ordenar. */
 export function naturezaSlugDe(categoriaCode: string | null | undefined): string | null {
   if (!ehCategoriaDePessoa(categoriaCode)) return null;
+  if (categoriaCode === "4.01") return "comissao";
   return SLUG_POR_CATEGORIA[categoriaCode as string] ?? "extra";
+}
+
+/** Natureza da chave `fin_person:id:natureza` ou `…:natureza:parcela`. */
+export function naturezaDaOrigemRef(origemRef: string | null | undefined): string | null {
+  if (!origemRef?.startsWith("fin_person:")) return null;
+  const slug = origemRef.split(":")[2];
+  return slug && slug.length > 0 ? slug : null;
+}
+
+/**
+ * Agrupa linhas do bloco Pessoas. Composição usa `fin_person` — homônimo e
+ * favorecido sem cadastro não podem fundir Rita com "sem favorecido".
+ */
+export function chaveAgrupamentoPessoa(l: {
+  origemTabela: string | null;
+  origemId: number | null;
+  counterpartyId: number | null;
+  contraparte: string | null;
+}): string {
+  if (l.origemTabela === "fin_person" && l.origemId != null) return `person:${l.origemId}`;
+  if (l.counterpartyId != null) return `cp:${l.counterpartyId}`;
+  const nome = (l.contraparte ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  return nome ? `nome:${nome}` : "sem-favorecido";
 }
 
 export function naturezaDe(categoriaCode: string | null | undefined): string | null {
@@ -326,9 +353,81 @@ export function pacoteFiltroDaOrigem(tipoSlug: string | null | undefined): Pacot
   return p === "consultoria" || p === "obras" ? p : "outras";
 }
 
-export function rotuloDaBanda(b: { natureza: string; pacote: PacoteComissao | null }): string {
+export type FracionamentoParcela = {
+  personId: number;
+  natureza: "salario" | "prolabore";
+  parcela: number;
+  parcelasTotal: number;
+  diaMes: number;
+  valorCents: number;
+};
+
+export type BandaFolhaCadastro = {
+  natureza: string;
+  pacote: PacoteComissao | null;
+  cents: number;
+  parcela?: number;
+  parcelasTotal?: number;
+  diaMes?: number;
+};
+
+/** Substitui salário/pró-labore por N parcelas quando o cadastro manda. */
+export function aplicarFracionamento(
+  bandas: BandaFolhaCadastro[],
+  fracs: FracionamentoParcela[],
+  personId: number
+): BandaFolhaCadastro[] {
+  const out: BandaFolhaCadastro[] = [];
+  for (const b of bandas) {
+    if (b.natureza !== "salario" && b.natureza !== "prolabore") {
+      out.push(b);
+      continue;
+    }
+    const parcelas = fracs
+      .filter((f) => f.personId === personId && f.natureza === b.natureza)
+      .sort((a, c) => a.parcela - c.parcela);
+    if (!parcelas.length) {
+      out.push(b);
+      continue;
+    }
+    for (const f of parcelas) {
+      out.push({
+        natureza: b.natureza,
+        pacote: null,
+        cents: f.valorCents,
+        parcela: f.parcela,
+        parcelasTotal: f.parcelasTotal,
+        diaMes: f.diaMes
+      });
+    }
+  }
+  return out;
+}
+
+/** Dia ISO na competência; meses curtos usam o último dia válido. */
+export function diaDaParcela(competencia: string, diaMes: number): string {
+  const [ano, mes] = competencia.split("-").map(Number);
+  const ultimo = new Date(ano, mes, 0).getDate();
+  const dia = Math.min(Math.max(1, diaMes), ultimo);
+  return `${competencia}-${String(dia).padStart(2, "0")}`;
+}
+
+export function rotuloDaBanda(b: {
+  natureza: string;
+  pacote: PacoteComissao | null;
+  parcela?: number | null;
+  parcelasTotal?: number | null;
+}): string {
   const base = NATUREZA_DA_VIEW[b.natureza] ?? b.natureza;
   if (b.natureza === "comissao" && b.pacote) return `Comissão · ${ROTULO_PACOTE[b.pacote]}`;
+  if (
+    (b.natureza === "salario" || b.natureza === "prolabore") &&
+    b.parcela != null &&
+    b.parcelasTotal != null &&
+    b.parcelasTotal > 1
+  ) {
+    return `${base} · ${b.parcela}ª parcela`;
+  }
   return base;
 }
 
@@ -448,6 +547,7 @@ export type EstadoCiclo =
   | "em_curso"
   | "falta_cadastro"
   | "a_confirmar"
+  | "pix_sugerido"
   | "pronta";
 
 export function estadoDoCiclo(l: {
@@ -464,6 +564,7 @@ export function estadoDoCiclo(l: {
     if (o.status === "rascunho") return "programada";
     return "em_curso";
   }
+  if (l.impedimento === "pix_sugerido") return "pix_sugerido";
   if (l.impedimento !== null) return "falta_cadastro";
   if (!l.entraNoTotal) return "a_confirmar";
   return "pronta";
@@ -517,6 +618,190 @@ export function rotuloPrazo(dia: string, hoje: string, vencido: boolean | null):
   if (n === 0) return "vence hoje";
   if (n === 1) return "vence amanhã";
   return `em ${n} dias`;
+}
+
+/** Naturezas de folha que o Nubank pode trazer — o casador cruza entre elas. */
+export const NATUREZAS_FOLHA_LEDGER = [
+  "salario",
+  "prolabore",
+  "comissao",
+  "reembolso",
+  "estagio",
+  "encargo_beneficio"
+] as const;
+
+export type PixFolhaLedger = {
+  personId: number;
+  natureza: string;
+  cents: number;
+  dia: string;
+};
+
+export type ModoConciliacaoLedger =
+  | "exato-natureza"
+  | "estagio-salario"
+  | "exato-valor"
+  | "soma-natureza"
+  | "soma-valor";
+
+export type ConciliacaoLedger = {
+  dia: string;
+  cents: number;
+  naturezaLedger: string;
+  modo: ModoConciliacaoLedger;
+  precisaConfirmacao: boolean;
+};
+
+export type LinhaConciliacaoFolha = {
+  personId: number;
+  natureza: string;
+  valorCents: number;
+};
+
+export type ResultadoConciliacaoFolha =
+  | { tipo: "nenhum" }
+  | { tipo: "auto" | "sugerido"; dia: string; conciliacao: ConciliacaoLedger };
+
+const FOLHA_LEDGER = new Set<string>(NATUREZAS_FOLHA_LEDGER);
+
+function naturezasLedgerCompativeis(esperada: string, ledger: string): boolean {
+  if (esperada === ledger) return true;
+  // Estágio no extrato (6.06) costuma ser o salário cadastrado da pessoa.
+  if (esperada === "salario" && ledger === "estagio") return true;
+  return false;
+}
+
+/**
+ * Casa bandas do cadastro com Pix de folha do ledger.
+ *
+ * O Nubank categoriza quase tudo em 6.02 — medido em set/26, 13 dos 15 Pix de
+ * folha vinham como pró-labore mesmo quando o cadastro separa salário e
+ * reembolso. Casar só por natureza deixava zero linhas pagas.
+ *
+ * Rodadas: (1) valor exato + natureza compatível → automático; (2) valor exato
+ * único na pessoa → sugere confirmação; (3) demais valores exatos; (4–5) soma.
+ */
+export function aplicarConciliacaoLedger(
+  linhas: LinhaConciliacaoFolha[],
+  pagos: PixFolhaLedger[]
+): ResultadoConciliacaoFolha[] {
+  const pool = pagos.map((p) => ({ ...p, usado: false }));
+  const resultados: ResultadoConciliacaoFolha[] = linhas.map(() => ({ tipo: "nenhum" }));
+
+  function disponiveis(personId: number, filtroNat?: (n: string) => boolean) {
+    return pool.filter(
+      (p) =>
+        !p.usado &&
+        p.personId === personId &&
+        FOLHA_LEDGER.has(p.natureza) &&
+        (!filtroNat || filtroNat(p.natureza))
+    );
+  }
+
+  function pendentesMesmoValor(personId: number, cents: number) {
+    return linhas
+      .map((l, i) => ({ l, i }))
+      .filter(
+        ({ l, i }) =>
+          resultados[i].tipo === "nenhum" && l.personId === personId && l.valorCents === cents
+      );
+  }
+
+  function consumir(pixList: (PixFolhaLedger & { usado: boolean })[]) {
+    for (const p of pixList) {
+      const slot = pool.find((x) => x === p);
+      if (slot) slot.usado = true;
+    }
+  }
+
+  function registrar(
+    i: number,
+    pixList: (PixFolhaLedger & { usado: boolean })[],
+    modo: ModoConciliacaoLedger,
+    precisaConfirmacao: boolean
+  ) {
+    consumir(pixList);
+    const dia = pixList
+      .map((p) => p.dia)
+      .sort()
+      .at(-1)!;
+    const naturezaLedger =
+      pixList.length === 1
+        ? pixList[0].natureza
+        : [...new Set(pixList.map((p) => p.natureza))].join("+");
+    resultados[i] = {
+      tipo: precisaConfirmacao ? "sugerido" : "auto",
+      dia,
+      conciliacao: {
+        dia,
+        cents: linhas[i].valorCents,
+        naturezaLedger,
+        modo,
+        precisaConfirmacao
+      }
+    };
+  }
+
+  for (let i = 0; i < linhas.length; i++) {
+    if (resultados[i].tipo !== "nenhum") continue;
+    const l = linhas[i];
+    const hit = disponiveis(l.personId, (n) => naturezasLedgerCompativeis(l.natureza, n)).find(
+      (p) => p.cents === l.valorCents
+    );
+    if (!hit) continue;
+    registrar(
+      i,
+      [hit],
+      l.natureza === hit.natureza ? "exato-natureza" : "estagio-salario",
+      false
+    );
+  }
+
+  for (let i = 0; i < linhas.length; i++) {
+    if (resultados[i].tipo !== "nenhum") continue;
+    const l = linhas[i];
+    const hits = disponiveis(l.personId).filter((p) => p.cents === l.valorCents);
+    if (hits.length !== 1) continue;
+    if (pendentesMesmoValor(l.personId, l.valorCents).length !== 1) continue;
+    registrar(i, [hits[0]], "exato-valor", true);
+  }
+
+  for (let i = 0; i < linhas.length; i++) {
+    if (resultados[i].tipo !== "nenhum") continue;
+    const l = linhas[i];
+    const hit = disponiveis(l.personId).find((p) => p.cents === l.valorCents);
+    if (hit) registrar(i, [hit], "exato-valor", true);
+  }
+
+  for (let i = 0; i < linhas.length; i++) {
+    if (resultados[i].tipo !== "nenhum") continue;
+    const l = linhas[i];
+    const cand = disponiveis(l.personId, (n) => n === l.natureza);
+    let ac = 0;
+    const tmp: (PixFolhaLedger & { usado: boolean })[] = [];
+    for (const p of cand) {
+      tmp.push(p);
+      ac += p.cents;
+      if (ac >= l.valorCents) break;
+    }
+    if (ac >= l.valorCents) registrar(i, tmp, "soma-natureza", true);
+  }
+
+  for (let i = 0; i < linhas.length; i++) {
+    if (resultados[i].tipo !== "nenhum") continue;
+    const l = linhas[i];
+    const cand = disponiveis(l.personId);
+    let ac = 0;
+    const tmp: (PixFolhaLedger & { usado: boolean })[] = [];
+    for (const p of cand) {
+      tmp.push(p);
+      ac += p.cents;
+      if (ac >= l.valorCents) break;
+    }
+    if (ac >= l.valorCents) registrar(i, tmp, "soma-valor", true);
+  }
+
+  return resultados;
 }
 
 export type MetodoPagamento = "pix" | "boleto" | "cartao" | "indefinido";

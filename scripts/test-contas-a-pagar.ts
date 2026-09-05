@@ -20,7 +20,12 @@ import {
   pacoteDaComissao,
   pacoteFiltroDaOrigem,
   pedacosDaComissao,
-  rotuloDaBanda
+  rotuloDaBanda,
+  aplicarFracionamento,
+  diaDaParcela,
+  chaveAgrupamentoPessoa,
+  naturezaDaOrigemRef,
+  aplicarConciliacaoLedger
 } from "../lib/financeiro/contas-a-pagar-eixos.ts";
 
 let falhas = 0;
@@ -102,7 +107,11 @@ ok(
     "ja_realizado",
   "já realizado vence sem_chave_pix e sem_favorecido"
 );
-ok(Object.keys(MOTIVO_IMPEDIMENTO).length === 5, "todo impedimento tem frase para o usuário");
+ok(Object.keys(MOTIVO_IMPEDIMENTO).length === 6, "todo impedimento tem frase para o usuário");
+ok(
+  MOTIVO_IMPEDIMENTO.pix_sugerido.length > 0,
+  "Pix sugerido do extrato também tem frase"
+);
 
 console.log("\n=== 'Não soma' são DOIS estados, e confundi-los esvaziou a tela ===");
 // Medido em 31/08/2026: 31 linhas de R$ 40.044,75 em set/26 — Ancora, Compesa,
@@ -243,6 +252,84 @@ console.log("\n=== Pedaços explicam o PIX, não viram outro PIX ===");
     "chave antiga (sem pacote) mostra todos os lançamentos"
   );
 }
+
+console.log("\n=== Salário fracionado: parcelas viram linhas e chaves ===");
+{
+  const bandasBase = [
+    { natureza: "salario" as const, pacote: null, cents: 100_000 }
+  ];
+  const fracs = [
+    {
+      personId: 107,
+      natureza: "salario" as const,
+      parcela: 1,
+      parcelasTotal: 2,
+      diaMes: 2,
+      valorCents: 50_000
+    },
+    {
+      personId: 107,
+      natureza: "salario" as const,
+      parcela: 2,
+      parcelasTotal: 2,
+      diaMes: 16,
+      valorCents: 50_000
+    }
+  ];
+  const bandas = aplicarFracionamento(bandasBase, fracs, 107);
+  ok(bandas.length === 2, "Rita vira duas bandas de salário");
+  ok(bandas[0]?.cents === 50_000 && bandas[1]?.cents === 50_000, "cada parcela R$ 500");
+  ok(diaDaParcela("2026-09", 2) === "2026-09-02", "1ª parcela cai dia 2");
+  ok(diaDaParcela("2026-09", 16) === "2026-09-16", "2ª parcela cai dia 16");
+  ok(diaDaParcela("2026-02", 16) === "2026-02-16", "fevereiro com dia 16 não estoura");
+  ok(
+    rotuloDaBanda({ natureza: "salario", pacote: null, parcela: 1, parcelasTotal: 2 }) ===
+      "Salário · 1ª parcela",
+    "rótulo da 1ª parcela"
+  );
+  ok(
+    rotuloDaBanda({ natureza: "salario", pacote: null, parcela: 2, parcelasTotal: 2 }) ===
+      "Salário · 2ª parcela",
+    "rótulo da 2ª parcela"
+  );
+}
+
+console.log("\n=== Agrupamento por pessoa: composição não cai em sem favorecido ===");
+ok(
+  chaveAgrupamentoPessoa({
+    origemTabela: "fin_person",
+    origemId: 108,
+    counterpartyId: null,
+    contraparte: "Kevin Souza Firmino De Oliveira"
+  }) === "person:108",
+  "Kevin sem counterparty agrupa pelo fin_person"
+);
+ok(
+  chaveAgrupamentoPessoa({
+    origemTabela: "fin_person",
+    origemId: 107,
+    counterpartyId: 382,
+    contraparte: "Rita Pereira Da Silva"
+  }) === "person:107",
+  "Rita agrupa pelo cadastro, não só pelo favorecido"
+);
+ok(naturezaDaOrigemRef("fin_person:107:salario:1") === "salario", "parcela expõe natureza na origem");
+
+console.log("\n=== Conciliação ledger: natureza do Nubank ≠ cadastro ===");
+const linhasConc = [
+  { personId: 4, natureza: "prolabore", valorCents: 437_900 },
+  { personId: 4, natureza: "reembolso", valorCents: 144_076 },
+  { personId: 91, natureza: "salario", valorCents: 130_000 }
+];
+const pixConc = [
+  { personId: 4, natureza: "prolabore", cents: 437_900, dia: "2026-09-01" },
+  { personId: 4, natureza: "prolabore", cents: 144_076, dia: "2026-09-01" },
+  { personId: 91, natureza: "estagio", cents: 130_000, dia: "2026-09-01" }
+];
+const conc = aplicarConciliacaoLedger(linhasConc, pixConc);
+ok(conc[0].tipo === "auto", "pró-labore exato casa automático");
+ok(conc[1].tipo === "sugerido", "reembolso com Pix em 6.02 pede confirmação");
+ok(conc[2].tipo === "auto" && conc[2].conciliacao?.modo === "estagio-salario", "estágio casa com salário cadastrado");
 
 console.log(`\n${provas - falhas}/${provas} provas`);
 if (falhas) process.exit(1);

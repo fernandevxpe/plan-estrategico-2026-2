@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { FinCustosEmpresa } from "@/components/financeiro/FinCustosEmpresa";
 import { FinShell } from "@/components/financeiro/FinShell";
+import { getOpcoesContas } from "@/lib/financeiro/contas";
 import { getContasAPagar } from "@/lib/financeiro/contas-a-pagar";
 import { abaValida } from "@/lib/financeiro/custo-empresa-abas";
 import { getCustosEmpresa } from "@/lib/financeiro/custos-empresa";
@@ -42,7 +43,11 @@ export default async function CustosEmpresaPage({ searchParams }: Props) {
   const { aba, mes } = await searchParams;
   const abaAtiva = abaValida(aba) ? aba : "matriz";
 
-  const [dados, contas] = await Promise.all([getCustosEmpresa(), getContasAPagar(mes)]);
+  const [dados, contas, opcoes] = await Promise.all([
+    getCustosEmpresa(),
+    getContasAPagar(mes),
+    getOpcoesContas()
+  ]);
 
   return (
     <AppShell>
@@ -50,7 +55,7 @@ export default async function CustosEmpresaPage({ searchParams }: Props) {
         <h1>Custo da empresa</h1>
       </div>
       <FinShell>
-        <FinCustosEmpresa dados={dados} contas={contas} aba={abaAtiva} />
+        <FinCustosEmpresa dados={dados} contas={contas} opcoes={opcoes} aba={abaAtiva} />
       </FinShell>
     </AppShell>
   );

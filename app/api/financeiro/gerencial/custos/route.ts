@@ -1,6 +1,12 @@
 import { getCustosDoMes, type EstadoCusto } from "@/lib/financeiro/contratos/custos";
 import { comRessalvas, inteiroDe, responderContrato, rotaDeLeitura, textoDe } from "@/lib/financeiro/contratos/http";
-import { autorDe, criarItemManual, itemManualDe, respostaDeErro } from "@/lib/financeiro/custos";
+import {
+  autorDe,
+  criarItemManual,
+  criarSerieMensal,
+  itemManualDe,
+  respostaDeErro
+} from "@/lib/financeiro/custos";
 import { transaction } from "@/lib/financeiro/db";
 
 import { brl, contagem, lista } from "../_medido";
@@ -128,14 +134,31 @@ export async function POST(request: Request) {
   const actor = autorDe(request);
   try {
     const item = itemManualDe(corpo);
-    const resultado = await transaction((c) => criarItemManual(c, { item, actor }));
+    const recorrencia =
+      corpo && typeof corpo === "object" && (corpo as { recorrencia?: unknown }).recorrencia === "mensal"
+        ? "mensal"
+        : "unica";
+
+    const resultado = await transaction((c) =>
+      recorrencia === "mensal"
+        ? criarSerieMensal(c, { item, actor })
+        : criarItemManual(c, { item, actor }).then((r) => ({
+            ...r,
+            ids: [r.id],
+            chaveDedupe: `item|${r.id}`
+          }))
+    );
+
     return Response.json(
       {
         ok: true,
         ...resultado,
+        recorrencia,
         ressalvas: [
-          "Item manual soma por cima da projeção: ele não duplica camada nenhuma. " +
-            "Se este gasto já é projetado por recorrente, documento ou fatura, confirme aquela linha em vez de criar esta."
+          recorrencia === "mensal"
+            ? `Série mensal: ${resultado.ids.length} competências criadas. Cada mês some ao pagar; o próximo já está na fila.`
+            : "Item manual soma por cima da projeção: ele não duplica camada nenhuma. " +
+              "Se este gasto já é projetado por recorrente, documento ou fatura, confirme aquela linha em vez de criar esta."
         ]
       },
       { status: 201, headers: { "Cache-Control": "no-store" } }

@@ -17938,6 +17938,50 @@ body:has(.time-shell) .exportar-painel {
   display: none;
 }
 
+/*
+ * A EXCEÇÃO: onde existe a tabela, o botão volta.
+ *
+ * A conferência do mês (`.time-concil-tab`, em Recebiveis.tsx) é a única
+ * tabela do app do time, e é justamente o que alguém quereria levar embora —
+ * previsto contra recebido, linha a linha. Ancorar em `:has()` na CLASSE dela,
+ * e não em `table`, faz o botão seguir o dado: ela só é montada quando há
+ * conciliação do mês, então ele aparece exatamente quando há o que exportar e
+ * some quando não há. É o contrário do que acontecia antes — presente em toda
+ * tela, vazio em quase todas.
+ *
+ * `display` é devolvido pelo valor explícito, não por `revert`: `revert` cairia
+ * no padrão do agente (um `<button>` vira `inline-block`) e não no que a folha
+ * declara mais acima — `inline-flex` no botão, `flex` no painel.
+ */
+body:has(.time-shell):has(.time-concil-tab) .exportar-flutuante {
+  display: inline-flex;
+}
+body:has(.time-shell):has(.time-concil-tab) .exportar-painel {
+  display: flex;
+}
+
+@media (max-width: 640px) {
+  /*
+   * E aqui ele pousa no chão, não a 58px dele.
+   *
+   * Os 58px existem para empilhar acima do seletor de tema (12 + 38 = 50),
+   * que neste app é escondido — sobrava um degrau para um vizinho ausente, e
+   * o círculo caía justo sobre a última linha, que só tinha 24px reservados.
+   *
+   * 62px de respiro = 12 (chão) + 38 (o botão) + 12 (folga até o conteúdo).
+   * O painel guarda os mesmos 8px que já guardava: 12 + 38 + 8 = 58.
+   */
+  body:has(.time-shell):has(.time-concil-tab) .exportar-flutuante {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  body:has(.time-shell):has(.time-concil-tab) .exportar-painel {
+    bottom: calc(58px + env(safe-area-inset-bottom));
+  }
+  body:has(.time-shell):has(.time-concil-tab) .time-conteudo {
+    padding-bottom: calc(62px + env(safe-area-inset-bottom));
+  }
+}
+
 /* Instalado, a barra encosta na borda e o conteúdo ganha o topo de volta. */
 @media (display-mode: standalone) {
   .fin-shell > .fin-tabs { display: none; }

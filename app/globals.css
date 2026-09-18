@@ -16830,6 +16830,22 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
   .time-app textarea {
     min-height: 44px;
   }
+
+  /* 16px NÃO É ESCOLHA TIPOGRÁFICA — é o que impede o iPhone de dar zoom.
+     O Safari do iOS aproxima a página sozinho quando o campo que recebe foco
+     tem fonte MENOR que 16px, e depois não desfaz o zoom: a pessoa sai do
+     campo com a tela ampliada e o cabeçalho fora da vista, tendo de pinçar
+     para voltar. `.campo` estava em 15px (regra geral, linha ~14023), a um
+     pixel de disparar isso em todo formulário do app — custo, reembolso,
+     compra, perfil.
+
+     Vale só em ponteiro grosso e só dentro do `.time-app` para não mexer no
+     corpo de texto das 59 telas da plataforma, que são lidas no desktop. */
+  .time-app .campo input,
+  .time-app .campo select,
+  .time-app .campo textarea {
+    font-size: 16px;
+  }
 }
 
 /* O casco próprio do app do time — ele não usa mais o AppShell da plataforma
@@ -16839,6 +16855,31 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 .time-page {
   min-height: 100dvh;
   padding-top: max(10px, env(safe-area-inset-top));
+}
+
+/*
+ * O SUBLINHADO PADRÃO DO NAVEGADOR, DESLIGADO DE UMA VEZ NESTE APP.
+ *
+ * A regra global é `a { color: inherit }` e nada mais — ela não zera
+ * `text-decoration`. Então todo `<a>` nasce sublinhado e cada classe tem de
+ * lembrar de desligar. Quem esquece, vaza para produção: `.time-topo-voltar`
+ * lembrou, `.time-topo-perfil` não (o nome da pessoa no cabeçalho aparecia
+ * riscado por baixo), `.time-atalho` lembrou, `.time-inicio-divergencia` não
+ * (o aviso de "faltou receber" vinha com título E corpo sublinhados, três
+ * linhas de risco num cartão que já é vermelho). Não é a primeira vez: o
+ * comentário de `.time-botao` conta a mesma história com "Voltar para
+ * Recebíveis".
+ *
+ * Aqui nenhum link é texto corrido — são cartões, linhas de lista e pílulas,
+ * onde a forma já diz que é tocável e o risco só suja. Os poucos links que
+ * QUEREM sublinhado (`.pp-link`, por exemplo) o declaram, e continuam.
+ *
+ * `:where()` nos dois lados zera a especificidade: isto é um padrão, não uma
+ * ordem. Qualquer regra existente — `none` ou `underline` — ganha dela, então
+ * ligar isto não pode apagar uma decisão que alguém já tomou.
+ */
+:where(.time-page) :where(a) {
+  text-decoration: none;
 }
 .time-page:has(.time-form-registro) .shell,
 .time-page:has(.time-tela-padrao) .shell {
@@ -17861,6 +17902,40 @@ details[open] > summary > .collapsible-caret { transform: rotate(45deg); }
 
 .time-conteudo {
   padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+/*
+ * O BOTÃO DE EXPORTAR SAI DAQUI — pelo mesmo motivo do seletor de tema, três
+ * regras acima, e com uma agravante que o tema não tinha.
+ *
+ * `BotaoExportar` é montado no `body` em `app/layout.tsx`, fora do AppShell,
+ * para alcançar as 59 telas da plataforma sem que nenhuma precise incluí-lo.
+ * O efeito colateral é que ele alcança também este app, que tem casco próprio
+ * — e aqui ele não tem o que exportar nem onde ficar:
+ *
+ *   NÃO TEM O QUE EXPORTAR. `varrerPagina` procura `table, .recharts-wrapper`
+ *   (lib/exportar/alvos.ts). O app do time não usa recharts — os gráficos de
+ *   Recebíveis são SVG escrito à mão, invisível para a varredura — e tem UMA
+ *   `<table>` em todo o código (a conferência do mês, em Recebiveis.tsx). Em
+ *   cinco das seis telas o toque abre um painel vazio.
+ *
+ *   NÃO TEM ONDE FICAR. Em até 640px ele é um círculo de 38px em
+ *   `bottom: 58px`, ocupando 58–96px acima da borda, contra os 24px + gestos
+ *   que o conteúdo reserva: no Início ele cobre "Pedir compra", a última
+ *   linha do bloco Compras. E nos formulários colide de frente com `.anexar`
+ *   — 14px da direita, 18–72px do chão —, que é o botão "foto da compra", a
+ *   ação principal deste app.
+ *
+ * Os 58px existem para ele pousar ACIMA do seletor de tema (12 + 38 = 50).
+ * Aqui o tema já não está lá, então ele empilhava sobre um vizinho ausente,
+ * em cima do conteúdo.
+ *
+ * Se algum dia o app do time ganhar tabela ou gráfico que valha exportar,
+ * apagar estas duas linhas devolve o botão.
+ */
+body:has(.time-shell) .exportar-flutuante,
+body:has(.time-shell) .exportar-painel {
+  display: none;
 }
 
 /* Instalado, a barra encosta na borda e o conteúdo ganha o topo de volta. */

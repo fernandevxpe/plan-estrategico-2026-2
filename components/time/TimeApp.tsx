@@ -4521,7 +4521,7 @@ function Inicio({ envios }: { envios: Envio[] }) {
             href="/time/comissoes"
             titulo="Comissões"
             texto="Declaradas, parcelas e o que ainda vai cair"
-            tipo="recebiveis"
+            tipo="comissoes"
             cor="verde"
           />
         </nav>
@@ -4536,7 +4536,7 @@ function Inicio({ envios }: { envios: Envio[] }) {
             href="/time/reembolso"
             titulo="Pedir reembolso"
             texto="Gasto do bolso para a XPE devolver"
-            tipo="reembolso"
+            tipo="pedir-reembolso"
             cor="branco"
           />
           <Atalho
@@ -4752,10 +4752,36 @@ function MinhasCompras({ envios }: { envios: Envio[] }) {
   );
 }
 
+/*
+ * UM GLIFO POR DESTINO — o ícone repetido não informa, decora.
+ *
+ * O Início lista sete atalhos em coluna, e dois pares nasciam com o mesmo
+ * desenho: Recebíveis e Comissões dividiam as barras (`recebiveis`), e
+ * Reembolsos e Pedir reembolso dividiam a seta de volta (`reembolso`). Numa
+ * lista vertical o ícone é a âncora que o olho usa para achar a linha sem
+ * reler os títulos — repetido, ele deixa de separar e vira enfeite, e as duas
+ * linhas viram uma mancha só. Pior no par reembolso, porque as duas ficam a
+ * três linhas de distância e significam coisas OPOSTAS: uma é a lista do que
+ * já pedi, a outra é o formulário de pedir.
+ *
+ * `comissoes` ganha o "%", que é o símbolo do assunto e não se confunde com
+ * nada no conjunto. `pedir-reembolso` ganha a carteira — o subtítulo da linha
+ * é "Gasto do bolso para a XPE devolver", e carteira é literalmente o bolso.
+ */
 function IconeAtalho({
   tipo
 }: {
-  tipo: "reembolso" | "custo" | "nota" | "compra" | "recebiveis" | "compras" | "aguardando" | "voltou";
+  tipo:
+    | "reembolso"
+    | "pedir-reembolso"
+    | "custo"
+    | "nota"
+    | "compra"
+    | "recebiveis"
+    | "comissoes"
+    | "compras"
+    | "aguardando"
+    | "voltou";
 }) {
   const comum = {
     width: 20,
@@ -4771,6 +4797,15 @@ function IconeAtalho({
     return (
       <svg {...comum}>
         <path d="M9 7 4 12l5 5M4 12h10a6 6 0 0 1 6 6v2" />
+      </svg>
+    );
+  /* Carteira: corpo, aba de cima e o fecho. É o "bolso" do subtítulo. */
+  if (tipo === "pedir-reembolso")
+    return (
+      <svg {...comum}>
+        <path d="M4 7.5h13.5a2.5 2.5 0 0 1 2.5 2.5v7a2.5 2.5 0 0 1-2.5 2.5H6a2 2 0 0 1-2-2V7.5Z" />
+        <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H17" />
+        <path d="M16 13.5h.01" />
       </svg>
     );
   if (tipo === "custo")
@@ -4789,6 +4824,15 @@ function IconeAtalho({
     return (
       <svg {...comum}>
         <path d="M4 19V11M9 19V8M14 19V5M19 19v-7" />
+      </svg>
+    );
+  /* Por cento: o símbolo do assunto, e o único redondo do conjunto. */
+  if (tipo === "comissoes")
+    return (
+      <svg {...comum}>
+        <circle cx="7.5" cy="7.5" r="2.5" />
+        <circle cx="16.5" cy="16.5" r="2.5" />
+        <path d="M18.5 5.5 5.5 18.5" />
       </svg>
     );
   if (tipo === "compras")
@@ -4832,7 +4876,17 @@ function Atalho({
   href: string;
   titulo: string;
   texto: string;
-  tipo: "reembolso" | "custo" | "nota" | "compra" | "recebiveis" | "compras" | "aguardando" | "voltou";
+  tipo:
+    | "reembolso"
+    | "pedir-reembolso"
+    | "custo"
+    | "nota"
+    | "compra"
+    | "recebiveis"
+    | "comissoes"
+    | "compras"
+    | "aguardando"
+    | "voltou";
   tom?: "alerta" | "urgente";
   cor?: "roxo" | "branco" | "verde";
   compacto?: boolean;

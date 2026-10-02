@@ -334,6 +334,11 @@ export async function cancelarItemReembolsoInterno(
      * O escopo certo da supressão, se um dia for implementada, é a compra
      * parcelada — e essa informação já está em `fin_installment_plan`, que o
      * cancelamento marca acima.
+     *
+     * Desde a 0194 a tabela É lida: `fin_reembolso_saldo_v` tira do saldo a
+     * série da planilha listada nela, e só quando `parcelas_total > 1`. Quem
+     * a escreve é o financeiro, por migration — este caminho continua sem
+     * tocá-la, pelo motivo acima.
      */
 
     let documentId: number | null = null;

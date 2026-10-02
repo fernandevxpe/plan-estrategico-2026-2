@@ -331,5 +331,31 @@ ok(conc[0].tipo === "auto", "pró-labore exato casa automático");
 ok(conc[1].tipo === "sugerido", "reembolso com Pix em 6.02 pede confirmação");
 ok(conc[2].tipo === "auto" && conc[2].conciliacao?.modo === "estagio-salario", "estágio casa com salário cadastrado");
 
+// Jonildo, 02/10/2026: o pró-labore de R$ 1.357,41 não pode "cobrir" o
+// reembolso de R$ 889,25 só por ser maior.
+const concMaior = aplicarConciliacaoLedger(
+  [{ personId: 3, natureza: "reembolso", valorCents: 88_925 }],
+  [{ personId: 3, natureza: "prolabore", cents: 135_741, dia: "2026-10-01" }]
+);
+ok(concMaior[0].tipo === "nenhum", "Pix maior de outra natureza não trava o reembolso");
+// Gabriel, 02/10/2026: comissão de R$ 2.431,58 não paga a comissão de
+// R$ 2.072,81 só por ser da mesma natureza e maior.
+const concMesmaNatureza = aplicarConciliacaoLedger(
+  [{ personId: 2, natureza: "comissao", valorCents: 207_281 }],
+  [{ personId: 2, natureza: "comissao", cents: 243_158, dia: "2026-10-01" }]
+);
+ok(concMesmaNatureza[0].tipo === "nenhum", "Pix maior da mesma natureza também não trava a linha");
+const concFracionado = aplicarConciliacaoLedger(
+  [{ personId: 3, natureza: "reembolso", valorCents: 88_925 }],
+  [
+    { personId: 3, natureza: "prolabore", cents: 50_000, dia: "2026-10-01" },
+    { personId: 3, natureza: "salario", cents: 38_925, dia: "2026-10-02" }
+  ]
+);
+ok(
+  concFracionado[0].tipo === "sugerido" && concFracionado[0].conciliacao?.modo === "soma-valor",
+  "dois Pix que somam o valor exato ainda pedem confirmação"
+);
+
 console.log(`\n${provas - falhas}/${provas} provas`);
 if (falhas) process.exit(1);

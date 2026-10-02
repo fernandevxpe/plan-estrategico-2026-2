@@ -397,6 +397,30 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
                               </td>
                             ))}
                             <td className="num">
+                              {/*
+                                Mudar o mês sem excluir e relançar — pedido do dono ao
+                                cadastrar as comissões de outubro. Vale também para
+                                parcela de série; o servidor recusa se o mês de origem
+                                já tem comissão desta pessoa enviada ao banco.
+                              */}
+                              <input
+                                type="month"
+                                className="fin-input"
+                                aria-label={`Mês da comissão ${item.descricao}`}
+                                title="mês em que a comissão é paga"
+                                defaultValue={mesInput(item.competencia)}
+                                disabled={pendente}
+                                onChange={(e) => {
+                                  const novo = e.target.value;
+                                  if (!novo || novo === mesInput(item.competencia)) return;
+                                  void enviar(`/api/financeiro/comissoes/${item.id}`, "PATCH", { competencia: novo }).then(
+                                    (ok) => {
+                                      if (!ok) e.target.value = mesInput(item.competencia);
+                                    }
+                                  );
+                                }}
+                                style={{ maxWidth: 140, marginRight: 8 }}
+                              />
                               {!item.serieId ? (
                                 <button
                                   type="button"

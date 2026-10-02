@@ -784,9 +784,28 @@ export function aplicarConciliacaoLedger(
       ac += p.cents;
       if (ac >= l.valorCents) break;
     }
-    if (ac >= l.valorCents) registrar(i, tmp, "soma-natureza", true);
+    // Exata também aqui. A natureza do extrato é palpite de regra: o PIX de
+    // R$ 2.431,58 do Gabriel em 01/10 estava em 6.02 e era comissão, e com
+    // `>=` ele "pagava" o pró-labore de R$ 1.379,00. Reclassificado para 4.01,
+    // passaria a "pagar" a comissão de outubro (R$ 2.072,81) — o mesmo erro com
+    // outro rótulo. Sobrou, é outro pagamento.
+    if (ac === l.valorCents) registrar(i, tmp, "soma-natureza", true);
   }
 
+  /*
+   * Soma de QUALQUER natureza só casa quando FECHA no centavo.
+   *
+   * Era `ac >= valor`, e aí um Pix maior que a linha a "cobria" sozinho. Em
+   * 02/10/2026 o pró-labore de R$ 1.357,41 que o Jonildo recebeu no Nubank em
+   * 01/10 passou por pagamento do reembolso dele (R$ 889,25): a linha virou
+   * `pix_sugerido`, saiu da seleção, e foi a única das 12 de reembolso que não
+   * virou ordem. A tela só oferece "Confirmar pagamento" — liberar exigiria
+   * marcar como pago o que não foi.
+   *
+   * Pagamento fracionado (o caso que esta rodada existe para pegar) soma o
+   * valor exato. Sobrar é sinal de que o Pix é OUTRO pagamento. A rodada por
+   * natureza acima ficou exata pelo mesmo motivo, no mesmo dia.
+   */
   for (let i = 0; i < linhas.length; i++) {
     if (resultados[i].tipo !== "nenhum") continue;
     const l = linhas[i];
@@ -798,7 +817,7 @@ export function aplicarConciliacaoLedger(
       ac += p.cents;
       if (ac >= l.valorCents) break;
     }
-    if (ac >= l.valorCents) registrar(i, tmp, "soma-valor", true);
+    if (ac === l.valorCents) registrar(i, tmp, "soma-valor", true);
   }
 
   return resultados;

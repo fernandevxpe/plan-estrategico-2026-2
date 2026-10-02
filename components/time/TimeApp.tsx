@@ -459,6 +459,24 @@ function Identificacao({
   const [pin, setPin] = useState("");
   const escolhida = pessoas.find((p) => p.id === declarado);
 
+  /*
+   * "Esqueci minha senha". Antes desta tela o rodapé dizia "Peça ao Fernando
+   * ou ao Igor", e a pessoa ficava parada até um deles abrir o cadastro — em
+   * 02/10/2026 a Audrey passou o dia assim. O link chega por e-mail e volta
+   * para cá com `?redefinir=<token>`.
+   */
+  const [modo, setModo] = useState<"entrar" | "esqueci" | "redefinir">("entrar");
+  const [token, setToken] = useState("");
+  const [aviso, setAviso] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const t = new URLSearchParams(window.location.search).get("redefinir");
+    if (t) {
+      setToken(t);
+      setModo("redefinir");
+    }
+  }, []);
+
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") return;
     if (typeof window !== "undefined") {
@@ -481,6 +499,26 @@ function Identificacao({
     setEnviando(false);
     if (!r.ok) return setErro(j.error ?? "não consegui entrar");
     await aoEntrar();
+  }
+
+  if (modo !== "entrar") {
+    return (
+      <RecuperarSenha
+        modo={modo}
+        token={token}
+        emailInicial={email}
+        aoVoltar={(mensagem) => {
+          if (typeof window !== "undefined" && window.location.search.includes("redefinir=")) {
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+          setToken("");
+          setErro(null);
+          setSenha("");
+          setAviso(mensagem);
+          setModo("entrar");
+        }}
+      />
+    );
   }
 
   return (
@@ -528,10 +566,22 @@ function Identificacao({
             />
           </label>
 
+          {aviso ? <p className="time-porta-ajuda" role="status">{aviso}</p> : null}
           {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
 
           <button type="submit" className="time-porta-entrar" disabled={enviando || !email.trim() || !senha}>
             {enviando ? "Entrando…" : "Entrar"}
+          </button>
+          <button
+            type="button"
+            className="time-porta-entrar secundario"
+            onClick={() => {
+              setErro(null);
+              setAviso(null);
+              setModo("esqueci");
+            }}
+          >
+            Esqueci minha senha
           </button>
         </form>
 
@@ -559,7 +609,7 @@ function Identificacao({
           </div>
         ) : null}
 
-        <p className="time-porta-ajuda">Sem senha? Peça ao Fernando ou ao Igor.</p>
+        <p className="time-porta-ajuda">Primeiro acesso? A senha inicial vem do Fernando ou do Igor.</p>
 
         {podeDeclarar ? (
           <details className="time-porta-declarar">
@@ -609,6 +659,147 @@ function Identificacao({
             </button>
           </details>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Pedir o link por e-mail, ou criar a senha nova com ele.
+ *
+ * A resposta do pedido é a mesma exista o e-mail ou não — por isso a tela não
+ * diz "enviamos", diz "se estiver cadastrado, enviamos". Ver
+ * `lib/financeiro/time-senha.ts`.
+ */
+function RecuperarSenha({
+  modo,
+  token,
+  emailInicial,
+  aoVoltar
+}: {
+  modo: "esqueci" | "redefinir";
+  token: string;
+  emailInicial: string;
+  aoVoltar: (mensagem: string | null) => void;
+}) {
+  const [email, setEmail] = useState(emailInicial);
+  const [nova, setNova] = useState("");
+  const [repetida, setRepetida] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+
+  const curta = nova.length > 0 && nova.length < 8;
+  const diferem = repetida.length > 0 && nova !== repetida;
+
+  async function pedir(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return setErro("informe o seu e-mail");
+    setEnviando(true);
+    setErro(null);
+    const r = await fetch("/api/time/senha/esqueci", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: email.trim() })
+    });
+    const j = await r.json().catch(() => ({}));
+    setEnviando(false);
+    if (!r.ok) return setErro(j.error ?? "não consegui pedir o link");
+    setEnviado(true);
+  }
+
+  async function redefinir(e: React.FormEvent) {
+    e.preventDefault();
+    if (nova !== repetida) return setErro("as duas senhas novas não são iguais");
+    setEnviando(true);
+    setErro(null);
+    const r = await fetch("/api/time/senha/redefinir", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, nova })
+    });
+    const j = await r.json().catch(() => ({}));
+    setEnviando(false);
+    if (!r.ok) return setErro(j.error ?? "não consegui trocar a senha");
+    aoVoltar("Senha trocada. Entre com o seu e-mail e a senha nova.");
+  }
+
+  return (
+    <div className="time-porta">
+      <BotaoTema className="time-porta-tema" />
+      <div className="time-identidade">
+        <header className="time-porta-marca">
+          <div className="time-porta-icone" aria-hidden>
+            <img src="/icone-192.png" alt="" width={52} height={52} />
+          </div>
+          <p className="time-porta-nome">{modo === "esqueci" ? "Recuperar senha" : "Nova senha"}</p>
+          <p className="time-porta-lema">Custos e reembolsos do time</p>
+        </header>
+
+        {modo === "esqueci" ? (
+          enviado ? (
+            <>
+              <p className="time-porta-ajuda" role="status">
+                Se <strong>{email.trim()}</strong> estiver cadastrado, um link para criar a senha nova chega nele em
+                instantes. Ele vale por 30 minutos. Olhe também a caixa de spam.
+              </p>
+              <button type="button" className="time-porta-entrar" onClick={() => aoVoltar(null)}>
+                Voltar para o login
+              </button>
+            </>
+          ) : (
+            <form className="time-porta-form" onSubmit={pedir}>
+              <p className="time-porta-ajuda">Digite o e-mail que você usa no app. Mandamos um link para criar outra senha.</p>
+              <label className="time-porta-campo">
+                <span>E-mail</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="seu@email.com"
+                />
+              </label>
+              {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
+              <button type="submit" className="time-porta-entrar" disabled={enviando || !email.trim()}>
+                {enviando ? "Enviando…" : "Enviar link"}
+              </button>
+              <button type="button" className="time-porta-entrar secundario" onClick={() => aoVoltar(null)}>
+                Voltar
+              </button>
+            </form>
+          )
+        ) : (
+          <form className="time-porta-form" onSubmit={redefinir}>
+            <label className="time-porta-campo">
+              <span>Nova senha</span>
+              <input
+                type="password"
+                value={nova}
+                onChange={(e) => setNova(e.target.value)}
+                autoComplete="new-password"
+                placeholder="mínimo 8 caracteres"
+              />
+              {curta ? <span className="time-porta-erro">faltam {8 - nova.length} caractere(s)</span> : null}
+            </label>
+            <label className="time-porta-campo">
+              <span>Repita a nova senha</span>
+              <input type="password" value={repetida} onChange={(e) => setRepetida(e.target.value)} autoComplete="new-password" />
+              {diferem ? <span className="time-porta-erro">as duas não são iguais</span> : null}
+            </label>
+            {erro ? <p className="time-porta-erro" role="alert">{erro}</p> : null}
+            <button type="submit" className="time-porta-entrar" disabled={enviando || nova.length < 8 || nova !== repetida}>
+              {enviando ? "Salvando…" : "Salvar senha"}
+            </button>
+            <button type="button" className="time-porta-entrar secundario" onClick={() => aoVoltar(null)}>
+              Voltar para o login
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

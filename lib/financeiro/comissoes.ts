@@ -620,6 +620,81 @@ export async function excluirComissaoItem(
   return { ok: true };
 }
 
+/**
+ * Muda a competência de UMA linha — avulsa ou parcela.
+ *
+ * Pedido do dono em 02/10/2026, cadastrando as comissões a pagar no mês: errar
+ * o mês obrigava a excluir e lançar de novo, e parcela de série nem isso — só
+ * excluindo a série inteira.
+ *
+ * A competência é o mês em que a comissão SAI (as de 09/2026 foram as ordens
+ * de 02/09), então mudar o mês muda a linha que a tela de pagamentos oferece.
+ * Por isso a recusa: se o mês de ORIGEM já tem ordem de comissão da pessoa
+ * enviada ao banco ou paga, tirar a linha de lá deixaria a ordem sem lastro
+ * e o mês novo a ofereceria de novo — o mesmo dinheiro duas vezes.
+ */
+export async function editarCompetenciaComissao(
+  id: number,
+  competencia: string,
+  ator: string
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia)) {
+    return { ok: false, status: 422, error: "mês inválido — use AAAA-MM" };
+  }
+  const nova = `${competencia}-01`;
+
+  const linhas = await query<{
+    id: number;
+    entity_id: number;
+    person_id: number;
+    competencia: string;
+    descricao: string;
+  }>(
+    `SELECT id, entity_id, person_id, to_char(competencia, 'YYYY-MM-DD') AS competencia, descricao
+       FROM fin_pessoa_comissao_declarada WHERE id = $1`,
+    [id]
+  );
+  const linha = linhas[0];
+  if (!linha) return { ok: false, status: 404, error: "comissão não encontrada" };
+  if (linha.competencia === nova) return { ok: true };
+
+  const ordens = await query<{ code: string; status: string }>(
+    `SELECT code, status FROM fin_payment_request
+      WHERE source_id LIKE $1 AND status NOT IN ('rascunho', 'cancelada', 'rejeitada')
+      LIMIT 1`,
+    [`${linha.competencia.slice(0, 7)}|fin_person:${linha.person_id}:comissao%`]
+  );
+  if (ordens[0]) {
+    return {
+      ok: false,
+      status: 409,
+      error: `a comissão de ${linha.competencia.slice(5, 7)}/${linha.competencia.slice(0, 4)} desta pessoa já foi para o banco (${ordens[0].code}, ${ordens[0].status}) — mudar o mês faria pagar de novo`
+    };
+  }
+
+  await transaction(async (client) => {
+    await client.query(`UPDATE fin_pessoa_comissao_declarada SET competencia = $2, atualizado_em = now() WHERE id = $1`, [
+      id,
+      nova
+    ]);
+    await client.query(
+      `INSERT INTO fin_audit_log
+          (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
+       VALUES ($1, 'fin_pessoa_comissao_declarada', $2, 'update', $3::jsonb, $4::jsonb, $5::text[], $6, $7)`,
+      [
+        linha.entity_id,
+        id,
+        JSON.stringify({ competencia: linha.competencia, descricao: linha.descricao }),
+        JSON.stringify({ competencia: nova }),
+        ["competencia"],
+        crypto.randomUUID(),
+        ator
+      ]
+    );
+  });
+  return { ok: true };
+}
+
 export async function excluirComissaoSerie(
   id: number,
   ator: string

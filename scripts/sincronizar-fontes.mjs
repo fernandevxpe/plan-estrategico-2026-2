@@ -122,6 +122,27 @@ export const ETAPAS = [
   { fonte: 'asaas',     nome: 'importação do Asaas',     script: 'scripts/import-asaas.mjs' },
   { fonte: 'inter_api', nome: 'sync Inter',              script: 'scripts/sync-inter.mjs' },
   { fonte: 'inter_api', nome: 'importação do Inter',     script: 'scripts/import-inter.mjs' },
+  // A mesma etapa que entrou no agendador em 02/10/2026: a ordem paga vira
+  // `pago` pelo código de solicitação do Inter. O botão continua igual ao
+  // pipeline diário, que é a regra desta lista.
+  {
+    fonte: 'inter_api',
+    nome: 'conciliação das ordens de pagamento',
+    script: 'scripts/conciliar-pagamentos.mjs',
+    args: ['--aplicar']
+  },
+  {
+    fonte: 'inter_api',
+    nome: 'natureza do PIX pela ordem',
+    script: 'scripts/categorizar-pagamento-por-ordem.mjs',
+    args: ['--aplicar']
+  },
+  {
+    fonte: 'inter_api',
+    nome: 'baixa dos reembolsos pagos',
+    script: 'scripts/baixar-reembolso-pago.mjs',
+    args: ['--aplicar']
+  },
   // -------------------------------------------------------------------------
   // O NUBANK, QUE ATÉ 01/09/2026 O BOTÃO NÃO ALCANÇAVA
   // -------------------------------------------------------------------------

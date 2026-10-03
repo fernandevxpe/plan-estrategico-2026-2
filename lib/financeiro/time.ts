@@ -1973,7 +1973,8 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
     comissaoFutura,
     comissaoItens,
     reembolsoCabecalhos,
-    pagoPorCompetencia
+    pagoPorCompetencia,
+    ordensReembolsoRows
   ] = await Promise.all([
     query<Record<string, unknown>>(
       `SELECT data, to_char(mes, 'YYYY-MM') AS mes, valor_cents, natureza, categoria, conta, descricao
@@ -2180,7 +2181,16 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         WHERE person_id = $1
         ORDER BY competencia DESC, pago_em`,
       [sessao.personId]
-    ).catch(() => [])
+    ).catch(() => []),
+    // O reembolso que cada ordem mandou pagar, por mês de caixa — ver o uso.
+    query<{ caixa: string; cents: string }>(
+      `SELECT split_part(source_id, '|', 1) AS caixa, sum(amount_cents)::text AS cents
+         FROM fin_payment_request
+        WHERE source_id = split_part(source_id, '|', 1) || '|fin_person:' || $1::text || ':reembolso'
+          AND status NOT IN ('cancelada', 'rejeitada')
+        GROUP BY 1`,
+      [String(sessao.personId)]
+    ).catch(() => [] as { caixa: string; cents: string }[])
   ]);
 
   // Unifica o saldo em aberto: itens da planilha + itens solicitados no app
@@ -2395,6 +2405,23 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         0
       );
 
+      /*
+       * O REEMBOLSO DE UM MÊS QUE JÁ TEM ORDEM É O VALOR DA ORDEM.
+       *
+       * A "foto de hoje" acima derivou exatamente como o comentário previa. Em
+       * 02/10/2026, com setembro pago e baixado, ela comparava agosto contra o
+       * saldo de OUTUBRO: a Audrey via "faltou R$ 4,80" (244,97 previsto, 240,17
+       * pago), o Flavio "faltou R$ 244,51" de um reembolso que só existe em
+       * outubro, o Fernando "R$ 272,29 a mais". A ordem de pagamento é a foto
+       * que faltava: ela registra o que a casa decidiu pagar naquele mês, por
+       * pessoa, e é contra ela que o PIX é conciliado.
+       *
+       * Sem ordem (o mês que ainda vai ser pago), segue a foto de hoje — é o
+       * melhor que existe para o futuro. Mês já pago sem ordem não tem o que
+       * cobrar: antes de setembro/2026 as ordens não existiam.
+       */
+      const ordensReembolso = new Map(ordensReembolsoRows.map((r) => [r.caixa, Number(r.cents)] as const));
+
       const pagoPorComp = new Map<string, LancamentoExtrato[]>();
       for (const l of pagoPorCompetencia) {
         const k = String(l.competencia);
@@ -2503,7 +2530,9 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
         // inclui os itens aprovados vindos do app. Somar os dois contava os
         // R$ 164,00 do Fernando duas vezes e inflava o previsto de agosto para
         // R$ 1.604,76 — quando o que a folha pagou foi R$ 1.440,76, exato.
-        const reembolsoPrevisto = parcelaDoMesCents;
+        const ordemDoMes = ordensReembolso.get(mesDeCaixa);
+        const reembolsoPrevisto =
+          ordemDoMes !== undefined ? ordemDoMes : mesDeCaixa < mesCorrente ? 0 : parcelaDoMesCents;
 
         const previstos: PrevistoConciliado[] = [
           {
@@ -2592,7 +2621,13 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
           // deixá-la antes faria o salário pago com valor diferente do
           // cadastro ser contado como comissão.
           if (p.previstoCents <= 0 || p.conferido || p.natureza === "comissao") continue;
-          const casa = extrato.find((l) => !l.casado && l.natureza === p.natureza);
+          // O de valor MAIS PRÓXIMO, não o primeiro da lista. Em agosto o
+          // Adryan tinha R$ 253,75 (23/08) e R$ 5.900,00 (01/09) em 6.02 para um
+          // pró-labore de R$ 5.879,00; o primeiro casava, e a tela dizia
+          // "faltou R$ 5.625,25" com o pró-labore inteiro na conta.
+          const casa = extrato
+            .filter((l) => !l.casado && l.natureza === p.natureza)
+            .sort((a, b) => Math.abs(a.valorCents - p.previstoCents) - Math.abs(b.valorCents - p.previstoCents))[0];
           if (!casa) continue;
           casa.casado = true;
           p.pagoCents = casa.valorCents;
@@ -2623,7 +2658,12 @@ export async function meusRecebiveis(sessao: Sessao): Promise<MeusRecebiveis> {
          * com R$ 0,20 faltando, e é isso que a tela dele diz.
          */
         const pComissao = previstos.find((p) => p.natureza === "comissao");
-        if (pComissao && pComissao.previstoCents > 0) {
+        // `!conferido`: se a PRIMEIRA passada já casou a comissão pelo valor
+        // exato, a eliminação não tem o que fazer — e, rodando, sobrescrevia o
+        // casamento com 0, porque o PIX dela já estava `casado`. Em 02/10/2026
+        // a Audrey (R$ 702,00), o Diogo (R$ 225,00), o Fernando (R$ 10,00) e o
+        // Igor A (R$ 75,00) viam "faltou" a comissão que tinha caído exata.
+        if (pComissao && pComissao.previstoCents > 0 && !pComissao.conferido) {
           const naoCasadosAntes = extrato.filter((l) => !l.casado);
           const c = casarComissaoPorEliminacao(pComissao.partes, extrato);
           pComissao.pagoCents = c.pagoCents;

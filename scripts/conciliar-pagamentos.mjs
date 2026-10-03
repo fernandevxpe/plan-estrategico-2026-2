@@ -39,15 +39,20 @@
 // `net_cents`. Nenhuma linha deste arquivo escreve 'pago' — é o banco que
 // conclui, a partir da evidência.
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import { financePool } from './lib/artifact-db.mjs';
 import { loadEnv } from './lib/env.mjs';
 import { dedupeHash } from './lib/fin-normalize.mjs';
+import { rawDir } from './lib/paths.mjs';
 
 loadEnv();
 
 const APLICAR = process.argv.includes('--aplicar');
-const ARQUIVO = 'data/raw/inter-extrato.json';
+// Pelo `rawDir`, e não `data/raw` fixo: em produção `DATA_DIR=/data` (o volume),
+// e é lá que `sync-inter.mjs` grava. O caminho fixo só funcionava na máquina
+// local — e por isso a conciliação nunca pôde entrar no agendador.
+const ARQUIVO = path.join(rawDir, 'inter-extrato.json');
 const ACCOUNT_SLUG = 'inter';
 const brl = (c) => (Number(c || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 

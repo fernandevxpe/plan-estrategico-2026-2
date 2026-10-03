@@ -68,6 +68,30 @@ function run(command, args, timeoutMs = STEP_TIMEOUT_MS) {
   });
 }
 
+const ETAPA_CONCILIACAO = {
+  name: 'conciliação das ordens de pagamento',
+  script: 'scripts/conciliar-pagamentos.mjs',
+  args: ['--aplicar'],
+  required: false
+};
+// Logo depois da conciliação: o PIX que pagou uma ordem de reembolso ou de
+// comissão passa a dizer isso (6.05 / 4.01), em vez do rótulo do vínculo. Sem
+// isto o app da pessoa acusava "faltou o reembolso" com o dinheiro na conta.
+// E os itens do app que a ordem de reembolso pagou viram `pago` — senão o mês
+// seguinte os oferece de novo (aconteceu com setembro: R$ 2.957,09).
+const ETAPA_BAIXA_REEMBOLSO = {
+  name: 'baixa dos reembolsos pagos',
+  script: 'scripts/baixar-reembolso-pago.mjs',
+  args: ['--aplicar'],
+  required: false
+};
+const ETAPA_NATUREZA_DA_ORDEM = {
+  name: 'natureza do PIX pela ordem',
+  script: 'scripts/categorizar-pagamento-por-ordem.mjs',
+  args: ['--aplicar'],
+  required: false
+};
+
 /**
  * Etapas em ordem. `required: false` deixa a etapa falhar sem derrubar o resto:
  * se as credenciais da Meta ainda não estiverem configuradas, o Pipedrive
@@ -106,6 +130,14 @@ const STEPS = [
   // agendador, pelo mesmo motivo do Asaas: estoura o watchdog de 20 min.
   { name: 'sync Inter', script: 'scripts/sync-inter.mjs', required: false },
   { name: 'importação do Inter', script: 'scripts/import-inter.mjs', required: false },
+  // A ordem que o banco pagou vira `pago` — pelo código de solicitação do
+  // Inter, nunca por valor. Até 02/10/2026 isto só rodava à mão: naquele dia 30
+  // PIX de folha e reembolso estavam no extrato e as ordens seguiam
+  // "aguardando autorização", e o app de cada pessoa não sabia que tinha
+  // recebido. Vem logo depois da importação porque exige a linha no ledger.
+  ETAPA_CONCILIACAO,
+  ETAPA_NATUREZA_DA_ORDEM,
+  ETAPA_BAIXA_REEMBOLSO,
   // Nubank: espelho, promoção e caixinhas — incluídos em 01/09/2026.
   //
   // A razão está medida: naquele dia Asaas e Inter fecharam em 01/09 e o Nubank
@@ -212,7 +244,94 @@ const STEPS = [
   { name: 'persistência PostgreSQL', script: 'scripts/storage-push.mjs', required: true }
 ];
 
+/**
+ * A rodada curta dos pagamentos — o que o dia de pagamento precisa, e só isso.
+ *
+ * Pedido do dono em 02/10/2026: "quando tenha pagamentos agendados, a
+ * conciliação aconteça no mesmo dia, no dia seguinte... e no aplicativo dos
+ * usuários fique tudo coerente". O pipeline das 8h vê o que saiu ONTEM; um PIX
+ * aprovado às 10h só virava "pago" no dia seguinte, e a pessoa abria o app e
+ * via a folha pendente com o dinheiro já na conta.
+ *
+ * As etapas são as do pipeline diário, na mesma ordem, recortadas ao caminho
+ * do dinheiro de pessoa: Inter (onde saem as ordens), a conciliação, o Nubank
+ * pelo espelho do erp-obras (onde saem obras e comissões), a natureza pelo
+ * vínculo e os avisos. Nada de Pipedrive, Meta ou análise — isso fica no das 8h.
+ *
+ * O sync do Inter é incremental (45 dias, ~3 páginas) e respeita o limite de
+ * 10 req/min dele; de hora em hora fica longe disso.
+ */
+const CICLO_PAGAMENTOS = [
+  { name: 'sync Inter', script: 'scripts/sync-inter.mjs', required: false },
+  { name: 'importação do Inter', script: 'scripts/import-inter.mjs', required: false },
+  ETAPA_CONCILIACAO,
+  ETAPA_NATUREZA_DA_ORDEM,
+  ETAPA_BAIXA_REEMBOLSO,
+  { name: 'espelho do erp-obras', script: 'scripts/sync-erp-obras.mjs', required: false },
+  {
+    name: 'promoção do extrato do Nubank',
+    script: 'scripts/promover-erp-extrato.mjs',
+    args: ['--conta=nubank', '--fechar-saldo'],
+    required: false
+  },
+  {
+    name: 'identificação do extrato do Nubank',
+    script: 'scripts/identificar-extrato-nubank.mjs',
+    args: ['--aplicar'],
+    required: false
+  },
+  {
+    name: 'custo de pessoa por vínculo',
+    script: 'scripts/classificar-custo-pessoas.mjs',
+    args: ['--aplicar'],
+    required: false
+  },
+  { name: 'notificações', script: 'scripts/notificar.mjs', args: ['--aplicar'], required: false }
+];
+
+/** De quanto em quanto tempo, e em que janela (hora UTC; 11–1 = 8h às 22h em Brasília). */
+const CICLO_MIN = Number(process.env.CONCILIACAO_INTERVALO_MIN ?? 60);
+const CICLO_DE_UTC = Number(process.env.CONCILIACAO_DE_UTC ?? 11);
+const CICLO_ATE_UTC = Number(process.env.CONCILIACAO_ATE_UTC ?? 1);
+
+function dentroDaJanela(agora = new Date()) {
+  const h = agora.getUTCHours();
+  return CICLO_DE_UTC <= CICLO_ATE_UTC ? h >= CICLO_DE_UTC && h < CICLO_ATE_UTC : h >= CICLO_DE_UTC || h < CICLO_ATE_UTC;
+}
+
 let running = false;
+
+/**
+ * Divide a trava com o pipeline diário: os dois importam o mesmo extrato, e
+ * duas importações simultâneas disputariam as mesmas linhas. Quem chega com o
+ * outro rodando desiste — a próxima hora pega.
+ *
+ * Não grava `sync-state.json`: é por ele que o boot decide se roda o pipeline
+ * inteiro, e a rodada curta não pode fingir que o diário aconteceu.
+ */
+export async function runCicloPagamentos(trigger = 'ciclo') {
+  if (running) {
+    log('sync em andamento, ciclo de pagamentos fica para a próxima', trigger);
+    return { skipped: true };
+  }
+  running = true;
+  const inicio = Date.now();
+  const falhas = [];
+  try {
+    for (const step of CICLO_PAGAMENTOS) {
+      try {
+        await run('node', [step.script, ...(step.args ?? [])]);
+      } catch (error) {
+        falhas.push(step.name);
+        log(`  ciclo: etapa falhou, seguindo: ${step.name} — ${error.message}`);
+      }
+    }
+    log(`ciclo de pagamentos (${trigger}) em ${Math.round((Date.now() - inicio) / 1000)}s, ${falhas.length} falha(s)`);
+    return { ok: true, falhas };
+  } finally {
+    running = false;
+  }
+}
 
 export async function runPipeline(trigger = 'agendado') {
   if (running) {
@@ -289,6 +408,14 @@ export function startScheduler() {
   };
   schedule();
 
+  if (CICLO_MIN > 0) {
+    log(`ciclo de pagamentos a cada ${CICLO_MIN} min, das ${CICLO_DE_UTC}h às ${CICLO_ATE_UTC}h UTC`);
+    setInterval(() => {
+      if (!dentroDaJanela()) return;
+      runCicloPagamentos('ciclo').catch((error) => log('ciclo de pagamentos lançou exceção:', error?.message ?? error));
+    }, CICLO_MIN * 60_000).unref?.();
+  }
+
   if (RUN_ON_BOOT) {
     // Um deploy pode acontecer depois do horário do dia; sem isso o volume
     // ficaria com o dado do build até a virada seguinte.
@@ -309,7 +436,10 @@ export function startScheduler() {
 
 // Execução direta: `node scripts/scheduler.mjs --once`
 if (process.argv[1]?.endsWith('scheduler.mjs')) {
-  if (process.argv.includes('--once')) {
+  if (process.argv.includes('--ciclo')) {
+    const result = await runCicloPagamentos('manual');
+    process.exit(result.ok ? 0 : 1);
+  } else if (process.argv.includes('--once')) {
     const result = await runPipeline('manual');
     process.exit(result.ok ? 0 : 1);
   } else {

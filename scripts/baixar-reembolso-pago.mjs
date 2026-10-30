@@ -24,8 +24,24 @@
 // nada é tocado e a linha sai no relatório: diferença de centavo é sinal de
 // que alguém pagou outra coisa, e baixa por aproximação esconderia isso.
 //
-// As séries da planilha não são baixadas aqui — o contador delas é outro
-// problema, documentado em 0195.
+// ---------------------------------------------------------------------------
+// AS SÉRIES DA PLANILHA ANDAM AQUI (desde 30/10/2026, junto com a 0198)
+// ---------------------------------------------------------------------------
+// A linha de competência M de uma série é paga no 1º dia útil de M+1, dentro
+// da ordem `M+1|fin_person:N:reembolso`. Antes, nada gravava essa linha: as 12
+// séries pararam em 2026-07 e a tela mostrava "Curso LGR 03/10" com a 5/10
+// já paga — R$ 4.419,00 de saldo que não existia (0198 conserta o passado).
+//
+// Agora, para cada ordem paga do mês de caixa C, a conta é:
+//   itens do app ainda abertos + itens do app que ESTA ordem já baixou
+//   (audit `ordem`) + uma parcela de cada série aberta em C−1
+//   (+ a parcela de série cancelada DEPOIS da ordem: a TV do Fernando estava
+//   no PIX de 02/09, R$ 108,29, e só foi cancelada em 02/10).
+// Fechando no centavo, além de baixar os itens, grava a linha C−1 de cada
+// série com parcela+1 (ON CONFLICT DO NOTHING). Série já gravada em C−1 entra
+// na soma e não é regravada — é isso que torna o script idempotente com a
+// 0198. Série cancelada não ganha linha: a 0194 a tirou do saldo.
+// Ordem sem item do app também é processada: o Adryan só tinha a série.
 import { financePool } from './lib/artifact-db.mjs';
 import { loadEnv } from './lib/env.mjs';
 
@@ -49,10 +65,11 @@ try {
        JOIN fin_person p ON p.id = substring(pr.source_id from 'fin_person:([0-9]+):reembolso$')::bigint
       WHERE pr.source_id ~ '^[0-9]{4}-[0-9]{2}\\|fin_person:[0-9]+:reembolso$'
         AND pr.status = 'pago'
-      ORDER BY pr.id`
+      ORDER BY split_part(pr.source_id, '|', 1), pr.id`
   );
 
   let baixados = 0;
+  let gravadas = 0;
   console.log(`\nOrdens de reembolso pagas — ${ordens.length} · ${APLICAR ? 'APLICANDO' : 'apenas mostrando'}\n`);
   for (const o of ordens) {
     const { rows: itens } = await client.query(
@@ -72,22 +89,69 @@ try {
         FOR UPDATE OF i`,
       [o.person_id, o.created_at, o.caixa]
     );
-    if (itens.length === 0) continue;
 
-    const { rows: planilha } = await client.query(
-      `SELECT coalesce(sum(valor_parcela_cents), 0)::bigint AS c
-         FROM fin_reembolso_saldo_v WHERE person_id = $1 AND NOT quitado AND parcelas_restantes >= 1`,
-      [o.person_id]
+    // Itens do app que esta mesma ordem já baixou numa rodada anterior (ou à mão,
+    // em `marcar-reembolsos-pagos-set.mjs`): continuam fazendo parte da soma.
+    const { rows: jaBaixados } = await client.query(
+      `SELECT coalesce(sum(i.amount_cents), 0)::bigint AS c
+         FROM fin_reimbursement_item i
+        WHERE i.id IN (SELECT l.target_id FROM fin_audit_log l
+                        WHERE l.target_table = 'fin_reimbursement_item' AND l.after->>'ordem' = $1)`,
+      [o.code]
     );
+
+    // Séries da pessoa em C−1: `gravada` = já tem a linha; senão, aberta se a
+    // última linha é de C−2 e ainda não chegou ao total.
+    const { rows: series } = await client.query(
+      `WITH alvo AS (SELECT (to_date($2, 'YYYY-MM') - interval '1 month')::date AS m),
+            u AS (SELECT DISTINCT ON (slug) *
+                    FROM fin_reembolso_item, alvo
+                   WHERE person_id = $1 AND competencia <= alvo.m
+                   ORDER BY slug, competencia DESC, parcela DESC)
+       SELECT u.entity_id, u.slug, u.descricao, u.parcela, u.parcelas_total, u.valor_parcela_cents,
+              u.categoria_livre, alvo.m::text AS alvo,
+              (u.competencia = alvo.m) AS gravada,
+              c.cancelado_em
+         FROM u CROSS JOIN alvo
+         LEFT JOIN fin_reembolso_slug_cancelado c ON c.person_id = $1 AND c.slug = u.slug
+        WHERE u.parcelas_total > 1
+          AND ( u.competencia = alvo.m
+             OR (u.competencia = (alvo.m - interval '1 month')::date AND u.parcela < u.parcelas_total) )
+          AND (c.id IS NULL OR c.cancelado_em > $3)`,
+      [o.person_id, o.caixa, o.created_at]
+    );
+    const aGravar = series.filter((x) => !x.gravada && !x.cancelado_em);
+    if (itens.length === 0 && aGravar.length === 0) continue; // nada a fazer: em dia
+
     const somaItens = itens.reduce((s, i) => s + Number(i.amount_cents), 0);
-    const esperado = somaItens + Number(planilha[0].c);
+    const somaSeries = series.reduce((s, x) => s + Number(x.valor_parcela_cents), 0);
+    const esperado = somaItens + Number(jaBaixados[0].c) + somaSeries;
     const rotulo = `${o.code} ${o.name.slice(0, 22).padEnd(22)} pago R$ ${brl(o.paid_cents).padStart(9)}`;
 
     if (esperado !== Number(o.paid_cents)) {
       console.log(
-        `  ≠  ${rotulo}  itens R$ ${brl(somaItens)} + planilha R$ ${brl(planilha[0].c)} = R$ ${brl(esperado)} — não baixei`
+        `  ≠  ${rotulo}  itens R$ ${brl(somaItens)} + já baixados R$ ${brl(jaBaixados[0].c)} + séries R$ ${brl(somaSeries)} = R$ ${brl(esperado)} — não baixei`
       );
       continue;
+    }
+
+    for (const x of aGravar) {
+      const n = x.parcela + 1;
+      const m = x.descricao.match(/([0-9]+)(\s*\/\s*[0-9]+)\s*$/);
+      const descricao = m
+        ? x.descricao.slice(0, m.index) + String(n).padStart(m[1].length, '0') + m[2]
+        : `${x.descricao} ${n}/${x.parcelas_total}`;
+      const r = await client.query(
+        `INSERT INTO fin_reembolso_item
+                (entity_id, person_id, slug, descricao, competencia, valor_parcela_cents,
+                 parcela, parcelas_total, categoria_livre, fonte, nota, criado_por)
+         VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9, $10, $11, $12)
+         ON CONFLICT (person_id, slug, competencia) DO NOTHING`,
+        [x.entity_id, o.person_id, x.slug, descricao, x.alvo, x.valor_parcela_cents, n, x.parcelas_total,
+         x.categoria_livre, `ordem ${o.code} paga`, `parcela paga pela ordem ${o.code} (${o.caixa})`, ATOR]
+      );
+      console.log(`     série ${x.slug.padEnd(24)} ${x.alvo.slice(0, 7)}  ${descricao.padEnd(32)} R$ ${brl(x.valor_parcela_cents)}${r.rowCount ? '' : '  (já existia)'}`);
+      gravadas += r.rowCount;
     }
 
     const ids = itens.map((i) => i.id);
@@ -108,10 +172,10 @@ try {
       [[...new Set(itens.map((i) => i.reimbursement_id))]]
     );
     baixados += ids.length;
-    console.log(`  +  ${rotulo}  ${ids.length} item(ns) do app baixado(s)`);
+    console.log(`  +  ${rotulo}  ${ids.length} item(ns) do app baixado(s), ${aGravar.length} parcela(s) de série`);
   }
 
-  console.log(`\n  ${baixados} item(ns) baixado(s)`);
+  console.log(`\n  ${baixados} item(ns) baixado(s) · ${gravadas} parcela(s) de série gravada(s)`);
   if (APLICAR) await client.query('COMMIT');
   else await client.query('ROLLBACK');
   console.log(APLICAR ? '  gravado.\n' : '  nada gravado — rode com --aplicar.\n');

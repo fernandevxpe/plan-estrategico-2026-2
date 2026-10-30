@@ -91,7 +91,16 @@ console.log(`  ${porCodigo.size} códigos de solicitação no extrato local\n`);
 const { rows: ordens } = await pool.query(
   `SELECT pr.id, pr.code, pr.net_cents, pr.status, pr.method,
           cp.name AS favorecido,
-          (SELECT t FROM unnest(pr.tags) AS t WHERE t LIKE 'inter-solicitacao:%' LIMIT 1) AS marcador
+          /*
+           * TODOS os códigos, não o primeiro. Quando o envio ao Inter é
+           * repetido ('inter-tentativa:2'), a ordem acumula um código por
+           * tentativa, e só o da tentativa que pagou aparece no extrato. Com
+           * 'LIMIT 1' pegávamos o da tentativa que falhou: 7 ordens de 02/09
+           * (R$ 14.401,86) ficaram em 'aguardando_autorizacao' por dois meses
+           * com o PIX no extrato — em todas, o 2º código é o que casa.
+           */
+          ARRAY(SELECT replace(t, 'inter-solicitacao:', '') FROM unnest(pr.tags) AS t
+                 WHERE t LIKE 'inter-solicitacao:%') AS codigos
      FROM fin_payment_request pr
      JOIN fin_entity e ON e.id = pr.entity_id AND e.slug = 'xpe'
      LEFT JOIN fin_counterparty cp ON cp.id = pr.counterparty_id
@@ -119,15 +128,24 @@ let semExtrato = 0;
 let semLastro = 0;
 
 for (const o of ordens) {
-  const codigo = String(o.marcador ?? '').replace('inter-solicitacao:', '').trim();
+  const codigos = (o.codigos ?? []).map((c) => String(c).trim()).filter(Boolean);
   const rotulo = `${o.code} ${String(o.favorecido ?? '—').slice(0, 26).padEnd(26)} ${brl(o.net_cents).padStart(13)}`;
 
-  if (!codigo) {
+  if (codigos.length === 0) {
     semExtrato += 1;
     console.log(`  ?  ${rotulo}  sem codigoSolicitacao gravado — não dá para casar`);
     continue;
   }
 
+  // Uma ordem paga uma vez só: se duas tentativas aparecessem no extrato, a
+  // segunda seria pagamento em dobro, e isso precisa de olho humano.
+  const achados = codigos.filter((c) => porCodigo.has(c));
+  if (achados.length > 1) {
+    semExtrato += 1;
+    console.log(`  ‼  ${rotulo}  ${achados.length} tentativas no extrato — possível pagamento em dobro, confira`);
+    continue;
+  }
+  const codigo = achados[0] ?? codigos[codigos.length - 1];
   const tx = porCodigo.get(codigo);
   if (!tx) {
     semExtrato += 1;

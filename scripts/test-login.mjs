@@ -524,11 +524,21 @@ try {
       const adm = await c('/api/financeiro/estornos-reembolso');
       afirma(adm.status === 200, 'a fila de estornos do admin responde', `status ${adm.status}`);
 
-      await db.query(`DELETE FROM fin_document WHERE source = 'reembolso_estorno'`);
-      await db.query(`DELETE FROM fin_reembolso_slug_cancelado WHERE person_id = $1`, [alvo.person_id]);
-      await db.query(`DELETE FROM fin_reembolso_estorno WHERE item_fonte = 'planilha' AND item_id = $1`, [alvo.item_id]);
+      // Só o que ESTE teste criou. Antes eram DELETE e count sem filtro: em
+      // 30/10/2026 a base tinha 2 estornos reais, o count dava 2 e o teste
+      // reprovava — e o DELETE de `fin_document` apagaria o documento de
+      // qualquer estorno de verdade junto com o do teste.
+      const criados = (await db.query(
+        `SELECT id, document_id FROM fin_reembolso_estorno WHERE item_fonte = 'planilha' AND item_id = $1`,
+        [alvo.item_id])).rows;
+      const idsEstorno = criados.map((x) => Number(x.id));
+      const idsDoc = criados.map((x) => x.document_id).filter((x) => x != null).map(Number);
+      await db.query(`DELETE FROM fin_reembolso_slug_cancelado WHERE estorno_id = ANY($1::bigint[])`, [idsEstorno]);
+      await db.query(`DELETE FROM fin_reembolso_estorno WHERE id = ANY($1::bigint[])`, [idsEstorno]);
+      await db.query(`DELETE FROM fin_document WHERE source = 'reembolso_estorno' AND id = ANY($1::bigint[])`, [idsDoc]);
       await db.query(`DELETE FROM fin_time_sessao WHERE user_agent = 'test-login-estorno'`);
-      const sobra = await db.query(`SELECT count(*)::int n FROM fin_reembolso_estorno`);
+      const sobra = await db.query(
+        `SELECT count(*)::int n FROM fin_reembolso_estorno WHERE item_fonte = 'planilha' AND item_id = $1`, [alvo.item_id]);
       afirma(sobra.rows[0].n === 0, 'e o teste não deixou estorno no banco', `${sobra.rows[0].n} restante(s)`);
     }
   }
@@ -990,6 +1000,64 @@ try {
   );
   await db.query(`UPDATE fin_person_acesso SET status = 'ativo' WHERE person_id = $1`, [cobaia.id]);
 
+  console.log('\n=== 7b. ESQUECI MINHA SENHA, E GMAIL COM OUTROS PONTOS ===');
+  // Rode o servidor com RESEND_API_KEY inválida (RESEND_API_KEY=x npx next dev):
+  // o pedido vai até o fim, mas o Resend recusa com 401 e nada é enviado.
+  {
+    const anonimo = criarCliente();
+    const existe = await anonimo('/api/time/senha/esqueci', { method: 'POST', body: JSON.stringify({ email: EMAIL }) });
+    const naoExiste = await anonimo('/api/time/senha/esqueci', {
+      method: 'POST', body: JSON.stringify({ email: `ninguem.${Date.now()}@exemplo.invalido` }) });
+    afirma(existe.status === 200 && naoExiste.status === 200 &&
+      JSON.stringify(existe.corpo) === JSON.stringify(naoExiste.corpo),
+      'o pedido responde IGUAL exista o e-mail ou não', `${existe.status}/${naoExiste.status} ${JSON.stringify(existe.corpo)}`);
+    const tok = await db.query(
+      `SELECT count(*)::int n FROM fin_time_senha_token WHERE person_id = $1 AND usado_em IS NULL AND expira_em > now()`,
+      [cobaia.id]);
+    afirma(tok.rows[0].n === 1, 'e só o e-mail cadastrado gerou link', `${tok.rows[0].n} token(s) abertos`);
+
+    // O token de verdade só existe no e-mail (o banco guarda o sha256). O teste
+    // grava um pelo MESMO caminho do código: base64url de 32 bytes, sha256 hex.
+    const bruto = randomBytes(32).toString('base64url');
+    await db.query(
+      `INSERT INTO fin_time_senha_token (person_id, token_sha256, expira_em, pedido_de)
+       VALUES ($1, $2, now() + interval '30 minutes', 'test-login')`,
+      [cobaia.id, createHash('sha256').update(bruto).digest('hex')]);
+    const SENHA_LINK = 'pelo-link-' + Math.random().toString(36).slice(2, 10);
+    const curta = await anonimo('/api/time/senha/redefinir', { method: 'POST', body: JSON.stringify({ token: bruto, nova: 'curta' }) });
+    afirma(curta.status === 422, 'senha curta é recusada', `status ${curta.status}`);
+    const troca = await anonimo('/api/time/senha/redefinir', { method: 'POST', body: JSON.stringify({ token: bruto, nova: SENHA_LINK }) });
+    afirma(troca.status === 200, 'o link troca a senha', `status ${troca.status} ${JSON.stringify(troca.corpo)}`);
+    const reuso = await anonimo('/api/time/senha/redefinir', { method: 'POST', body: JSON.stringify({ token: bruto, nova: SENHA_LINK }) });
+    afirma(reuso.status === 410, 'o mesmo link não vale duas vezes', `status ${reuso.status}`);
+    const abertos = await db.query(
+      `SELECT count(*)::int n FROM fin_time_senha_token WHERE person_id = $1 AND usado_em IS NULL`, [cobaia.id]);
+    afirma(abertos.rows[0].n === 0, 'e o link do pedido anterior morreu junto', `${abertos.rows[0].n} aberto(s)`);
+    const viva = await c2('/api/time/envios');
+    afirma(viva.status === 401, 'a sessão aberta antes da troca caiu', `status ${viva.status}`);
+    const velhaSenha = await anonimo('/api/time/sessao', { method: 'POST', body: JSON.stringify({ email: EMAIL, senha: SENHA_NOVA }) });
+    afirma(velhaSenha.status === 401, 'a senha anterior não entra mais', `status ${velhaSenha.status}`);
+
+    // Caso real de 30/10: cadastro `igoralves.xpenergy@gmail.com`, digitado
+    // `igor.alves.xpenergy@gmail.com`. O Gmail ignora ponto e "+sufixo".
+    const marca = Date.now();
+    await db.query(`UPDATE fin_person SET email = $2 WHERE id = $1`, [cobaia.id, `xpe.teste.login.${marca}@gmail.com`]);
+    const gmail = await anonimo('/api/time/sessao', {
+      method: 'POST', body: JSON.stringify({ email: `XPETeste.Login${marca}+app@googlemail.com`, senha: SENHA_LINK }) });
+    afirma(gmail.status === 200, 'Gmail com pontos/+sufixo diferentes do cadastro entra', `status ${gmail.status}`);
+    // Cadastro fora do Gmail COM ponto; digitado sem o ponto tem de ser recusado.
+    // (Antes o teste mandava outro domínio contra um cadastro Gmail — reprovaria
+    // de qualquer jeito e não provava nada sobre o ponto.)
+    await db.query(`UPDATE fin_person SET email = $2 WHERE id = $1`, [cobaia.id, `xpe.teste.login.${marca}@exemplo.invalido`]);
+    const outroProvedor = await anonimo('/api/time/sessao', {
+      method: 'POST', body: JSON.stringify({ email: `xpeteste.login.${marca}@exemplo.invalido`, senha: SENHA_LINK }) });
+    const outroExato = await anonimo('/api/time/sessao', {
+      method: 'POST', body: JSON.stringify({ email: `XPE.teste.login.${marca}@exemplo.invalido`, senha: SENHA_LINK }) });
+    afirma(outroExato.status === 200, 'fora do Gmail o e-mail exato (maiúsculas à parte) entra', `status ${outroExato.status}`);
+    afirma(outroProvedor.status === 401, 'fora do Gmail o ponto continua contando', `status ${outroProvedor.status}`);
+    await db.query(`UPDATE fin_person SET email = $2 WHERE id = $1`, [cobaia.id, EMAIL]);
+  }
+
   console.log('\n=== 8. NADA DA LISTA DE PESSOAS SEM CREDENCIAL ===');
   const anon = criarCliente();
   const semSessao = await anon('/api/time/sessao');
@@ -1054,6 +1122,9 @@ try {
     await db.query(`DELETE FROM fin_time_sessao WHERE person_id = $1 AND criada_em > now() - interval '10 minutes'`, [
       cobaia.id
     ]);
+    await db.query(`DELETE FROM fin_time_senha_token WHERE person_id = $1 AND criado_em > now() - interval '30 minutes'`, [
+      cobaia.id
+    ]).catch(() => {});
     if (antes.acesso === 0) await db.query(`DELETE FROM fin_person_acesso WHERE person_id = $1`, [cobaia.id]);
     await db.query(`UPDATE fin_person SET email = $2, is_admin = $3 WHERE id = $1`, [
       cobaia.id,

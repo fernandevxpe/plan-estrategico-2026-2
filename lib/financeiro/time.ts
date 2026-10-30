@@ -346,6 +346,36 @@ function esperaPorFalhas(falhas: number): number {
   return falhas < 5 ? 0 : Math.min(15 * 60, 30 * 2 ** (falhas - 5));
 }
 
+/**
+ * E-mail como o provedor o entende, para comparar — nunca para gravar.
+ *
+ * O Gmail ignora pontos e tudo depois de "+" na parte local, e googlemail.com é
+ * o mesmo domínio: `igor.alves.xpenergy@gmail.com` e `igoralves.xpenergy@gmail.com`
+ * são a MESMA caixa. O login comparava `lower(email)` exato, e em 30/10/2026 o
+ * Igor A (pessoa 94) ficava de fora digitando o endereço que de fato recebe os
+ * e-mails dele. Os 20 e-mails cadastrados em `fin_person` são todos Gmail, e
+ * nenhum par colide depois de normalizar (conferido no banco em 30/10).
+ *
+ * Fora do Gmail não se mexe: em outros provedores o ponto pode distinguir caixas.
+ */
+export function emailCanonico(email: string): string {
+  const e = String(email ?? "").trim().toLowerCase();
+  const arroba = e.lastIndexOf("@");
+  if (arroba < 0) return e;
+  const dominio = e.slice(arroba + 1);
+  if (dominio !== "gmail.com" && dominio !== "googlemail.com") return e;
+  const local = e.slice(0, arroba).split("+")[0].replace(/\./g, "");
+  return `${local}@gmail.com`;
+}
+
+/** A mesma regra de `emailCanonico`, em SQL, aplicada à COLUNA — os dois lados têm de normalizar. */
+export function sqlEmailCanonico(coluna: string): string {
+  const e = `lower(trim(${coluna}))`;
+  return `(CASE WHEN split_part(${e}, '@', 2) IN ('gmail.com', 'googlemail.com')
+     THEN replace(split_part(split_part(${e}, '@', 1), '+', 1), '.', '') || '@gmail.com'
+     ELSE ${e} END)`;
+}
+
 export async function autenticar(email: string, senha: string, userAgent: string | null) {
   const alvo = String(email ?? "").trim().toLowerCase();
   const segredo = String(senha ?? "");
@@ -375,8 +405,8 @@ export async function autenticar(email: string, senha: string, userAgent: string
        FROM fin_person p
        JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $2
        LEFT JOIN fin_person_acesso a ON a.person_id = p.id
-      WHERE lower(p.email) = $1 AND p.status = 'ativo'`,
-    [alvo, ENTITY]
+      WHERE ${sqlEmailCanonico("p.email")} = $1 AND p.status = 'ativo'`,
+    [emailCanonico(alvo), ENTITY]
   );
 
   // O bloqueio é checado ANTES do hash: não adianta gastar 80ms de CPU numa
@@ -4387,8 +4417,10 @@ export async function atualizarPerfil(
   return transaction(async (client) => {
     if (email !== undefined && email !== null) {
       const dup = await client.query(
-        `SELECT id FROM fin_person WHERE lower(email) = $1 AND id <> $2 LIMIT 1`,
-        [email, sessao.personId]
+        // Canônico dos dois lados: senão daria para cadastrar a mesma caixa do
+        // Gmail com outro ponto e o login passaria a casar duas pessoas.
+        `SELECT id FROM fin_person WHERE ${sqlEmailCanonico("email")} = $1 AND id <> $2 LIMIT 1`,
+        [emailCanonico(email), sessao.personId]
       );
       if (dup.rows[0]) throw new TimeError("este e-mail já está em uso", 409);
     }

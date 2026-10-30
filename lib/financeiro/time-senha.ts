@@ -3,7 +3,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 
 import { query, queryOne, transaction } from "@/lib/financeiro/db";
-import { TimeError, hashDeSenha } from "@/lib/financeiro/time";
+import { TimeError, emailCanonico, hashDeSenha, sqlEmailCanonico } from "@/lib/financeiro/time";
 
 /**
  * "Esqueci minha senha" do app do time — por link no e-mail (0196).
@@ -56,8 +56,10 @@ export async function pedirRecuperacaoDeSenha(email: string, userAgent: string |
        FROM fin_person p
        JOIN fin_entity e ON e.id = p.entity_id AND e.slug = $2
        JOIN fin_person_acesso a ON a.person_id = p.id AND a.status = 'ativo'
-      WHERE lower(p.email) = $1 AND p.status = 'ativo'`,
-    [alvo, ENTITY]
+      WHERE ${sqlEmailCanonico("p.email")} = $1 AND p.status = 'ativo'`,
+    // Mesmo casamento do login (ver `emailCanonico`); o e-mail vai para o
+    // endereço CADASTRADO, não para o digitado.
+    [emailCanonico(alvo), ENTITY]
   );
   if (!pessoa) return;
 

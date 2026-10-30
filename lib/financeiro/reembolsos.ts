@@ -929,94 +929,482 @@ export async function mudarStatusReembolso(
 }
 
 // ---------------------------------------------------------------------------
-// Escrita: item — valor e exclusão
+// Gestão: a lista item a item, por COMPETÊNCIA
+// ---------------------------------------------------------------------------
+//
+// A matriz acima responde "quanto saiu no caixa em cada mês". A gestão responde
+// outra pergunta: "o que foi lançado PARA este mês, por quem, e o que dá para
+// corrigir". Por isso o eixo aqui é `fin_reimbursement.reference_month` (a
+// competência do cabeçalho) e não o PIX.
+//
+// AS DUAS FONTES, SEM CONTAR DUAS VEZES (AGENTS.md, item 0)
+// A planilha (`fin_reembolso_item`, jan–jul/2026) e o app
+// (`fin_reimbursement_item`) têm 192 pares da mesma compra. A linha da planilha
+// sai da lista quando existe item do app da mesma pessoa e competência com o
+// mesmo valor OU a mesma descrição — é exatamente o casamento da
+// `fin_reembolso_saldo_unificado_v` (0195), só que ao contrário: lá fica a
+// planilha porque a view mede saldo; aqui fica o app porque é o lado que tem
+// status e pode ser editado. O total da lista e o da view continuam somando
+// cada compra uma vez.
+//
+// O "a pagar" (previsto do próximo pagamento) NÃO é recalculado aqui: vem da
+// própria view unificada, que é o que a programação de contas a pagar lê.
+
+export type ItemGestao = {
+  /** "app-123" | "planilha-45": o id numérico sozinho colide entre as tabelas. */
+  chave: string;
+  origem: "app" | "planilha";
+  id: number;
+  reimbursementId: number | null;
+  personId: number;
+  pessoa: string;
+  competencia: string;
+  descricao: string;
+  tipo: string | null;
+  tipoNome: string | null;
+  categoriaCode: string | null;
+  categoriaNome: string | null;
+  parcela: number | null;
+  parcelasTotal: number | null;
+  planoId: number | null;
+  valorCents: number;
+  /** app: status do item; planilha: sempre 'pago' (é histórico do que saiu). */
+  status: string;
+  statusReembolso: string | null;
+  temAnexo: boolean;
+  temNfe: boolean;
+  dataDespesa: string | null;
+  criadoEm: string | null;
+  /** Motivo pelo qual não pode editar/cancelar; null = editável. */
+  travadoPor: string | null;
+};
+
+export type SerieGestao = {
+  origem: "app" | "planilha";
+  chave: string;
+  personId: number;
+  pessoa: string;
+  descricao: string;
+  ultimaCompetencia: string;
+  parcela: number;
+  parcelasTotal: number;
+  valorParcelaCents: number;
+  parcelasRestantes: number;
+  saldoCents: number;
+};
+
+export type GestaoReembolsos = {
+  disponivel: boolean;
+  mesAtual: string;
+  hoje: string;
+  itens: ItemGestao[];
+  /** Linhas abertas de `fin_reembolso_saldo_unificado_v` (NOT quitado). */
+  saldoAberto: SerieGestao[];
+  pessoas: { id: number; nome: string; status: string }[];
+  tipos: { slug: string; name: string; categoriaCode: string | null }[];
+  categorias: { code: string; name: string }[];
+};
+
+/**
+ * Ordem já enviada ao banco trava o item. Mesma chave que a programação grava
+ * (`2026-10|fin_person:4:reembolso`, ver `lib/financeiro/time.ts`): a ordem do
+ * mês de CAIXA paga as competências anteriores a ele. Só conta ordem criada
+ * DEPOIS do item — a de 02/10 não pode travar um item lançado em 30/10, que ela
+ * nunca viu. `rascunho` não trava: ainda não saiu da casa.
+ */
+const SQL_ORDEM_QUE_TRAVA = `
+  SELECT pr.code || ' (' || pr.status || ')'
+    FROM fin_payment_request pr
+   WHERE pr.source_id LIKE '%|fin_person:' || r.person_id::text || ':reembolso'
+     AND split_part(pr.source_id, '|', 1) > to_char(r.reference_month, 'YYYY-MM')
+     AND pr.status NOT IN ('rascunho', 'rejeitada', 'cancelada', 'devolvida')
+     AND pr.created_at >= i.created_at
+   ORDER BY pr.id DESC
+   LIMIT 1`;
+
+function motivoTrava(statusItem: string, statusReembolso: string | null, ordem: string | null): string | null {
+  if (statusItem === "pago") return "item já pago";
+  if (statusReembolso === "pago") return "reembolso do mês já pago";
+  if (ordem) return `incluído na ordem ${ordem}`;
+  return null;
+}
+
+export async function getGestaoReembolsos(): Promise<GestaoReembolsos> {
+  const vazio: GestaoReembolsos = {
+    disponivel: false,
+    mesAtual: "",
+    hoje: "",
+    itens: [],
+    saldoAberto: [],
+    pessoas: [],
+    tipos: [],
+    categorias: []
+  };
+  if (!isFinanceConfigured()) return vazio;
+
+  const [datas, app, planilha, saldo, pessoas, tipos, categorias] = await Promise.all([
+    query<{ mes_atual: string; hoje: string }>(
+      `SELECT to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo'), 'YYYY-MM-DD') AS mes_atual,
+              to_char(now() AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') AS hoje`
+    ),
+    query<{
+      id: number;
+      reimbursement_id: number;
+      person_id: number;
+      pessoa: string;
+      competencia: string;
+      status_reembolso: string;
+      status: string;
+      tipo: string | null;
+      tipo_nome: string | null;
+      categoria_code: string | null;
+      categoria_nome: string | null;
+      description: string;
+      expense_date: string | null;
+      amount_cents: string;
+      installment_plan_id: number | null;
+      installment_number: number | null;
+      installment_total: number | null;
+      tem_anexo: boolean;
+      tem_nfe: boolean;
+      criado_em: string;
+      ordem: string | null;
+    }>(
+      `SELECT i.id, i.reimbursement_id, r.person_id, p.name AS pessoa,
+              to_char(r.reference_month, 'YYYY-MM-DD') AS competencia,
+              r.status AS status_reembolso, i.status,
+              i.reimbursement_type AS tipo, t.name AS tipo_nome,
+              COALESCE(c.code, tc.code) AS categoria_code, COALESCE(c.name, tc.name) AS categoria_nome,
+              i.description, i.expense_date::text, i.amount_cents,
+              i.installment_plan_id, i.installment_number, i.installment_total,
+              (i.receipt_artifact_key IS NOT NULL) AS tem_anexo,
+              (i.nfe_key IS NOT NULL) AS tem_nfe,
+              to_char(i.created_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD"T"HH24:MI') AS criado_em,
+              (${SQL_ORDEM_QUE_TRAVA}) AS ordem
+         FROM fin_reimbursement_item i
+         JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+         JOIN fin_entity e ON e.id = r.entity_id AND e.slug = $1
+         JOIN fin_person p ON p.id = r.person_id
+         LEFT JOIN fin_reimbursement_type t ON t.slug = i.reimbursement_type
+         LEFT JOIN fin_category c ON c.id = i.category_id
+         LEFT JOIN fin_category tc ON tc.id = t.category_id
+        ORDER BY i.created_at DESC, i.id DESC`,
+      [ENTITY]
+    ),
+    query<{
+      id: number;
+      person_id: number;
+      pessoa: string;
+      competencia: string;
+      slug: string;
+      descricao: string;
+      categoria_livre: string | null;
+      parcela: number;
+      parcelas_total: number;
+      valor_parcela_cents: string;
+      criado_em: string | null;
+    }>(
+      `SELECT a.id, a.person_id, p.name AS pessoa, to_char(a.competencia, 'YYYY-MM-DD') AS competencia,
+              a.slug, a.descricao, a.categoria_livre, a.parcela, a.parcelas_total, a.valor_parcela_cents,
+              to_char(a.criado_em AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD"T"HH24:MI') AS criado_em
+         FROM fin_reembolso_item a
+         JOIN fin_entity e ON e.id = a.entity_id AND e.slug = $1
+         JOIN fin_person p ON p.id = a.person_id
+        WHERE NOT EXISTS (
+                SELECT 1 FROM fin_reimbursement_item i
+                  JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+                 WHERE r.person_id = a.person_id
+                   AND date_trunc('month', r.reference_month)::date = a.competencia
+                   AND (i.amount_cents = a.valor_parcela_cents
+                        OR lower(btrim(i.description)) = lower(btrim(a.descricao))))
+        ORDER BY a.competencia DESC, a.id`,
+      [ENTITY]
+    ),
+    query<{
+      origem: "app" | "planilha";
+      person_id: number;
+      pessoa: string;
+      slug: string;
+      descricao: string;
+      ultima_competencia: string;
+      parcela: number;
+      parcelas_total: number;
+      valor_parcela_cents: string;
+      parcelas_restantes: number;
+      saldo_cents: string;
+    }>(
+      `SELECT origem, person_id, pessoa, slug, descricao, to_char(ultima_competencia, 'YYYY-MM-DD') AS ultima_competencia,
+              parcela, parcelas_total, valor_parcela_cents, parcelas_restantes, saldo_cents
+         FROM fin_reembolso_saldo_unificado_v
+        WHERE NOT quitado`
+    ),
+    query<{ id: number; name: string; status: string }>(
+      `SELECT p.id, p.name, p.status FROM fin_person p JOIN fin_entity e ON e.id = p.entity_id
+        WHERE e.slug = $1 ORDER BY p.status DESC, p.name`,
+      [ENTITY]
+    ),
+    query<{ slug: string; name: string; categoria_code: string | null }>(
+      `SELECT t.slug, t.name, c.code AS categoria_code
+         FROM fin_reimbursement_type t LEFT JOIN fin_category c ON c.id = t.category_id
+        WHERE t.is_active ORDER BY t.sort_order`
+    ),
+    query<{ code: string; name: string }>(
+      `SELECT c.code, c.name FROM fin_category c JOIN fin_entity e ON e.id = c.entity_id
+        WHERE e.slug = $1 AND c.is_active ORDER BY c.code`,
+      [ENTITY]
+    )
+  ]);
+
+  const itens: ItemGestao[] = [
+    ...app.map((i) => ({
+      chave: `app-${i.id}`,
+      origem: "app" as const,
+      id: Number(i.id),
+      reimbursementId: Number(i.reimbursement_id),
+      personId: Number(i.person_id),
+      pessoa: i.pessoa,
+      competencia: i.competencia,
+      descricao: i.description,
+      tipo: i.tipo,
+      tipoNome: i.tipo_nome,
+      categoriaCode: i.categoria_code,
+      categoriaNome: i.categoria_nome,
+      parcela: i.installment_number,
+      parcelasTotal: i.installment_total,
+      planoId: i.installment_plan_id ? Number(i.installment_plan_id) : null,
+      valorCents: Number(i.amount_cents),
+      status: i.status,
+      statusReembolso: i.status_reembolso,
+      temAnexo: i.tem_anexo,
+      temNfe: i.tem_nfe,
+      dataDespesa: i.expense_date,
+      criadoEm: i.criado_em,
+      travadoPor: motivoTrava(i.status, i.status_reembolso, i.ordem)
+    })),
+    ...planilha.map((a) => ({
+      chave: `planilha-${a.id}`,
+      origem: "planilha" as const,
+      id: Number(a.id),
+      reimbursementId: null,
+      personId: Number(a.person_id),
+      pessoa: a.pessoa,
+      competencia: a.competencia,
+      descricao: a.descricao,
+      tipo: a.slug,
+      tipoNome: a.categoria_livre,
+      categoriaCode: null,
+      categoriaNome: a.categoria_livre,
+      parcela: a.parcelas_total > 1 ? a.parcela : null,
+      parcelasTotal: a.parcelas_total > 1 ? a.parcelas_total : null,
+      planoId: null,
+      valorCents: Number(a.valor_parcela_cents),
+      // A planilha é o registro do que já foi reembolsado (jan–jul/2026); o
+      // cancelamento dela é pelo estorno, não por edição aqui.
+      status: "pago",
+      statusReembolso: null,
+      temAnexo: false,
+      temNfe: false,
+      dataDespesa: null,
+      criadoEm: a.criado_em,
+      travadoPor: "linha da planilha (histórico) — corrija pelo estorno"
+    }))
+  ];
+
+  return {
+    disponivel: true,
+    mesAtual: datas[0].mes_atual,
+    hoje: datas[0].hoje,
+    itens,
+    saldoAberto: saldo.map((s) => ({
+      origem: s.origem,
+      chave: `${s.origem}-${s.person_id}-${s.slug}`,
+      personId: Number(s.person_id),
+      pessoa: s.pessoa,
+      descricao: s.descricao,
+      ultimaCompetencia: s.ultima_competencia,
+      parcela: s.parcela,
+      parcelasTotal: s.parcelas_total,
+      valorParcelaCents: Number(s.valor_parcela_cents),
+      parcelasRestantes: s.parcelas_restantes,
+      saldoCents: Number(s.saldo_cents)
+    })),
+    pessoas: pessoas.map((p) => ({ id: Number(p.id), nome: p.name, status: p.status })),
+    tipos: tipos.map((t) => ({ slug: t.slug, name: t.name, categoriaCode: t.categoria_code })),
+    categorias
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Gestão: editar e cancelar item do app
 // ---------------------------------------------------------------------------
 
-export type RespostaItem = { ok: true; id: number; amountCents: number } | { ok: false; status: 404 | 409 | 422; error: string };
+export type EdicaoItem = {
+  valorCents?: unknown;
+  competencia?: unknown;
+  descricao?: unknown;
+  tipo?: unknown;
+  categoriaCode?: unknown;
+  status?: unknown;
+  motivo?: unknown;
+};
 
-export async function atualizarItemReembolso(itemId: number, valorCents: unknown): Promise<RespostaItem> {
+export type RespostaEdicao =
+  | { ok: true; id: number; alterados: string[] }
+  | { ok: false; status: 404 | 409 | 422; error: string };
+
+/** O que o admin pode pôr à mão. 'pago' fica de fora: quem paga é a conciliação. */
+const STATUS_EDITAVEIS = ["pendente", "aprovado", "rejeitado", "cancelado"];
+
+/**
+ * Edita um item do app. Recusa (409) item pago, de reembolso pago ou já
+ * incluído em ordem enviada ao banco — mudar o valor de algo que já saiu faria
+ * a tela divergir do dinheiro.
+ *
+ * MUDAR A COMPETÊNCIA É MUDAR DE CABEÇALHO. O mês mora em
+ * `fin_reimbursement.reference_month` (UNIQUE pessoa × mês), não no item. O item
+ * passa para o reembolso do mês novo (criado por `garantirReembolso` se não
+ * existir) e o gatilho `fin_reimbursement_item_maintain` refaz o total dos DOIS
+ * cabeçalhos. Destino já pago é recusado.
+ */
+export async function editarItemReembolso(itemId: number, campos: EdicaoItem): Promise<RespostaEdicao> {
   try {
     return await transaction(async (client) => {
       const { rows } = await client.query<{
         id: number;
-        amount_cents: number;
-        reimbursement_id: number;
         entity_id: number;
+        person_id: number;
+        reimbursement_id: number;
+        reference_month: string;
         status_reembolso: string;
+        status: string;
+        description: string;
+        amount_cents: string;
+        reimbursement_type: string | null;
+        category_id: number | null;
+        ordem: string | null;
       }>(
-        `SELECT i.id, i.amount_cents, i.reimbursement_id, r.entity_id, r.status AS status_reembolso
+        `SELECT i.id, r.entity_id, r.person_id, i.reimbursement_id, to_char(r.reference_month, 'YYYY-MM-DD') AS reference_month,
+                r.status AS status_reembolso, i.status, i.description, i.amount_cents, i.reimbursement_type, i.category_id,
+                (${SQL_ORDEM_QUE_TRAVA}) AS ordem
            FROM fin_reimbursement_item i JOIN fin_reimbursement r ON r.id = i.reimbursement_id
           WHERE i.id = $1 FOR UPDATE OF i`,
         [itemId]
       );
       const item = rows[0];
       if (!item) return { ok: false as const, status: 404 as const, error: `item ${itemId} não encontrado` };
-      if (item.status_reembolso === "pago") {
-        return { ok: false as const, status: 409 as const, error: "reembolso já pago — o valor não pode mudar" };
-      }
-      const novo = exigirCentavos(valorCents, "valor");
+      const trava = motivoTrava(item.status, item.status_reembolso, item.ordem);
+      if (trava) return { ok: false as const, status: 409 as const, error: `não pode editar: ${trava}` };
 
-      await client.query(`UPDATE fin_reimbursement_item SET amount_cents = $1 WHERE id = $2`, [novo, itemId]);
-      if (novo !== item.amount_cents) {
-        await client.query(
-          `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, before, after, fields, actor)
-           VALUES ($1, 'fin_reimbursement_item', $2, 'update', $3::jsonb, $4::jsonb, ARRAY['amount_cents'], 'ui')`,
-          [item.entity_id, itemId, JSON.stringify({ amount_cents: item.amount_cents }), JSON.stringify({ amount_cents: novo })]
-        );
+      const antes: Record<string, unknown> = {};
+      const depois: Record<string, unknown> = {};
+      const sets: string[] = [];
+      const valores: unknown[] = [];
+      const trocar = (coluna: string, novo: unknown, velho: unknown) => {
+        if (novo === velho) return;
+        valores.push(novo);
+        sets.push(`${coluna} = $${valores.length}`);
+        antes[coluna] = velho;
+        depois[coluna] = novo;
+      };
+
+      if (campos.valorCents !== undefined) {
+        trocar("amount_cents", exigirCentavos(campos.valorCents, "valor"), Number(item.amount_cents));
       }
-      return { ok: true as const, id: itemId, amountCents: novo };
+      if (campos.descricao !== undefined) {
+        const d = typeof campos.descricao === "string" ? campos.descricao.trim() : "";
+        if (!d) throw new ValidacaoError("descrição não pode ficar vazia");
+        trocar("description", d, item.description);
+      }
+      if (campos.tipo !== undefined) {
+        const tipo = typeof campos.tipo === "string" && campos.tipo.trim() ? campos.tipo.trim() : null;
+        if (tipo) {
+          const t = await client.query<{ category_id: number | null }>(
+            `SELECT category_id FROM fin_reimbursement_type WHERE slug = $1 AND is_active`,
+            [tipo]
+          );
+          if (!t.rows[0]) throw new ValidacaoError(`tipo de reembolso desconhecido: ${tipo}`);
+          trocar("reimbursement_type", tipo, item.reimbursement_type);
+          // A categoria segue o tipo, salvo se a mesma edição escolheu outra.
+          if (campos.categoriaCode === undefined && t.rows[0].category_id !== null) {
+            trocar("category_id", Number(t.rows[0].category_id), item.category_id === null ? null : Number(item.category_id));
+          }
+        } else {
+          trocar("reimbursement_type", null, item.reimbursement_type);
+        }
+      }
+      if (campos.categoriaCode !== undefined) {
+        const code = typeof campos.categoriaCode === "string" && campos.categoriaCode.trim() ? campos.categoriaCode.trim() : null;
+        let catId: number | null = null;
+        if (code) {
+          const c = await client.query<{ id: number }>(
+            `SELECT id FROM fin_category WHERE entity_id = $1 AND code = $2`,
+            [item.entity_id, code]
+          );
+          if (!c.rows[0]) throw new ValidacaoError(`categoria desconhecida: ${code}`);
+          catId = Number(c.rows[0].id);
+        }
+        trocar("category_id", catId, item.category_id === null ? null : Number(item.category_id));
+      }
+      const motivo = typeof campos.motivo === "string" && campos.motivo.trim() ? campos.motivo.trim() : null;
+      if (campos.status !== undefined) {
+        if (typeof campos.status !== "string" || !STATUS_EDITAVEIS.includes(campos.status)) {
+          throw new ValidacaoError(`status deve ser um de: ${STATUS_EDITAVEIS.join(", ")}`);
+        }
+        if ((campos.status === "cancelado" || campos.status === "rejeitado") && (!motivo || motivo.length < 3)) {
+          throw new ValidacaoError("diga o motivo do cancelamento");
+        }
+        trocar("status", campos.status, item.status);
+      }
+      if (campos.competencia !== undefined) {
+        const mes = exigirMes(campos.competencia, "competência");
+        if (mes !== item.reference_month) {
+          const destino = await garantirReembolso(client, item.entity_id, item.person_id, mes);
+          const st = await client.query<{ status: string }>(`SELECT status FROM fin_reimbursement WHERE id = $1`, [destino.id]);
+          if (st.rows[0]?.status === "pago") {
+            return { ok: false as const, status: 409 as const, error: `o reembolso de ${mes.slice(0, 7)} já foi pago` };
+          }
+          // Mês de destino que já tem ordem enviada ao banco também recusa: a
+          // ordem já saiu sem este item, e ele ficaria órfão — nem pago por ela,
+          // nem na próxima (que só cobre competências posteriores).
+          const ordemDestino = await client.query<{ code: string }>(
+            `SELECT pr.code FROM fin_payment_request pr
+              WHERE pr.source_id LIKE '%|fin_person:' || $1::text || ':reembolso'
+                AND split_part(pr.source_id, '|', 1) > to_char($2::date, 'YYYY-MM')
+                AND pr.status NOT IN ('rascunho', 'rejeitada', 'cancelada', 'devolvida')
+              LIMIT 1`,
+            [item.person_id, mes]
+          );
+          if (ordemDestino.rows[0]) {
+            return {
+              ok: false as const,
+              status: 409 as const,
+              error: `${mes.slice(0, 7)} já tem ordem enviada ao banco (${ordemDestino.rows[0].code})`
+            };
+          }
+          // Cabeçalho novo nasce 'rascunho'; o item vinha aprovado — o mês
+          // novo herda o status do de origem para não sumir da fila do a pagar.
+          if (destino.criado && item.status_reembolso !== "rascunho") {
+            await client.query(`UPDATE fin_reimbursement SET status = $1 WHERE id = $2`, [item.status_reembolso, destino.id]);
+          }
+          trocar("reimbursement_id", Number(destino.id), Number(item.reimbursement_id));
+          antes.reference_month = item.reference_month;
+          depois.reference_month = mes;
+        }
+      }
+
+      if (!sets.length) return { ok: true as const, id: itemId, alterados: [] };
+      valores.push(itemId);
+      await client.query(`UPDATE fin_reimbursement_item SET ${sets.join(", ")} WHERE id = $${valores.length}`, valores);
+      if (motivo) depois.motivo = motivo;
+      await client.query(
+        `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, before, after, fields, actor)
+         VALUES ($1, 'fin_reimbursement_item', $2, 'update', $3::jsonb, $4::jsonb, $5::text[], 'ui')`,
+        [item.entity_id, itemId, JSON.stringify(antes), JSON.stringify(depois), Object.keys(antes)]
+      );
+      return { ok: true as const, id: itemId, alterados: Object.keys(antes) };
     });
   } catch (error) {
     if (error instanceof ValidacaoError) return { ok: false, status: 422, error: error.message };
     throw error;
   }
-}
-
-export type RespostaExclusaoItem = { ok: true; id: number } | { ok: false; status: 404 | 409; error: string };
-
-/**
- * Apaga um item. O total_cents do reembolso se corrige sozinho (gatilho de
- * 0012); reembolso já pago é imutável, porque apagar item de algo pago faria a
- * soma da tela divergir do dinheiro que saiu.
- */
-export async function excluirItemReembolso(itemId: number): Promise<RespostaExclusaoItem> {
-  return transaction(async (client) => {
-    const { rows } = await client.query<{
-      id: number;
-      entity_id: number;
-      reimbursement_id: number;
-      description: string;
-      amount_cents: number;
-      installment_plan_id: number | null;
-      status_reembolso: string;
-    }>(
-      `SELECT i.id, r.entity_id, i.reimbursement_id, i.description, i.amount_cents,
-              i.installment_plan_id, r.status AS status_reembolso
-         FROM fin_reimbursement_item i JOIN fin_reimbursement r ON r.id = i.reimbursement_id
-        WHERE i.id = $1 FOR UPDATE OF i`,
-      [itemId]
-    );
-    const item = rows[0];
-    if (!item) return { ok: false as const, status: 404 as const, error: `item ${itemId} não encontrado` };
-    if (item.status_reembolso === "pago") {
-      return { ok: false as const, status: 409 as const, error: "reembolso já pago — o item não pode ser excluído" };
-    }
-
-    await client.query(
-      `INSERT INTO fin_audit_log (entity_id, target_table, target_id, action, before, fields, actor)
-       VALUES ($1, 'fin_reimbursement_item', $2, 'delete', $3::jsonb, ARRAY['*'], 'ui')`,
-      [
-        item.entity_id,
-        itemId,
-        JSON.stringify({
-          reimbursement_id: item.reimbursement_id,
-          description: item.description,
-          amount_cents: item.amount_cents,
-          installment_plan_id: item.installment_plan_id
-        })
-      ]
-    );
-    await client.query(`DELETE FROM fin_reimbursement_item WHERE id = $1`, [itemId]);
-    return { ok: true as const, id: itemId };
-  });
 }

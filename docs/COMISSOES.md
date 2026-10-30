@@ -40,9 +40,19 @@ GET  /api/financeiro/comissoes
 POST /api/financeiro/comissoes
   { "modo":"avulsa", "personId":12, "competencia":"2026-09", "valorCents":150000, "descricao":"Obra Aurora" }
   { "modo":"parcelada", "personId":12, "primeiraCompetencia":"2026-09", "totalCents":1200000, "parcelas":6, "descricao":"Bônus Q3" }
-DELETE /api/financeiro/comissoes/:id          # só à vista
+PATCH  /api/financeiro/comissoes/:id          # { valorCents?, competencia?, descricao?, cliente?, tipoSlug?, nota? }
+PATCH  /api/financeiro/comissoes/serie/:id    # { descricao?, tipoSlug?, cliente?, nota? } → propaga às parcelas
+DELETE /api/financeiro/comissoes/:id          # à vista OU uma parcela (série recalcula total; vazia some)
 DELETE /api/financeiro/comissoes/serie/:id    # série + parcelas
 ```
+
+**Trava "já no banco"** (`ordemEnviadaNoMes`): valor, mês, tipo e exclusão são
+recusados (409) quando a linha SUSTENTA uma ordem de comissão enviada/paga —
+isto é, a linha já existia quando a ordem `AAAA-MM|fin_person:N:comissao…` foi
+criada. Linha cadastrada depois da ordem fica livre (as 22 de 30/10 entraram
+após as ordens de 02/10). Mover uma linha PARA um mês com ordem também é
+recusado. Total e nº de parcelas de série não se editam: edite a parcela ou
+exclua e relance. Teste: `npm run test:comissoes-gestao`.
 
 ## Armadilhas
 

@@ -410,9 +410,14 @@ function GavetaPessoa({
                     type="button"
                     className="fin-btn-ghost fin-btn-mini fin-btn-perigo"
                     disabled={pendente}
-                    onClick={() => void onAcao(`/api/financeiro/reembolsos/${item.id}`, "DELETE")}
+                    onClick={() => {
+                      const motivo = window.prompt(`Cancelar "${item.descricao}"? Diga o motivo:`);
+                      if (motivo && motivo.trim()) {
+                        void onAcao(`/api/financeiro/reembolsos/${item.id}`, "DELETE", { motivo: motivo.trim() });
+                      }
+                    }}
                   >
-                    excluir
+                    cancelar
                   </button>
                 ) : null}
               </td>

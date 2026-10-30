@@ -57,6 +57,13 @@ export type ComissaoItem = {
   parcelasTotal: number | null;
   /** Parcela 1 de uma série que tem entrada — o valor difere das demais. */
   ehEntrada: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+  /**
+   * Código da ordem enviada/paga que esta linha SUSTENTA (existia quando a
+   * ordem foi criada). Com ordem, valor/mês/tipo e exclusão são recusados.
+   */
+  ordemNoBanco: string | null;
 };
 
 export type ComissaoSerie = {
@@ -80,6 +87,8 @@ export type ComissaoSerie = {
 
 export type PainelComissoes = {
   disponivel: boolean;
+  /** AAAA-MM-DD em America/Sao_Paulo — para "cadastradas hoje". */
+  hoje: string;
   mesAtual: string;
   mesSeguinte: string;
   meses: string[];
@@ -106,6 +115,7 @@ export type PainelComissoes = {
 function vazio(): PainelComissoes {
   return {
     disponivel: false,
+    hoje: "",
     mesAtual: "",
     mesSeguinte: "",
     meses: [],
@@ -149,8 +159,9 @@ export async function getPainelComissoes(): Promise<PainelComissoes> {
   if (!isFinanceConfigured()) return vazio();
 
   try {
-    const hoje = await query<{ mes_atual: string; mes_seguinte: string; mes_inicial: string }>(
-      `SELECT to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo'), 'YYYY-MM-DD') AS mes_atual,
+    const hoje = await query<{ hoje: string; mes_atual: string; mes_seguinte: string; mes_inicial: string }>(
+      `SELECT to_char((now() AT TIME ZONE 'America/Sao_Paulo')::date, 'YYYY-MM-DD') AS hoje,
+              to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo'), 'YYYY-MM-DD') AS mes_atual,
               to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') + interval '1 month', 'YYYY-MM-DD') AS mes_seguinte,
               to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') - interval '${MESES_MATRIZ - 1} months', 'YYYY-MM-DD') AS mes_inicial`
     );
@@ -195,6 +206,9 @@ export async function getPainelComissoes(): Promise<PainelComissoes> {
         tipo_nome: string | null;
         cliente: string | null;
         eh_entrada: boolean;
+        criado_em: string;
+        atualizado_em: string;
+        ordem_no_banco: string | null;
       }>(
         // A janela vai a 24 meses à frente, não a 3: uma comissão parcelada em
         // 12× lançada hoje só é "a receber" se as 12 parcelas couberem na
@@ -204,7 +218,16 @@ export async function getPainelComissoes(): Promise<PainelComissoes> {
                 to_char(c.competencia, 'YYYY-MM-DD') AS competencia,
                 c.valor_cents, c.descricao, c.nota, c.serie_id, c.parcela, c.parcelas_total,
                 c.tipo_slug, t.nome AS tipo_nome, c.cliente,
-                (c.parcela = 1 AND COALESCE(s.entrada_cents, 0) > 0) AS eh_entrada
+                (c.parcela = 1 AND COALESCE(s.entrada_cents, 0) > 0) AS eh_entrada,
+                to_char(c.criado_em AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD"T"HH24:MI:SS') AS criado_em,
+                to_char(c.atualizado_em AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD"T"HH24:MI:SS') AS atualizado_em,
+                -- Mesma regra de ordemEnviadaNoMes: só trava a linha que já
+                -- existia quando a ordem foi criada.
+                (SELECT r.code FROM fin_payment_request r
+                  WHERE r.source_id LIKE to_char(c.competencia, 'YYYY-MM') || '|fin_person:' || c.person_id || ':comissao%'
+                    AND r.status NOT IN ('rascunho', 'cancelada', 'rejeitada')
+                    AND r.created_at >= c.criado_em
+                  ORDER BY r.created_at LIMIT 1) AS ordem_no_banco
            FROM fin_pessoa_comissao_declarada c
            JOIN fin_person p ON p.id = c.person_id
            JOIN fin_entity e ON e.id = c.entity_id
@@ -299,12 +322,16 @@ export async function getPainelComissoes(): Promise<PainelComissoes> {
         serieId: r.serie_id != null ? Number(r.serie_id) : null,
         parcela: r.parcela,
         parcelasTotal: r.parcelas_total,
-        ehEntrada: Boolean(r.eh_entrada)
+        ehEntrada: Boolean(r.eh_entrada),
+        criadoEm: r.criado_em,
+        atualizadoEm: r.atualizado_em,
+        ordemNoBanco: r.ordem_no_banco
       };
     });
 
     return {
       disponivel: true,
+      hoje: hoje[0].hoje,
       mesAtual,
       mesSeguinte,
       meses,
@@ -571,34 +598,337 @@ export async function criarComissaoAvulsa(
   );
 }
 
-export async function excluirComissaoItem(
-  id: number,
-  ator: string
-): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  const linhas = await query<{
-    id: number;
-    entity_id: number;
-    serie_id: number | null;
-    valor_cents: number;
-    descricao: string;
-    competencia: string;
-  }>(
-    `SELECT id, entity_id, serie_id, valor_cents, descricao, to_char(competencia, 'YYYY-MM-DD') AS competencia
+
+type Recusa = { ok: false; status: number; error: string };
+
+/**
+ * A trava de "já foi para o banco", em um lugar só (antes morava dentro de
+ * `editarCompetenciaComissao`, ab2842a, e só olhava o mês de ORIGEM).
+ *
+ * A competência é o mês em que a comissão SAI: a ordem de comissão de uma
+ * pessoa num mês (`source_id` = `2026-10|fin_person:2:comissao:consultoria`)
+ * soma as linhas daquele mês. Mexer no valor, no mês ou no tipo de uma linha
+ * que SUSTENTA uma ordem enviada ou paga deixa a ordem sem lastro — e o mês
+ * a ofereceria de novo: o mesmo dinheiro duas vezes.
+ *
+ * Só sustenta a ordem a linha que JÁ EXISTIA quando a ordem foi criada. Sem esse
+ * recorte, as 22 comissões de outubro cadastradas em 30/10 (ids 161–182, Igor,
+ * Gabriel e Audrey) ficariam travadas pelas ordens PG-2026-0129/0131/0132,
+ * criadas em 02/10 — 28 dias antes de as linhas existirem. Elas não entraram
+ * naquele pagamento, então errar nelas não pode ficar sem conserto.
+ *
+ * `criadaAntesDe` = null pergunta pelo MÊS inteiro (destino de uma mudança de
+ * mês: pôr linha num mês já pago mudaria a conta de uma ordem fechada).
+ */
+async function ordemEnviadaNoMes(
+  personId: number,
+  competenciaIso: string,
+  criadaAntesDe: string | null
+): Promise<{ code: string; status: string } | null> {
+  const rows = await query<{ code: string; status: string }>(
+    `SELECT code, status FROM fin_payment_request
+      WHERE source_id LIKE $1
+        AND status NOT IN ('rascunho', 'cancelada', 'rejeitada')
+        AND ($2::timestamptz IS NULL OR created_at >= $2::timestamptz)
+      ORDER BY created_at
+      LIMIT 1`,
+    [`${competenciaIso.slice(0, 7)}|fin_person:${personId}:comissao%`, criadaAntesDe]
+  );
+  return rows[0] ?? null;
+}
+
+function mesLegivel(iso: string): string {
+  return `${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+}
+
+function recusaBanco(iso: string, ordem: { code: string; status: string }, acao: string): Recusa {
+  return {
+    ok: false,
+    status: 409,
+    error: `a comissão de ${mesLegivel(iso)} desta pessoa já foi para o banco (${ordem.code}, ${ordem.status}) — ${acao} faria a conta da ordem não fechar`
+  };
+}
+
+type LinhaComissao = {
+  id: number;
+  entity_id: number;
+  person_id: number;
+  competencia: string;
+  valor_cents: number;
+  descricao: string;
+  nota: string | null;
+  tipo_slug: string | null;
+  cliente: string | null;
+  serie_id: number | null;
+  parcela: number | null;
+  parcelas_total: number | null;
+  criado_em: string;
+};
+
+async function lerLinha(id: number): Promise<LinhaComissao | null> {
+  const rows = await query<LinhaComissao>(
+    `SELECT id, entity_id, person_id, to_char(competencia, 'YYYY-MM-DD') AS competencia,
+            valor_cents, descricao, nota, tipo_slug, cliente, serie_id, parcela, parcelas_total,
+            criado_em::text AS criado_em
        FROM fin_pessoa_comissao_declarada WHERE id = $1`,
     [id]
   );
-  const linha = linhas[0];
+  const r = rows[0];
+  return r ? { ...r, valor_cents: Number(r.valor_cents), serie_id: r.serie_id != null ? Number(r.serie_id) : null } : null;
+}
+
+export type EdicaoComissao = {
+  valorCents?: number;
+  /** AAAA-MM */
+  competencia?: string;
+  descricao?: string;
+  cliente?: string | null;
+  tipoSlug?: string | null;
+  nota?: string | null;
+};
+
+async function tipoExiste(slug: string): Promise<boolean> {
+  const r = await query<{ slug: string }>(`SELECT slug FROM fin_comissao_tipo WHERE slug = $1 AND ativo`, [slug]);
+  return r.length > 0;
+}
+
+/**
+ * Edita UMA linha — à vista ou parcela de série. Pedido do dono em 30/10/2026:
+ * "às vezes é preenchido errado", e até aqui só o mês era editável.
+ *
+ * Valor, mês e tipo mudam dinheiro (o tipo decide em qual PIX — consultoria,
+ * obras, diárias — a linha cai), então passam pela trava do banco. Descrição,
+ * cliente e nota só descrevem, e ficam livres mesmo em mês pago.
+ *
+ * Mudar o valor de uma parcela reescreve `total_cents` da série como a soma
+ * das parcelas: o total da série é o que a tela de séries mostra, e um total
+ * que não bate com as próprias parcelas é pior que um total recalculado.
+ */
+export async function editarComissao(
+  id: number,
+  edicao: EdicaoComissao,
+  ator: string
+): Promise<{ ok: true; mudou: string[] } | Recusa> {
+  const linha = await lerLinha(id);
   if (!linha) return { ok: false, status: 404, error: "comissão não encontrada" };
-  if (linha.serie_id != null) {
-    return {
-      ok: false,
-      status: 409,
-      error: "esta linha é parcela de uma série — exclua a série inteira"
-    };
+
+  const depois: Record<string, unknown> = {};
+  const antes: Record<string, unknown> = {};
+  const marcar = (campo: string, de: unknown, para: unknown) => {
+    if (de === para) return;
+    antes[campo] = de;
+    depois[campo] = para;
+  };
+
+  if (edicao.valorCents !== undefined) {
+    if (!Number.isInteger(edicao.valorCents) || edicao.valorCents < 0) {
+      return { ok: false, status: 422, error: "valor inválido — centavos inteiros, zero ou mais" };
+    }
+    marcar("valor_cents", linha.valor_cents, edicao.valorCents);
+  }
+  if (edicao.competencia !== undefined) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(edicao.competencia)) {
+      return { ok: false, status: 422, error: "mês inválido — use AAAA-MM" };
+    }
+    marcar("competencia", linha.competencia, `${edicao.competencia}-01`);
+  }
+  if (edicao.descricao !== undefined) {
+    const d = edicao.descricao.trim();
+    if (!d) return { ok: false, status: 422, error: "a descrição não pode ficar vazia" };
+    marcar("descricao", linha.descricao, d);
+  }
+  if (edicao.cliente !== undefined) marcar("cliente", linha.cliente, edicao.cliente?.trim() || null);
+  if (edicao.nota !== undefined) marcar("nota", linha.nota, edicao.nota?.trim() || null);
+  if (edicao.tipoSlug !== undefined) {
+    const t = edicao.tipoSlug?.trim() || null;
+    if (t && !(await tipoExiste(t))) return { ok: false, status: 422, error: `tipo de comissão "${t}" não existe` };
+    marcar("tipo_slug", linha.tipo_slug, t);
+  }
+
+  const campos = Object.keys(depois);
+  if (!campos.length) return { ok: true, mudou: [] };
+
+  const mexeDinheiro = campos.some((c) => c === "valor_cents" || c === "competencia" || c === "tipo_slug");
+  if (mexeDinheiro) {
+    const origem = await ordemEnviadaNoMes(linha.person_id, linha.competencia, linha.criado_em);
+    if (origem) return recusaBanco(linha.competencia, origem, "mudar valor, mês ou tipo");
+    if (depois.competencia) {
+      const destino = await ordemEnviadaNoMes(linha.person_id, depois.competencia as string, null);
+      if (destino) return recusaBanco(depois.competencia as string, destino, "pôr mais uma linha nesse mês");
+    }
   }
 
   await transaction(async (client) => {
+    const sets = campos.map((c, i) => `${c} = $${i + 2}${c === "competencia" ? "::date" : ""}`);
+    await client.query(
+      `UPDATE fin_pessoa_comissao_declarada SET ${sets.join(", ")}, atualizado_em = now() WHERE id = $1`,
+      [id, ...campos.map((c) => depois[c])]
+    );
+    if (linha.serie_id != null && "valor_cents" in depois) {
+      await client.query(
+        `UPDATE fin_pessoa_comissao_serie s
+            SET total_cents = (SELECT COALESCE(sum(valor_cents), 0) FROM fin_pessoa_comissao_declarada WHERE serie_id = s.id),
+                atualizado_em = now()
+          WHERE s.id = $1`,
+        [linha.serie_id]
+      );
+    }
+    await client.query(
+      `INSERT INTO fin_audit_log
+          (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
+       VALUES ($1, 'fin_pessoa_comissao_declarada', $2, 'update', $3::jsonb, $4::jsonb, $5::text[], $6, $7)`,
+      [linha.entity_id, id, JSON.stringify(antes), JSON.stringify(depois), campos, crypto.randomUUID(), ator]
+    );
+  });
+  return { ok: true, mudou: campos };
+}
+
+/** Compatibilidade com o PATCH antigo `{ competencia }` (ab2842a). */
+export async function editarCompetenciaComissao(
+  id: number,
+  competencia: string,
+  ator: string
+): Promise<{ ok: true } | Recusa> {
+  const r = await editarComissao(id, { competencia }, ator);
+  return r.ok ? { ok: true } : r;
+}
+
+/**
+ * Edita o CABEÇALHO de uma série: descrição, tipo, cliente, nota — e propaga
+ * para todas as parcelas.
+ *
+ * Total e nº de parcelas NÃO são editáveis aqui, de propósito. Recalcular o
+ * cronograma apagaria e recriaria linhas, e algumas delas podem estar dentro
+ * de uma ordem já paga (as 19 parcelas de setembro estão). Para corrigir valor,
+ * edite a parcela (o total da série se recalcula) ou exclua a série e relance.
+ */
+export async function editarComissaoSerie(
+  id: number,
+  edicao: { descricao?: string; tipoSlug?: string | null; cliente?: string | null; nota?: string | null },
+  ator: string
+): Promise<{ ok: true; mudou: string[] } | Recusa> {
+  const series = await query<{
+    id: number;
+    entity_id: number;
+    person_id: number;
+    descricao: string;
+    tipo_slug: string | null;
+    cliente: string | null;
+    nota: string | null;
+    entrada_cents: number;
+  }>(
+    `SELECT id, entity_id, person_id, descricao, tipo_slug, cliente, nota, entrada_cents
+       FROM fin_pessoa_comissao_serie WHERE id = $1`,
+    [id]
+  );
+  const serie = series[0];
+  if (!serie) return { ok: false, status: 404, error: "série não encontrada" };
+
+  const antes: Record<string, unknown> = {};
+  const depois: Record<string, unknown> = {};
+  const marcar = (c: string, de: unknown, para: unknown) => {
+    if (de !== para) {
+      antes[c] = de;
+      depois[c] = para;
+    }
+  };
+  if (edicao.descricao !== undefined) {
+    const d = edicao.descricao.trim();
+    if (!d) return { ok: false, status: 422, error: "a descrição não pode ficar vazia" };
+    marcar("descricao", serie.descricao, d);
+  }
+  if (edicao.cliente !== undefined) marcar("cliente", serie.cliente, edicao.cliente?.trim() || null);
+  if (edicao.nota !== undefined) marcar("nota", serie.nota, edicao.nota?.trim() || null);
+  if (edicao.tipoSlug !== undefined) {
+    const t = edicao.tipoSlug?.trim() || null;
+    if (t && !(await tipoExiste(t))) return { ok: false, status: 422, error: `tipo de comissão "${t}" não existe` };
+    marcar("tipo_slug", serie.tipo_slug, t);
+  }
+  const campos = Object.keys(depois);
+  if (!campos.length) return { ok: true, mudou: [] };
+
+  // O tipo decide o PIX: trocar o tipo de uma parcela que já saiu mudaria a
+  // ordem de outro pacote. Recusa a série inteira em vez de trocar só metade.
+  if ("tipo_slug" in depois) {
+    const parcelas = await query<{ competencia: string; criado_em: string }>(
+      `SELECT to_char(competencia, 'YYYY-MM-DD') AS competencia, criado_em::text AS criado_em
+         FROM fin_pessoa_comissao_declarada WHERE serie_id = $1`,
+      [id]
+    );
+    for (const p of parcelas) {
+      const ordem = await ordemEnviadaNoMes(serie.person_id, p.competencia, p.criado_em);
+      if (ordem) return recusaBanco(p.competencia, ordem, "trocar o tipo da série");
+    }
+  }
+
+  await transaction(async (client) => {
+    const sets = campos.map((c, i) => `${c} = $${i + 2}`);
+    await client.query(
+      `UPDATE fin_pessoa_comissao_serie SET ${sets.join(", ")}, atualizado_em = now() WHERE id = $1`,
+      [id, ...campos.map((c) => depois[c])]
+    );
+    const camposLinha = campos.filter((c) => c !== "descricao");
+    if (camposLinha.length) {
+      await client.query(
+        `UPDATE fin_pessoa_comissao_declarada
+            SET ${camposLinha.map((c, i) => `${c} = $${i + 2}`).join(", ")}, atualizado_em = now()
+          WHERE serie_id = $1`,
+        [id, ...camposLinha.map((c) => depois[c])]
+      );
+    }
+    if ("descricao" in depois) {
+      // Mesmo sufixo que `criarComissao` grava: " (entrada)" ou " (2/4)".
+      await client.query(
+        `UPDATE fin_pessoa_comissao_declarada
+            SET descricao = $2 || CASE WHEN COALESCE(parcelas_total, 1) <= 1 THEN ''
+                                       WHEN parcela = 1 AND $3::bigint > 0 THEN ' (entrada)'
+                                       ELSE ' (' || parcela || '/' || parcelas_total || ')' END,
+                atualizado_em = now()
+          WHERE serie_id = $1`,
+        [id, depois.descricao, Number(serie.entrada_cents ?? 0)]
+      );
+    }
+    await client.query(
+      `INSERT INTO fin_audit_log
+          (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
+       VALUES ($1, 'fin_pessoa_comissao_serie', $2, 'update', $3::jsonb, $4::jsonb, $5::text[], $6, $7)`,
+      [serie.entity_id, id, JSON.stringify(antes), JSON.stringify(depois), campos, crypto.randomUUID(), ator]
+    );
+  });
+  return { ok: true, mudou: campos };
+}
+
+/**
+ * Exclui UMA linha. À vista some; parcela de série também pode sair sozinha
+ * (antes recusava com "exclua a série inteira"), e a série recalcula o total.
+ * Se era a última parcela, a série vazia vai junto.
+ */
+export async function excluirComissaoItem(id: number, ator: string): Promise<{ ok: true } | Recusa> {
+  const linha = await lerLinha(id);
+  if (!linha) return { ok: false, status: 404, error: "comissão não encontrada" };
+
+  const ordem = await ordemEnviadaNoMes(linha.person_id, linha.competencia, linha.criado_em);
+  if (ordem) return recusaBanco(linha.competencia, ordem, "excluir");
+
+  await transaction(async (client) => {
     await client.query(`DELETE FROM fin_pessoa_comissao_declarada WHERE id = $1`, [id]);
+    if (linha.serie_id != null) {
+      const { rows } = await client.query<{ n: number }>(
+        `SELECT count(*)::int AS n FROM fin_pessoa_comissao_declarada WHERE serie_id = $1`,
+        [linha.serie_id]
+      );
+      if (rows[0].n === 0) {
+        await client.query(`DELETE FROM fin_pessoa_comissao_serie WHERE id = $1`, [linha.serie_id]);
+      } else {
+        await client.query(
+          `UPDATE fin_pessoa_comissao_serie s
+              SET total_cents = (SELECT sum(valor_cents) FROM fin_pessoa_comissao_declarada WHERE serie_id = s.id),
+                  atualizado_em = now()
+            WHERE s.id = $1`,
+          [linha.serie_id]
+        );
+      }
+    }
     await client.query(
       `INSERT INTO fin_audit_log
           (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
@@ -607,9 +937,11 @@ export async function excluirComissaoItem(
         linha.entity_id,
         id,
         JSON.stringify({
-          valorCents: Number(linha.valor_cents),
+          valorCents: linha.valor_cents,
           competencia: linha.competencia,
-          descricao: linha.descricao
+          descricao: linha.descricao,
+          serieId: linha.serie_id,
+          parcela: linha.parcela
         }),
         ["valor_cents", "competencia", "descricao"],
         crypto.randomUUID(),
@@ -620,91 +952,29 @@ export async function excluirComissaoItem(
   return { ok: true };
 }
 
-/**
- * Muda a competência de UMA linha — avulsa ou parcela.
- *
- * Pedido do dono em 02/10/2026, cadastrando as comissões a pagar no mês: errar
- * o mês obrigava a excluir e lançar de novo, e parcela de série nem isso — só
- * excluindo a série inteira.
- *
- * A competência é o mês em que a comissão SAI (as de 09/2026 foram as ordens
- * de 02/09), então mudar o mês muda a linha que a tela de pagamentos oferece.
- * Por isso a recusa: se o mês de ORIGEM já tem ordem de comissão da pessoa
- * enviada ao banco ou paga, tirar a linha de lá deixaria a ordem sem lastro
- * e o mês novo a ofereceria de novo — o mesmo dinheiro duas vezes.
- */
-export async function editarCompetenciaComissao(
-  id: number,
-  competencia: string,
-  ator: string
-): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia)) {
-    return { ok: false, status: 422, error: "mês inválido — use AAAA-MM" };
-  }
-  const nova = `${competencia}-01`;
-
-  const linhas = await query<{
-    id: number;
-    entity_id: number;
-    person_id: number;
-    competencia: string;
-    descricao: string;
-  }>(
-    `SELECT id, entity_id, person_id, to_char(competencia, 'YYYY-MM-DD') AS competencia, descricao
-       FROM fin_pessoa_comissao_declarada WHERE id = $1`,
-    [id]
-  );
-  const linha = linhas[0];
-  if (!linha) return { ok: false, status: 404, error: "comissão não encontrada" };
-  if (linha.competencia === nova) return { ok: true };
-
-  const ordens = await query<{ code: string; status: string }>(
-    `SELECT code, status FROM fin_payment_request
-      WHERE source_id LIKE $1 AND status NOT IN ('rascunho', 'cancelada', 'rejeitada')
-      LIMIT 1`,
-    [`${linha.competencia.slice(0, 7)}|fin_person:${linha.person_id}:comissao%`]
-  );
-  if (ordens[0]) {
-    return {
-      ok: false,
-      status: 409,
-      error: `a comissão de ${linha.competencia.slice(5, 7)}/${linha.competencia.slice(0, 4)} desta pessoa já foi para o banco (${ordens[0].code}, ${ordens[0].status}) — mudar o mês faria pagar de novo`
-    };
-  }
-
-  await transaction(async (client) => {
-    await client.query(`UPDATE fin_pessoa_comissao_declarada SET competencia = $2, atualizado_em = now() WHERE id = $1`, [
-      id,
-      nova
-    ]);
-    await client.query(
-      `INSERT INTO fin_audit_log
-          (entity_id, target_table, target_id, action, before, after, fields, batch_id, actor)
-       VALUES ($1, 'fin_pessoa_comissao_declarada', $2, 'update', $3::jsonb, $4::jsonb, $5::text[], $6, $7)`,
-      [
-        linha.entity_id,
-        id,
-        JSON.stringify({ competencia: linha.competencia, descricao: linha.descricao }),
-        JSON.stringify({ competencia: nova }),
-        ["competencia"],
-        crypto.randomUUID(),
-        ator
-      ]
-    );
-  });
-  return { ok: true };
-}
-
-export async function excluirComissaoSerie(
-  id: number,
-  ator: string
-): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  const linhas = await query<{ id: number; entity_id: number; descricao: string; total_cents: number }>(
-    `SELECT id, entity_id, descricao, total_cents FROM fin_pessoa_comissao_serie WHERE id = $1`,
+export async function excluirComissaoSerie(id: number, ator: string): Promise<{ ok: true } | Recusa> {
+  const linhas = await query<{ id: number; entity_id: number; person_id: number; descricao: string; total_cents: number }>(
+    `SELECT id, entity_id, person_id, descricao, total_cents FROM fin_pessoa_comissao_serie WHERE id = $1`,
     [id]
   );
   const serie = linhas[0];
   if (!serie) return { ok: false, status: 404, error: "série não encontrada" };
+
+  const parcelas = await query<{ competencia: string; criado_em: string }>(
+    `SELECT to_char(competencia, 'YYYY-MM-DD') AS competencia, criado_em::text AS criado_em
+       FROM fin_pessoa_comissao_declarada WHERE serie_id = $1`,
+    [id]
+  );
+  for (const p of parcelas) {
+    const ordem = await ordemEnviadaNoMes(serie.person_id, p.competencia, p.criado_em);
+    if (ordem) {
+      return {
+        ok: false,
+        status: 409,
+        error: `a parcela de ${mesLegivel(p.competencia)} já foi para o banco (${ordem.code}, ${ordem.status}) — exclua só as parcelas que ainda não saíram`
+      };
+    }
+  }
 
   await transaction(async (client) => {
     // CASCADE nas parcelas.
@@ -716,7 +986,7 @@ export async function excluirComissaoSerie(
       [
         serie.entity_id,
         id,
-        JSON.stringify({ descricao: serie.descricao, totalCents: Number(serie.total_cents) }),
+        JSON.stringify({ descricao: serie.descricao, totalCents: Number(serie.total_cents), parcelas: parcelas.length }),
         ["descricao", "total_cents"],
         crypto.randomUUID(),
         ator

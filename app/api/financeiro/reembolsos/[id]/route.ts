@@ -1,14 +1,17 @@
 import { FinanceUnavailableError } from "@/lib/financeiro/db";
-import {
-  atualizarItemReembolso,
-  excluirItemReembolso,
-  mudarStatusReembolso
-} from "@/lib/financeiro/reembolsos";
+import { editarItemReembolso, mudarStatusReembolso, type EdicaoItem } from "@/lib/financeiro/reembolsos";
 
 /**
  * PATCH  /api/financeiro/reembolsos/[id] — muda status do REEMBOLSO
- *          (corpo {status}) ou o valor de um ITEM (corpo {tipo:'item', valorCents}).
- * DELETE /api/financeiro/reembolsos/[id] — apaga o ITEM de id [id].
+ *          (corpo {status}) ou edita um ITEM do app (corpo {tipo:'item', valorCents?,
+ *          competencia?, descricao?, tipo?, categoriaCode?, status?, motivo?}).
+ * DELETE /api/financeiro/reembolsos/[id] — CANCELA o ITEM de id [id] (corpo {motivo}).
+ *
+ * O DELETE deixou de apagar a linha em 30/10/2026. Apagar levava junto a
+ * prova de que o pedido existiu, e o padrão da casa para "preenchido errado"
+ * já era status 'cancelado' com motivo (estornos, 0194 — os itens 901/902 do
+ * Cleber). Item pago, de reembolso pago ou em ordem enviada ao banco é recusado
+ * com 409 nos dois verbos.
  *
  * O discriminador `tipo` existe porque as duas entidades compartilham a mesma
  * rota e um id numérico não diz a qual tabela pertence. O padrão é o que cada
@@ -24,7 +27,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return Response.json({ error: "id inválido" }, { status: 400 });
   }
 
-  let body: { tipo?: unknown; status?: unknown; valorCents?: unknown; observacao?: unknown };
+  let body: EdicaoItem & { tipo?: unknown; tipoReembolso?: unknown; observacao?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -33,7 +36,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   try {
     if (body.tipo === "item") {
-      const resultado = await atualizarItemReembolso(idNum, body.valorCents);
+      // `tipo` já é o discriminador da rota; o tipo de reembolso viaja como `tipoReembolso`.
+      const resultado = await editarItemReembolso(idNum, { ...body, tipo: body.tipoReembolso });
       if (!resultado.ok) return Response.json({ error: resultado.error }, { status: resultado.status });
       return Response.json(resultado);
     }
@@ -53,7 +57,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: RouteParams) {
+export async function DELETE(request: Request, { params }: RouteParams) {
   const { id } = await params;
   const idNum = Number(id);
   if (!Number.isInteger(idNum) || idNum <= 0) {
@@ -61,7 +65,8 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   }
 
   try {
-    const resultado = await excluirItemReembolso(idNum);
+    const corpo = (await request.json().catch(() => ({}))) as { motivo?: unknown };
+    const resultado = await editarItemReembolso(idNum, { status: "cancelado", motivo: corpo.motivo });
     if (!resultado.ok) return Response.json({ error: resultado.error }, { status: resultado.status });
     return Response.json(resultado);
   } catch (error) {

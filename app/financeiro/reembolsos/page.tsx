@@ -1,8 +1,9 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { FinEstornosReembolso } from "@/components/financeiro/FinEstornosReembolso";
 import { FinShell } from "@/components/financeiro/FinShell";
+import { FinReembolsosGestao } from "@/components/financeiro/FinReembolsosGestao";
 import { FinReimbursements } from "@/components/financeiro/FinReimbursements";
-import { getPainelReembolsos } from "@/lib/financeiro/reembolsos";
+import { getGestaoReembolsos, getPainelReembolsos } from "@/lib/financeiro/reembolsos";
 
 export const metadata = {
   title: "Reembolsos — Financeiro XPE"
@@ -13,9 +14,9 @@ export const dynamic = "force-dynamic";
 export default async function ReembolsosPage({
   searchParams
 }: {
-  searchParams: Promise<{ pessoa?: string }>;
+  searchParams: Promise<{ pessoa?: string; mes?: string }>;
 }) {
-  const dados = await getPainelReembolsos();
+  const [dados, gestao] = await Promise.all([getPainelReembolsos(), getGestaoReembolsos()]);
   const sp = await searchParams;
   const pessoaInicial = sp.pessoa && /^\d+$/.test(sp.pessoa) ? Number(sp.pessoa) : null;
 
@@ -30,6 +31,7 @@ export default async function ReembolsosPage({
         </p>
       </div>
       <FinShell>
+        <FinReembolsosGestao dados={gestao} mesInicial={sp.mes ?? null} />
         <FinEstornosReembolso />
         <FinReimbursements dados={dados} pessoaInicial={pessoaInicial} />
       </FinShell>

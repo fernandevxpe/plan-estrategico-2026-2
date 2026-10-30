@@ -132,6 +132,10 @@ export const FINANCEIRO_GRUPOS: Grupo[] = [
       // aplicativo do banco (0075: "aguardando_autorizacao é onde o produto
       // termina o seu trabalho").
       { href: "/financeiro/aprovacoes", label: "Aprovações" },
+      // Histórico por dia de envio, somente leitura. Aprovações mostra a fila
+      // viva; esta responde "o que eu mandei hoje/em 02/10, e o que virou" —
+      // as 84 ordens pagas somem de Aprovações depois que saem.
+      { href: "/financeiro/pagamentos", label: "Pagamentos enviados" },
       // "Cartões", não "Cartão de crédito": uma das três linhas é pré-paga, e
       // chamar o grupo pelo crédito excluiria justamente a que não é. Fica em
       // PAGAR porque é onde a pergunta nasce — "quanto sai por cartão" —, e ao

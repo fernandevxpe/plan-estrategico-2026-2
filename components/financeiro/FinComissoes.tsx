@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import type { PainelComissoes } from "@/lib/financeiro/comissoes";
+import { FinComissoesGestao } from "./FinComissoesGestao";
 import {
   FORMAS_PAGAMENTO,
   MAX_PARCELAS,
@@ -220,6 +221,36 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
         </div>
       ) : null}
 
+      <div className="fin-contas-acoes">
+        <button type="button" className="fin-btn-primary" onClick={() => setMostrarForm((v) => !v)}>
+          {mostrarForm ? "Fechar" : "Lançar comissão"}
+        </button>
+      </div>
+
+      {mostrarForm ? (
+        <FormComissao
+          pessoas={pessoasAtivas}
+          tipos={dados.tipos}
+          mesPadrao={mesInput(dados.mesAtual)}
+          pendente={pendente}
+          onCancelar={() => setMostrarForm(false)}
+          onEnviar={async (corpo) => {
+            const ok = await enviar("/api/financeiro/comissoes", "POST", corpo);
+            if (ok) setMostrarForm(false);
+            return ok;
+          }}
+        />
+      ) : null}
+
+      <FinComissoesGestao dados={dados} enviar={enviar} pendente={pendente} />
+
+      {/* Recolhida: abaixo da gestão do mês, a matriz de todos os meses fazia a
+          tela parecer "mostrando tudo" (pedido de 30/10/2026). Continua a um clique. */}
+      <details style={{ marginTop: "1.5rem" }}>
+      <summary className="card-title" style={{ cursor: "pointer" }}>
+        Visão do período — pessoa × mês (todos os meses)
+      </summary>
+
       <section className="card" aria-label="Filtro por origem da comissão">
         <h2 className="card-title">Por origem do cadastro</h2>
         <p className="fin-card-hint">
@@ -286,9 +317,6 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
       </section>
 
       <div className="fin-contas-acoes" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
-        <button type="button" className="fin-btn-primary" onClick={() => setMostrarForm((v) => !v)}>
-          {mostrarForm ? "Fechar" : "Lançar comissão"}
-        </button>
         <label className="fin-check">
           Pessoa
           <select
@@ -309,20 +337,6 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
         </label>
       </div>
 
-      {mostrarForm ? (
-        <FormComissao
-          pessoas={pessoasAtivas}
-          tipos={dados.tipos}
-          mesPadrao={mesInput(dados.mesAtual)}
-          pendente={pendente}
-          onCancelar={() => setMostrarForm(false)}
-          onEnviar={async (corpo) => {
-            const ok = await enviar("/api/financeiro/comissoes", "POST", corpo);
-            if (ok) setMostrarForm(false);
-            return ok;
-          }}
-        />
-      ) : null}
 
       <section className="card">
         <h2 className="card-title">Comissão por pessoa, mês a mês</h2>
@@ -511,6 +525,7 @@ export function FinComissoes({ dados }: { dados: PainelComissoes }) {
           </div>
         </section>
       ) : null}
+      </details>
     </>
   );
 }

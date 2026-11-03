@@ -983,9 +983,13 @@ export type NovoReembolso = {
  * existe desde a 0012 esperando exatamente por isto, e hoje está preenchido em
  * 0 de 193 itens.
  *
- * O mês de competência é derivado da DATA DA DESPESA, não escolhido: deixar a
- * pessoa escolher produziria "gasolina de março" dentro do reembolso de junho,
- * e a matriz pessoa × mês perderia o significado.
+ * A competência começa no mês da DATA DA DESPESA. Se aquele pedido já foi
+ * pago, o item cai no mês corrente aberto (America/Sao_Paulo) e a data do
+ * gasto permanece — a mesma regra que `scripts/adicionar-reembolsos-out.mjs`
+ * já aplicava à mão. Sem o fallback, quem atrasa depois do pagamento mensal
+ * ficava bloqueado até mentir a data (Cleber, out/26: só passou em nov/26
+ * quando o default HOJE() mudou de mês). Escolher competência livremente
+ * ainda não: misturaria "gasolina de março" em junho sem necessidade.
  */
 export async function criarReembolsoDoTime(sessao: Sessao, corpo: NovoReembolso) {
   const descricao = exigirTexto(corpo.descricao, "descrição");
@@ -994,7 +998,6 @@ export async function criarReembolsoDoTime(sessao: Sessao, corpo: NovoReembolso)
   const tipo = opcionalTexto(corpo.tipo, 80);
   const nfeBruta = typeof corpo.nfeKey === "string" ? corpo.nfeKey.replace(/\D/g, "") : "";
   if (nfeBruta && nfeBruta.length !== 44) throw new TimeError("a chave da NF-e tem 44 dígitos");
-  const mes = `${data.slice(0, 7)}-01`;
 
   const categoriaDireta =
     typeof corpo.categoriaId === "number" || (typeof corpo.categoriaId === "string" && /^\d+$/.test(corpo.categoriaId))
@@ -1045,34 +1048,48 @@ export async function criarReembolsoDoTime(sessao: Sessao, corpo: NovoReembolso)
       categoryId
     );
 
-    // O reembolso do mês da pessoa. Volta para 'rascunho' → 'enviado' abaixo;
-    // um reembolso já pago não pode receber item novo, senão o total muda
-    // depois do pagamento.
-    const existente = await client.query<{ id: number; status: string }>(
+    // Competência = mês da despesa, salvo se aquele pedido já foi pago: aí o
+    // item vai para o mês corrente aberto. Nunca escreve em cabeçalho pago —
+    // o total mudaria depois do pagamento (fin_reembolso_saldo_* ignora item
+    // de pedido pago; o dinheiro sumiria da fila).
+    let mes = `${data.slice(0, 7)}-01`;
+    let existente = await client.query<{ id: number; status: string }>(
       `SELECT id, status FROM fin_reimbursement WHERE person_id = $1 AND reference_month = $2::date`,
       [sessao.personId, mes]
     );
-    if (existente.rows[0] && existente.rows[0].status === "pago") {
-      throw new TimeError(
-        `o reembolso de ${data.slice(5, 7)}/${data.slice(0, 4)} já foi pago — lance no mês corrente`,
-        409
+    if (existente.rows[0]?.status === "pago") {
+      const { rows: [agora] } = await client.query<{ mes_corrente: string }>(
+        `SELECT to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo'), 'YYYY-MM-01') AS mes_corrente`
       );
+      mes = agora.mes_corrente;
+      // Se o corrente também estiver pago (pagamento antecipado), anda mês a
+      // mês até achar um aberto — no pior caso cria o próximo.
+      for (;;) {
+        existente = await client.query<{ id: number; status: string }>(
+          `SELECT id, status FROM fin_reimbursement WHERE person_id = $1 AND reference_month = $2::date`,
+          [sessao.personId, mes]
+        );
+        if (!existente.rows[0] || existente.rows[0].status !== "pago") break;
+        const { rows: [prox] } = await client.query<{ m: string }>(
+          `SELECT to_char(($1::date + interval '1 month'), 'YYYY-MM-01') AS m`,
+          [mes]
+        );
+        mes = prox.m;
+      }
     }
 
     let reembolsoId: number;
     if (existente.rows[0]) {
       reembolsoId = existente.rows[0].id;
       // Reembolso solicitado é aprovado por padrão; o financeiro revisa depois.
-      if (existente.rows[0].status !== "pago") {
-        await client.query(
-          `UPDATE fin_reimbursement
-              SET status = 'aprovado',
-                  approved_at = coalesce(approved_at, now()),
-                  approved_by = coalesce(approved_by, $2)
-            WHERE id = $1`,
-          [reembolsoId, sessao.nome ?? "sistema"]
-        );
-      }
+      await client.query(
+        `UPDATE fin_reimbursement
+            SET status = 'aprovado',
+                approved_at = coalesce(approved_at, now()),
+                approved_by = coalesce(approved_by, $2)
+          WHERE id = $1`,
+        [reembolsoId, sessao.nome ?? "sistema"]
+      );
     } else {
       const novo = await client.query<{ id: number }>(
         `INSERT INTO fin_reimbursement (entity_id, person_id, reference_month, status, submitted_at, approved_at, approved_by)

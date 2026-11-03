@@ -14,9 +14,9 @@
 // O gasto é de setembro, e o Flavio entra em 09/2026 como todo mundo. Belo e
 // Audrey já têm o pedido de 09/2026 PAGO (as ordens de 02/09), e
 // `fin_reembolso_saldo_unificado_v` ignora item de pedido pago — gravado ali, o
-// dinheiro sumiria da fila. A regra do app para esse caso é "o reembolso de
-// 09/2026 já foi pago — lance no mês corrente" (`criarReembolsoDoTime`), e é a
-// que vale aqui: os dois vão para 10/2026. A data do gasto continua 30/09.
+// dinheiro sumiria da fila. O app (`criarReembolsoDoTime`) faz o mesmo
+// fallback: mês da despesa pago → item no mês corrente aberto, data do gasto
+// intacta. Aqui os dois vão para 10/2026; a data do gasto continua 30/09.
 //
 // ---------------------------------------------------------------------------
 // O VALOR DA AUDREY FICA NUM ITEM SÓ

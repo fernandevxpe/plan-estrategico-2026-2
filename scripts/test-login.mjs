@@ -757,6 +757,94 @@ try {
     ok('sem parcela em aberto para projetar', 'esta pessoa não tem saldo');
   }
 
+  console.log('\n=== 5c2. MÊS JÁ PAGO NÃO BLOQUEIA — CAI NO CORRENTE ===');
+  // Cleber tentou mandar reembolso de outubro depois do pagamento e só passou
+  // quando virou o mês (default HOJE() mudou). A regra certa: expense_date
+  // fica no mês do gasto; o item entra no cabeçalho aberto.
+  {
+    const tipoAtivo = await db.query(
+      `SELECT slug FROM fin_reimbursement_type WHERE is_active AND category_id IS NOT NULL AND NOT requires_nfe ORDER BY slug LIMIT 1`
+    );
+    const slugTipo = tipoAtivo.rows[0]?.slug;
+    if (!slugTipo) {
+      nok('sem tipo de reembolso ativo para exercitar o fallback');
+    } else {
+      const { rows: [calendario] } = await db.query(
+        `SELECT to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') - interval '1 month', 'YYYY-MM-01') AS mes_pago,
+                to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') - interval '1 month', 'YYYY-MM-15') AS data_gasto,
+                to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo'), 'YYYY-MM-01') AS mes_corrente`
+      );
+      const entityId = (await db.query(`SELECT id FROM fin_entity WHERE slug = 'xpe'`)).rows[0].id;
+      const jaTinha = await db.query(
+        `SELECT id, status FROM fin_reimbursement WHERE person_id = $1 AND reference_month = $2::date`,
+        [cobaia.id, calendario.mes_pago]
+      );
+      let cabecaPagoId = jaTinha.rows[0]?.id ?? null;
+      const statusAntes = jaTinha.rows[0]?.status ?? null;
+      if (cabecaPagoId) {
+        await db.query(`UPDATE fin_reimbursement SET status = 'pago' WHERE id = $1`, [cabecaPagoId]);
+      } else {
+        const criado = await db.query(
+          `INSERT INTO fin_reimbursement (entity_id, person_id, reference_month, status, submitted_at, approved_at, approved_by)
+           VALUES ($1, $2, $3::date, 'pago', now(), now(), 'test-login') RETURNING id`,
+          [entityId, cobaia.id, calendario.mes_pago]
+        );
+        cabecaPagoId = criado.rows[0].id;
+      }
+
+      const enviado = await c('/api/time/reembolso', {
+        method: 'POST',
+        body: JSON.stringify({
+          tipo: slugTipo,
+          descricao: 'teste automatizado — mês já pago',
+          expenseDate: calendario.data_gasto,
+          valor: '1,23'
+        })
+      });
+      afirma(
+        enviado.status === 201,
+        'despesa em mês já pago entra (não 409)',
+        `status ${enviado.status} · ${enviado.corpo?.error ?? ''}`
+      );
+      afirma(
+        enviado.corpo?.mes === calendario.mes_corrente,
+        'o item cai no mês corrente aberto',
+        `mes=${enviado.corpo?.mes} · esperado ${calendario.mes_corrente}`
+      );
+
+      const itemId = enviado.corpo?.itemId;
+      if (itemId) {
+        const noBanco = await db.query(
+          `SELECT i.expense_date::text AS expense_date, r.reference_month::text AS reference_month, r.status
+             FROM fin_reimbursement_item i JOIN fin_reimbursement r ON r.id = i.reimbursement_id
+            WHERE i.id = $1`,
+          [itemId]
+        );
+        afirma(
+          noBanco.rows[0]?.expense_date?.slice(0, 10) === calendario.data_gasto,
+          'a data do gasto permanece a do mês passado',
+          noBanco.rows[0]?.expense_date
+        );
+        afirma(
+          noBanco.rows[0]?.reference_month?.slice(0, 10) === calendario.mes_corrente,
+          'o cabeçalho é o do mês corrente',
+          noBanco.rows[0]?.reference_month
+        );
+        await db.query(`DELETE FROM fin_audit_log WHERE target_table = 'fin_reimbursement_item' AND target_id = $1`, [
+          itemId
+        ]).catch(() => {});
+        await db.query(`DELETE FROM fin_reimbursement_item WHERE id = $1`, [itemId]);
+      }
+
+      if (statusAntes === null) {
+        await db.query(`DELETE FROM fin_reimbursement WHERE id = $1 AND NOT EXISTS (
+          SELECT 1 FROM fin_reimbursement_item i WHERE i.reimbursement_id = $1)`, [cabecaPagoId]);
+      } else {
+        await db.query(`UPDATE fin_reimbursement SET status = $2 WHERE id = $1`, [cabecaPagoId, statusAntes]);
+      }
+    }
+  }
+
   console.log('\n=== 5d. A FOTO VIRA CAMPOS (leitura do comprovante) ===');
   const { readFileSync, existsSync } = await import('node:fs');
   const amostra = process.env.XPE_COMPROVANTE_TESTE;

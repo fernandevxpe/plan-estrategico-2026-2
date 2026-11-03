@@ -3,6 +3,8 @@ import { FinEstornosReembolso } from "@/components/financeiro/FinEstornosReembol
 import { FinShell } from "@/components/financeiro/FinShell";
 import { FinReembolsosGestao } from "@/components/financeiro/FinReembolsosGestao";
 import { FinReimbursements } from "@/components/financeiro/FinReimbursements";
+import { getContasAPagar } from "@/lib/financeiro/contas-a-pagar";
+import { linhasPagarPorPessoa } from "@/lib/financeiro/pagar-por-pessoa";
 import { getGestaoReembolsos, getPainelReembolsos } from "@/lib/financeiro/reembolsos";
 
 export const metadata = {
@@ -16,7 +18,9 @@ export default async function ReembolsosPage({
 }: {
   searchParams: Promise<{ pessoa?: string; mes?: string }>;
 }) {
-  const [dados, gestao] = await Promise.all([getPainelReembolsos(), getGestaoReembolsos()]);
+  const [dados, gestao, contas] = await Promise.all([getPainelReembolsos(), getGestaoReembolsos(), getContasAPagar()]);
+  // A linha de reembolso de Contas a pagar é a que vira ordem — ver FinPagarPorPessoa.
+  const linhasPagar = linhasPagarPorPessoa(contas, "reembolso");
   const sp = await searchParams;
   const pessoaInicial = sp.pessoa && /^\d+$/.test(sp.pessoa) ? Number(sp.pessoa) : null;
 
@@ -31,7 +35,11 @@ export default async function ReembolsosPage({
         </p>
       </div>
       <FinShell>
-        <FinReembolsosGestao dados={gestao} mesInicial={sp.mes ?? null} />
+        <FinReembolsosGestao
+          dados={gestao}
+          mesInicial={sp.mes ?? null}
+          pagar={{ linhas: linhasPagar, mesPagamento: `${contas.competencia.slice(0, 7)}-01`, hoje: contas.hoje }}
+        />
         <FinEstornosReembolso />
         <FinReimbursements dados={dados} pessoaInicial={pessoaInicial} />
       </FinShell>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import type { GestaoReembolsos, ItemGestao } from "@/lib/financeiro/reembolsos";
 import { brlPrecise, dateLabel, monthKeyLabel } from "@/lib/financeiro/format";
+import { FinReembolsosPagar, type LinhaPagarReembolso } from "@/components/financeiro/FinReembolsosPagar";
 
 /**
  * Gestão dos reembolsos por COMPETÊNCIA: o mês inteiro numa lista só, quem
@@ -16,7 +17,7 @@ import { brlPrecise, dateLabel, monthKeyLabel } from "@/lib/financeiro/format";
  * mesmo dia — e a única forma de vê-los era abrir pessoa por pessoa na gaveta.
  */
 
-type Aba = "mes" | "recentes" | "parcelas" | "pessoa";
+type Aba = "pagar" | "mes" | "recentes" | "parcelas" | "pessoa";
 
 const ROTULO_STATUS: Record<string, string> = {
   pendente: "pendente",
@@ -49,11 +50,19 @@ function soma(lista: ItemGestao[]) {
   return lista.reduce((s, i) => s + i.valorCents, 0);
 }
 
-export function FinReembolsosGestao({ dados, mesInicial }: { dados: GestaoReembolsos; mesInicial?: string | null }) {
+export function FinReembolsosGestao({
+  dados,
+  mesInicial,
+  pagar
+}: {
+  dados: GestaoReembolsos;
+  mesInicial?: string | null;
+  pagar?: { linhas: LinhaPagarReembolso[]; mesPagamento: string; hoje: string };
+}) {
   const router = useRouter();
   const [pendente, startTransition] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
-  const [aba, setAba] = useState<Aba>("mes");
+  const [aba, setAba] = useState<Aba>(pagar ? "pagar" : "mes");
   const [mes, setMes] = useState(() =>
     mesInicial && /^\d{4}-\d{2}$/.test(mesInicial) ? `${mesInicial}-01` : dados.mesAtual
   );
@@ -237,6 +246,7 @@ export function FinReembolsosGestao({ dados, mesInicial }: { dados: GestaoReembo
       <div className="fin-tabs" role="tablist" style={{ marginTop: 12 }}>
         {(
           [
+            ...(pagar ? ([["pagar", `Pagar por pessoa (${pagar.linhas.length})`]] as [Aba, string][]) : []),
             ["mes", `Todos do mês (${doMes.length})`],
             ["recentes", "Recentes"],
             ["parcelas", "Parcelas"],
@@ -256,6 +266,10 @@ export function FinReembolsosGestao({ dados, mesInicial }: { dados: GestaoReembo
           </button>
         ))}
       </div>
+
+      {aba === "pagar" && pagar ? (
+        <FinReembolsosPagar dados={dados} linhas={pagar.linhas} mesPagamento={pagar.mesPagamento} hoje={pagar.hoje} />
+      ) : null}
 
       {aba === "mes" ? (
         <>
